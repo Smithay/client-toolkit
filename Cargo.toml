@@ -4,3 +4,11 @@ version = "0.1.0"
 authors = ["Victor Berger <victor.berger@m4x.org>"]
 
 [dependencies]
+wayland-client = { version = "0.20", features = ["cursor"] }
+wayland-protocols = { version = "0.20", features = ["client"] }
+
+[patch.crates-io]
+wayland-client = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
+wayland-protocols = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
+wayland-sys = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
+wayland-commons = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
