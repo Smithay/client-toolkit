@@ -1,7 +1,6 @@
 extern crate byteorder;
 extern crate smithay_client_toolkit as sctk;
 extern crate tempfile;
-extern crate wayland_client;
 
 use std::cmp::min;
 use std::io::Write;
@@ -9,25 +8,23 @@ use std::os::unix::io::AsRawFd;
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use wayland_client::{Display, GlobalManager, Proxy};
-use wayland_client::protocol::{wl_compositor, wl_seat, wl_shell, wl_shell_surface, wl_shm};
-use wayland_client::protocol::wl_display::RequestsTrait as DisplayRequests;
-use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
-use wayland_client::protocol::wl_shm::RequestsTrait as ShmRequests;
-use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
-use wayland_client::protocol::wl_shell::RequestsTrait as ShellRequests;
-use wayland_client::protocol::wl_shell_surface::RequestsTrait as ShellSurfaceRequests;
-
+use sctk::Environment;
+use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::protocol::{wl_seat, wl_shell, wl_shell_surface, wl_shm};
+use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
+use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
+use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
+use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
+use sctk::reexports::client::protocol::wl_shm::RequestsTrait as ShmRequests;
+use sctk::reexports::client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
+use sctk::reexports::client::protocol::wl_shell::RequestsTrait as ShellRequests;
+use sctk::reexports::client::protocol::wl_shell_surface::RequestsTrait as ShellSurfaceRequests;
 use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
 
 fn main() {
     let (display, mut event_queue) = Display::connect_to_env().unwrap();
-    let globals = GlobalManager::new(display.get_registry().unwrap());
-
-    // roundtrip to retrieve the globals list
-    event_queue.sync_roundtrip().unwrap();
+    let env =
+        Environment::from_registry(display.get_registry().unwrap(), &mut event_queue).unwrap();
 
     /*
      * Create a buffer with window contents
@@ -56,19 +53,13 @@ fn main() {
      * Init wayland objects
      */
 
-    // The compositor allows us to creates surfaces
-    let compositor = globals
-        .instanciate::<wl_compositor::WlCompositor>(1)
+    let surface = env.compositor
+        .create_surface()
         .unwrap()
         .implement(|_, _| {});
-    let surface = compositor.create_surface().unwrap().implement(|_, _| {});
 
-    // Init the SHM to define buffers to display somehting
-    let shm = globals
-        .instanciate::<wl_shm::WlShm>(1)
-        .unwrap()
-        .implement(|_, _| {});
-    let pool = shm.create_pool(tmp.as_raw_fd(), (buf_x * buf_y * 4) as i32)
+    let pool = env.shm
+        .create_pool(tmp.as_raw_fd(), (buf_x * buf_y * 4) as i32)
         .unwrap()
         .implement(|_, _| {});
     let buffer = pool.create_buffer(
@@ -84,13 +75,13 @@ fn main() {
     //
     // NOTE: the wl_shell interface is actually deprecated in favour of the xdg_shell
     // protocol, available in wayland-protocols. But this will do for this example.
-    let shell = globals
-        .instanciate::<wl_shell::WlShell>(1)
+    let shell = env.manager
+        .instanciate_auto::<wl_shell::WlShell>()
         .unwrap()
         .implement(|_, _| {});
     let shell_surface = shell.get_shell_surface(&surface).unwrap().implement(
         |event, shell_surface: Proxy<wl_shell_surface::WlShellSurface>| {
-            use wayland_client::protocol::wl_shell_surface::{Event, RequestsTrait};
+            use sctk::reexports::client::protocol::wl_shell_surface::{Event, RequestsTrait};
             // This ping/pong mechanism is used by the wayland server to detect
             // unresponsive applications
             if let Event::Ping { serial } = event {
@@ -109,8 +100,8 @@ fn main() {
      */
 
     // initialize a seat to retrieve keyboard events
-    let seat = globals
-        .instanciate::<wl_seat::WlSeat>(1)
+    let seat = env.manager
+        .instanciate_auto::<wl_seat::WlSeat>()
         .unwrap()
         .implement(move |_, _| {});
 
