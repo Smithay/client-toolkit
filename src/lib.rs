@@ -17,11 +17,11 @@ pub extern crate wayland_protocols;
 /// Re-exports of some crates, for convenience
 pub mod reexports {
     pub use wayland_client as client;
-    pub use wayland_commons as commons;
     pub use wayland_protocols as protocols;
 }
 
+pub mod pointer;
 pub mod keyboard;
 mod env;
 
-pub use env::Environment;
+pub use env::{Environment, Shell};
