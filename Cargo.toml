@@ -17,8 +17,3 @@ wayland-client = { version = "0.20", features = ["dlopen"] }
 byteorder = "1.0"
 tempfile = "2.1"
 
-[patch.crates-io]
-wayland-client = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
-wayland-protocols = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
-wayland-sys = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
-wayland-commons = { git = 'https://github.com/smithay/wayland-rs', branch = 'wayland_rs_20' }
