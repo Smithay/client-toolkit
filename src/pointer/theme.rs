@@ -1,5 +1,3 @@
-//! Utilities to work with pointers and their icons
-
 use std::sync::{Arc, Mutex};
 use std::ops::Deref;
 use wayland_client::{NewProxy, Proxy, QueueToken};
@@ -30,7 +28,7 @@ impl ThemeManager {
     ///
     /// Will use the default theme of the system if name is `None`.
     ///
-    /// Fails id `libwayland-cursor` is not available.
+    /// Fails if `libwayland-cursor` is not available.
     pub fn init(
         name: Option<&str>,
         compositor: Proxy<wl_compositor::WlCompositor>,
