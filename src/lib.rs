@@ -7,6 +7,7 @@ extern crate dlib;
 #[macro_use]
 extern crate lazy_static;
 extern crate memmap;
+extern crate tempfile;
 #[doc(hidden)]
 pub extern crate wayland_client;
 #[doc(hidden)]
@@ -22,6 +23,8 @@ pub mod reexports {
 
 pub mod pointer;
 pub mod keyboard;
+pub mod utils;
+
 mod env;
 
 pub use env::{Environment, Shell};
