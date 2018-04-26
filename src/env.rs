@@ -5,13 +5,30 @@ use wayland_client::{EventQueue, GlobalManager, NewProxy, Proxy};
 use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_seat, wl_shell, wl_shm,
                                wl_subcompositor};
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
+use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 
 /// Possible shell globals
 pub enum Shell {
     /// Using xdg_shell protocol, the standart
     Xdg(Proxy<xdg_wm_base::XdgWmBase>),
+    /// Old version of xdg_shell, for compatiblity
+    Zxdg(Proxy<zxdg_shell_v6::ZxdgShellV6>),
     /// Using wl_shell, deprecated, compatibility mode
     Wl(Proxy<wl_shell::WlShell>),
+}
+
+impl Shell {
+    /// Check whether you need to wait for a configure before
+    /// drawing to your surfaces
+    ///
+    /// This depend on the underlying shell protocol
+    pub fn needs_configure(&self) -> bool {
+        match *self {
+            Shell::Xdg(_) => true,
+            Shell::Zxdg(_) => true,
+            Shell::Wl(_) => false,
+        }
+    }
 }
 
 /// A convenience for global management
@@ -86,6 +103,13 @@ impl Environment {
                     proxy.pong(serial)
                 }),
             )
+        } else if let Ok(xdg_shell) = manager.instanciate_auto::<zxdg_shell_v6::ZxdgShellV6>() {
+            Shell::Zxdg(xdg_shell.implement(
+                |zxdg_shell_v6::Event::Ping { serial }, proxy: Proxy<_>| {
+                    use self::zxdg_shell_v6::RequestsTrait;
+                    proxy.pong(serial)
+                },
+            ))
         } else if let Ok(shell) = manager.instanciate_auto::<wl_shell::WlShell>() {
             Shell::Wl(shell.implement(|e, _| match e {}))
         } else {

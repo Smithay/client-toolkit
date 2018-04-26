@@ -8,12 +8,11 @@ bitflags = "1.0"
 dlib = "0.4"
 lazy_static = "1"
 memmap = "0.6"
+byteorder = "1.0"
 tempfile = "3.0"
 wayland-commons = { version = "0.20" }
 wayland-client = { version = "0.20", features = ["cursor"] }
-wayland-protocols = { version = "0.20", features = ["client"] }
+wayland-protocols = { version = "0.20", features = ["client", "unstable_protocols"] }
 
 [dev-dependencies]
 wayland-client = { version = "0.20", features = ["dlopen"] }
-byteorder = "1.0"
-

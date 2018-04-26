@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate bitflags;
+extern crate byteorder;
 #[macro_use]
 extern crate dlib;
 #[macro_use]
@@ -24,6 +25,7 @@ pub mod reexports {
 pub mod pointer;
 pub mod keyboard;
 pub mod utils;
+pub mod window;
 
 mod env;
 
