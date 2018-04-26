@@ -2,6 +2,15 @@
 name = "smithay-client-toolkit"
 version = "0.1.0"
 authors = ["Victor Berger <victor.berger@m4x.org>"]
+documentation = "https://smithay.github.io/client-toolkit"
+repository = "https://github.com/smithay/client-toolkit"
+license = "MIT"
+categories = ["gui"]
+keywords = ["wayland", "client"]
+description = "Toolkit for making client wayland applications."
+
+[badges]
+travis-ci = { repository = "smithay/client-toolkit" }
 
 [dependencies]
 bitflags = "1.0"
