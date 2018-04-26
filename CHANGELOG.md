@@ -1,6 +1,8 @@
 # Change Log
 
-## 0.1.0 -- Unreleased
+## Unreleased
+
+## 0.1.0 -- 2018-04-26
 
 Initial version, including:
 
