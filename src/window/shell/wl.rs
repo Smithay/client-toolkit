@@ -27,11 +27,7 @@ impl Wl {
                 wl_shell_surface::Event::Ping { serial } => {
                     shell_surface.pong(serial);
                 }
-                wl_shell_surface::Event::Configure {
-                    width,
-                    height,
-                    ..
-                } => {
+                wl_shell_surface::Event::Configure { width, height, .. } => {
                     use std::cmp::max;
                     implementation.receive(
                         Event::Configure {
