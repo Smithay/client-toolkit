@@ -7,9 +7,10 @@ use wayland_protocols::unstable::xdg_shell::v6::client::{zxdg_shell_v6, zxdg_sur
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
 use wayland_client::protocol::wl_surface::RequestsTrait as WlSurfaceRequests;
-use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::RequestsTrait as ShellRequests;
-use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_surface_v6::RequestsTrait as SurfaceRequests;
-use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_toplevel_v6::RequestsTrait as ToplevelRequests;
+use wayland_protocols::unstable::xdg_shell::v6::client as zxdg_shell_v6_proto;
+use self::zxdg_shell_v6_proto::zxdg_shell_v6::RequestsTrait as ShellRequests;
+use self::zxdg_shell_v6_proto::zxdg_surface_v6::RequestsTrait as SurfaceRequests;
+use self::zxdg_shell_v6_proto::zxdg_toplevel_v6::RequestsTrait as ToplevelRequests;
 
 use super::{Event, ShellSurface};
 
