@@ -4,23 +4,18 @@ extern crate tempfile;
 
 use std::cmp::min;
 use std::io::{Seek, SeekFrom, Write};
-use std::os::unix::io::AsRawFd;
 use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::Environment;
 use sctk::reexports::client::{Display, Proxy};
-use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shell, wl_shell_surface, wl_shm,
-                                        wl_surface};
+use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm, wl_surface};
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
-use sctk::reexports::client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
-use sctk::reexports::client::protocol::wl_shell::RequestsTrait as ShellRequests;
-use sctk::reexports::client::protocol::wl_shell_surface::RequestsTrait as ShellSurfaceRequests;
 use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::utils::MemPool;
@@ -63,7 +58,7 @@ fn main() {
                 | (_, &Some(WEvent::Refresh))
                 | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
                 | (&WEvent::Close, _) => true,
-                (_, act) => false,
+                _ => false,
             };
             if replace {
                 *next_action = Some(evt);
@@ -160,7 +155,8 @@ fn redraw(
         b.destroy();
     }
     // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize);
+    pool.resize((4 * buf_x * buf_y) as usize)
+        .expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
     let _ = pool.seek(SeekFrom::Start(0));
     for i in 0..(buf_x * buf_y) {
