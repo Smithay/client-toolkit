@@ -1,11 +1,13 @@
 use std::io;
 use std::sync::{Arc, Mutex};
 
-use wayland_client::{EventQueue, GlobalManager, NewProxy, Proxy};
+use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy, Proxy};
 use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_seat, wl_shell, wl_shm,
                                wl_subcompositor};
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
+
+use wayland_client::protocol::wl_registry::RequestsTrait;
 
 /// Possible shell globals
 pub enum Shell {
@@ -52,6 +54,8 @@ pub struct Environment {
     pub shell: Shell,
     /// The SHM global, to create shared memory buffers
     pub shm: Proxy<wl_shm::WlShm>,
+    /// A manager for handling the advertized outputs
+    pub outputs: ::output::OutputMgr,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
 }
 
@@ -68,9 +72,31 @@ impl Environment {
         registry: NewProxy<wl_registry::WlRegistry>,
         evq: &mut EventQueue,
     ) -> io::Result<Environment> {
-        let manager = GlobalManager::new(registry);
+        let outputs = ::output::OutputMgr::new();
+        let outputs2 = outputs.clone();
 
-        // sync to retrieve the global list
+        let manager =
+            GlobalManager::new_with_cb(registry, move |event, registry: Proxy<_>| match event {
+                GlobalEvent::New {
+                    id,
+                    interface,
+                    version,
+                } => match &interface[..] {
+                    "wl_output" => outputs2.new_output(
+                        id,
+                        registry.bind::<wl_output::WlOutput>(version, id).unwrap(),
+                    ),
+                    _ => (),
+                },
+                GlobalEvent::Removed { id, interface } => match &interface[..] {
+                    "wl_output" => outputs2.output_removed(id),
+                    _ => (),
+                },
+            });
+
+        // double sync to retrieve the global list
+        // and the globals metadata
+        evq.sync_roundtrip()?;
         evq.sync_roundtrip()?;
 
         // wl_compositor
@@ -126,6 +152,7 @@ impl Environment {
             shell,
             shm,
             shm_formats,
+            outputs,
         })
     }
 

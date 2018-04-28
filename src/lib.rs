@@ -22,6 +22,7 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
 }
 
+pub mod output;
 pub mod pointer;
 pub mod keyboard;
 pub mod utils;
