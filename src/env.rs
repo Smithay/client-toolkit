@@ -2,7 +2,8 @@ use std::io;
 use std::sync::{Arc, Mutex};
 
 use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy, Proxy};
-use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_seat, wl_shell, wl_shm,
+use wayland_client::commons::Implementation;
+use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_shell, wl_shm,
                                wl_subcompositor};
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
@@ -72,14 +73,31 @@ impl Environment {
         registry: NewProxy<wl_registry::WlRegistry>,
         evq: &mut EventQueue,
     ) -> io::Result<Environment> {
+        Environment::from_registry_with_cb(registry, evq, |_, _| {})
+    }
+
+    /// Create an environment wrapping a new registry
+    ///
+    /// Additionnaly to `from_registry`, this allows you to provide
+    /// a callback to be notified of global events, just like
+    /// `GlobalManager::new_with_cb`. Note that you will still
+    /// receive events even if they are processed by this `Environment`.
+    pub fn from_registry_with_cb<Impl>(
+        registry: NewProxy<wl_registry::WlRegistry>,
+        evq: &mut EventQueue,
+        mut cb: Impl,
+    ) -> io::Result<Environment>
+    where
+        Impl: Implementation<Proxy<wl_registry::WlRegistry>, GlobalEvent> + Send + 'static,
+    {
         let outputs = ::output::OutputMgr::new();
         let outputs2 = outputs.clone();
 
-        let manager =
-            GlobalManager::new_with_cb(registry, move |event, registry: Proxy<_>| match event {
+        let manager = GlobalManager::new_with_cb(registry, move |event, registry: Proxy<_>| {
+            match event {
                 GlobalEvent::New {
                     id,
-                    interface,
+                    ref interface,
                     version,
                 } => match &interface[..] {
                     "wl_output" => outputs2.new_output(
@@ -88,11 +106,13 @@ impl Environment {
                     ),
                     _ => (),
                 },
-                GlobalEvent::Removed { id, interface } => match &interface[..] {
+                GlobalEvent::Removed { id, ref interface } => match &interface[..] {
                     "wl_output" => outputs2.output_removed(id),
                     _ => (),
                 },
-            });
+            }
+            cb.receive(event, registry);
+        });
 
         // double sync to retrieve the global list
         // and the globals metadata
