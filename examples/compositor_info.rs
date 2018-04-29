@@ -1,7 +1,7 @@
 extern crate smithay_client_toolkit as sctk;
 
 use sctk::{Environment, Shell};
-use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::Display;
 
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 

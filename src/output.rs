@@ -207,21 +207,37 @@ impl OutputMgr {
         }
     }
 
+    /// Access the information of a specific output from its global id
+    ///
+    /// If the requested ouput is not found (likely because it has been destroyed)
+    /// the closure is not called and `None` is returned.
+    pub fn find_id<F, T>(&self, id: u32, f: F) -> Option<T>
+    where
+        F: FnOnce(&Proxy<wl_output::WlOutput>, &OutputInfo) -> T,
+    {
+        let inner = self.inner.lock().unwrap();
+        if let Some(&(_, ref proxy, ref info)) = inner.outputs.iter().find(|&&(i, _, _)| i == id) {
+            Some(f(proxy, info))
+        } else {
+            None
+        }
+    }
+
     /// Access the information of a specific output
     ///
     /// If the requested ouput is not found (likely because it has been destroyed)
     /// the closure is not called and `None` is returned.
     pub fn with_info<F, T>(&self, output: &Proxy<WlOutput>, f: F) -> Option<T>
     where
-        F: FnOnce(&OutputInfo) -> T,
+        F: FnOnce(u32, &OutputInfo) -> T,
     {
         let inner = self.inner.lock().unwrap();
-        if let Some(&(_, _, ref info)) = inner
+        if let Some(&(id, _, ref info)) = inner
             .outputs
             .iter()
             .find(|&&(_, ref o, _)| o.equals(output))
         {
-            Some(f(info))
+            Some(f(id, info))
         } else {
             None
         }
