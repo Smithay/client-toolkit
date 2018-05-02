@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{BufWriter, Seek, SeekFrom, Write};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
@@ -375,26 +375,30 @@ impl Frame for BasicFrame {
             };
             let _ = pool.seek(SeekFrom::Start(0));
             // draw the grey background
-            for _ in 0..pxcount {
-                let _ = pool.write_u32::<NativeEndian>(color);
+            {
+                let mut writer = BufWriter::new(&mut *pool);
+                for _ in 0..pxcount {
+                    let _ = writer.write_u32::<NativeEndian>(color);
+                }
+                draw_buttons(
+                    &mut writer,
+                    width,
+                    true,
+                    self.pointers
+                        .iter()
+                        .flat_map(|p| {
+                            if p.is_alive() {
+                                let data =
+                                    unsafe { &mut *(p.get_user_data() as *mut PointerUserData) };
+                                Some(data.location)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect(),
+                );
+                let _ = writer.flush();
             }
-            draw_buttons(
-                pool,
-                width,
-                true,
-                self.pointers
-                    .iter()
-                    .flat_map(|p| {
-                        if p.is_alive() {
-                            let data = unsafe { &mut *(p.get_user_data() as *mut PointerUserData) };
-                            Some(data.location)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect(),
-            );
-            let _ = pool.flush();
 
             // Create the buffers
             // -> top-subsurface
@@ -601,7 +605,12 @@ fn request_for_location(
     }
 }
 
-fn draw_buttons(pool: &mut MemPool, width: u32, maximizable: bool, mouses: Vec<Location>) {
+fn draw_buttons(
+    pool: &mut BufWriter<&mut MemPool>,
+    width: u32,
+    maximizable: bool,
+    mouses: Vec<Location>,
+) {
     // draw up to 3 buttons, depending on the width of the window
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
