@@ -3,7 +3,7 @@ extern crate smithay_client_toolkit as sctk;
 extern crate tempfile;
 
 use std::cmp::min;
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
@@ -18,7 +18,7 @@ use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
-use sctk::utils::MemPool;
+use sctk::utils::{DoubleMemPool, MemPool};
 
 fn main() {
     let (display, mut event_queue) = Display::connect_to_env().unwrap();
@@ -66,7 +66,7 @@ fn main() {
         },
     ).expect("Failed to create a window !");
 
-    let mut pool = MemPool::new(&env.shm).expect("Failed to create a memory pool !");
+    let mut pools = DoubleMemPool::new(&env.shm).expect("Failed to create a memory pool !");
     let mut buffer = None;
 
     /*
@@ -119,7 +119,8 @@ fn main() {
 
     if !env.shell.needs_configure() {
         // initial draw to bottstrap on wl_shell
-        redraw(&mut pool, &mut buffer, window.surface(), dimensions);
+        redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
+        pools.swap();
         window.refresh();
     }
 
@@ -134,7 +135,8 @@ fn main() {
                 }
                 println!("Window states: {:?}", states);
                 window.refresh();
-                redraw(&mut pool, &mut buffer, window.surface(), dimensions);
+                redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
+                pools.swap();
             }
             None => {}
         }
@@ -159,15 +161,18 @@ fn redraw(
         .expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
     let _ = pool.seek(SeekFrom::Start(0));
-    for i in 0..(buf_x * buf_y) {
-        let x = (i % buf_x) as u32;
-        let y = (i / buf_x) as u32;
-        let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-        let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-        let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
-        let _ = pool.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b);
+    {
+        let mut writer = BufWriter::new(&mut *pool);
+        for i in 0..(buf_x * buf_y) {
+            let x = (i % buf_x) as u32;
+            let y = (i / buf_x) as u32;
+            let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
+            let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
+            let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
+            let _ = writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b);
+        }
+        let _ = writer.flush();
     }
-    let _ = pool.flush();
     // get a buffer and attach it
     let new_buffer = pool.buffer(
         0,
