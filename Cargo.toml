@@ -24,4 +24,5 @@ wayland-client = { version = "0.20", features = ["cursor"] }
 wayland-protocols = { version = "0.20", features = ["client", "unstable_protocols"] }
 
 [dev-dependencies]
+image = "0.19"
 wayland-client = { version = "0.20", features = ["dlopen"] }
