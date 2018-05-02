@@ -17,7 +17,7 @@ use wayland_client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use wayland_client::protocol::wl_subcompositor::RequestsTrait as SubcompRequests;
 
 use pointer::{AutoPointer, AutoThemer};
-use utils::MemPool;
+use utils::{DoubleMemPool, MemPool};
 use super::{Frame, FrameRequest};
 
 /*
@@ -190,7 +190,7 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 /// beautiful, but functional.
 pub struct BasicFrame {
     inner: Arc<Inner>,
-    pool: MemPool,
+    pools: DoubleMemPool,
     buffers: Vec<Proxy<wl_buffer::WlBuffer>>,
     active: bool,
     hidden: bool,
@@ -208,7 +208,7 @@ impl Frame for BasicFrame {
         shm: &Proxy<wl_shm::WlShm>,
         implementation: Box<Implementation<u32, FrameRequest> + Send>,
     ) -> Result<BasicFrame, ::std::io::Error> {
-        let pool = MemPool::new(&shm)?;
+        let pools = DoubleMemPool::new(&shm)?;
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
@@ -222,7 +222,7 @@ impl Frame for BasicFrame {
                 implem: Mutex::new(implementation),
                 maximized: Mutex::new(false),
             }),
-            pool,
+            pools,
             buffers: Vec::new(),
             active: false,
             hidden: false,
@@ -358,112 +358,109 @@ impl Frame for BasicFrame {
             b.destroy();
         }
 
-        // resize the pool as appropriate
-        let pxcount = 2 * height * DECORATION_SIZE
-            + (width + 2 * DECORATION_SIZE) * (DECORATION_SIZE + DECORATION_TOP_SIZE);
-        self.pool
-            .resize(4 * pxcount as usize)
-            .expect("I/O Error while redrawing the borders");
+        {
+            // grab the current pool
+            let pool = self.pools.pool();
+            // resize the pool as appropriate
+            let pxcount = 2 * height * DECORATION_SIZE
+                + (width + 2 * DECORATION_SIZE) * (DECORATION_SIZE + DECORATION_TOP_SIZE);
+            pool.resize(4 * pxcount as usize)
+                .expect("I/O Error while redrawing the borders");
 
-        // Redraw the grey borders
-        let color = if self.active {
-            ACTIVE_BORDER
-        } else {
-            INACTIVE_BORDER
-        };
-        let _ = self.pool.seek(SeekFrom::Start(0));
-        // draw the grey background
-        for _ in 0..pxcount {
-            let _ = self.pool.write_u32::<NativeEndian>(color);
-        }
-        draw_buttons(
-            &mut self.pool,
-            width,
-            true,
-            self.pointers
-                .iter()
-                .flat_map(|p| {
-                    if p.is_alive() {
-                        let data = unsafe { &mut *(p.get_user_data() as *mut PointerUserData) };
-                        Some(data.location)
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        );
-        let _ = self.pool.flush();
+            // Redraw the grey borders
+            let color = if self.active {
+                ACTIVE_BORDER
+            } else {
+                INACTIVE_BORDER
+            };
+            let _ = pool.seek(SeekFrom::Start(0));
+            // draw the grey background
+            for _ in 0..pxcount {
+                let _ = pool.write_u32::<NativeEndian>(color);
+            }
+            draw_buttons(
+                pool,
+                width,
+                true,
+                self.pointers
+                    .iter()
+                    .flat_map(|p| {
+                        if p.is_alive() {
+                            let data = unsafe { &mut *(p.get_user_data() as *mut PointerUserData) };
+                            Some(data.location)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            );
+            let _ = pool.flush();
 
-        // Create the buffers
-        // -> top-subsurface
-        let buffer = self.pool
-            .buffer(
+            // Create the buffers
+            // -> top-subsurface
+            let buffer = pool.buffer(
                 0,
                 (width + 2 * DECORATION_SIZE) as i32,
                 DECORATION_TOP_SIZE as i32,
                 4 * (width + 2 * DECORATION_SIZE) as i32,
                 wl_shm::Format::Argb8888,
-            )
-            .implement(|_, _| {});
-        self.inner.parts[TOP]
-            .subsurface
-            .set_position(-(DECORATION_SIZE as i32), -(DECORATION_TOP_SIZE as i32));
-        self.inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
-        if self.surface_version >= 4 {
-            self.inner.parts[TOP].surface.damage_buffer(
-                0,
-                0,
-                (width + 2 * DECORATION_SIZE) as i32,
-                DECORATION_TOP_SIZE as i32,
-            );
-        } else {
-            // surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
-            self.inner.parts[TOP].surface.damage(
-                0,
-                0,
-                (width + 2 * DECORATION_SIZE) as i32,
-                DECORATION_TOP_SIZE as i32,
-            );
-        }
-        self.inner.parts[TOP].surface.commit();
-        self.buffers.push(buffer);
-        // -> bottom-subsurface
-        let buffer = self.pool
-            .buffer(
+            ).implement(|_, _| {});
+            self.inner.parts[TOP]
+                .subsurface
+                .set_position(-(DECORATION_SIZE as i32), -(DECORATION_TOP_SIZE as i32));
+            self.inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
+            if self.surface_version >= 4 {
+                self.inner.parts[TOP].surface.damage_buffer(
+                    0,
+                    0,
+                    (width + 2 * DECORATION_SIZE) as i32,
+                    DECORATION_TOP_SIZE as i32,
+                );
+            } else {
+                // surface is old and does not support damage_buffer, so we damage
+                // in surface coordinates and hope it is not rescaled
+                self.inner.parts[TOP].surface.damage(
+                    0,
+                    0,
+                    (width + 2 * DECORATION_SIZE) as i32,
+                    DECORATION_TOP_SIZE as i32,
+                );
+            }
+            self.inner.parts[TOP].surface.commit();
+            self.buffers.push(buffer);
+            // -> bottom-subsurface
+            let buffer = pool.buffer(
                 4 * (DECORATION_TOP_SIZE * (width + 2 * DECORATION_SIZE)) as i32,
                 (width + 2 * DECORATION_SIZE) as i32,
                 DECORATION_SIZE as i32,
                 4 * (width + 2 * DECORATION_SIZE) as i32,
                 wl_shm::Format::Argb8888,
-            )
-            .implement(|_, _| {});
-        self.inner.parts[BOTTOM]
-            .subsurface
-            .set_position(-(DECORATION_SIZE as i32), height as i32);
-        self.inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
-        if self.surface_version >= 4 {
-            self.inner.parts[BOTTOM].surface.damage_buffer(
-                0,
-                0,
-                (width + 2 * DECORATION_SIZE) as i32,
-                DECORATION_SIZE as i32,
-            );
-        } else {
-            // surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
-            self.inner.parts[BOTTOM].surface.damage(
-                0,
-                0,
-                (width + 2 * DECORATION_SIZE) as i32,
-                DECORATION_SIZE as i32,
-            );
-        }
-        self.inner.parts[BOTTOM].surface.commit();
-        self.buffers.push(buffer);
-        // -> left-subsurface
-        let buffer = self.pool
-            .buffer(
+            ).implement(|_, _| {});
+            self.inner.parts[BOTTOM]
+                .subsurface
+                .set_position(-(DECORATION_SIZE as i32), height as i32);
+            self.inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
+            if self.surface_version >= 4 {
+                self.inner.parts[BOTTOM].surface.damage_buffer(
+                    0,
+                    0,
+                    (width + 2 * DECORATION_SIZE) as i32,
+                    DECORATION_SIZE as i32,
+                );
+            } else {
+                // surface is old and does not support damage_buffer, so we damage
+                // in surface coordinates and hope it is not rescaled
+                self.inner.parts[BOTTOM].surface.damage(
+                    0,
+                    0,
+                    (width + 2 * DECORATION_SIZE) as i32,
+                    DECORATION_SIZE as i32,
+                );
+            }
+            self.inner.parts[BOTTOM].surface.commit();
+            self.buffers.push(buffer);
+            // -> left-subsurface
+            let buffer = pool.buffer(
                 4
                     * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE))
                         as i32,
@@ -471,31 +468,29 @@ impl Frame for BasicFrame {
                 height as i32,
                 4 * (DECORATION_SIZE as i32),
                 wl_shm::Format::Argb8888,
-            )
-            .implement(|_, _| {});
-        self.inner.parts[LEFT]
-            .subsurface
-            .set_position(-(DECORATION_SIZE as i32), 0);
-        self.inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
-        if self.surface_version >= 4 {
-            self.inner.parts[LEFT].surface.damage_buffer(
-                0,
-                0,
-                DECORATION_SIZE as i32,
-                height as i32,
-            );
-        } else {
-            // surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
+            ).implement(|_, _| {});
             self.inner.parts[LEFT]
-                .surface
-                .damage(0, 0, DECORATION_SIZE as i32, height as i32);
-        }
-        self.inner.parts[LEFT].surface.commit();
-        self.buffers.push(buffer);
-        // -> right-subsurface
-        let buffer = self.pool
-            .buffer(
+                .subsurface
+                .set_position(-(DECORATION_SIZE as i32), 0);
+            self.inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
+            if self.surface_version >= 4 {
+                self.inner.parts[LEFT].surface.damage_buffer(
+                    0,
+                    0,
+                    DECORATION_SIZE as i32,
+                    height as i32,
+                );
+            } else {
+                // surface is old and does not support damage_buffer, so we damage
+                // in surface coordinates and hope it is not rescaled
+                self.inner.parts[LEFT]
+                    .surface
+                    .damage(0, 0, DECORATION_SIZE as i32, height as i32);
+            }
+            self.inner.parts[LEFT].surface.commit();
+            self.buffers.push(buffer);
+            // -> right-subsurface
+            let buffer = pool.buffer(
                 4
                     * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE)
                         + DECORATION_SIZE * height) as i32,
@@ -503,28 +498,30 @@ impl Frame for BasicFrame {
                 height as i32,
                 4 * (DECORATION_SIZE as i32),
                 wl_shm::Format::Argb8888,
-            )
-            .implement(|_, _| {});
-        self.inner.parts[RIGHT]
-            .subsurface
-            .set_position(width as i32, 0);
-        self.inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
-        if self.surface_version >= 4 {
-            self.inner.parts[RIGHT].surface.damage_buffer(
-                0,
-                0,
-                DECORATION_SIZE as i32,
-                height as i32,
-            );
-        } else {
-            // surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
+            ).implement(|_, _| {});
             self.inner.parts[RIGHT]
-                .surface
-                .damage(0, 0, DECORATION_SIZE as i32, height as i32);
+                .subsurface
+                .set_position(width as i32, 0);
+            self.inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
+            if self.surface_version >= 4 {
+                self.inner.parts[RIGHT].surface.damage_buffer(
+                    0,
+                    0,
+                    DECORATION_SIZE as i32,
+                    height as i32,
+                );
+            } else {
+                // surface is old and does not support damage_buffer, so we damage
+                // in surface coordinates and hope it is not rescaled
+                self.inner.parts[RIGHT]
+                    .surface
+                    .damage(0, 0, DECORATION_SIZE as i32, height as i32);
+            }
+            self.inner.parts[RIGHT].surface.commit();
+            self.buffers.push(buffer);
         }
-        self.inner.parts[RIGHT].surface.commit();
-        self.buffers.push(buffer);
+        // swap the pool
+        self.pools.swap();
     }
 
     fn subtract_borders(&self, width: i32, height: i32) -> (i32, i32) {

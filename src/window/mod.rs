@@ -5,7 +5,8 @@ use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor,
                                wl_surface};
 
-use wayland_protocols::xdg_shell::client::xdg_toplevel::{ResizeEdge, State};
+use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
+pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
 
 use Shell;
 
@@ -256,6 +257,9 @@ impl<F: Frame + 'static> Window<F> {
         use std::cmp::max;
         let w = max(w, 1);
         let h = max(h, 1);
+        if let Some(ref mut inner) = *self.inner.lock().unwrap() {
+            inner.current_size = (w, h);
+        }
         self.frame.lock().unwrap().resize((w, h));
     }
 

@@ -2,4 +2,4 @@
 
 mod mempool;
 
-pub use self::mempool::MemPool;
+pub use self::mempool::{DoubleMemPool, MemPool};

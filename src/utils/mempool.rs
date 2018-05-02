@@ -10,6 +10,38 @@ use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
 use wayland_client::protocol::wl_shm::RequestsTrait as ShmRequests;
 use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
 
+/// A Double memory pool, for convenient double-buffering
+///
+/// This type wraps two internal memory pool, and can be
+/// use for conveniently implementing double-buffering in your
+/// apps.
+///
+/// Just access the current drawing pool with the `pool()` method,
+/// and swap them using the `swap()` method between two frames.
+pub struct DoubleMemPool {
+    pool1: MemPool,
+    pool2: MemPool,
+}
+
+impl DoubleMemPool {
+    /// Create a double memory pool
+    pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<DoubleMemPool> {
+        let pool1 = MemPool::new(shm)?;
+        let pool2 = MemPool::new(shm)?;
+        Ok(DoubleMemPool { pool1, pool2 })
+    }
+
+    /// Access the current drawing pool
+    pub fn pool(&mut self) -> &mut MemPool {
+        &mut self.pool1
+    }
+
+    /// Swap the pool
+    pub fn swap(&mut self) {
+        ::std::mem::swap(&mut self.pool1, &mut self.pool2);
+    }
+}
+
 /// A wrapper handling an SHM memory pool backed by a temporary file
 ///
 /// On Linux, temporary files like this are never mapped on the disk, and
