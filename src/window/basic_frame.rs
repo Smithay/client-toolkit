@@ -85,7 +85,6 @@ impl Part {
             .get_subsurface(&surface, parent)
             .unwrap()
             .implement(|_, _| {});
-        subsurface.set_desync();
         Part {
             surface,
             subsurface,
