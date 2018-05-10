@@ -2,9 +2,9 @@
 
 use std::ops::Deref;
 
-use wayland_client::{NewProxy, Proxy, QueueToken};
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_compositor, wl_pointer, wl_shm};
+use wayland_client::{NewProxy, Proxy, QueueToken};
 
 mod theme;
 

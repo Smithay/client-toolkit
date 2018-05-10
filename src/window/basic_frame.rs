@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
@@ -8,17 +8,17 @@ use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_buffer, wl_compositor, wl_pointer, wl_seat, wl_shm,
                                wl_subcompositor, wl_subsurface, wl_surface};
 
-use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
-use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests;
+use wayland_client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;
-use wayland_client::protocol::wl_buffer::RequestsTrait as BufferRequests;
+use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use wayland_client::protocol::wl_subcompositor::RequestsTrait as SubcompRequests;
+use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests;
+use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 
+use super::{Frame, FrameRequest};
 use pointer::{AutoPointer, AutoThemer};
 use utils::{DoubleMemPool, MemPool};
-use super::{Frame, FrameRequest};
 
 /*
  * Drawing theme definitions
@@ -464,9 +464,8 @@ impl Frame for BasicFrame {
             self.buffers.push(buffer);
             // -> left-subsurface
             let buffer = pool.buffer(
-                4
-                    * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE))
-                        as i32,
+                4 * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE))
+                    as i32,
                 DECORATION_SIZE as i32,
                 height as i32,
                 4 * (DECORATION_SIZE as i32),
@@ -494,9 +493,8 @@ impl Frame for BasicFrame {
             self.buffers.push(buffer);
             // -> right-subsurface
             let buffer = pool.buffer(
-                4
-                    * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE)
-                        + DECORATION_SIZE * height) as i32,
+                4 * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE)
+                    + DECORATION_SIZE * height) as i32,
                 DECORATION_SIZE as i32,
                 height as i32,
                 4 * (DECORATION_SIZE as i32),

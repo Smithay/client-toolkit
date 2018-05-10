@@ -1,11 +1,11 @@
-use std::io;
 use std::fs::File;
+use std::io;
 use std::os::unix::io::AsRawFd;
 
 use tempfile::tempfile;
 
-use wayland_client::{NewProxy, Proxy};
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
+use wayland_client::{NewProxy, Proxy};
 
 use wayland_client::protocol::wl_shm::RequestsTrait as ShmRequests;
 use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;

@@ -5,9 +5,9 @@ use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base};
 
 use wayland_client::protocol::wl_surface::RequestsTrait as WlSurfaceRequests;
-use wayland_protocols::xdg_shell::client::xdg_wm_base::RequestsTrait as ShellRequests;
 use wayland_protocols::xdg_shell::client::xdg_surface::RequestsTrait as SurfaceRequests;
 use wayland_protocols::xdg_shell::client::xdg_toplevel::RequestsTrait as ToplevelRequests;
+use wayland_protocols::xdg_shell::client::xdg_wm_base::RequestsTrait as ShellRequests;
 
 use super::{Event, ShellSurface};
 

@@ -3,23 +3,23 @@ extern crate image;
 extern crate smithay_client_toolkit as sctk;
 extern crate tempfile;
 
-use std::env;
-use std::rc::Rc;
 use std::cell::Cell;
+use std::env;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::Environment;
-use sctk::reexports::client::{Display, NewProxy, Proxy};
-use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm};
-use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
-use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
-use sctk::window::{BasicFrame, Event as WEvent, State, Window};
+use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
+use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
+use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
+use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm};
+use sctk::reexports::client::{Display, NewProxy, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
+use sctk::window::{BasicFrame, Event as WEvent, State, Window};
 
 fn main() {
     // First of all, retrieve the path from the program arguments:

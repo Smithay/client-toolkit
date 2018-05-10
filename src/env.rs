@@ -1,12 +1,12 @@
 use std::io;
 use std::sync::{Arc, Mutex};
 
-use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy, Proxy};
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_shell, wl_shm,
                                wl_subcompositor};
-use wayland_protocols::xdg_shell::client::xdg_wm_base;
+use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy, Proxy};
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
+use wayland_protocols::xdg_shell::client::xdg_wm_base;
 
 use wayland_client::protocol::wl_registry::RequestsTrait;
 

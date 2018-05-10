@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
 use std::ops::Deref;
-use wayland_client::{NewProxy, Proxy, QueueToken};
+use std::sync::{Arc, Mutex};
 use wayland_client::commons::Implementation;
 use wayland_client::cursor::{is_available, load_theme, CursorTheme};
 use wayland_client::protocol::{wl_compositor, wl_pointer, wl_shm, wl_surface};
+use wayland_client::{NewProxy, Proxy, QueueToken};
 
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;

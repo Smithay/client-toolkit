@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 
-use wayland_client::{NewProxy, Proxy};
 use wayland_client::protocol::wl_output::{self, Event, RequestsTrait, WlOutput};
+use wayland_client::{NewProxy, Proxy};
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 

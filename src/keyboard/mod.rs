@@ -22,14 +22,13 @@ use std::ptr;
 
 use memmap::MmapOptions;
 
-use wayland_client::{NewProxy, Proxy};
 use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_keyboard, wl_surface};
 pub use wayland_client::protocol::wl_keyboard::KeyState;
+use wayland_client::protocol::{wl_keyboard, wl_surface};
+use wayland_client::{NewProxy, Proxy};
 
-use self::ffi::xkb_state_component;
 use self::ffi::XKBCOMMON_HANDLE as XKBH;
-
+use self::ffi::xkb_state_component;
 
 mod ffi;
 pub mod keysyms;

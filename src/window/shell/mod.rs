@@ -4,8 +4,8 @@ use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
-use Shell;
 use super::Event;
+use Shell;
 
 mod wl;
 mod xdg;
