@@ -75,7 +75,7 @@ fn main() {
 
     // initialize a seat to retrieve keyboard events
     let seat = env.manager
-        .instanciate_auto::<wl_seat::WlSeat>()
+        .instantiate_auto::<wl_seat::WlSeat>()
         .unwrap()
         .implement(move |_, _| {});
 

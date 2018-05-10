@@ -19,10 +19,10 @@ lazy_static = "1"
 memmap = "0.6"
 byteorder = "1.0"
 tempfile = "3.0"
-wayland-commons = { version = "0.20" }
-wayland-client = { version = "0.20", features = ["cursor"] }
-wayland-protocols = { version = "0.20", features = ["client", "unstable_protocols"] }
+wayland-commons = { version = "0.20.5" }
+wayland-client = { version = "0.20.5", features = ["cursor"] }
+wayland-protocols = { version = "0.20.5", features = ["client", "unstable_protocols"] }
 
 [dev-dependencies]
 image = "0.19"
-wayland-client = { version = "0.20", features = ["dlopen"] }
+wayland-client = { version = "0.20.5", features = ["dlopen"] }

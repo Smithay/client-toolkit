@@ -121,13 +121,13 @@ impl Environment {
 
         // wl_compositor
         let compositor = manager
-            .instanciate_auto::<wl_compositor::WlCompositor>()
+            .instantiate_auto::<wl_compositor::WlCompositor>()
             .expect("Server didn't advertize `wl_compositor`?!")
             .implement(|e, _| match e {});
 
         // wl_subcompositor
         let subcompositor = manager
-            .instanciate_auto::<wl_subcompositor::WlSubcompositor>()
+            .instantiate_auto::<wl_subcompositor::WlSubcompositor>()
             .expect("Server didn't advertize `wl_subcompositor`?!")
             .implement(|e, _| match e {});
 
@@ -135,28 +135,28 @@ impl Environment {
         let shm_formats = Arc::new(Mutex::new(Vec::new()));
         let shm_formats2 = shm_formats.clone();
         let shm = manager
-            .instanciate_auto::<wl_shm::WlShm>()
+            .instantiate_auto::<wl_shm::WlShm>()
             .expect("Server didn't advertize `wl_shm`?!")
             .implement(move |wl_shm::Event::Format { format }, _| {
                 shm_formats2.lock().unwrap().push(format);
             });
 
         // shells
-        let shell = if let Ok(wm_base) = manager.instanciate_auto::<xdg_wm_base::XdgWmBase>() {
+        let shell = if let Ok(wm_base) = manager.instantiate_auto::<xdg_wm_base::XdgWmBase>() {
             Shell::Xdg(
                 wm_base.implement(|xdg_wm_base::Event::Ping { serial }, proxy: Proxy<_>| {
                     use self::xdg_wm_base::RequestsTrait;
                     proxy.pong(serial)
                 }),
             )
-        } else if let Ok(xdg_shell) = manager.instanciate_auto::<zxdg_shell_v6::ZxdgShellV6>() {
+        } else if let Ok(xdg_shell) = manager.instantiate_auto::<zxdg_shell_v6::ZxdgShellV6>() {
             Shell::Zxdg(xdg_shell.implement(
                 |zxdg_shell_v6::Event::Ping { serial }, proxy: Proxy<_>| {
                     use self::zxdg_shell_v6::RequestsTrait;
                     proxy.pong(serial)
                 },
             ))
-        } else if let Ok(shell) = manager.instanciate_auto::<wl_shell::WlShell>() {
+        } else if let Ok(shell) = manager.instantiate_auto::<wl_shell::WlShell>() {
             Shell::Wl(shell.implement(|e, _| match e {}))
         } else {
             panic!("Server didn't advertize neither `xdg_wm_base` nor `wl_shell`?!");

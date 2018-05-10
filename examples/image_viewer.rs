@@ -152,7 +152,7 @@ fn main() {
     // are quite exotic.
     // Thus, we just automatically bind the first seat we find.
     let seat = env.manager
-        .instanciate_auto::<wl_seat::WlSeat>()
+        .instantiate_auto::<wl_seat::WlSeat>()
         .unwrap()
         .implement(move |_, _| {});
     // And advertize it to the Window so it knows of it and can process the
