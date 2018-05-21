@@ -117,7 +117,7 @@ fn main() {
     });
 
     if !env.shell.needs_configure() {
-        // initial draw to bottstrap on wl_shell
+        // initial draw to bootstrap on wl_shell
         redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
         pools.swap();
         window.refresh();
