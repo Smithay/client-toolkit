@@ -8,6 +8,7 @@ extern crate dlib;
 #[macro_use]
 extern crate lazy_static;
 extern crate memmap;
+extern crate nix;
 extern crate tempfile;
 #[doc(hidden)]
 pub extern crate wayland_client;
@@ -22,6 +23,7 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
 }
 
+pub mod data_device;
 pub mod keyboard;
 pub mod output;
 pub mod pointer;

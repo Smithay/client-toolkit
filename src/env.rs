@@ -2,8 +2,8 @@ use std::io;
 use std::sync::{Arc, Mutex};
 
 use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_shell, wl_shm,
-                               wl_subcompositor};
+use wayland_client::protocol::{wl_compositor, wl_data_device_manager, wl_output, wl_registry,
+                               wl_shell, wl_shm, wl_subcompositor};
 use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy, Proxy};
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
@@ -55,6 +55,9 @@ pub struct Environment {
     pub shell: Shell,
     /// The SHM global, to create shared memory buffers
     pub shm: Proxy<wl_shm::WlShm>,
+    /// The data device manager, used to handle drag&drop and selection
+    /// copy/paste
+    pub data_device_manager: Proxy<wl_data_device_manager::WlDataDeviceManager>,
     /// A manager for handling the advertized outputs
     pub outputs: ::output::OutputMgr,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
@@ -141,6 +144,11 @@ impl Environment {
                 shm_formats2.lock().unwrap().push(format);
             });
 
+        let data_device_manager = manager
+            .instantiate_auto::<wl_data_device_manager::WlDataDeviceManager>()
+            .expect("Server didn't advertize `wl_data_device_manager`?!")
+            .implement(|e, _| match e {});
+
         // shells
         let shell = if let Ok(wm_base) = manager.instantiate_auto::<xdg_wm_base::XdgWmBase>() {
             Shell::Xdg(
@@ -172,6 +180,7 @@ impl Environment {
             shell,
             shm,
             shm_formats,
+            data_device_manager,
             outputs,
         })
     }

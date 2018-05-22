@@ -1,14 +1,17 @@
 extern crate byteorder;
 extern crate smithay_client_toolkit as sctk;
 
-use std::cmp::min;
-use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::Environment;
+use sctk::data_device::{DataDevice, DndEvent, ReadPipe};
 use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
+use sctk::utils::{DoubleMemPool, MemPool};
+use sctk::window::{BasicFrame, Event as WEvent, Window};
+
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
@@ -16,24 +19,32 @@ use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
-use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{BasicFrame, Event as WEvent, Window};
 
 fn main() {
-    let (display, mut event_queue) = Display::connect_to_env().unwrap();
+    let (display, mut event_queue) =
+        Display::connect_to_env().expect("Failed to connect to the wayland server.");
     let env =
         Environment::from_registry(display.get_registry().unwrap(), &mut event_queue).unwrap();
 
-    /*
-     * Create a buffer with window contents
-     */
+    let seat = env.manager
+        .instantiate_auto::<wl_seat::WlSeat>()
+        .unwrap()
+        .implement(move |_, _| {});
 
+    let device = DataDevice::init_for_seat(
+        &env.data_device_manager,
+        &seat,
+        |event: DndEvent, ()| match event {
+            // we don't accept drag'n'drop
+            DndEvent::Enter {
+                offer: Some(offer), ..
+            } => offer.accept(None),
+            _ => (),
+        },
+    );
+
+    // we need a window to receive things actually
     let mut dimensions = (320u32, 240u32);
-
-    /*
-     * Init wayland objects
-     */
-
     let surface = env.compositor
         .create_surface()
         .unwrap()
@@ -65,54 +76,47 @@ fn main() {
         },
     ).expect("Failed to create a window !");
 
+    window.new_seat(&seat);
+
     let mut pools = DoubleMemPool::new(&env.shm).expect("Failed to create a memory pool !");
     let mut buffer = None;
 
-    /*
-     * Keyboard initialization
-     */
+    let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
-    // initialize a seat to retrieve keyboard events
-    let seat = env.manager
-        .instantiate_auto::<wl_seat::WlSeat>()
-        .unwrap()
-        .implement(move |_, _| {});
-
-    window.new_seat(&seat);
-
+    let reader2 = reader.clone();
     let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
         match event {
-            KbEvent::Enter {
-                modifiers, keysyms, ..
-            } => {
-                println!(
-                    "Gained focus while {} keys pressed and modifiers are {:?}.",
-                    keysyms.len(),
-                    modifiers
-                );
-            }
-            KbEvent::Leave { .. } => {
-                println!("Lost focus.");
-            }
             KbEvent::Key {
-                keysym,
-                state,
-                utf8,
-                modifiers,
-                ..
+                utf8: Some(text), ..
             } => {
-                println!("Key {:?}: {:x}.", state, keysym);
-                println!(" -> Modifers are {:?}", modifiers);
-                if let Some(txt) = utf8 {
-                    println!(" -> Received text \"{}\".", txt,);
+                if text == "p" {
+                    // pressed the 'p' key, try to read contents !
+                    device.with_selection(|offer| {
+                        if let Some(offer) = offer {
+                            print!("Current selection buffer mime types: [ ");
+                            let mut has_text = false;
+                            offer.with_mime_types(|types| {
+                                for t in types {
+                                    print!("\"{}\", ", t);
+                                    if t == "text/plain;charset=utf-8" {
+                                        has_text = true;
+                                    }
+                                }
+                            });
+                            println!("]");
+                            if has_text {
+                                println!("Buffer contains text, going to read it...");
+                                let mut reader = reader2.lock().unwrap();
+                                *reader =
+                                    Some(offer.receive("text/plain;charset=utf-8".into()).unwrap());
+                            }
+                        } else {
+                            println!("No current selection buffer!");
+                        }
+                    });
                 }
             }
-            KbEvent::RepeatInfo { rate, delay } => {
-                println!(
-                "Received repeat info: start repeating every {}ms after an initial delay of {}ms",
-                rate, delay
-            );
-            }
+            _ => (),
         }
     });
 
@@ -132,7 +136,6 @@ fn main() {
                     window.resize(w, h);
                     dimensions = (w, h)
                 }
-                println!("Window states: {:?}", states);
                 window.refresh();
                 redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
                 pools.swap();
@@ -141,6 +144,14 @@ fn main() {
         }
 
         display.flush().unwrap();
+
+        if let Some(mut reader) = reader.lock().unwrap().take() {
+            // we have something to read
+            let mut text = String::new();
+            reader.read_to_string(&mut text).unwrap();
+            println!("The selection buffer contained: \"{}\"", text);
+        }
+
         event_queue.dispatch().unwrap();
     }
 }
@@ -163,12 +174,7 @@ fn redraw(
     {
         let mut writer = BufWriter::new(&mut *pool);
         for i in 0..(buf_x * buf_y) {
-            let x = (i % buf_x) as u32;
-            let y = (i / buf_x) as u32;
-            let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-            let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-            let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
-            let _ = writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b);
+            let _ = writer.write_u32::<NativeEndian>(0xFF000000);
         }
         let _ = writer.flush();
     }
