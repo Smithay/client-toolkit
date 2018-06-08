@@ -3,10 +3,10 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use wayland_client::Proxy;
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_buffer, wl_compositor, wl_pointer, wl_seat, wl_shm,
                                wl_subcompositor, wl_subsurface, wl_surface};
+use wayland_client::Proxy;
 
 use wayland_client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;

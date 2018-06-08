@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use wayland_client::Proxy;
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor,
                                wl_surface};
+use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;

@@ -27,8 +27,8 @@ pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::protocol::{wl_keyboard, wl_surface};
 use wayland_client::{NewProxy, Proxy};
 
-use self::ffi::XKBCOMMON_HANDLE as XKBH;
 use self::ffi::xkb_state_component;
+use self::ffi::XKBCOMMON_HANDLE as XKBH;
 
 mod ffi;
 pub mod keysyms;

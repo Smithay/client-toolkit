@@ -6,11 +6,11 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::Environment;
 use sctk::data_device::{DataDevice, DndEvent, ReadPipe};
 use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
+use sctk::Environment;
 
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;

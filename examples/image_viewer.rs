@@ -11,7 +11,6 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::Environment;
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
@@ -20,6 +19,7 @@ use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm};
 use sctk::reexports::client::{Display, NewProxy, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, State, Window};
+use sctk::Environment;
 
 fn main() {
     // First of all, retrieve the path from the program arguments:

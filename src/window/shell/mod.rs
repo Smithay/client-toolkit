@@ -1,6 +1,6 @@
-use wayland_client::Proxy;
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
+use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 

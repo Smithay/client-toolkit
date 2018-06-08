@@ -1,6 +1,6 @@
-use wayland_client::Proxy;
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_output, wl_seat, wl_shell, wl_shell_surface, wl_surface};
+use wayland_client::Proxy;
 
 use wayland_client::protocol::wl_shell::RequestsTrait as ShellRequests;
 use wayland_client::protocol::wl_shell_surface::RequestsTrait as ShellSurfaceRequests;
