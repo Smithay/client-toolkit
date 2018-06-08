@@ -5,6 +5,7 @@
 - BasicFrame: don't desync the subsurface from the main one. This avoids
   graphical glitches where the borders are not drawn exactly the same size
   as the contents.
+- Window: add `set_resizable`, **breaking change** of the `Frame` trait.
 
 ## 0.2.1 -- 2018-05-03
 

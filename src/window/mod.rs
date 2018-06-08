@@ -238,12 +238,42 @@ impl<F: Frame + 'static> Window<F> {
         self.shell_surface.set_app_id(app_id);
     }
 
-    /// Set wether the window should be decorated or not
+    /// Set whether the window should be decorated or not
     ///
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
     pub fn set_decorate(&self, decorate: bool) {
         self.frame.lock().unwrap().set_hidden(!decorate);
+    }
+
+    /// Set whether the window should be resizeable by the user
+    ///
+    /// This is not an hard blocking, as the compositor can always
+    /// resize you forcibly if it wants. However it signals it that
+    /// you don't want this window to be resized.
+    ///
+    /// Additionnaly, the decorations will stop suggesting the user
+    /// to resize by dragging the borders if you set the window as
+    /// non-resizable.
+    ///
+    /// When re-activating resizability, any previously set min/max
+    /// sizes are restored.
+    pub fn set_resizable(&self, resizable: bool) {
+        self.frame.lock().unwrap().set_resizable(resizable);
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(ref mut inner) = *inner {
+            if resizable {
+                // restore the min/max sizes
+                self.shell_surface.set_min_size(inner.min_size.map(u_to_i));
+                self.shell_surface.set_max_size(inner.max_size.map(u_to_i));
+            } else {
+                // lock the min/max sizes to current size
+                self.shell_surface
+                    .set_min_size(Some(u_to_i(inner.current_size)));
+                self.shell_surface
+                    .set_max_size(Some(u_to_i(inner.current_size)));
+            }
+        }
     }
 
     /// Resize the decorations
@@ -379,6 +409,9 @@ pub trait Frame: Sized + Send {
     ///
     /// Calling this should *not* trigger a redraw
     fn set_hidden(&mut self, hidden: bool);
+    /// Set whether interactive resize hints should be displayed
+    /// and reacted to
+    fn set_resizable(&mut self, resizable: bool);
     /// Notify that a new wl_seat should be handled
     fn new_seat(&mut self, seat: &Proxy<wl_seat::WlSeat>);
     /// Change the size of the decorations
@@ -391,4 +424,8 @@ pub trait Frame: Sized + Send {
     fn subtract_borders(&self, width: i32, height: i32) -> (i32, i32);
     /// Adds the border dimensions to the given dimensions.
     fn add_borders(&self, width: i32, height: i32) -> (i32, i32);
+}
+
+fn u_to_i(v: (u32, u32)) -> (i32, i32) {
+    (v.0 as i32, v.1 as i32)
 }

@@ -112,6 +112,7 @@ struct PointerUserData {
 struct Inner {
     parts: [Part; 4],
     size: Mutex<(u32, u32)>,
+    resizable: Mutex<bool>,
     implem: Mutex<Box<Implementation<u32, FrameRequest> + Send>>,
     maximized: Mutex<bool>,
 }
@@ -218,6 +219,7 @@ impl Frame for BasicFrame {
             inner: Arc::new(Inner {
                 parts: parts,
                 size: Mutex::new((1, 1)),
+                resizable: Mutex::new(true),
                 implem: Mutex::new(implementation),
                 maximized: Mutex::new(false),
             }),
@@ -239,6 +241,7 @@ impl Frame for BasicFrame {
             move |event, pointer: AutoPointer| {
                 let data = unsafe { &mut *(pointer.get_user_data() as *mut PointerUserData) };
                 let (width, _) = *(inner.size.lock().unwrap());
+                let resizable = *(inner.resizable.lock().unwrap());
                 match event {
                     Event::Enter {
                         serial,
@@ -253,11 +256,15 @@ impl Frame for BasicFrame {
                             surface_y,
                         );
                         data.position = (surface_x, surface_y);
-                        change_pointer(&pointer, data.location, Some(serial));
+                        if resizable {
+                            change_pointer(&pointer, data.location, Some(serial));
+                        }
                     }
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
-                        change_pointer(&pointer, data.location, Some(serial));
+                        if resizable {
+                            change_pointer(&pointer, data.location, Some(serial));
+                        }
                     }
                     Event::Motion {
                         surface_x,
@@ -281,7 +288,9 @@ impl Frame for BasicFrame {
                             // we changed of part of the decoration, pointer image
                             // may need to be changed
                             data.location = newpos;
-                            change_pointer(&pointer, data.location, None);
+                            if resizable {
+                                change_pointer(&pointer, data.location, None);
+                            }
                         }
                     }
                     Event::Button {
@@ -296,6 +305,7 @@ impl Frame for BasicFrame {
                                 data.location,
                                 &data.seat,
                                 *(inner.maximized.lock().unwrap()),
+                                resizable,
                             );
                             if let Some(req) = req {
                                 inner.implem.lock().unwrap().receive(req, serial);
@@ -335,6 +345,10 @@ impl Frame for BasicFrame {
         } else {
             false
         }
+    }
+
+    fn set_resizable(&mut self, resizable: bool) {
+        *(self.inner.resizable.lock().unwrap()) = resizable;
     }
 
     fn resize(&mut self, newsize: (u32, u32)) {
@@ -579,17 +593,28 @@ fn request_for_location(
     location: Location,
     seat: &Proxy<wl_seat::WlSeat>,
     maximized: bool,
+    resizable: bool,
 ) -> Option<FrameRequest> {
     use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
     match location {
-        Location::Top => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Top)),
-        Location::TopLeft => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopLeft)),
-        Location::Left => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Left)),
-        Location::BottomLeft => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::BottomLeft)),
-        Location::Bottom => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Bottom)),
-        Location::BottomRight => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::BottomRight)),
-        Location::Right => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Right)),
-        Location::TopRight => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopRight)),
+        Location::Top if resizable => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Top)),
+        Location::TopLeft if resizable => {
+            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopLeft))
+        }
+        Location::Left if resizable => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Left)),
+        Location::BottomLeft if resizable => {
+            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::BottomLeft))
+        }
+        Location::Bottom if resizable => {
+            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Bottom))
+        }
+        Location::BottomRight if resizable => {
+            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::BottomRight))
+        }
+        Location::Right if resizable => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Right)),
+        Location::TopRight if resizable => {
+            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopRight))
+        }
         Location::TopBar => Some(FrameRequest::Move(seat.clone())),
         Location::Button(UIButton::Close) => Some(FrameRequest::Close),
         Location::Button(UIButton::Maximize) => if maximized {
@@ -598,7 +623,7 @@ fn request_for_location(
             Some(FrameRequest::Maximize)
         },
         Location::Button(UIButton::Minimize) => Some(FrameRequest::Minimize),
-        Location::None => None,
+        _ => None,
     }
 }
 
