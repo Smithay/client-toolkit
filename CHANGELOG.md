@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.3 -- 2018-06-08
+
+- Update `nix` dependency to be fix build on FreeBSD (even if we can't run)
+
 ## 0.2.2 -- 2018-06-08
 
 - BasicFrame: don't desync the subsurface from the main one. This avoids
