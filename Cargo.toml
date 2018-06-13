@@ -14,7 +14,7 @@ travis-ci = { repository = "smithay/client-toolkit" }
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.10"
+nix = "0.11"
 dlib = "0.4"
 lazy_static = "1"
 memmap = "0.6"
