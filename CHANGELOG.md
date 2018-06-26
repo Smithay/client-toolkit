@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.4 -- 2018-06-26
+
+- Window: notify the compositor of our dimensions to avoid placement glitches
+
 ## 0.2.3 -- 2018-06-08
 
 - Update `nix` dependency to be fix build on FreeBSD (even if we can't run)
