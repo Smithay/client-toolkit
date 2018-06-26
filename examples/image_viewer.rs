@@ -247,6 +247,9 @@ fn main() {
                     bootstrapped = true;
                     need_redraw = true;
                 }
+
+                // In all cases, schedule a refresh
+                need_refresh = true;
             }
             // No event, nothing new to do.
             None => {}

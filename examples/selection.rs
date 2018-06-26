@@ -130,7 +130,10 @@ fn main() {
     loop {
         match next_action.lock().unwrap().take() {
             Some(WEvent::Close) => break,
-            Some(WEvent::Refresh) => window.refresh(),
+            Some(WEvent::Refresh) => {
+                window.refresh();
+                window.surface().commit();
+            },
             Some(WEvent::Configure { new_size, states }) => {
                 if let Some((w, h)) = new_size {
                     window.resize(w, h);
