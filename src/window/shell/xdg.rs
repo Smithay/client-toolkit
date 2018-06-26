@@ -103,6 +103,10 @@ impl ShellSurface for Xdg {
         self.toplevel.set_minimized();
     }
 
+    fn set_geometry(&self, x: i32, y: i32, width: i32, height: i32) {
+        self.surface.set_window_geometry(x, y, width, height);
+    }
+
     fn set_min_size(&self, size: Option<(i32, i32)>) {
         if let Some((w, h)) = size {
             self.toplevel.set_min_size(w, h);

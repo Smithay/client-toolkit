@@ -95,6 +95,10 @@ impl ShellSurface for Wl {
         /* not available */
     }
 
+    fn set_geometry(&self, _: i32, _: i32, _: i32, _: i32) {
+        /* not available */
+    }
+
     fn set_min_size(&self, _: Option<(i32, i32)>) {
         /* not available */
     }

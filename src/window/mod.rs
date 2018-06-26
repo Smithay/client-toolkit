@@ -50,7 +50,7 @@ struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
     shell_surface: Arc<Box<shell::ShellSurface>>,
     user_impl: Box<Implementation<(), Event> + Send>,
-    min_size: Option<(u32, u32)>,
+    min_size: (u32, u32),
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
     old_size: Option<(u32, u32)>,
@@ -136,15 +136,14 @@ impl<F: Frame + 'static> Window<F> {
                         new_size = new_size.map(|(w, h)| {
                             use std::cmp::{max, min};
                             let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
-                            if let Some((minw, minh)) = inner.min_size {
-                                w = max(w, minw as i32);
-                                h = max(h, minh as i32);
-                            }
+                            let (minw, minh) = inner.min_size;
+                            w = max(w, minw as i32);
+                            h = max(h, minh as i32);
                             if let Some((maxw, maxh)) = inner.max_size {
                                 w = min(w, maxw as i32);
                                 h = min(h, maxh as i32);
                             }
-                            (w as u32, h as u32)
+                            (max(w, 1) as u32, max(h, 1) as u32)
                         });
                         // compute frame changes
                         let mut need_refresh = false;
@@ -174,11 +173,22 @@ impl<F: Frame + 'static> Window<F> {
                 }
             },
         ));
+
+        // setup size and geometry
+        {
+            let frame = frame.lock().unwrap();
+            let (minw, minh) = frame.add_borders(1, 1);
+            shell_surface.set_min_size(Some((minw, minh)));
+            let (w, h) = frame.add_borders(initial_dims.0 as i32, initial_dims.1 as i32);
+            let (x, y) = frame.location();
+            shell_surface.set_geometry(x, y, w, h);
+        }
+
         *(inner.lock().unwrap()) = Some(WindowInner {
             frame: frame.clone(),
             shell_surface: shell_surface.clone(),
             user_impl: Box::new(implementation) as Box<_>,
-            min_size: None,
+            min_size: (1, 1),
             max_size: None,
             current_size: initial_dims,
             old_size: None,
@@ -259,19 +269,27 @@ impl<F: Frame + 'static> Window<F> {
     /// When re-activating resizability, any previously set min/max
     /// sizes are restored.
     pub fn set_resizable(&self, resizable: bool) {
-        self.frame.lock().unwrap().set_resizable(resizable);
+        let mut frame = self.frame.lock().unwrap();
+        frame.set_resizable(resizable);
         let mut inner = self.inner.lock().unwrap();
         if let Some(ref mut inner) = *inner {
             if resizable {
                 // restore the min/max sizes
-                self.shell_surface.set_min_size(inner.min_size.map(u_to_i));
-                self.shell_surface.set_max_size(inner.max_size.map(u_to_i));
+                self.shell_surface.set_min_size(
+                    Some(inner.min_size).map(|(w, h)| frame.add_borders(w as i32, h as i32)),
+                );
+                self.shell_surface.set_max_size(
+                    inner
+                        .max_size
+                        .map(|(w, h)| frame.add_borders(w as i32, h as i32)),
+                );
             } else {
                 // lock the min/max sizes to current size
+                let (w, h) = inner.current_size;
                 self.shell_surface
-                    .set_min_size(Some(u_to_i(inner.current_size)));
+                    .set_min_size(Some(frame.add_borders(w as i32, h as i32)));
                 self.shell_surface
-                    .set_max_size(Some(u_to_i(inner.current_size)));
+                    .set_max_size(Some(frame.add_borders(w as i32, h as i32)));
             }
         }
     }
@@ -290,7 +308,11 @@ impl<F: Frame + 'static> Window<F> {
         if let Some(ref mut inner) = *self.inner.lock().unwrap() {
             inner.current_size = (w, h);
         }
-        self.frame.lock().unwrap().resize((w, h));
+        let mut frame = self.frame.lock().unwrap();
+        frame.resize((w, h));
+        let (w, h) = frame.add_borders(w as i32, h as i32);
+        let (x, y) = frame.location();
+        self.shell_surface.set_geometry(x, y, w, h);
     }
 
     /// Request the window to be maximized
@@ -328,11 +350,11 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// The provided size is the interior size, not counting decorations
     pub fn set_min_size(&mut self, size: Option<(u32, u32)>) {
-        let min_size =
-            size.map(|(w, h)| self.frame.lock().unwrap().add_borders(w as i32, h as i32));
-        self.shell_surface.set_min_size(min_size);
+        let (w, h) = size.unwrap_or((1, 1));
+        let (w, h) = self.frame.lock().unwrap().add_borders(w as i32, h as i32);
+        self.shell_surface.set_min_size(Some((w, h)));
         if let Some(ref mut inner) = *(self.inner.lock().unwrap()) {
-            inner.min_size = min_size.map(|(w, h)| (w as u32, h as u32));
+            inner.min_size = size.unwrap_or((1, 1))
         }
     }
 
@@ -347,7 +369,7 @@ impl<F: Frame + 'static> Window<F> {
             size.map(|(w, h)| self.frame.lock().unwrap().add_borders(w as i32, h as i32));
         self.shell_surface.set_max_size(max_size);
         if let Some(ref mut inner) = *(self.inner.lock().unwrap()) {
-            inner.max_size = max_size.map(|(w, h)| (w as u32, h as u32));
+            inner.max_size = size.map(|(w, h)| (w as u32, h as u32));
         }
     }
 }
@@ -424,8 +446,10 @@ pub trait Frame: Sized + Send {
     fn subtract_borders(&self, width: i32, height: i32) -> (i32, i32);
     /// Adds the border dimensions to the given dimensions.
     fn add_borders(&self, width: i32, height: i32) -> (i32, i32);
-}
-
-fn u_to_i(v: (u32, u32)) -> (i32, i32) {
-    (v.0 as i32, v.1 as i32)
+    /// Returns the coordinates of the top-left corner of the borders relative to the content
+    ///
+    /// Values should thus be negative
+    fn location(&self) -> (i32, i32) {
+        (0, 0)
+    }
 }

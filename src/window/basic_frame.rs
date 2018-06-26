@@ -560,6 +560,10 @@ impl Frame for BasicFrame {
             )
         }
     }
+
+    fn location(&self) -> (i32, i32) {
+        (-(DECORATION_SIZE as i32), -(DECORATION_TOP_SIZE as i32))
+    }
 }
 
 impl Drop for BasicFrame {

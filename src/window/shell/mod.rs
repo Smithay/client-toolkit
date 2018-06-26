@@ -36,6 +36,7 @@ pub(crate) trait ShellSurface: Send + Sync {
     fn set_maximized(&self);
     fn unset_maximized(&self);
     fn set_minimized(&self);
+    fn set_geometry(&self, x: i32, y: i32, width: i32, height: i32);
     fn set_min_size(&self, size: Option<(i32, i32)>);
     fn set_max_size(&self, size: Option<(i32, i32)>);
 }
