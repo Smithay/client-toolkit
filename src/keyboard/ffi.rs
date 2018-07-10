@@ -254,7 +254,9 @@ functions:
 
 lazy_static!(
     pub static ref XKBCOMMON_OPTION: Option<XkbCommon> = {
-        XkbCommon::open("libxkbcommon.so").ok()
+        XkbCommon::open("libxkbcommon.so.0")
+            .or_else(|_| XkbCommon::open("libxkbcommon.so"))
+            .ok()
     };
     pub static ref XKBCOMMON_HANDLE: &'static XkbCommon = {
         XKBCOMMON_OPTION.as_ref().expect("Library libxkbcommon.so could not be loaded.")

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keyboard: try to load `libxkbcommon.so.0` as well to improve compatibility
+
 ## 0.2.4 -- 2018-06-26
 
 - Window: notify the compositor of our dimensions to avoid placement glitches
