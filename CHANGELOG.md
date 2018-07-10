@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.5 -- 2018-07-10
+
 - Keyboard: try to load `libxkbcommon.so.0` as well to improve compatibility
 
 ## 0.2.4 -- 2018-06-26
