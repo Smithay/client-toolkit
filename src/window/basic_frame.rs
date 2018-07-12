@@ -449,7 +449,7 @@ impl Frame for BasicFrame {
                 self.inner.parts[HEAD].surface.damage_buffer(
                     0,
                     0,
-                    (width + 2 * BORDER_SIZE) as i32,
+                    width as i32,
                     HEADER_SIZE as i32,
                 );
             } else {
@@ -458,7 +458,7 @@ impl Frame for BasicFrame {
                 self.inner.parts[HEAD].surface.damage(
                     0,
                     0,
-                    (width + 2 * BORDER_SIZE) as i32,
+                    width as i32,
                     HEADER_SIZE as i32,
                 );
             }
@@ -549,14 +549,14 @@ impl Frame for BasicFrame {
                     0,
                     0,
                     BORDER_SIZE as i32,
-                    height as i32,
+                    (height + HEADER_SIZE) as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
                 self.inner.parts[LEFT]
                     .surface
-                    .damage(0, 0, BORDER_SIZE as i32, height as i32);
+                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
             }
             self.inner.parts[LEFT].surface.commit();
             self.buffers.push(buffer);
@@ -579,14 +579,14 @@ impl Frame for BasicFrame {
                     0,
                     0,
                     BORDER_SIZE as i32,
-                    height as i32,
+                    (height + HEADER_SIZE) as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
                 self.inner.parts[RIGHT]
                     .surface
-                    .damage(0, 0, BORDER_SIZE as i32, height as i32);
+                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
             }
             self.inner.parts[RIGHT].surface.commit();
             self.buffers.push(buffer);
