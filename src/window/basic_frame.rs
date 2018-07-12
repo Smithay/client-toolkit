@@ -393,19 +393,19 @@ impl Frame for BasicFrame {
                 // For every pixel in top border
                 for y in 0..DECORATION_TOP_SIZE {
                     for _ in 0..DECORATION_SIZE {
-                        writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                        let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
                     }
                     for _ in 0..width {
-                            writer.write_u32::<NativeEndian>(color);
+                        let _ = writer.write_u32::<NativeEndian>(color);
                     }
                     for _ in 0..DECORATION_SIZE {
-                        writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                        let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
                     }
                 }
 
                 // For every pixel in the other borders
                 for _ in DECORATION_TOP_SIZE * (width + 2 * DECORATION_SIZE)..pxcount {
-                    writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                    let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
                 }
 
                 draw_buttons(
@@ -570,12 +570,8 @@ impl Frame for BasicFrame {
         }
     }
 
-    fn headless_geometry(&self, x: i32, y: i32, width: i32, height: i32) -> (i32, i32, i32, i32) {
-        if self.hidden {
-            (x, y, width, height)
-        } else {
-            (x, y - DECORATION_TOP_SIZE as i32, width, height)
-        }
+    fn location(&self) -> (i32, i32) {
+        if self.hidden { (0, 0) } else { (0, -(DECORATION_TOP_SIZE as i32)) }
     }
 }
 

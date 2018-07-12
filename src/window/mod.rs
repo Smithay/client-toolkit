@@ -181,7 +181,6 @@ impl<F: Frame + 'static> Window<F> {
             shell_surface.set_min_size(Some((minw, minh)));
             let (w, h) = frame.add_borders(initial_dims.0 as i32, initial_dims.1 as i32);
             let (x, y) = frame.location();
-            let (x, y, w, h) = frame.headless_geometry(x, y, w, h);
             shell_surface.set_geometry(x, y, w, h);
         }
 
@@ -313,7 +312,6 @@ impl<F: Frame + 'static> Window<F> {
         frame.resize((w, h));
         let (w, h) = frame.add_borders(w as i32, h as i32);
         let (x, y) = frame.location();
-        let (x, y, w, h) = frame.headless_geometry(x, y, w, h);
         self.shell_surface.set_geometry(x, y, w, h);
     }
 
@@ -454,6 +452,4 @@ pub trait Frame: Sized + Send {
     fn location(&self) -> (i32, i32) {
         (0, 0)
     }
-
-    fn headless_geometry(&self, i32, i32, i32, i32) -> (i32, i32, i32, i32);
 }
