@@ -652,7 +652,7 @@ fn draw_buttons(
     // buttons are 24x16
     let ds = DECORATION_SIZE;
 
-    if width >= 24 {
+    if width >= 24 + 2 * ds {
         // draw the red button
         let color = if mouses
             .iter()
@@ -673,7 +673,7 @@ fn draw_buttons(
         }
     }
 
-    if width >= 56 {
+    if width >= 56 + 2 * ds {
         // draw the yellow button
         let color = if !maximizable {
             YELLOW_BUTTON_DISABLED
@@ -696,7 +696,7 @@ fn draw_buttons(
         }
     }
 
-    if width >= 88 {
+    if width >= 88 + 2 * ds {
         // draw the green button
         let color = if mouses
             .iter()
