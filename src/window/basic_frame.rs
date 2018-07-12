@@ -169,22 +169,22 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
 
 fn find_button(x: f64, y: f64, w: u32) -> Location {
     if (w >= 24)
-        && (x >= (w - 24 + BORDER_SIZE - BUTTON_SPACE) as f64)
-        && (x <= (w + BORDER_SIZE - BUTTON_SPACE) as f64)
+        && (x >= (w - 24 - BUTTON_SPACE) as f64)
+        && (x <= (w - BUTTON_SPACE) as f64)
         && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
         && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Close)
     } else if (w >= 56)
-        && (x >= (w - 56 + BORDER_SIZE - BUTTON_SPACE) as f64)
-        && (x <= (w - 32 + BORDER_SIZE - BUTTON_SPACE) as f64)
+        && (x >= (w - 56 - BUTTON_SPACE) as f64)
+        && (x <= (w - 32 - BUTTON_SPACE) as f64)
         && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
         && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Maximize)
     } else if (w >= 88)
-        && (x >= (w - 88 + BORDER_SIZE - BUTTON_SPACE) as f64)
-        && (x <= (w - 64 + BORDER_SIZE - BUTTON_SPACE) as f64)
+        && (x >= (w - 88 - BUTTON_SPACE) as f64)
+        && (x <= (w - 64 - BUTTON_SPACE) as f64)
         && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
         && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
@@ -388,7 +388,7 @@ impl Frame for BasicFrame {
             // resize the pool as appropriate
             let pxcount = 4 * (2 * (BORDER_SIZE * (width + 2 * BORDER_SIZE))
                 + 2 * (BORDER_SIZE * (height + 2 * BORDER_SIZE))
-                + (HEADER_SIZE * (width + 2 * BORDER_SIZE)));
+                + (HEADER_SIZE * width));
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
@@ -403,16 +403,8 @@ impl Frame for BasicFrame {
             {
                 let mut writer = BufWriter::new(&mut *pool);
                 // For every pixel in header
-                for _ in 0..HEADER_SIZE {
-                    for _ in 0..BORDER_SIZE {
-                        let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
-                    }
-                    for _ in 0..width {
+                for _ in 0..HEADER_SIZE * width {
                         let _ = writer.write_u32::<NativeEndian>(color);
-                    }
-                    for _ in 0..BORDER_SIZE {
-                        let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
-                    }
                 }
 
                 // For every pixel in borders
@@ -444,14 +436,14 @@ impl Frame for BasicFrame {
             // -> head-subsurface
             let buffer = pool.buffer(
                 0,
-                (width + 2 * BORDER_SIZE) as i32,
+                width as i32,
                 HEADER_SIZE as i32,
-                4 * (width + 2 * BORDER_SIZE) as i32,
+                4 * width as i32,
                 wl_shm::Format::Argb8888,
             ).implement(|_, _| {});
             self.inner.parts[HEAD]
                 .subsurface
-                .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
+                .set_position(0, -(HEADER_SIZE as i32));
             self.inner.parts[HEAD].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 self.inner.parts[HEAD].surface.damage_buffer(
@@ -475,7 +467,7 @@ impl Frame for BasicFrame {
 
             // -> top-subsurface
             let buffer = pool.buffer(
-                4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 (width + 2 * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 4 * (width + 2 * BORDER_SIZE) as i32,
@@ -508,7 +500,7 @@ impl Frame for BasicFrame {
 
             // -> bottom-subsurface
             let buffer = pool.buffer(
-                4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
+                4 * (width * HEADER_SIZE
                     + (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
                 (width + 2 * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
@@ -541,7 +533,7 @@ impl Frame for BasicFrame {
 
             // -> left-subsurface
             let buffer = pool.buffer(
-                4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
+                4 * (width * HEADER_SIZE
                     + 2 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
@@ -571,7 +563,7 @@ impl Frame for BasicFrame {
 
             // -> right-subsurface
             let buffer = pool.buffer(
-                4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
+                4 * (width * HEADER_SIZE
                     + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
@@ -716,15 +708,13 @@ fn draw_buttons(
             RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * (((width + 2 * ds) * (HEADER_SIZE / 2 - 8) + width + BORDER_SIZE
-                - 24
-                - BUTTON_SPACE)) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write_u32::<NativeEndian>(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width + 2 * ds - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
     }
 
@@ -741,15 +731,13 @@ fn draw_buttons(
             YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * (((width + 2 * ds) * (HEADER_SIZE / 2 - 8) + width + BORDER_SIZE
-                - 56
-                - BUTTON_SPACE)) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write_u32::<NativeEndian>(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width + 2 * ds - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
     }
 
@@ -764,15 +752,13 @@ fn draw_buttons(
             GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * (((width + 2 * ds) * (HEADER_SIZE / 2 - 8) + width + BORDER_SIZE
-                - 88
-                - BUTTON_SPACE)) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write_u32::<NativeEndian>(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width + 2 * ds - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
     }
 }
