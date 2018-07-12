@@ -386,8 +386,9 @@ impl Frame for BasicFrame {
             // grab the current pool
             let pool = self.pools.pool();
             // resize the pool as appropriate
-            let pxcount =
-                (4 * BORDER_SIZE + HEADER_SIZE) * (width + 2 * BORDER_SIZE);
+            let pxcount = 4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
+                + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE)
+                + (BORDER_SIZE * (HEADER_SIZE + height));
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
@@ -541,8 +542,7 @@ impl Frame for BasicFrame {
             // -> left-subsurface
             let buffer = pool.buffer(
                 4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
-                    + 2 * (width + 2 * BORDER_SIZE) * BORDER_SIZE)
-                    as i32,
+                    + 2 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
@@ -572,8 +572,7 @@ impl Frame for BasicFrame {
             // -> right-subsurface
             let buffer = pool.buffer(
                 4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
-                    + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE)
-                    as i32,
+                    + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
