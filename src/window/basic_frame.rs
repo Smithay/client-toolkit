@@ -165,17 +165,17 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
 }
 
 fn find_button(x: f64, y: f64, w: u32) -> Location {
-    if (w >= 24) && (x > (w + DECORATION_SIZE - 24) as f64) && (x <= (w + DECORATION_SIZE) as f64)
+    if (w >= 24) && (x > (w - 24) as f64) && (x <= w as f64)
         && (y <= (DECORATION_SIZE + 16) as f64)
     {
         Location::Button(UIButton::Close)
-    } else if (w >= 56) && (x > (w + DECORATION_SIZE - 56) as f64)
-        && (x <= (w + DECORATION_SIZE - 32) as f64)
+    } else if (w >= 56) && (x > (w - 56) as f64)
+        && (x <= (w - 32) as f64)
         && (y <= (DECORATION_SIZE + 16) as f64)
     {
         Location::Button(UIButton::Maximize)
-    } else if (w >= 88) && (x > (w + DECORATION_SIZE - 88) as f64)
-        && (x <= (w + DECORATION_SIZE - 64) as f64)
+    } else if (w >= 88) && (x > (w - 88) as f64)
+        && (x <= (w - 64) as f64)
         && (y <= (DECORATION_SIZE + 16) as f64)
     {
         Location::Button(UIButton::Minimize)
@@ -390,9 +390,24 @@ impl Frame for BasicFrame {
             // draw the grey background
             {
                 let mut writer = BufWriter::new(&mut *pool);
-                for _ in 0..pxcount {
-                    let _ = writer.write_u32::<NativeEndian>(color);
+                // For every pixel in top border
+                for y in 0..DECORATION_TOP_SIZE {
+                    for _ in 0..DECORATION_SIZE {
+                        writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                    }
+                    for _ in 0..width {
+                            writer.write_u32::<NativeEndian>(color);
+                    }
+                    for _ in 0..DECORATION_SIZE {
+                        writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                    }
                 }
+
+                // For every pixel in the other borders
+                for _ in DECORATION_TOP_SIZE * (width + 2 * DECORATION_SIZE)..pxcount {
+                    writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                }
+
                 draw_buttons(
                     &mut writer,
                     width,
@@ -543,10 +558,7 @@ impl Frame for BasicFrame {
         if self.hidden {
             (width, height)
         } else {
-            (
-                width - 2 * (DECORATION_SIZE as i32),
-                height - DECORATION_SIZE as i32 - DECORATION_TOP_SIZE as i32,
-            )
+            (width, height - DECORATION_TOP_SIZE as i32)
         }
     }
 
@@ -554,15 +566,16 @@ impl Frame for BasicFrame {
         if self.hidden {
             (width, height)
         } else {
-            (
-                width + 2 * (DECORATION_SIZE as i32),
-                height + DECORATION_SIZE as i32 + DECORATION_TOP_SIZE as i32,
-            )
+            (width, height + DECORATION_TOP_SIZE as i32)
         }
     }
 
-    fn location(&self) -> (i32, i32) {
-        (-(DECORATION_SIZE as i32), -(DECORATION_TOP_SIZE as i32))
+    fn headless_geometry(&self, x: i32, y: i32, width: i32, height: i32) -> (i32, i32, i32, i32) {
+        if self.hidden {
+            (x, y, width, height)
+        } else {
+            (x, y - DECORATION_TOP_SIZE as i32, width, height)
+        }
     }
 }
 
@@ -654,7 +667,7 @@ fn draw_buttons(
             RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width + 2 * ds) * ds + width + ds - 24) as u64,
+            4 * ((width + 2 * ds) * ds + width - 24) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
@@ -677,7 +690,7 @@ fn draw_buttons(
             YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width + 2 * ds) * ds + width + ds - 56) as u64,
+            4 * ((width + 2 * ds) * ds + width - 56) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
@@ -698,7 +711,7 @@ fn draw_buttons(
             GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width + 2 * ds) * ds + width + ds - 88) as u64,
+            4 * ((width + 2 * ds) * ds + width - 88) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
