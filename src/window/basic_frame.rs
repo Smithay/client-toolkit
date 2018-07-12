@@ -403,7 +403,7 @@ impl Frame for BasicFrame {
             {
                 let mut writer = BufWriter::new(&mut *pool);
                 // For every pixel in header
-                for y in 0..HEADER_SIZE {
+                for _ in 0..HEADER_SIZE {
                     for _ in 0..BORDER_SIZE {
                         let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
                     }
