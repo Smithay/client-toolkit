@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- BasicFrame: remove side and bottom border decorations
+
 ## 0.2.5 -- 2018-07-10
 
 - Keyboard: try to load `libxkbcommon.so.0` as well to improve compatibility
