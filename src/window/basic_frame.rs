@@ -386,9 +386,9 @@ impl Frame for BasicFrame {
             // grab the current pool
             let pool = self.pools.pool();
             // resize the pool as appropriate
-            let pxcount = 4 * ((width + 2 * BORDER_SIZE) * HEADER_SIZE
-                + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE)
-                + (BORDER_SIZE * (HEADER_SIZE + height));
+            let pxcount = 4 * (2 * (BORDER_SIZE * (width + 2 * BORDER_SIZE))
+                + 2 * (BORDER_SIZE * (height + 2 * BORDER_SIZE))
+                + (HEADER_SIZE * (width + 2 * BORDER_SIZE)));
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
