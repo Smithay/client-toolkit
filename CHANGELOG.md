@@ -3,6 +3,7 @@
 ## Unreleased
 
 - BasicFrame: remove side and bottom border decorations
+- BasicFrame: round window corners
 
 ## 0.2.5 -- 2018-07-10
 
