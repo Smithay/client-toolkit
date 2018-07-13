@@ -4,8 +4,10 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_buffer, wl_compositor, wl_pointer, wl_seat, wl_shm,
-                               wl_subcompositor, wl_subsurface, wl_surface};
+use wayland_client::protocol::{
+    wl_buffer, wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface,
+    wl_surface,
+};
 use wayland_client::Proxy;
 
 use wayland_client::protocol::wl_buffer::RequestsTrait as BufferRequests;
@@ -24,8 +26,9 @@ use utils::{DoubleMemPool, MemPool};
  * Drawing theme definitions
  */
 
-const DECORATION_SIZE: u32 = 8;
-const DECORATION_TOP_SIZE: u32 = 32;
+const BORDER_SIZE: u32 = 12;
+const HEADER_SIZE: u32 = 32;
+const BUTTON_SPACE: u32 = 10;
 
 // defining the color scheme
 const INACTIVE_BORDER: u32 = 0xFF606060;
@@ -42,14 +45,16 @@ const YELLOW_BUTTON_DISABLED: u32 = 0xFF808020;
  * Utilities
  */
 
-const TOP: usize = 0;
-const BOTTOM: usize = 1;
-const LEFT: usize = 2;
-const RIGHT: usize = 3;
+const HEAD: usize = 0;
+const TOP: usize = 1;
+const BOTTOM: usize = 2;
+const LEFT: usize = 3;
+const RIGHT: usize = 4;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum Location {
     None,
+    Head,
     Top,
     TopRight,
     Right,
@@ -58,7 +63,6 @@ enum Location {
     BottomLeft,
     Left,
     TopLeft,
-    TopBar,
     Button(UIButton),
 }
 
@@ -110,7 +114,7 @@ struct PointerUserData {
  */
 
 struct Inner {
-    parts: [Part; 4],
+    parts: [Part; 5],
     size: Mutex<(u32, u32)>,
     resizable: Mutex<bool>,
     implem: Mutex<Box<Implementation<u32, FrameRequest> + Send>>,
@@ -119,7 +123,9 @@ struct Inner {
 
 impl Inner {
     fn find_surface(&self, surface: &Proxy<wl_surface::WlSurface>) -> Location {
-        if surface.equals(&self.parts[TOP].surface) {
+        if surface.equals(&self.parts[HEAD].surface) {
+            Location::Head
+        } else if surface.equals(&self.parts[TOP].surface) {
             Location::Top
         } else if surface.equals(&self.parts[BOTTOM].surface) {
             Location::Bottom
@@ -135,52 +141,56 @@ impl Inner {
 
 fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
     match old {
-        Location::Top
-        | Location::TopRight
-        | Location::TopLeft
-        | Location::TopBar
-        | Location::Button(_) => {
-            // top surface
-            if x <= DECORATION_SIZE as f64 {
+        Location::Head | Location::Button(_) => find_button(x, y, width),
+
+        Location::Top | Location::TopLeft | Location::TopRight => {
+            if x <= BORDER_SIZE as f64 {
                 Location::TopLeft
-            } else if x >= (width + DECORATION_SIZE) as f64 {
+            } else if x >= (width + BORDER_SIZE) as f64 {
                 Location::TopRight
-            } else if y <= DECORATION_SIZE as f64 {
-                Location::Top
             } else {
-                find_button(x, y, width)
+                Location::Top
             }
         }
+
         Location::Bottom | Location::BottomLeft | Location::BottomRight => {
-            if x <= DECORATION_SIZE as f64 {
+            if x <= BORDER_SIZE as f64 {
                 Location::BottomLeft
-            } else if x >= (width + DECORATION_SIZE) as f64 {
+            } else if x >= (width + BORDER_SIZE) as f64 {
                 Location::BottomRight
             } else {
                 Location::Bottom
             }
         }
+
         other => other,
     }
 }
 
 fn find_button(x: f64, y: f64, w: u32) -> Location {
-    if (w >= 24) && (x > (w - 24) as f64) && (x <= w as f64)
-        && (y <= (DECORATION_SIZE + 16) as f64)
+    if (w >= 24)
+        && (x >= (w - 24 - BUTTON_SPACE) as f64)
+        && (x <= (w - BUTTON_SPACE) as f64)
+        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
+        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Close)
-    } else if (w >= 56) && (x > (w - 56) as f64)
-        && (x <= (w - 32) as f64)
-        && (y <= (DECORATION_SIZE + 16) as f64)
+    } else if (w >= 56)
+        && (x >= (w - 56 - BUTTON_SPACE) as f64)
+        && (x <= (w - 32 - BUTTON_SPACE) as f64)
+        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
+        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Maximize)
-    } else if (w >= 88) && (x > (w - 88) as f64)
-        && (x <= (w - 64) as f64)
-        && (y <= (DECORATION_SIZE + 16) as f64)
+    } else if (w >= 88)
+        && (x >= (w - 88 - BUTTON_SPACE) as f64)
+        && (x <= (w - 64 - BUTTON_SPACE) as f64)
+        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
+        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Minimize)
     } else {
-        Location::TopBar
+        Location::Head
     }
 }
 
@@ -210,6 +220,7 @@ impl Frame for BasicFrame {
     ) -> Result<BasicFrame, ::std::io::Error> {
         let pools = DoubleMemPool::new(&shm)?;
         let parts = [
+            Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
@@ -375,8 +386,9 @@ impl Frame for BasicFrame {
             // grab the current pool
             let pool = self.pools.pool();
             // resize the pool as appropriate
-            let pxcount = 2 * height * DECORATION_SIZE
-                + (width + 2 * DECORATION_SIZE) * (DECORATION_SIZE + DECORATION_TOP_SIZE);
+            let pxcount = 4 * (2 * (BORDER_SIZE * (width + 2 * BORDER_SIZE))
+                + 2 * (BORDER_SIZE * (height + 2 * BORDER_SIZE))
+                + (HEADER_SIZE * width));
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
@@ -390,21 +402,13 @@ impl Frame for BasicFrame {
             // draw the grey background
             {
                 let mut writer = BufWriter::new(&mut *pool);
-                // For every pixel in top border
-                for y in 0..DECORATION_TOP_SIZE {
-                    for _ in 0..DECORATION_SIZE {
-                        let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
-                    }
-                    for _ in 0..width {
+                // For every pixel in header
+                for _ in 0..HEADER_SIZE * width {
                         let _ = writer.write_u32::<NativeEndian>(color);
-                    }
-                    for _ in 0..DECORATION_SIZE {
-                        let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
-                    }
                 }
 
-                // For every pixel in the other borders
-                for _ in DECORATION_TOP_SIZE * (width + 2 * DECORATION_SIZE)..pxcount {
+                // For every pixel in borders
+                for _ in HEADER_SIZE * (width + 2 * BORDER_SIZE)..pxcount {
                     let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
                 }
 
@@ -429,24 +433,57 @@ impl Frame for BasicFrame {
             }
 
             // Create the buffers
-            // -> top-subsurface
+            // -> head-subsurface
             let buffer = pool.buffer(
                 0,
-                (width + 2 * DECORATION_SIZE) as i32,
-                DECORATION_TOP_SIZE as i32,
-                4 * (width + 2 * DECORATION_SIZE) as i32,
+                width as i32,
+                HEADER_SIZE as i32,
+                4 * width as i32,
                 wl_shm::Format::Argb8888,
             ).implement(|_, _| {});
-            self.inner.parts[TOP]
+            self.inner.parts[HEAD]
                 .subsurface
-                .set_position(-(DECORATION_SIZE as i32), -(DECORATION_TOP_SIZE as i32));
+                .set_position(0, -(HEADER_SIZE as i32));
+            self.inner.parts[HEAD].surface.attach(Some(&buffer), 0, 0);
+            if self.surface_version >= 4 {
+                self.inner.parts[HEAD].surface.damage_buffer(
+                    0,
+                    0,
+                    width as i32,
+                    HEADER_SIZE as i32,
+                );
+            } else {
+                // surface is old and does not support damage_buffer, so we damage
+                // in surface coordinates and hope it is not rescaled
+                self.inner.parts[HEAD].surface.damage(
+                    0,
+                    0,
+                    width as i32,
+                    HEADER_SIZE as i32,
+                );
+            }
+            self.inner.parts[HEAD].surface.commit();
+            self.buffers.push(buffer);
+
+            // -> top-subsurface
+            let buffer = pool.buffer(
+                4 * (width * HEADER_SIZE) as i32,
+                (width + 2 * BORDER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                4 * (width + 2 * BORDER_SIZE) as i32,
+                wl_shm::Format::Argb8888,
+            ).implement(|_, _| {});
+            self.inner.parts[TOP].subsurface.set_position(
+                -(BORDER_SIZE as i32),
+                -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
+            );
             self.inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 self.inner.parts[TOP].surface.damage_buffer(
                     0,
                     0,
-                    (width + 2 * DECORATION_SIZE) as i32,
-                    DECORATION_TOP_SIZE as i32,
+                    (width + 2 * BORDER_SIZE) as i32,
+                    BORDER_SIZE as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
@@ -454,30 +491,32 @@ impl Frame for BasicFrame {
                 self.inner.parts[TOP].surface.damage(
                     0,
                     0,
-                    (width + 2 * DECORATION_SIZE) as i32,
-                    DECORATION_TOP_SIZE as i32,
+                    (width + 2 * BORDER_SIZE) as i32,
+                    BORDER_SIZE as i32,
                 );
             }
             self.inner.parts[TOP].surface.commit();
             self.buffers.push(buffer);
+
             // -> bottom-subsurface
             let buffer = pool.buffer(
-                4 * (DECORATION_TOP_SIZE * (width + 2 * DECORATION_SIZE)) as i32,
-                (width + 2 * DECORATION_SIZE) as i32,
-                DECORATION_SIZE as i32,
-                4 * (width + 2 * DECORATION_SIZE) as i32,
+                4 * (width * HEADER_SIZE
+                    + (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                (width + 2 * BORDER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                4 * (width + 2 * BORDER_SIZE) as i32,
                 wl_shm::Format::Argb8888,
             ).implement(|_, _| {});
             self.inner.parts[BOTTOM]
                 .subsurface
-                .set_position(-(DECORATION_SIZE as i32), height as i32);
+                .set_position(-(BORDER_SIZE as i32), height as i32);
             self.inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 self.inner.parts[BOTTOM].surface.damage_buffer(
                     0,
                     0,
-                    (width + 2 * DECORATION_SIZE) as i32,
-                    DECORATION_SIZE as i32,
+                    (width + 2 * BORDER_SIZE) as i32,
+                    BORDER_SIZE as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
@@ -485,67 +524,69 @@ impl Frame for BasicFrame {
                 self.inner.parts[BOTTOM].surface.damage(
                     0,
                     0,
-                    (width + 2 * DECORATION_SIZE) as i32,
-                    DECORATION_SIZE as i32,
+                    (width + 2 * BORDER_SIZE) as i32,
+                    BORDER_SIZE as i32,
                 );
             }
             self.inner.parts[BOTTOM].surface.commit();
             self.buffers.push(buffer);
+
             // -> left-subsurface
             let buffer = pool.buffer(
-                4 * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE))
-                    as i32,
-                DECORATION_SIZE as i32,
-                height as i32,
-                4 * (DECORATION_SIZE as i32),
+                4 * (width * HEADER_SIZE
+                    + 2 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                (height + HEADER_SIZE) as i32,
+                4 * (BORDER_SIZE as i32),
                 wl_shm::Format::Argb8888,
             ).implement(|_, _| {});
             self.inner.parts[LEFT]
                 .subsurface
-                .set_position(-(DECORATION_SIZE as i32), 0);
+                .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
             self.inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 self.inner.parts[LEFT].surface.damage_buffer(
                     0,
                     0,
-                    DECORATION_SIZE as i32,
-                    height as i32,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
                 self.inner.parts[LEFT]
                     .surface
-                    .damage(0, 0, DECORATION_SIZE as i32, height as i32);
+                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
             }
             self.inner.parts[LEFT].surface.commit();
             self.buffers.push(buffer);
+
             // -> right-subsurface
             let buffer = pool.buffer(
-                4 * ((DECORATION_TOP_SIZE + DECORATION_SIZE) * (width + 2 * DECORATION_SIZE)
-                    + DECORATION_SIZE * height) as i32,
-                DECORATION_SIZE as i32,
-                height as i32,
-                4 * (DECORATION_SIZE as i32),
+                4 * (width * HEADER_SIZE
+                    + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                (height + HEADER_SIZE) as i32,
+                4 * (BORDER_SIZE as i32),
                 wl_shm::Format::Argb8888,
             ).implement(|_, _| {});
             self.inner.parts[RIGHT]
                 .subsurface
-                .set_position(width as i32, 0);
+                .set_position(width as i32, -(HEADER_SIZE as i32));
             self.inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 self.inner.parts[RIGHT].surface.damage_buffer(
                     0,
                     0,
-                    DECORATION_SIZE as i32,
-                    height as i32,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
                 self.inner.parts[RIGHT]
                     .surface
-                    .damage(0, 0, DECORATION_SIZE as i32, height as i32);
+                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
             }
             self.inner.parts[RIGHT].surface.commit();
             self.buffers.push(buffer);
@@ -558,7 +599,7 @@ impl Frame for BasicFrame {
         if self.hidden {
             (width, height)
         } else {
-            (width, height - DECORATION_TOP_SIZE as i32)
+            (width, height - HEADER_SIZE as i32)
         }
     }
 
@@ -566,12 +607,16 @@ impl Frame for BasicFrame {
         if self.hidden {
             (width, height)
         } else {
-            (width, height + DECORATION_TOP_SIZE as i32)
+            (width, height + HEADER_SIZE as i32)
         }
     }
 
     fn location(&self) -> (i32, i32) {
-        if self.hidden { (0, 0) } else { (0, -(DECORATION_TOP_SIZE as i32)) }
+        if self.hidden {
+            (0, 0)
+        } else {
+            (0, -(HEADER_SIZE as i32))
+        }
     }
 }
 
@@ -628,7 +673,7 @@ fn request_for_location(
         Location::TopRight if resizable => {
             Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopRight))
         }
-        Location::TopBar => Some(FrameRequest::Move(seat.clone())),
+        Location::Head => Some(FrameRequest::Move(seat.clone())),
         Location::Button(UIButton::Close) => Some(FrameRequest::Close),
         Location::Button(UIButton::Maximize) => if maximized {
             Some(FrameRequest::UnMaximize)
@@ -650,7 +695,7 @@ fn draw_buttons(
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
     // buttons are 24x16
-    let ds = DECORATION_SIZE;
+    let ds = BORDER_SIZE;
 
     if width >= 24 + 2 * ds {
         // draw the red button
@@ -663,13 +708,13 @@ fn draw_buttons(
             RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width + 2 * ds) * ds + width - 24) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write_u32::<NativeEndian>(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width + 2 * ds - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
     }
 
@@ -686,13 +731,13 @@ fn draw_buttons(
             YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width + 2 * ds) * ds + width - 56) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write_u32::<NativeEndian>(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width + 2 * ds - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
     }
 
@@ -707,13 +752,13 @@ fn draw_buttons(
             GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width + 2 * ds) * ds + width - 88) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write_u32::<NativeEndian>(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width + 2 * ds - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
     }
 }
