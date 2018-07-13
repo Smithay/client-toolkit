@@ -29,6 +29,7 @@ use utils::{DoubleMemPool, MemPool};
 const BORDER_SIZE: u32 = 12;
 const HEADER_SIZE: u32 = 32;
 const BUTTON_SPACE: u32 = 10;
+const ROUNDING_SIZE: u32 = 3;
 
 // defining the color scheme
 const INACTIVE_BORDER: u32 = 0xFF606060;
@@ -402,9 +403,28 @@ impl Frame for BasicFrame {
             // draw the grey background
             {
                 let mut writer = BufWriter::new(&mut *pool);
+
                 // For every pixel in header
-                for _ in 0..HEADER_SIZE * width {
-                        let _ = writer.write_u32::<NativeEndian>(color);
+                for y in 0..HEADER_SIZE {
+                    if y < ROUNDING_SIZE && !*self.inner.maximized.lock().unwrap() {
+                        // Calculate the circle width at y using trigonometry and pythagoras theorem
+                        let circle_width = ROUNDING_SIZE
+                            - ((ROUNDING_SIZE as f32).powi(2)
+                                - ((ROUNDING_SIZE - y) as f32).powi(2))
+                                .sqrt() as u32;
+
+                        for x in 0..width {
+                            if x >= circle_width && x < width - circle_width {
+                                writer.write_u32::<NativeEndian>(color);
+                            } else {
+                                let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                            }
+                        }
+                    } else {
+                        for _ in 0..width {
+                            let _ = writer.write_u32::<NativeEndian>(color);
+                        }
+                    }
                 }
 
                 // For every pixel in borders
