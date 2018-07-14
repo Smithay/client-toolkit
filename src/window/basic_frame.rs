@@ -401,6 +401,8 @@ impl Frame for BasicFrame {
             } else {
                 INACTIVE_BORDER
             };
+            #[cfg(target_endian = "big")]
+            color.reverse();
 
             let _ = pool.seek(SeekFrom::Start(0));
             // draw the grey background
@@ -730,6 +732,9 @@ fn draw_buttons(
         } else {
             RED_BUTTON_REGULAR
         };
+        #[cfg(target_endian = "big")]
+        color.reverse();
+
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
         ));
@@ -753,6 +758,9 @@ fn draw_buttons(
         } else {
             YELLOW_BUTTON_REGULAR
         };
+        #[cfg(target_endian = "big")]
+        color.reverse();
+
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
         ));
@@ -774,6 +782,9 @@ fn draw_buttons(
         } else {
             GREEN_BUTTON_REGULAR
         };
+        #[cfg(target_endian = "big")]
+        color.reverse();
+
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
         ));
