@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
 
@@ -385,11 +386,11 @@ impl Frame for BasicFrame {
             // grab the current pool
             let pool = self.pools.pool();
             // resize the pool as appropriate
-            let pxcount = if (width + 2 * BORDER_SIZE) > (height + HEADER_SIZE) {
-                (HEADER_SIZE * width) + ((width + 2 * BORDER_SIZE) * BORDER_SIZE)
-            } else {
-                (HEADER_SIZE * width) + ((height + HEADER_SIZE) * BORDER_SIZE)
-            };
+            let pxcount = (HEADER_SIZE * width)
+                + max(
+                    (width + 2 * BORDER_SIZE) * BORDER_SIZE,
+                    (height + HEADER_SIZE) * BORDER_SIZE,
+                );
 
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
@@ -428,7 +429,7 @@ impl Frame for BasicFrame {
                         }
                     }
                 }
-                
+
                 // For every pixel in borders
                 for _ in BORDER_SIZE * width..pxcount {
                     let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
@@ -477,12 +478,9 @@ impl Frame for BasicFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[HEAD].surface.damage(
-                    0,
-                    0,
-                    width as i32,
-                    HEADER_SIZE as i32,
-                );
+                self.inner.parts[HEAD]
+                    .surface
+                    .damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
             self.inner.parts[HEAD].surface.commit();
             self.buffers.push(buffer);
@@ -574,9 +572,12 @@ impl Frame for BasicFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[LEFT]
-                    .surface
-                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
+                self.inner.parts[LEFT].surface.damage(
+                    0,
+                    0,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
+                );
             }
             self.inner.parts[LEFT].surface.commit();
             self.buffers.push(buffer);
@@ -603,9 +604,12 @@ impl Frame for BasicFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[RIGHT]
-                    .surface
-                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
+                self.inner.parts[RIGHT].surface.damage(
+                    0,
+                    0,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
+                );
             }
             self.inner.parts[RIGHT].surface.commit();
             self.buffers.push(buffer);
