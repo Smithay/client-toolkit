@@ -385,9 +385,12 @@ impl Frame for BasicFrame {
             // grab the current pool
             let pool = self.pools.pool();
             // resize the pool as appropriate
-            let pxcount = 4 * (2 * (BORDER_SIZE * (width + 2 * BORDER_SIZE))
-                + 2 * (BORDER_SIZE * (height + 2 * BORDER_SIZE))
-                + (HEADER_SIZE * width));
+            let pxcount = if (width + 2 * BORDER_SIZE) > (height + HEADER_SIZE) {
+                (HEADER_SIZE * width) + ((width + 2 * BORDER_SIZE) * BORDER_SIZE)
+            } else {
+                (HEADER_SIZE * width) + ((height + HEADER_SIZE) * BORDER_SIZE)
+            };
+
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
@@ -397,6 +400,7 @@ impl Frame for BasicFrame {
             } else {
                 INACTIVE_BORDER
             };
+
             let _ = pool.seek(SeekFrom::Start(0));
             // draw the grey background
             {
@@ -426,14 +430,8 @@ impl Frame for BasicFrame {
                 }
                 
                 // For every pixel in borders
-                if width > height {
-                    for _ in 0..HEADER_SIZE * (width + 2 * BORDER_SIZE) {
-                        let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
-                    }
-                } else {
-                    for _ in 0..HEADER_SIZE * (height + 2 * BORDER_SIZE) {
-                        let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
-                    }
+                for _ in BORDER_SIZE * width..pxcount {
+                    let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
                 }
 
                 draw_buttons(
