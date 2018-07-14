@@ -18,7 +18,6 @@ nix = "0.11"
 dlib = "0.4"
 lazy_static = "1"
 memmap = "0.6"
-byteorder = "1.0"
 tempfile = "3.0"
 wayland-commons = { version = "0.20.7" }
 wayland-client = { version = "0.20.7", features = ["cursor"] }
@@ -27,3 +26,4 @@ wayland-protocols = { version = "0.20.7", features = ["client", "unstable_protoc
 [dev-dependencies]
 image = "0.19"
 wayland-client = { version = "0.20.7", features = ["dlopen"] }
+byteorder = "1.0"
