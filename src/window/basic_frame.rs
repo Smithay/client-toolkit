@@ -424,10 +424,16 @@ impl Frame for BasicFrame {
                         }
                     }
                 }
-
+                
                 // For every pixel in borders
-                for _ in HEADER_SIZE * (width + 2 * BORDER_SIZE)..pxcount {
-                    let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
+                if width > height {
+                    for _ in 0..HEADER_SIZE * (width + 2 * BORDER_SIZE) {
+                        let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
+                    }
+                } else {
+                    for _ in 0..HEADER_SIZE * (height + 2 * BORDER_SIZE) {
+                        let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
+                    }
                 }
 
                 draw_buttons(
@@ -518,8 +524,7 @@ impl Frame for BasicFrame {
 
             // -> bottom-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE
-                    + (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 (width + 2 * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 4 * (width + 2 * BORDER_SIZE) as i32,
@@ -551,8 +556,7 @@ impl Frame for BasicFrame {
 
             // -> left-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE
-                    + 2 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
@@ -581,8 +585,7 @@ impl Frame for BasicFrame {
 
             // -> right-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE
-                    + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
