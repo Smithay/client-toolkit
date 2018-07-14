@@ -31,7 +31,6 @@ const BUTTON_SPACE: u32 = 10;
 const ROUNDING_SIZE: u32 = 3;
 
 // defining the color scheme
-
 #[cfg(target_endian = "little")]
 mod colors {
     pub const INACTIVE_BORDER: &[u8] = &[0x60, 0x60, 0x60, 0xFF];
@@ -44,7 +43,6 @@ mod colors {
     pub const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
     pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
 }
-
 #[cfg(target_endian = "big")]
 mod colors {
     pub const INACTIVE_BORDER: &[u8] = &[0xFF, 0x60, 0x60, 0x60];
