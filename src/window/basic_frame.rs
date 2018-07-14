@@ -1,8 +1,6 @@
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
 
-use byteorder::{NativeEndian, WriteBytesExt};
-
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{
     wl_buffer, wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface,
@@ -32,15 +30,15 @@ const BUTTON_SPACE: u32 = 10;
 const ROUNDING_SIZE: u32 = 3;
 
 // defining the color scheme
-const INACTIVE_BORDER: u32 = 0xFF606060;
-const ACTIVE_BORDER: u32 = 0xFF808080;
-const RED_BUTTON_REGULAR: u32 = 0xFFB04040;
-const RED_BUTTON_HOVER: u32 = 0xFFFF4040;
-const GREEN_BUTTON_REGULAR: u32 = 0xFF40B040;
-const GREEN_BUTTON_HOVER: u32 = 0xFF40FF40;
-const YELLOW_BUTTON_REGULAR: u32 = 0xFFB0B040;
-const YELLOW_BUTTON_HOVER: u32 = 0xFFFFFF40;
-const YELLOW_BUTTON_DISABLED: u32 = 0xFF808020;
+const INACTIVE_BORDER: &[u8] = &[0x60, 0x60, 0x60, 0xFF];
+const ACTIVE_BORDER: &[u8] = &[0x80, 0x80, 0x80, 0xFF];
+const RED_BUTTON_REGULAR: &[u8] = &[0x40, 0x40, 0xB0, 0xFF];
+const RED_BUTTON_HOVER: &[u8] = &[0x40, 0x40, 0xFF, 0xFF];
+const GREEN_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0x40, 0xFF];
+const GREEN_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0x40, 0xFF];
+const YELLOW_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0xB0, 0xFF];
+const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
+const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
 
 /*
  * Utilities
@@ -415,21 +413,21 @@ impl Frame for BasicFrame {
 
                         for x in 0..width {
                             if x >= circle_width && x < width - circle_width {
-                                writer.write_u32::<NativeEndian>(color);
+                                let _ = writer.write(color);
                             } else {
-                                let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                                let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
                             }
                         }
                     } else {
                         for _ in 0..width {
-                            let _ = writer.write_u32::<NativeEndian>(color);
+                            let _ = writer.write(color);
                         }
                     }
                 }
 
                 // For every pixel in borders
                 for _ in HEADER_SIZE * (width + 2 * BORDER_SIZE)..pxcount {
-                    let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                    let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
                 }
 
                 draw_buttons(
@@ -732,7 +730,7 @@ fn draw_buttons(
         ));
         for _ in 0..16 {
             for _ in 0..24 {
-                let _ = pool.write_u32::<NativeEndian>(color);
+                let _ = pool.write(color);
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
@@ -755,7 +753,7 @@ fn draw_buttons(
         ));
         for _ in 0..16 {
             for _ in 0..24 {
-                let _ = pool.write_u32::<NativeEndian>(color);
+                let _ = pool.write(color);
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
@@ -776,7 +774,7 @@ fn draw_buttons(
         ));
         for _ in 0..16 {
             for _ in 0..24 {
-                let _ = pool.write_u32::<NativeEndian>(color);
+                let _ = pool.write(color);
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
