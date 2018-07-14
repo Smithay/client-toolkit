@@ -31,15 +31,32 @@ const BUTTON_SPACE: u32 = 10;
 const ROUNDING_SIZE: u32 = 3;
 
 // defining the color scheme
-const INACTIVE_BORDER: &[u8] = &[0x60, 0x60, 0x60, 0xFF];
-const ACTIVE_BORDER: &[u8] = &[0x80, 0x80, 0x80, 0xFF];
-const RED_BUTTON_REGULAR: &[u8] = &[0x40, 0x40, 0xB0, 0xFF];
-const RED_BUTTON_HOVER: &[u8] = &[0x40, 0x40, 0xFF, 0xFF];
-const GREEN_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0x40, 0xFF];
-const GREEN_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0x40, 0xFF];
-const YELLOW_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0xB0, 0xFF];
-const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
-const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
+
+#[cfg(target_endian = "little")]
+mod colors {
+    pub const INACTIVE_BORDER: &[u8] = &[0x60, 0x60, 0x60, 0xFF];
+    pub const ACTIVE_BORDER: &[u8] = &[0x80, 0x80, 0x80, 0xFF];
+    pub const RED_BUTTON_REGULAR: &[u8] = &[0x40, 0x40, 0xB0, 0xFF];
+    pub const RED_BUTTON_HOVER: &[u8] = &[0x40, 0x40, 0xFF, 0xFF];
+    pub const GREEN_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0x40, 0xFF];
+    pub const GREEN_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0x40, 0xFF];
+    pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0xB0, 0xFF];
+    pub const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
+    pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
+}
+
+#[cfg(target_endian = "big")]
+mod colors {
+    pub const INACTIVE_BORDER: &[u8] = &[0xFF, 0x60, 0x60, 0x60];
+    pub const ACTIVE_BORDER: &[u8] = &[0xFF, 0x80, 0x80, 0x80];
+    pub const RED_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0x40, 0x40];
+    pub const RED_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0x40, 0x40];
+    pub const GREEN_BUTTON_REGULAR: &[u8] = &[0xFF, 0x40, 0xB0, 0x40];
+    pub const GREEN_BUTTON_HOVER: &[u8] = &[0xFF, 0x40, 0xFF, 0x40];
+    pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0xB0, 0x40];
+    pub const YELLOW_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0xFF, 0x40];
+    pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0xFF, 0x80, 0x80, 0x20];
+}
 
 /*
  * Utilities
@@ -397,12 +414,10 @@ impl Frame for BasicFrame {
 
             // Redraw the grey borders
             let color = if self.active {
-                ACTIVE_BORDER
+                colors::ACTIVE_BORDER
             } else {
-                INACTIVE_BORDER
+                colors::INACTIVE_BORDER
             };
-            #[cfg(target_endian = "big")]
-            color.reverse();
 
             let _ = pool.seek(SeekFrom::Start(0));
             // draw the grey background
@@ -728,13 +743,10 @@ fn draw_buttons(
             .iter()
             .any(|&l| l == Location::Button(UIButton::Close))
         {
-            RED_BUTTON_HOVER
+            colors::RED_BUTTON_HOVER
         } else {
-            RED_BUTTON_REGULAR
+            colors::RED_BUTTON_REGULAR
         };
-        #[cfg(target_endian = "big")]
-        color.reverse();
-
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
         ));
@@ -749,18 +761,15 @@ fn draw_buttons(
     if width >= 56 + 2 * ds {
         // draw the yellow button
         let color = if !maximizable {
-            YELLOW_BUTTON_DISABLED
+            colors::YELLOW_BUTTON_DISABLED
         } else if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Maximize))
         {
-            YELLOW_BUTTON_HOVER
+            colors::YELLOW_BUTTON_HOVER
         } else {
-            YELLOW_BUTTON_REGULAR
+            colors::YELLOW_BUTTON_REGULAR
         };
-        #[cfg(target_endian = "big")]
-        color.reverse();
-
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
         ));
@@ -778,13 +787,10 @@ fn draw_buttons(
             .iter()
             .any(|&l| l == Location::Button(UIButton::Minimize))
         {
-            GREEN_BUTTON_HOVER
+            colors::GREEN_BUTTON_HOVER
         } else {
-            GREEN_BUTTON_REGULAR
+            colors::GREEN_BUTTON_REGULAR
         };
-        #[cfg(target_endian = "big")]
-        color.reverse();
-
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
         ));
