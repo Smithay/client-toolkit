@@ -1,7 +1,6 @@
+use std::cmp::max;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
-
-use byteorder::{NativeEndian, WriteBytesExt};
 
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{
@@ -32,15 +31,30 @@ const BUTTON_SPACE: u32 = 10;
 const ROUNDING_SIZE: u32 = 3;
 
 // defining the color scheme
-const INACTIVE_BORDER: u32 = 0xFF606060;
-const ACTIVE_BORDER: u32 = 0xFF808080;
-const RED_BUTTON_REGULAR: u32 = 0xFFB04040;
-const RED_BUTTON_HOVER: u32 = 0xFFFF4040;
-const GREEN_BUTTON_REGULAR: u32 = 0xFF40B040;
-const GREEN_BUTTON_HOVER: u32 = 0xFF40FF40;
-const YELLOW_BUTTON_REGULAR: u32 = 0xFFB0B040;
-const YELLOW_BUTTON_HOVER: u32 = 0xFFFFFF40;
-const YELLOW_BUTTON_DISABLED: u32 = 0xFF808020;
+#[cfg(target_endian = "little")]
+mod colors {
+    pub const INACTIVE_BORDER: &[u8] = &[0x60, 0x60, 0x60, 0xFF];
+    pub const ACTIVE_BORDER: &[u8] = &[0x80, 0x80, 0x80, 0xFF];
+    pub const RED_BUTTON_REGULAR: &[u8] = &[0x40, 0x40, 0xB0, 0xFF];
+    pub const RED_BUTTON_HOVER: &[u8] = &[0x40, 0x40, 0xFF, 0xFF];
+    pub const GREEN_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0x40, 0xFF];
+    pub const GREEN_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0x40, 0xFF];
+    pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0xB0, 0xFF];
+    pub const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
+    pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
+}
+#[cfg(target_endian = "big")]
+mod colors {
+    pub const INACTIVE_BORDER: &[u8] = &[0xFF, 0x60, 0x60, 0x60];
+    pub const ACTIVE_BORDER: &[u8] = &[0xFF, 0x80, 0x80, 0x80];
+    pub const RED_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0x40, 0x40];
+    pub const RED_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0x40, 0x40];
+    pub const GREEN_BUTTON_REGULAR: &[u8] = &[0xFF, 0x40, 0xB0, 0x40];
+    pub const GREEN_BUTTON_HOVER: &[u8] = &[0xFF, 0x40, 0xFF, 0x40];
+    pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0xB0, 0x40];
+    pub const YELLOW_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0xFF, 0x40];
+    pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0xFF, 0x80, 0x80, 0x20];
+}
 
 /*
  * Utilities
@@ -387,18 +401,22 @@ impl Frame for BasicFrame {
             // grab the current pool
             let pool = self.pools.pool();
             // resize the pool as appropriate
-            let pxcount = 4 * (2 * (BORDER_SIZE * (width + 2 * BORDER_SIZE))
-                + 2 * (BORDER_SIZE * (height + 2 * BORDER_SIZE))
-                + (HEADER_SIZE * width));
+            let pxcount = (HEADER_SIZE * width)
+                + max(
+                    (width + 2 * BORDER_SIZE) * BORDER_SIZE,
+                    (height + HEADER_SIZE) * BORDER_SIZE,
+                );
+
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
             // Redraw the grey borders
             let color = if self.active {
-                ACTIVE_BORDER
+                colors::ACTIVE_BORDER
             } else {
-                INACTIVE_BORDER
+                colors::INACTIVE_BORDER
             };
+
             let _ = pool.seek(SeekFrom::Start(0));
             // draw the grey background
             {
@@ -415,21 +433,21 @@ impl Frame for BasicFrame {
 
                         for x in 0..width {
                             if x >= circle_width && x < width - circle_width {
-                                writer.write_u32::<NativeEndian>(color);
+                                let _ = writer.write(color);
                             } else {
-                                let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                                let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
                             }
                         }
                     } else {
                         for _ in 0..width {
-                            let _ = writer.write_u32::<NativeEndian>(color);
+                            let _ = writer.write(color);
                         }
                     }
                 }
 
                 // For every pixel in borders
-                for _ in HEADER_SIZE * (width + 2 * BORDER_SIZE)..pxcount {
-                    let _ = writer.write_u32::<NativeEndian>(0x00_00_00_00);
+                for _ in BORDER_SIZE * width..pxcount {
+                    let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
                 }
 
                 draw_buttons(
@@ -475,12 +493,9 @@ impl Frame for BasicFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[HEAD].surface.damage(
-                    0,
-                    0,
-                    width as i32,
-                    HEADER_SIZE as i32,
-                );
+                self.inner.parts[HEAD]
+                    .surface
+                    .damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
             self.inner.parts[HEAD].surface.commit();
             self.buffers.push(buffer);
@@ -520,8 +535,7 @@ impl Frame for BasicFrame {
 
             // -> bottom-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE
-                    + (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 (width + 2 * BORDER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 4 * (width + 2 * BORDER_SIZE) as i32,
@@ -553,8 +567,7 @@ impl Frame for BasicFrame {
 
             // -> left-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE
-                    + 2 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
@@ -574,17 +587,19 @@ impl Frame for BasicFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[LEFT]
-                    .surface
-                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
+                self.inner.parts[LEFT].surface.damage(
+                    0,
+                    0,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
+                );
             }
             self.inner.parts[LEFT].surface.commit();
             self.buffers.push(buffer);
 
             // -> right-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE
-                    + 3 * (width + 2 * BORDER_SIZE) * BORDER_SIZE) as i32,
+                4 * (width * HEADER_SIZE) as i32,
                 BORDER_SIZE as i32,
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
@@ -604,9 +619,12 @@ impl Frame for BasicFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[RIGHT]
-                    .surface
-                    .damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
+                self.inner.parts[RIGHT].surface.damage(
+                    0,
+                    0,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
+                );
             }
             self.inner.parts[RIGHT].surface.commit();
             self.buffers.push(buffer);
@@ -723,16 +741,16 @@ fn draw_buttons(
             .iter()
             .any(|&l| l == Location::Button(UIButton::Close))
         {
-            RED_BUTTON_HOVER
+            colors::RED_BUTTON_HOVER
         } else {
-            RED_BUTTON_REGULAR
+            colors::RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
-                let _ = pool.write_u32::<NativeEndian>(color);
+                let _ = pool.write(color);
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
@@ -741,21 +759,21 @@ fn draw_buttons(
     if width >= 56 + 2 * ds {
         // draw the yellow button
         let color = if !maximizable {
-            YELLOW_BUTTON_DISABLED
+            colors::YELLOW_BUTTON_DISABLED
         } else if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Maximize))
         {
-            YELLOW_BUTTON_HOVER
+            colors::YELLOW_BUTTON_HOVER
         } else {
-            YELLOW_BUTTON_REGULAR
+            colors::YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
-                let _ = pool.write_u32::<NativeEndian>(color);
+                let _ = pool.write(color);
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
@@ -767,16 +785,16 @@ fn draw_buttons(
             .iter()
             .any(|&l| l == Location::Button(UIButton::Minimize))
         {
-            GREEN_BUTTON_HOVER
+            colors::GREEN_BUTTON_HOVER
         } else {
-            GREEN_BUTTON_REGULAR
+            colors::GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
             4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
-                let _ = pool.write_u32::<NativeEndian>(color);
+                let _ = pool.write(color);
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
