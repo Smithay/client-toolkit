@@ -23,6 +23,9 @@ use std::thread;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 use std::time::Duration;
+#[allow(deprecated)]
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
 
 use memmap::MmapOptions;
 
@@ -520,13 +523,13 @@ where
 fn implement_kbd<Impl>(
     kbd: NewProxy<wl_keyboard::WlKeyboard>,
     mut state: KbState,
-    mut user_impl: Arc<Mutex<Impl>>,
+    user_impl: Arc<Mutex<Impl>>,
 ) -> Proxy<wl_keyboard::WlKeyboard>
 where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
 {
     let mut thread_channels: Vec<mpsc::Sender<()>> = Vec::new();
-    let mut repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
+    let repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
 
     kbd.implement(
         move |event: wl_keyboard::Event, proxy: Proxy<wl_keyboard::WlKeyboard>| {
@@ -656,7 +659,7 @@ where
                             };
                         });
                     } else {
-                        thread_channels.last().unwrap().send(());
+                        thread_channels.last().unwrap().send(()).unwrap();
                         thread_channels.pop();
                     }
                 }
