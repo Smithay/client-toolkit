@@ -56,7 +56,7 @@ struct KbState {
 ///
 /// For some modifiers, this means that the key is currently pressed, others are toggled
 /// (like caps lock).
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct ModifiersState {
     /// The "control" key
     pub ctrl: bool,
@@ -76,14 +76,7 @@ pub struct ModifiersState {
 
 impl ModifiersState {
     fn new() -> ModifiersState {
-        ModifiersState {
-            ctrl: false,
-            alt: false,
-            shift: false,
-            caps_lock: false,
-            logo: false,
-            num_lock: false,
-        }
+        ModifiersState::default()
     }
 
     fn update_with(&mut self, state: *mut ffi::xkb_state) {
