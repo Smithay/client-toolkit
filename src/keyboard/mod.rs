@@ -605,25 +605,12 @@ where
 
                         // Start a thread that spawns the same key event in intervals
                         thread::spawn(move || {
-                            thread_user_impl.lock().unwrap().receive(
-                                Event::Key {
-                                    serial,
-                                    time,
-                                    modifiers,
-                                    rawkey: key,
-                                    keysym: sym,
-                                    state: key_state,
-                                    utf8: utf8.clone(),
-                                },
-                                proxy.clone()
-                            );
+                            let mut first = true;
                             // Check if the key is repeatable
                             if let Some(utf8) = utf8 {
                                 let utf8_key = utf8.as_bytes()[0] as char;
                                 if utf8_key.is_ascii_graphic() || utf8_key == ' ' || utf8_key == 8 as char {
                                     let repeat_timing = thread_repeat_timing.lock().unwrap();
-                                    // Pause before repeation
-                                    thread::sleep(Duration::from_millis(repeat_timing.1));
                                     loop {
                                         // Break if been sent a kill request
                                         if let Ok(_) = reciever.try_recv() {
@@ -646,7 +633,12 @@ where
                                             break;
                                         }
                                         // Interval length
-                                        thread::sleep(Duration::from_millis(repeat_timing.0));
+                                        if first {
+                                            thread::sleep(Duration::from_millis(repeat_timing.1));
+                                            first = false;
+                                        } else {
+                                            thread::sleep(Duration::from_millis(repeat_timing.0));
+                                        }
                                     }
                                 }
                             };
