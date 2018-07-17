@@ -355,7 +355,27 @@ impl Drop for KbState {
     }
 }
 
+bitflags! {
+    pub struct RepeatedKeyTypes: u32 {
+        /// alphabetic characters a-z A-Z 
+        const ALPHABETIC = 0b1;
+        /// numeric characters 0-9
+        const NUMERIC = 0b10;
+        /// alphabetic and numeric characters
+        const ALPHANUMERIC = Self::ALPHABETIC.bits | Self::NUMERIC.bits;
+        /// space character ' '
+        const SPACE = 0b100;
+        /// backspace character
+        const BACKSPACE = 0b1000;
+        /// punctuation characters !-~
+        const PUNCTUATION = 0b10000; 
+        /// alphabetic, numeric, space, backspace and punctuation characters
+        const ALL = Self::ALPHABETIC.bits | Self::NUMERIC.bits | Self::SPACE.bits | Self::BACKSPACE.bits | Self::PUNCTUATION.bits;
+    }
+}
+
 /// Determines the behaviour of key repetition
+#[derive(PartialEq)]
 pub enum KeyRepeatKind {
     /// keys will not be repeated
     None,
@@ -365,9 +385,14 @@ pub enum KeyRepeatKind {
         rate: u32, 
         /// delay (in milisecond) between a key press and the start of repetition
         delay: u32,
+        /// a bitflag of the types of keys to be repeated
+        key_types: RepeatedKeyTypes,
     },
     /// keys will be repeated at a rate and delay set by the wayland server
-    System,
+    System {
+        /// a bitflag of the types of keys to be repeated
+        key_types: RepeatedKeyTypes,
+    },
 }
 
 #[derive(Debug)]
@@ -600,59 +625,41 @@ where
                     key,
                     state: key_state,
                 } => {
-                    if key_state == wl_keyboard::KeyState::Pressed && key_held.is_none()  { 
-                        // Get the values to generate a key event
-                        let sym = state.get_one_sym_raw(key);
-                        let utf8 = if state.compose_feed(sym) != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) {
-                            None
-                        } else if let Some(status) = state.compose_status() {
-                            match status {
-                                ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
-                                    state.compose_get_utf8()
-                                }
-                                ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => state.get_utf8_raw(key),
-                                _ => None,
+                    // Get the values to generate a key event
+                    let sym = state.get_one_sym_raw(key);
+                    let utf8 = if state.compose_feed(sym) != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) {
+                        None
+                    } else if let Some(status) = state.compose_status() {
+                        match status {
+                            ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
+                                state.compose_get_utf8()
                             }
-                        } else {
-                            state.get_utf8_raw(key)
-                        };
-                        let modifiers = state.mods_state.clone();
-                        
-                        if let KeyRepeatKind::None = key_repeat_kind {
-                            user_impl.lock().unwrap().receive(
-                                Event::Key {
-                                    serial,
-                                    time,
-                                    modifiers,
-                                    rawkey: key,
-                                    keysym: sym,
-                                    state: key_state,
-                                    utf8: utf8,
-                                    repeated: false,
-                                },
-                                proxy.clone()
-                            );
-                            return
+                            ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => state.get_utf8_raw(key),
+                            _ => None,
                         }
-
-                        key_held = Some(key);
-
-                        // Clone variables for the thread
-                        let thread_user_impl = user_impl.clone();
-                        let thread_kill_r = kill_chan_r.clone();
-                        let thread_repeat_timing = match key_repeat_kind {
-                            KeyRepeatKind::None => (0, 0),
-                            KeyRepeatKind::Fixed { rate, delay } => {
-                                (rate, delay)
-                            },
-                            KeyRepeatKind::System => {
-                                *repeat_timing.lock().unwrap()
-                            },
-                        };
-
-                        if let Some(utf8) = utf8 {
-                            thread::spawn(move || {
-                                thread_user_impl.lock().unwrap().receive(
+                    } else {
+                        state.get_utf8_raw(key)
+                    };
+                    let modifiers = state.mods_state.clone();
+                    
+                    if key_state == wl_keyboard::KeyState::Pressed && key_held.is_none() { 
+                        // Check if key is repeatable
+                        if let Some(utf8) = utf8.clone() {
+                            let utf8_key = utf8.as_bytes()[0] as char;
+                            let key_types = match key_repeat_kind {
+                                KeyRepeatKind::None => RepeatedKeyTypes::ALL,
+                                KeyRepeatKind::Fixed {key_types, ..} => key_types,
+                                KeyRepeatKind::System {key_types} => key_types,
+                            };
+                            let mut is_repeatable = 
+                                (key_types.contains(RepeatedKeyTypes::ALPHABETIC) && !utf8_key.is_alphabetic())
+                                || (key_types.contains(RepeatedKeyTypes::NUMERIC) && !utf8_key.is_numeric())
+                                || (key_types.contains(RepeatedKeyTypes::SPACE) && !(utf8_key == ' '))
+                                || (key_types.contains(RepeatedKeyTypes::BACKSPACE) && !(utf8_key == 8 as char))
+                                || (key_types.contains(RepeatedKeyTypes::PUNCTUATION) && !utf8_key.is_ascii_punctuation());
+                            
+                            if is_repeatable || key_repeat_kind == KeyRepeatKind::None {
+                                user_impl.lock().unwrap().receive(
                                     Event::Key {
                                         serial,
                                         time,
@@ -665,38 +672,67 @@ where
                                     },
                                     proxy.clone()
                                 );
-                                let delay = chan::after_ms(thread_repeat_timing.1);
-                                let tick = chan::tick_ms(thread_repeat_timing.0);
-
-                                let utf8_key = utf8.as_bytes()[0] as char;
-                                if utf8_key.is_ascii_graphic() || utf8_key == ' ' || utf8_key == 8 as char {
-                                    chan_select! {
-                                        delay.recv() => {},
-                                        thread_kill_r.recv() => { return }
-                                    }
-                                    loop {
-                                        chan_select! {
-                                            tick.recv() => {
-                                                thread_user_impl.lock().unwrap().receive(
-                                                    Event::Key {
-                                                        serial,
-                                                        time,
-                                                        modifiers,
-                                                        rawkey: key,
-                                                        keysym: sym,
-                                                        state: key_state,
-                                                        utf8: Some(utf8.clone()),
-                                                        repeated: true,
-                                                    },
-                                                    proxy.clone()
-                                                );
-                                            },
-                                            thread_kill_r.recv() => { break }
-                                        }
-                                    }
-                                }
-                            });
+                                return
+                            } else {
+                                key_held = Some(key);
+                            }
                         }
+
+                        // Clone variables for the thread
+                        let thread_user_impl = user_impl.clone();
+                        let thread_kill_r = kill_chan_r.clone();
+                        let thread_repeat_timing = match key_repeat_kind {
+                            KeyRepeatKind::None => (0, 0),
+                            KeyRepeatKind::Fixed {rate, delay, ..} => {
+                                (rate, delay)
+                            },
+                            KeyRepeatKind::System {..} => {
+                                *repeat_timing.lock().unwrap()
+                            },
+                        };
+
+                        thread::spawn(move || {
+                            thread_user_impl.lock().unwrap().receive(
+                                Event::Key {
+                                    serial,
+                                    time,
+                                    modifiers,
+                                    rawkey: key,
+                                    keysym: sym,
+                                    state: key_state,
+                                    utf8: utf8.clone(),
+                                    repeated: false,
+                                },
+                                proxy.clone()
+                            );
+                            let delay = chan::after_ms(thread_repeat_timing.1);
+                            let tick = chan::tick_ms(thread_repeat_timing.0);
+
+                            chan_select! {
+                                delay.recv() => {},
+                                thread_kill_r.recv() => { return }
+                            }
+                            loop {
+                                chan_select! {
+                                    tick.recv() => {
+                                        thread_user_impl.lock().unwrap().receive(
+                                            Event::Key {
+                                                serial,
+                                                time,
+                                                modifiers,
+                                                rawkey: key,
+                                                keysym: sym,
+                                                state: key_state,
+                                                utf8: utf8.clone(),
+                                                repeated: true,
+                                            },
+                                            proxy.clone()
+                                        );
+                                    },
+                                    thread_kill_r.recv() => { break }
+                                }
+                            }
+                        });
                     } else if Some(key) == key_held {
                         // If key released then send a kill message to the thread
                         kill_chan_s.send(());
