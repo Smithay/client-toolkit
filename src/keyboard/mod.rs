@@ -357,11 +357,16 @@ impl Drop for KbState {
 
 /// Determines the behaviour of key repetition
 pub enum KeyRepeatKind {
-    /// Keys will not be repeated
+    /// keys will not be repeated
     None,
-    /// Keys will be repeated at a set rate and delay
-    Fixed { rate: u32, delay: u32 },
-    /// Keys will be repeated at a rate and delay set by the wayland server
+    /// keys will be repeated at a set rate and delay
+    Fixed { 
+        /// rate (in milisecond) at which the repetition should occur
+        rate: u32, 
+        /// delay (in milisecond) between a key press and the start of repetition
+        delay: u32,
+    },
+    /// keys will be repeated at a rate and delay set by the wayland server
     System,
 }
 
@@ -434,6 +439,8 @@ pub enum Event<'a> {
         ///
         /// will always be `None` on key release events
         utf8: Option<String>,
+        /// identifies the event as original or repeated
+        repeated: bool,
     },
     /// Repetition information advertizing
     RepeatInfo {
@@ -621,6 +628,7 @@ where
                                     keysym: sym,
                                     state: key_state,
                                     utf8: utf8,
+                                    repeated: false,
                                 },
                                 proxy.clone()
                             );
@@ -653,6 +661,7 @@ where
                                         keysym: sym,
                                         state: key_state,
                                         utf8: Some(utf8.clone()),
+                                        repeated: false,
                                     },
                                     proxy.clone()
                                 );
@@ -677,6 +686,7 @@ where
                                                         keysym: sym,
                                                         state: key_state,
                                                         utf8: Some(utf8.clone()),
+                                                        repeated: true,
                                                     },
                                                     proxy.clone()
                                                 );
