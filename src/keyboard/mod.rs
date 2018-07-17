@@ -355,6 +355,16 @@ impl Drop for KbState {
     }
 }
 
+/// Determines the behaviour of key repetition
+pub enum KeyRepeatKind {
+    /// Keys will not be repeated
+    None,
+    /// Keys will be repeated at a set rate and delay
+    Fixed { rate: u32, delay: u32 },
+    /// Keys will be repeated at a rate and delay set by the wayland server
+    System,
+}
+
 #[derive(Debug)]
 /// An error that occured while trying to initialize a mapped keyboard
 pub enum Error {
@@ -446,6 +456,7 @@ pub enum Event<'a> {
 /// Returns an error if xkbcommon could not be initialized.
 pub fn map_keyboard_auto<Impl>(
     keyboard: NewProxy<wl_keyboard::WlKeyboard>,
+    key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, (Error, NewProxy<wl_keyboard::WlKeyboard>)>
 where
@@ -455,7 +466,7 @@ where
         Ok(s) => s,
         Err(e) => return Err((e, keyboard)),
     };
-    Ok(implement_kbd(keyboard, state, Arc::new(Mutex::new(implementation))))
+    Ok(implement_kbd(keyboard, state, key_repeat_kind, Arc::new(Mutex::new(implementation))))
 }
 
 /// Implement a keyboard for a predefined keymap
@@ -471,6 +482,7 @@ where
 pub fn map_keyboard_rmlvo<Impl>(
     keyboard: NewProxy<wl_keyboard::WlKeyboard>,
     rmlvo: RMLVO,
+    key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, (Error, NewProxy<wl_keyboard::WlKeyboard>)>
 where
@@ -507,7 +519,7 @@ where
     }
 
     match init_state(rmlvo) {
-        Ok(state) => Ok(implement_kbd(keyboard, state, Arc::new(Mutex::new(implementation)))),
+        Ok(state) => Ok(implement_kbd(keyboard, state, key_repeat_kind, Arc::new(Mutex::new(implementation)))),
         Err(error) => return Err((error, keyboard)),
     }
 }
@@ -515,6 +527,7 @@ where
 fn implement_kbd<Impl>(
     kbd: NewProxy<wl_keyboard::WlKeyboard>,
     mut state: KbState,
+    key_repeat_kind: KeyRepeatKind,
     user_impl: Arc<Mutex<Impl>>,
 ) -> Proxy<wl_keyboard::WlKeyboard>
 where
@@ -581,8 +594,6 @@ where
                     state: key_state,
                 } => {
                     if key_state == wl_keyboard::KeyState::Pressed && key_held.is_none()  { 
-                        key_held = Some(key);
-
                         // Get the values to generate a key event
                         let sym = state.get_one_sym_raw(key);
                         let utf8 = if state.compose_feed(sym) != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) {
@@ -600,10 +611,36 @@ where
                         };
                         let modifiers = state.mods_state.clone();
                         
+                        if let KeyRepeatKind::None = key_repeat_kind {
+                            user_impl.lock().unwrap().receive(
+                                Event::Key {
+                                    serial,
+                                    time,
+                                    modifiers,
+                                    rawkey: key,
+                                    keysym: sym,
+                                    state: key_state,
+                                    utf8: utf8,
+                                },
+                                proxy.clone()
+                            );
+                            return
+                        }
+
+                        key_held = Some(key);
+
                         // Clone variables for the thread
                         let thread_user_impl = user_impl.clone();
-                        let thread_repeat_timing = repeat_timing.clone();
                         let thread_kill_r = kill_chan_r.clone();
+                        let thread_repeat_timing = match key_repeat_kind {
+                            KeyRepeatKind::None => (0, 0),
+                            KeyRepeatKind::Fixed { rate, delay } => {
+                                (rate, delay)
+                            },
+                            KeyRepeatKind::System => {
+                                *repeat_timing.lock().unwrap()
+                            },
+                        };
 
                         if let Some(utf8) = utf8 {
                             thread::spawn(move || {
@@ -619,8 +656,8 @@ where
                                     },
                                     proxy.clone()
                                 );
-                                let delay = chan::after_ms(thread_repeat_timing.lock().unwrap().1);
-                                let tick = chan::tick_ms(thread_repeat_timing.lock().unwrap().0);
+                                let delay = chan::after_ms(thread_repeat_timing.1);
+                                let tick = chan::tick_ms(thread_repeat_timing.0);
 
                                 let utf8_key = utf8.as_bytes()[0] as char;
                                 if utf8_key.is_ascii_graphic() || utf8_key == ' ' || utf8_key == 8 as char {
