@@ -652,13 +652,13 @@ where
                                 KeyRepeatKind::System {key_types} => key_types,
                             };
                             let mut is_repeatable = 
-                                (key_types.contains(RepeatedKeyTypes::ALPHABETIC) && !utf8_key.is_alphabetic())
-                                || (key_types.contains(RepeatedKeyTypes::NUMERIC) && !utf8_key.is_numeric())
-                                || (key_types.contains(RepeatedKeyTypes::SPACE) && !(utf8_key == ' '))
-                                || (key_types.contains(RepeatedKeyTypes::BACKSPACE) && !(utf8_key == 8 as char))
-                                || (key_types.contains(RepeatedKeyTypes::PUNCTUATION) && !utf8_key.is_ascii_punctuation());
+                                (key_types.contains(RepeatedKeyTypes::ALPHABETIC) && utf8_key.is_alphabetic())
+                                || (key_types.contains(RepeatedKeyTypes::NUMERIC) && utf8_key.is_numeric())
+                                || (key_types.contains(RepeatedKeyTypes::SPACE) && (utf8_key == ' '))
+                                || (key_types.contains(RepeatedKeyTypes::BACKSPACE) && (utf8_key == 8 as char))
+                                || (key_types.contains(RepeatedKeyTypes::PUNCTUATION) && utf8_key.is_ascii_punctuation());
                             
-                            if is_repeatable || key_repeat_kind == KeyRepeatKind::None {
+                            if !is_repeatable || key_repeat_kind == KeyRepeatKind::None {
                                 user_impl.lock().unwrap().receive(
                                     Event::Key {
                                         serial,
