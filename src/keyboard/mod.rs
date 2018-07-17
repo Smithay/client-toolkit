@@ -21,13 +21,12 @@ use std::os::unix::io::{FromRawFd, RawFd};
 use std::ptr;
 use std::thread;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc;
-use std::time::Duration;
 #[allow(deprecated)]
 #[allow(unused_imports)]
 use std::ascii::AsciiExt;
 
 use memmap::MmapOptions;
+use chan;
 
 use wayland_client::commons::Implementation;
 pub use wayland_client::protocol::wl_keyboard::KeyState;
@@ -521,8 +520,9 @@ fn implement_kbd<Impl>(
 where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
 {
-    let mut thread_channels: Vec<mpsc::Sender<()>> = Vec::new();
-    let repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
+    let (kill_chan_s, kill_chan_r) = chan::async::<()>();
+    let mut key_held: Option<u32> = None;
+    let repeat_timing: Arc<Mutex<(u32, u32)>> = Arc::new(Mutex::new((30, 500)));
 
     kbd.implement(
         move |event: wl_keyboard::Event, proxy: Proxy<wl_keyboard::WlKeyboard>| {
@@ -580,7 +580,10 @@ where
                     key,
                     state: key_state,
                 } => {
-                    if key_state == wl_keyboard::KeyState::Pressed {
+                    if key_state == wl_keyboard::KeyState::Pressed && key_held.is_none()  { 
+                        key_held = Some(key);
+
+                        // Get the values to generate a key event
                         let sym = state.get_one_sym_raw(key);
                         let utf8 = if state.compose_feed(sym) != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) {
                             None
@@ -596,56 +599,61 @@ where
                             state.get_utf8_raw(key)
                         };
                         let modifiers = state.mods_state.clone();
-
-                        // Create a channel to kill the thread
-                        let (sender, reciever) = mpsc::channel();
-                        thread_channels.push(sender);
+                        
+                        // Clone variables for the thread
                         let thread_user_impl = user_impl.clone();
                         let thread_repeat_timing = repeat_timing.clone();
+                        let thread_kill_r = kill_chan_r.clone();
 
-                        // Start a thread that spawns the same key event in intervals
-                        thread::spawn(move || {
-                            let mut first = true;
-                            // Check if the key is repeatable
-                            if let Some(utf8) = utf8 {
+                        if let Some(utf8) = utf8 {
+                            thread::spawn(move || {
+                                thread_user_impl.lock().unwrap().receive(
+                                    Event::Key {
+                                        serial,
+                                        time,
+                                        modifiers,
+                                        rawkey: key,
+                                        keysym: sym,
+                                        state: key_state,
+                                        utf8: Some(utf8.clone()),
+                                    },
+                                    proxy.clone()
+                                );
+                                let delay = chan::after_ms(thread_repeat_timing.lock().unwrap().1);
+                                let tick = chan::tick_ms(thread_repeat_timing.lock().unwrap().0);
+
                                 let utf8_key = utf8.as_bytes()[0] as char;
                                 if utf8_key.is_ascii_graphic() || utf8_key == ' ' || utf8_key == 8 as char {
-                                    let repeat_timing = thread_repeat_timing.lock().unwrap();
+                                    chan_select! {
+                                        delay.recv() => {},
+                                        thread_kill_r.recv() => { return }
+                                    }
                                     loop {
-                                        // Break if been sent a kill request
-                                        if let Ok(_) = reciever.try_recv() {
-                                            break;
-                                        }
-                                        thread_user_impl.lock().unwrap().receive(
-                                            Event::Key {
-                                                serial,
-                                                time,
-                                                modifiers,
-                                                rawkey: key,
-                                                keysym: sym,
-                                                state: key_state,
-                                                utf8: Some(utf8.clone()),
+                                        chan_select! {
+                                            tick.recv() => {
+                                                thread_user_impl.lock().unwrap().receive(
+                                                    Event::Key {
+                                                        serial,
+                                                        time,
+                                                        modifiers,
+                                                        rawkey: key,
+                                                        keysym: sym,
+                                                        state: key_state,
+                                                        utf8: Some(utf8.clone()),
+                                                    },
+                                                    proxy.clone()
+                                                );
                                             },
-                                            proxy.clone()
-                                        );
-                                        // Break if been sent a kill request
-                                        if let Ok(_) = reciever.try_recv() {
-                                            break;
-                                        }
-                                        // Interval length
-                                        if first {
-                                            thread::sleep(Duration::from_millis(repeat_timing.1));
-                                            first = false;
-                                        } else {
-                                            thread::sleep(Duration::from_millis(repeat_timing.0));
+                                            thread_kill_r.recv() => { break }
                                         }
                                     }
                                 }
-                            };
-                        });
-                    } else {
-                        thread_channels.last().unwrap().send(()).unwrap();
-                        thread_channels.pop();
+                            });
+                        }
+                    } else if Some(key) == key_held {
+                        // If key released then send a kill message to the thread
+                        kill_chan_s.send(());
+                        key_held = None;
                     }
                 }
                 wl_keyboard::Event::Modifiers {
@@ -657,7 +665,7 @@ where
                 } => state.update_modifiers(mods_depressed, mods_latched, mods_locked, group),
                 wl_keyboard::Event::RepeatInfo { rate, delay } => {
                     user_impl.lock().unwrap().receive(Event::RepeatInfo { rate, delay }, proxy);
-                    *repeat_timing.lock().unwrap() = (rate as u64, delay as u64);
+                    *repeat_timing.lock().unwrap() = (rate as u32, delay as u32);
                 }
             }
         },
