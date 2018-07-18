@@ -12,9 +12,6 @@
 //! on wether you wish to use the keymap provided by the server or a
 //! specific one.
 
-#[allow(deprecated)]
-#[allow(unused_imports)]
-use std::ascii::AsciiExt;
 use std::env;
 use std::ffi::CString;
 use std::fs::File;
@@ -356,6 +353,7 @@ impl Drop for KbState {
 }
 
 bitflags! {
+    /// A bitflag of the types of keys to be repeated
     pub struct RepeatedKeyTypes: u32 {
         /// alphabetic characters a-z A-Z
         const ALPHABETIC = 0b1;
