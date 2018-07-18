@@ -19,7 +19,7 @@ dlib = "0.4"
 lazy_static = "1"
 memmap = "0.6"
 tempfile = "3.0"
-chan = "0.1.20"
+chan = "0.1.21"
 wayland-commons = { version = "0.20.7" }
 wayland-client = { version = "0.20.7", features = ["cursor"] }
 wayland-protocols = { version = "0.20.7", features = ["client", "unstable_protocols"] }
