@@ -758,6 +758,19 @@ where
                         // If key released then send a kill message to the thread
                         kill_chan_s.send(());
                         key_held = None;
+                        user_impl.lock().unwrap().receive(
+                            Event::Key {
+                                serial,
+                                time,
+                                modifiers,
+                                rawkey: key,
+                                keysym: sym,
+                                state: key_state,
+                                utf8: utf8.clone(),
+                                repeated: false,
+                            },
+                            proxy.clone(),
+                        );
                     }
                 }
                 wl_keyboard::Event::Modifiers {
