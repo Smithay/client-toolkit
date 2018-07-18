@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
+use sctk::keyboard::{map_keyboard_auto, Event as KbEvent, KeyRepeatKind, RepeatedKeyTypes};
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
@@ -80,7 +80,7 @@ fn main() {
 
     window.new_seat(&seat);
 
-    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
+    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), KeyRepeatKind::System {key_types: RepeatedKeyTypes::ALL}, move |event: KbEvent, _| {
         match event {
             KbEvent::Enter {
                 modifiers, keysyms, ..
@@ -99,10 +99,12 @@ fn main() {
                 state,
                 utf8,
                 modifiers,
+                repeated,
                 ..
             } => {
                 println!("Key {:?}: {:x}.", state, keysym);
                 println!(" -> Modifers are {:?}", modifiers);
+                println!(" -> Repeated: {:?}", repeated);
                 if let Some(txt) = utf8 {
                     println!(" -> Received text \"{}\".", txt,);
                 }

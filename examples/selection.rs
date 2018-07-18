@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::data_device::{DataDevice, DndEvent, ReadPipe};
-use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
+use sctk::keyboard::{map_keyboard_auto, Event as KbEvent, KeyRepeatKind, RepeatedKeyTypes};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
@@ -84,7 +84,7 @@ fn main() {
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
     let reader2 = reader.clone();
-    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
+    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), KeyRepeatKind::None,  move |event: KbEvent, _| {
         match event {
             KbEvent::Key {
                 utf8: Some(text), ..
