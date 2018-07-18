@@ -12,6 +12,9 @@
 //! on wether you wish to use the keymap provided by the server or a
 //! specific one.
 
+#[allow(deprecated)]
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
 use std::env;
 use std::ffi::CString;
 use std::fs::File;
@@ -19,14 +22,11 @@ use std::os::raw::c_char;
 use std::os::unix::ffi::OsStringExt;
 use std::os::unix::io::{FromRawFd, RawFd};
 use std::ptr;
-use std::thread;
 use std::sync::{Arc, Mutex};
-#[allow(deprecated)]
-#[allow(unused_imports)]
-use std::ascii::AsciiExt;
+use std::thread;
 
-use memmap::MmapOptions;
 use chan;
+use memmap::MmapOptions;
 
 use wayland_client::commons::Implementation;
 pub use wayland_client::protocol::wl_keyboard::KeyState;
@@ -357,7 +357,7 @@ impl Drop for KbState {
 
 bitflags! {
     pub struct RepeatedKeyTypes: u32 {
-        /// alphabetic characters a-z A-Z 
+        /// alphabetic characters a-z A-Z
         const ALPHABETIC = 0b1;
         /// numeric characters 0-9
         const NUMERIC = 0b10;
@@ -368,7 +368,7 @@ bitflags! {
         /// backspace character
         const BACKSPACE = 0b1000;
         /// punctuation characters !-~
-        const PUNCTUATION = 0b10000; 
+        const PUNCTUATION = 0b10000;
         /// alphabetic, numeric, space, backspace and punctuation characters
         const ALL = Self::ALPHABETIC.bits | Self::NUMERIC.bits | Self::SPACE.bits | Self::BACKSPACE.bits | Self::PUNCTUATION.bits;
     }
@@ -380,9 +380,9 @@ pub enum KeyRepeatKind {
     /// keys will not be repeated
     None,
     /// keys will be repeated at a set rate and delay
-    Fixed { 
+    Fixed {
         /// rate (in milisecond) at which the repetition should occur
-        rate: u32, 
+        rate: u32,
         /// delay (in milisecond) between a key press and the start of repetition
         delay: u32,
         /// a bitflag of the types of keys to be repeated
@@ -498,7 +498,12 @@ where
         Ok(s) => s,
         Err(e) => return Err((e, keyboard)),
     };
-    Ok(implement_kbd(keyboard, state, key_repeat_kind, Arc::new(Mutex::new(implementation))))
+    Ok(implement_kbd(
+        keyboard,
+        state,
+        key_repeat_kind,
+        Arc::new(Mutex::new(implementation)),
+    ))
 }
 
 /// Implement a keyboard for a predefined keymap
@@ -551,7 +556,12 @@ where
     }
 
     match init_state(rmlvo) {
-        Ok(state) => Ok(implement_kbd(keyboard, state, key_repeat_kind, Arc::new(Mutex::new(implementation)))),
+        Ok(state) => Ok(implement_kbd(
+            keyboard,
+            state,
+            key_repeat_kind,
+            Arc::new(Mutex::new(implementation)),
+        )),
         Err(error) => return Err((error, keyboard)),
     }
 }
@@ -617,7 +627,10 @@ where
                     );
                 }
                 wl_keyboard::Event::Leave { serial, surface } => {
-                    user_impl.lock().unwrap().receive(Event::Leave { serial, surface }, proxy);
+                    user_impl
+                        .lock()
+                        .unwrap()
+                        .receive(Event::Leave { serial, surface }, proxy);
                 }
                 wl_keyboard::Event::Key {
                     serial,
@@ -627,7 +640,9 @@ where
                 } => {
                     // Get the values to generate a key event
                     let sym = state.get_one_sym_raw(key);
-                    let utf8 = if state.compose_feed(sym) != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) {
+                    let utf8 = if state.compose_feed(sym)
+                        != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
+                    {
                         None
                     } else if let Some(status) = state.compose_status() {
                         match status {
@@ -641,23 +656,33 @@ where
                         state.get_utf8_raw(key)
                     };
                     let modifiers = state.mods_state.clone();
-                    
-                    if key_state == wl_keyboard::KeyState::Pressed { 
+
+                    if key_state == wl_keyboard::KeyState::Pressed {
                         // Check if key is repeatable
                         let is_repeatable = match utf8.clone() {
-                            Some(utf8) => {
-                                match key_repeat_kind {
-                                    KeyRepeatKind::Fixed {key_types, ..} | KeyRepeatKind::System {key_types} => {
-                                        let utf8_key = utf8.as_bytes()[0] as char;
-                                        ((key_types.contains(RepeatedKeyTypes::ALPHABETIC) && utf8_key.is_alphabetic())
-                                        || (key_types.contains(RepeatedKeyTypes::NUMERIC) && utf8_key.is_numeric())
-                                        || (key_types.contains(RepeatedKeyTypes::SPACE) && (utf8_key == ' '))
-                                        || (key_types.contains(RepeatedKeyTypes::BACKSPACE) && (utf8_key == 8 as char))
-                                        || (key_types.contains(RepeatedKeyTypes::PUNCTUATION) && utf8_key.is_ascii_punctuation()))
+                            Some(utf8) => match key_repeat_kind {
+                                KeyRepeatKind::Fixed { key_types, .. }
+                                | KeyRepeatKind::System { key_types } => {
+                                    let utf8_key = utf8.as_bytes()[0] as char;
+                                    ((key_types.contains(RepeatedKeyTypes::ALPHABETIC)
+                                        && utf8_key.is_alphabetic())
+                                        || (key_types.contains(RepeatedKeyTypes::NUMERIC)
+                                            && utf8_key.is_numeric())
+                                        || (key_types.contains(RepeatedKeyTypes::SPACE)
+                                            && (utf8_key == ' '))
+                                        || (key_types.contains(RepeatedKeyTypes::BACKSPACE)
+                                            && (utf8_key == 8 as char))
+                                        || (key_types.contains(RepeatedKeyTypes::PUNCTUATION)
+                                            && ((utf8_key >= 33 as char && utf8_key <= 47 as char)
+                                                || (utf8_key >= 58 as char
+                                                    && utf8_key <= 64 as char)
+                                                || (utf8_key >= 91 as char
+                                                    && utf8_key <= 96 as char)
+                                                || (utf8_key >= 123 as char
+                                                    && utf8_key <= 126 as char))))
                                         && key_held.is_none()
-                                    },
-                                    KeyRepeatKind::None => false,
                                 }
+                                KeyRepeatKind::None => false,
                             },
                             None => false,
                         };
@@ -669,14 +694,12 @@ where
                             let thread_kill_r = kill_chan_r.clone();
                             let repeat_timing = match key_repeat_kind {
                                 KeyRepeatKind::None => (0, 0),
-                                KeyRepeatKind::Fixed {rate, delay, ..} => {
-                                    (rate, delay)
-                                },
-                                KeyRepeatKind::System {..} => {
+                                KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
+                                KeyRepeatKind::System { .. } => {
                                     *system_repeat_timing.lock().unwrap()
-                                },
+                                }
                             };
-                            // Start thread to send key events 
+                            // Start thread to send key events
                             thread::spawn(move || {
                                 thread_user_impl.lock().unwrap().receive(
                                     Event::Key {
@@ -689,7 +712,7 @@ where
                                         utf8: utf8.clone(),
                                         repeated: false,
                                     },
-                                    proxy.clone()
+                                    proxy.clone(),
                                 );
                                 let delay = chan::after_ms(repeat_timing.1);
                                 let tick = chan::tick_ms(repeat_timing.0);
@@ -730,7 +753,7 @@ where
                                     utf8: utf8.clone(),
                                     repeated: false,
                                 },
-                                proxy.clone()
+                                proxy.clone(),
                             );
                         }
                     } else if key_held == Some(key) {
@@ -747,7 +770,10 @@ where
                     ..
                 } => state.update_modifiers(mods_depressed, mods_latched, mods_locked, group),
                 wl_keyboard::Event::RepeatInfo { rate, delay } => {
-                    user_impl.lock().unwrap().receive(Event::RepeatInfo { rate, delay }, proxy);
+                    user_impl
+                        .lock()
+                        .unwrap()
+                        .receive(Event::RepeatInfo { rate, delay }, proxy);
                     *system_repeat_timing.lock().unwrap() = (rate as u32, delay as u32);
                 }
             }
