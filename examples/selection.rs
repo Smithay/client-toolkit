@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::data_device::{DataDevice, DndEvent, ReadPipe};
-use sctk::keyboard::{map_keyboard_auto, Event as KbEvent, KeyRepeatKind, RepeatedKeyTypes};
+use sctk::keyboard::{map_keyboard_auto, Event as KbEvent, KeyRepeatKind};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
