@@ -691,8 +691,8 @@ where
                                     },
                                     proxy.clone()
                                 );
-                                let delay = chan::after_ms(thread_repeat_timing.1);
-                                let tick = chan::tick_ms(thread_repeat_timing.0);
+                                let delay = chan::after_ms(repeat_timing.1);
+                                let tick = chan::tick_ms(repeat_timing.0);
                                 chan_select! {
                                     delay.recv() => {},
                                     thread_kill_r.recv() => { return }
