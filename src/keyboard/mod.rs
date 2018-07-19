@@ -19,10 +19,10 @@ use std::os::raw::c_char;
 use std::os::unix::ffi::OsStringExt;
 use std::os::unix::io::{FromRawFd, RawFd};
 use std::ptr;
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
-use chan;
 use memmap::MmapOptions;
 
 use wayland_client::commons::Implementation;
@@ -380,9 +380,9 @@ pub enum KeyRepeatKind {
     /// keys will be repeated at a set rate and delay
     Fixed {
         /// rate (in milisecond) at which the repetition should occur
-        rate: u32,
+        rate: u64,
         /// delay (in milisecond) between a key press and the start of repetition
-        delay: u32,
+        delay: u64,
         /// a bitflag of the types of keys to be repeated
         key_types: RepeatedKeyTypes,
     },
@@ -573,9 +573,9 @@ fn implement_kbd<Impl>(
 where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
 {
-    let (kill_chan_s, kill_chan_r) = chan::async::<()>();
+    let mut kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
     let mut key_held: Option<u32> = None;
-    let system_repeat_timing: Arc<Mutex<(u32, u32)>> = Arc::new(Mutex::new((30, 500)));
+    let system_repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
 
     kbd.implement(
         move |event: wl_keyboard::Event, proxy: Proxy<wl_keyboard::WlKeyboard>| {
@@ -689,7 +689,7 @@ where
                             key_held = Some(key);
                             // Clone variables for the thread
                             let thread_user_impl = user_impl.clone();
-                            let thread_kill_r = kill_chan_r.clone();
+                            let thread_kill_chan = kill_chan.clone();
                             let repeat_timing = match key_repeat_kind {
                                 KeyRepeatKind::None => (0, 0),
                                 KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
@@ -712,30 +712,31 @@ where
                                     },
                                     proxy.clone(),
                                 );
-                                let delay = chan::after_ms(repeat_timing.1);
-                                let tick = chan::tick_ms(repeat_timing.0);
-                                chan_select! {
-                                    delay.recv() => {},
-                                    thread_kill_r.recv() => { return }
+                                // Delay
+                                thread::sleep(Duration::from_millis(repeat_timing.1));
+                                match thread_kill_chan.lock().unwrap().1.try_recv() {
+                                    Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
+                                    _ => {}
                                 }
                                 loop {
-                                    chan_select! {
-                                        tick.recv() => {
-                                            thread_user_impl.lock().unwrap().receive(
-                                                Event::Key {
-                                                    serial,
-                                                    time,
-                                                    modifiers,
-                                                    rawkey: key,
-                                                    keysym: sym,
-                                                    state: key_state,
-                                                    utf8: utf8.clone(),
-                                                    repeated: true,
-                                                },
-                                                proxy.clone()
-                                            );
+                                    thread_user_impl.lock().unwrap().receive(
+                                        Event::Key {
+                                            serial,
+                                            time,
+                                            modifiers,
+                                            rawkey: key,
+                                            keysym: sym,
+                                            state: key_state,
+                                            utf8: utf8.clone(),
+                                            repeated: true,
                                         },
-                                        thread_kill_r.recv() => { break }
+                                        proxy.clone()
+                                    );
+                                    // Rate
+                                    thread::sleep(Duration::from_millis(repeat_timing.0));
+                                    match thread_kill_chan.lock().unwrap().1.try_recv() {
+                                        Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
+                                        _ => {}
                                     }
                                 }
                             });
@@ -756,7 +757,8 @@ where
                         }
                     } else if key_held == Some(key) {
                         // If key released then send a kill message to the thread
-                        kill_chan_s.send(());
+                        kill_chan.lock().unwrap().0.send(());
+                        kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
                         key_held = None;
                         user_impl.lock().unwrap().receive(
                             Event::Key {
@@ -785,7 +787,7 @@ where
                         .lock()
                         .unwrap()
                         .receive(Event::RepeatInfo { rate, delay }, proxy);
-                    *system_repeat_timing.lock().unwrap() = (rate as u32, delay as u32);
+                    *system_repeat_timing.lock().unwrap() = (rate as u64, delay as u64);
                 }
             }
         },
