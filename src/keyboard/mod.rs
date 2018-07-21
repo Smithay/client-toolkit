@@ -22,6 +22,7 @@ use std::ptr;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use std::time::Instant;
 
 use memmap::MmapOptions;
 
@@ -712,6 +713,7 @@ where
                                     },
                                     proxy.clone(),
                                 );
+                                let time_tracker = Instant::now();
                                 // Delay
                                 thread::sleep(Duration::from_millis(repeat_timing.1));
                                 match thread_kill_chan.lock().unwrap().1.try_recv() {
@@ -719,10 +721,11 @@ where
                                     _ => {}
                                 }
                                 loop {
+                                    let elapsed_time = time_tracker.elapsed();
                                     thread_user_impl.lock().unwrap().receive(
                                         Event::Key {
                                             serial,
-                                            time,
+                                            time: time + elapsed_time.as_secs() as u32 * 1000 + elapsed_time.subsec_millis(),
                                             modifiers,
                                             rawkey: key,
                                             keysym: sym,
@@ -757,7 +760,7 @@ where
                         }
                     } else if key_held == Some(key) {
                         // If key released then send a kill message to the thread
-                        kill_chan.lock().unwrap().0.send(());
+                        kill_chan.lock().unwrap().0.send(()).unwrap();
                         kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
                         key_held = None;
                         user_impl.lock().unwrap().receive(
