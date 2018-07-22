@@ -897,7 +897,7 @@ where
                                             thread_repeat_impl.lock().unwrap()(
                                                 KeyRepeatEvent {
                                                     serial,
-                                                    time: time + elapsed_time.as_secs() as u32 * 1000 + elapsed_time.subsec_millis(),
+                                                    time: time + elapsed_time.as_secs() as u32 * 1000 + elapsed_time.subsec_nanos() / 1000000,
                                                     modifiers,
                                                     rawkey: key,
                                                     keysym: sym,
