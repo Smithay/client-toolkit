@@ -353,26 +353,6 @@ impl Drop for KbState {
     }
 }
 
-bitflags! {
-    /// A bitflag of the types of keys to be repeated
-    pub struct RepeatedKeyTypes: u32 {
-        /// alphabetic characters a-z A-Z
-        const ALPHABETIC = 0b1;
-        /// numeric characters 0-9
-        const NUMERIC = 0b10;
-        /// alphabetic and numeric characters
-        const ALPHANUMERIC = Self::ALPHABETIC.bits | Self::NUMERIC.bits;
-        /// space character ' '
-        const SPACE = 0b100;
-        /// backspace character
-        const BACKSPACE = 0b1000;
-        /// punctuation characters !-~
-        const PUNCTUATION = 0b10000;
-        /// alphabetic, numeric, space, backspace and punctuation characters
-        const ALL = Self::ALPHABETIC.bits | Self::NUMERIC.bits | Self::SPACE.bits | Self::BACKSPACE.bits | Self::PUNCTUATION.bits;
-    }
-}
-
 /// Determines the behaviour of key repetition
 #[derive(PartialEq)]
 pub enum KeyRepeatKind {
@@ -384,14 +364,9 @@ pub enum KeyRepeatKind {
         rate: u64,
         /// delay (in milisecond) between a key press and the start of repetition
         delay: u64,
-        /// a bitflag of the types of keys to be repeated
-        key_types: RepeatedKeyTypes,
     },
     /// keys will be repeated at a rate and delay set by the wayland server
-    System {
-        /// a bitflag of the types of keys to be repeated
-        key_types: RepeatedKeyTypes,
-    },
+    System,
 }
 
 #[derive(Debug)]
@@ -463,8 +438,6 @@ pub enum Event<'a> {
         ///
         /// will always be `None` on key release events
         utf8: Option<String>,
-        /// identifies the event as original or repeated
-        repeated: bool,
     },
     /// Repetition information advertizing
     RepeatInfo {
@@ -473,6 +446,26 @@ pub enum Event<'a> {
         /// delay (in milisecond) between a key press and the start of repetition
         delay: i32,
     },
+}
+
+/// An event sent at repeated intervals for keys determined by xkb_keymap_key_repeats
+pub struct KeyRepeatEvent {
+    /// serial number of the event
+    pub serial: u32,
+    /// time at which the keypress occured
+    pub time: u32,
+    /// current state of the modifiers
+    pub modifiers: ModifiersState,
+    /// raw value of the key
+    pub rawkey: u32,
+    /// interpreted symbol of the key
+    pub keysym: u32,
+    /// new state of the key
+    pub state: KeyState,
+    /// utf8 interpretation of the entered text
+    ///
+    /// will always be `None` on key release events
+    pub utf8: Option<String>,
 }
 
 /// Implement a keyboard to automatically detect the keymap
@@ -487,7 +480,6 @@ pub enum Event<'a> {
 /// Returns an error if xkbcommon could not be initialized.
 pub fn map_keyboard_auto<Impl>(
     keyboard: NewProxy<wl_keyboard::WlKeyboard>,
-    key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, (Error, NewProxy<wl_keyboard::WlKeyboard>)>
 where
@@ -500,8 +492,7 @@ where
     Ok(implement_kbd(
         keyboard,
         state,
-        key_repeat_kind,
-        Arc::new(Mutex::new(implementation)),
+        implementation,
     ))
 }
 
@@ -518,7 +509,6 @@ where
 pub fn map_keyboard_rmlvo<Impl>(
     keyboard: NewProxy<wl_keyboard::WlKeyboard>,
     rmlvo: RMLVO,
-    key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, (Error, NewProxy<wl_keyboard::WlKeyboard>)>
 where
@@ -558,8 +548,7 @@ where
         Ok(state) => Ok(implement_kbd(
             keyboard,
             state,
-            key_repeat_kind,
-            Arc::new(Mutex::new(implementation)),
+            implementation,
         )),
         Err(error) => return Err((error, keyboard)),
     }
@@ -568,11 +557,226 @@ where
 fn implement_kbd<Impl>(
     kbd: NewProxy<wl_keyboard::WlKeyboard>,
     mut state: KbState,
-    key_repeat_kind: KeyRepeatKind,
-    user_impl: Arc<Mutex<Impl>>,
+    mut user_impl: Impl,
 ) -> Proxy<wl_keyboard::WlKeyboard>
 where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
+{
+    kbd.implement(
+        move |event: wl_keyboard::Event, proxy: Proxy<wl_keyboard::WlKeyboard>| {
+            match event {
+                wl_keyboard::Event::Keymap { format, fd, size } => {
+                    if state.locked {
+                        // state is locked, ignore keymap updates
+                        return;
+                    }
+                    if state.ready() {
+                        // new keymap, we first deinit to free resources
+                        unsafe {
+                            state.de_init();
+                        }
+                    }
+                    match format {
+                        wl_keyboard::KeymapFormat::XkbV1 => unsafe {
+                            state.init_with_fd(fd, size as usize);
+                        },
+                        wl_keyboard::KeymapFormat::NoKeymap => {
+                            // TODO: how to handle this (hopefully never occuring) case?
+                        }
+                    }
+                }
+                wl_keyboard::Event::Enter {
+                    serial,
+                    surface,
+                    keys,
+                } => {
+                    let rawkeys: &[u32] = unsafe {
+                        ::std::slice::from_raw_parts(keys.as_ptr() as *const u32, keys.len() / 4)
+                    };
+                    let (keys, modifiers) = {
+                        let keys: Vec<u32> =
+                            rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
+                        (keys, state.mods_state.clone())
+                    };
+                    user_impl.receive(
+                        Event::Enter {
+                            serial,
+                            surface,
+                            modifiers,
+                            rawkeys,
+                            keysyms: &keys,
+                        },
+                        proxy,
+                    );
+                }
+                wl_keyboard::Event::Leave { serial, surface } => {
+                    user_impl.receive(Event::Leave { serial, surface }, proxy);
+                }
+                wl_keyboard::Event::Key {
+                    serial,
+                    time,
+                    key,
+                    state: key_state,
+                } => {
+                    let sym = state.get_one_sym_raw(key);
+                    let ignore_text = if key_state == wl_keyboard::KeyState::Pressed {
+                        state.compose_feed(sym)
+                            != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
+                    } else {
+                        true
+                    };
+                    let utf8 = if ignore_text {
+                        None
+                    } else if let Some(status) = state.compose_status() {
+                        match status {
+                            ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
+                                state.compose_get_utf8()
+                            }
+                            ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => state.get_utf8_raw(key),
+                            _ => None,
+                        }
+                    } else {
+                        state.get_utf8_raw(key)
+                    };
+                    let modifiers = state.mods_state.clone();
+                    user_impl.receive(
+                        Event::Key {
+                            serial,
+                            time,
+                            modifiers,
+                            rawkey: key,
+                            keysym: sym,
+                            state: key_state,
+                            utf8,
+                        },
+                        proxy,
+                    );
+                }
+                wl_keyboard::Event::Modifiers {
+                    mods_depressed,
+                    mods_latched,
+                    mods_locked,
+                    group,
+                    ..
+                } => state.update_modifiers(mods_depressed, mods_latched, mods_locked, group),
+                wl_keyboard::Event::RepeatInfo { rate, delay } => {
+                    user_impl.receive(Event::RepeatInfo { rate, delay }, proxy);
+                }
+            }
+        },
+    )
+}
+
+/// Implement a keyboard to automatically detect the keymap and send KeyRepeatEvents
+/// at set intervals
+/// 
+/// This requires you to provide an implementation to receive the events after they
+/// have been interpreted with the keymap, as well as an implementation to be called
+/// when key events get repeated at intervals set by the KeyRepeatKind argument.
+///
+/// The keymap information will be loaded from the events sent by the compositor,
+/// as such you need to call this method as soon as you have created the keyboard
+/// to make sure this event does not get lost.
+///
+/// Returns an error if xkbcommon could not be initialized.
+pub fn map_keyboard_auto_with_repeat<Impl, RepeatImpl>(
+    keyboard: NewProxy<wl_keyboard::WlKeyboard>,
+    key_repeat_kind: KeyRepeatKind,
+    implementation: Impl,
+    repeat_implementation: RepeatImpl,
+) -> Result<Proxy<wl_keyboard::WlKeyboard>, (Error, NewProxy<wl_keyboard::WlKeyboard>)>
+where
+    for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
+    RepeatImpl: Fn(KeyRepeatEvent) + Send + 'static,
+{
+    let state = match KbState::new() {
+        Ok(s) => s,
+        Err(e) => return Err((e, keyboard)),
+    };
+    Ok(implement_kbd_with_repeat(
+        keyboard,
+        state,
+        key_repeat_kind,
+        implementation,
+        Arc::new(Mutex::new(repeat_implementation)),
+    ))
+}
+
+/// Implement a keyboard for a predefined keymap and send KeyRepeatEvents at set
+/// intervals
+///
+/// This requires you to provide an implementation to receive the events after they
+/// have been interpreted with the keymap, as well as an implementation to be called
+/// when key events get repeated at intervals set by the KeyRepeatKind argument.
+///
+/// The keymap will be loaded from the provided RMLVO rules. Any keymap provided
+/// by the compositor will be ignored.
+///
+/// Returns an error if xkbcommon could not be initialized or the RMLVO specification
+/// contained invalid values.
+pub fn map_keyboard_rmlvo_with_repeat<Impl, RepeatImpl>(
+    keyboard: NewProxy<wl_keyboard::WlKeyboard>,
+    rmlvo: RMLVO,
+    key_repeat_kind: KeyRepeatKind,
+    implementation: Impl,
+    repeat_implementation: RepeatImpl,
+) -> Result<Proxy<wl_keyboard::WlKeyboard>, (Error, NewProxy<wl_keyboard::WlKeyboard>)>
+where
+    for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
+    RepeatImpl: Fn(KeyRepeatEvent) + Send + 'static,
+{
+    fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
+        s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
+            .map_err(|_| Error::BadNames)
+    }
+
+    fn init_state(rmlvo: RMLVO) -> Result<KbState, Error> {
+        let mut state = KbState::new()?;
+
+        let rules = to_cstring(rmlvo.rules)?;
+        let model = to_cstring(rmlvo.model)?;
+        let layout = to_cstring(rmlvo.layout)?;
+        let variant = to_cstring(rmlvo.variant)?;
+        let options = to_cstring(rmlvo.options)?;
+
+        let xkb_names = ffi::xkb_rule_names {
+            rules: rules.map_or(ptr::null(), |s| s.as_ptr()),
+            model: model.map_or(ptr::null(), |s| s.as_ptr()),
+            layout: layout.map_or(ptr::null(), |s| s.as_ptr()),
+            variant: variant.map_or(ptr::null(), |s| s.as_ptr()),
+            options: options.map_or(ptr::null(), |s| s.as_ptr()),
+        };
+
+        unsafe {
+            state.init_with_rmlvo(xkb_names)?;
+        }
+
+        state.locked = true;
+        Ok(state)
+    }
+
+    match init_state(rmlvo) {
+        Ok(state) => Ok(implement_kbd_with_repeat(
+            keyboard,
+            state,
+            key_repeat_kind,
+            implementation,
+            Arc::new(Mutex::new(repeat_implementation)),
+        )),
+        Err(error) => return Err((error, keyboard)),
+    }
+}
+
+fn implement_kbd_with_repeat<Impl, RepeatImpl>(
+    kbd: NewProxy<wl_keyboard::WlKeyboard>,
+    mut state: KbState,
+    key_repeat_kind: KeyRepeatKind,
+    mut user_impl: Impl,
+    repeat_impl: Arc<Mutex<RepeatImpl>>,
+) -> Proxy<wl_keyboard::WlKeyboard>
+where
+    for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
+    RepeatImpl: Fn(KeyRepeatEvent) + Send + 'static,
 {
     let mut kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
     let mut key_held: Option<u32> = None;
@@ -614,7 +818,7 @@ where
                             rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
                         (keys, state.mods_state.clone())
                     };
-                    user_impl.lock().unwrap().receive(
+                    user_impl.receive(
                         Event::Enter {
                             serial,
                             surface,
@@ -626,10 +830,7 @@ where
                     );
                 }
                 wl_keyboard::Event::Leave { serial, surface } => {
-                    user_impl
-                        .lock()
-                        .unwrap()
-                        .receive(Event::Leave { serial, surface }, proxy);
+                    user_impl.receive(Event::Leave { serial, surface }, proxy);
                 }
                 wl_keyboard::Event::Key {
                     serial,
@@ -657,94 +858,67 @@ where
                     let modifiers = state.mods_state.clone();
 
                     if key_state == wl_keyboard::KeyState::Pressed {
-                        // Check if key is repeatable
-                        let is_repeatable = match utf8.clone() {
-                            Some(utf8) => match key_repeat_kind {
-                                KeyRepeatKind::Fixed { key_types, .. }
-                                | KeyRepeatKind::System { key_types } => {
-                                    let utf8_key = utf8.as_bytes()[0] as char;
-                                    ((key_types.contains(RepeatedKeyTypes::ALPHABETIC)
-                                        && utf8_key.is_alphabetic())
-                                        || (key_types.contains(RepeatedKeyTypes::NUMERIC)
-                                            && utf8_key.is_numeric())
-                                        || (key_types.contains(RepeatedKeyTypes::SPACE)
-                                            && (utf8_key == ' '))
-                                        || (key_types.contains(RepeatedKeyTypes::BACKSPACE)
-                                            && (utf8_key == 8 as char))
-                                        || (key_types.contains(RepeatedKeyTypes::PUNCTUATION)
-                                            && ((utf8_key >= 33 as char && utf8_key <= 47 as char)
-                                                || (utf8_key >= 58 as char
-                                                    && utf8_key <= 64 as char)
-                                                || (utf8_key >= 91 as char
-                                                    && utf8_key <= 96 as char)
-                                                || (utf8_key >= 123 as char
-                                                    && utf8_key <= 126 as char))))
-                                        && key_held.is_none()
-                                }
-                                KeyRepeatKind::None => false,
-                            },
-                            None => false,
-                        };
-
-                        if is_repeatable {
-                            key_held = Some(key);
-                            // Clone variables for the thread
-                            let thread_user_impl = user_impl.clone();
-                            let thread_kill_chan = kill_chan.clone();
-                            let repeat_timing = match key_repeat_kind {
-                                KeyRepeatKind::None => (0, 0),
-                                KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
-                                KeyRepeatKind::System { .. } => {
-                                    *system_repeat_timing.lock().unwrap()
-                                }
-                            };
-                            // Start thread to send key events
-                            thread::spawn(move || {
-                                thread_user_impl.lock().unwrap().receive(
-                                    Event::Key {
-                                        serial,
-                                        time,
-                                        modifiers,
-                                        rawkey: key,
-                                        keysym: sym,
-                                        state: key_state,
-                                        utf8: utf8.clone(),
-                                        repeated: false,
-                                    },
-                                    proxy.clone(),
-                                );
-                                let time_tracker = Instant::now();
-                                // Delay
-                                thread::sleep(Duration::from_millis(repeat_timing.1));
-                                match thread_kill_chan.lock().unwrap().1.try_recv() {
-                                    Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
-                                    _ => {}
-                                }
-                                loop {
-                                    let elapsed_time = time_tracker.elapsed();
-                                    thread_user_impl.lock().unwrap().receive(
-                                        Event::Key {
-                                            serial,
-                                            time: time + elapsed_time.as_secs() as u32 * 1000 + elapsed_time.subsec_millis(),
-                                            modifiers,
-                                            rawkey: key,
-                                            keysym: sym,
-                                            state: key_state,
-                                            utf8: utf8.clone(),
-                                            repeated: true,
+                        match key_repeat_kind {
+                            KeyRepeatKind::Fixed {..} | KeyRepeatKind::System {..} => {
+                                if let Some(utf8) = utf8.clone() {
+                                    key_held = Some(key);
+                                    // Clone variables for the thread
+                                    let thread_kill_chan = kill_chan.clone();
+                                    let thread_repeat_impl = repeat_impl.clone();
+                                    let repeat_timing = match key_repeat_kind {
+                                        KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
+                                        KeyRepeatKind::System { .. } => {
+                                            *system_repeat_timing.lock().unwrap()
                                         },
-                                        proxy.clone()
-                                    );
-                                    // Rate
-                                    thread::sleep(Duration::from_millis(repeat_timing.0));
-                                    match thread_kill_chan.lock().unwrap().1.try_recv() {
-                                        Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
-                                        _ => {}
-                                    }
+                                        _ => (0, 0)
+                                    };
+                                    // Start thread to send key events
+                                    thread::spawn(move || {
+                                        (thread_repeat_impl.lock().unwrap())(
+                                            KeyRepeatEvent {
+                                                serial,
+                                                time,
+                                                modifiers,
+                                                rawkey: key,
+                                                keysym: sym,
+                                                state: key_state,
+                                                utf8: Some(utf8.clone()),
+                                            }
+                                        );
+                                        let time_tracker = Instant::now();
+                                        // Delay
+                                        thread::sleep(Duration::from_millis(repeat_timing.1));
+                                        match thread_kill_chan.lock().unwrap().1.try_recv() {
+                                            Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
+                                            _ => {}
+                                        }
+                                        loop {
+                                            let elapsed_time = time_tracker.elapsed();
+                                            thread_repeat_impl.lock().unwrap()(
+                                                KeyRepeatEvent {
+                                                    serial,
+                                                    time: time + elapsed_time.as_secs() as u32 * 1000 + elapsed_time.subsec_millis(),
+                                                    modifiers,
+                                                    rawkey: key,
+                                                    keysym: sym,
+                                                    state: key_state,
+                                                    utf8: Some(utf8.clone()),
+                                                }
+                                            );
+                                            // Rate
+                                            thread::sleep(Duration::from_millis(repeat_timing.0));
+                                            match thread_kill_chan.lock().unwrap().1.try_recv() {
+                                                Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
+                                                _ => {}
+                                            }
+                                        }
+                                    });
+                                    return
                                 }
-                            });
-                        } else {
-                            user_impl.lock().unwrap().receive(
+                            },
+                            _ => {} 
+                        }
+                        user_impl.receive(
                                 Event::Key {
                                     serial,
                                     time,
@@ -753,17 +927,15 @@ where
                                     keysym: sym,
                                     state: key_state,
                                     utf8: utf8.clone(),
-                                    repeated: false,
                                 },
                                 proxy.clone(),
                             );
-                        }
                     } else if key_held == Some(key) {
                         // If key released then send a kill message to the thread
                         kill_chan.lock().unwrap().0.send(()).unwrap();
                         kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
                         key_held = None;
-                        user_impl.lock().unwrap().receive(
+                        user_impl.receive(
                             Event::Key {
                                 serial,
                                 time,
@@ -772,7 +944,6 @@ where
                                 keysym: sym,
                                 state: key_state,
                                 utf8: utf8.clone(),
-                                repeated: false,
                             },
                             proxy.clone(),
                         );
@@ -786,13 +957,11 @@ where
                     ..
                 } => state.update_modifiers(mods_depressed, mods_latched, mods_locked, group),
                 wl_keyboard::Event::RepeatInfo { rate, delay } => {
-                    user_impl
-                        .lock()
-                        .unwrap()
-                        .receive(Event::RepeatInfo { rate, delay }, proxy);
+                    user_impl.receive(Event::RepeatInfo { rate, delay }, proxy);
                     *system_repeat_timing.lock().unwrap() = (rate as u64, delay as u64);
                 }
             }
         },
     )
 }
+
