@@ -858,9 +858,16 @@ where
                     let modifiers = state.mods_state.clone();
 
                     if key_state == wl_keyboard::KeyState::Pressed {
+                        let repeatable = unsafe {
+                            if (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, sym) == 1 {
+                                true
+                            } else {
+                                false
+                            }
+                        };
                         match key_repeat_kind {
                             KeyRepeatKind::Fixed {..} | KeyRepeatKind::System {..} => {
-                                if let Some(utf8) = utf8.clone() {
+                                if repeatable {
                                     key_held = Some(key);
                                     // Clone variables for the thread
                                     let thread_kill_chan = kill_chan.clone();
@@ -880,7 +887,7 @@ where
                                             rawkey: key,
                                             keysym: sym,
                                             state: key_state,
-                                            utf8: Some(utf8.clone()),
+                                            utf8: utf8.clone(),
                                         },
                                         proxy,
                                     );
@@ -903,7 +910,7 @@ where
                                                     rawkey: key,
                                                     keysym: sym,
                                                     state: key_state,
-                                                    utf8: Some(utf8.clone()),
+                                                    utf8: utf8.clone(),
                                                 }
                                             );
                                             // Rate
