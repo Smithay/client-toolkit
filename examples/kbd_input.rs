@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::keyboard::{map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatKind};
+use sctk::keyboard::{map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatKind, KeyRepeatEvent};
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
@@ -116,8 +116,8 @@ fn main() {
                     }
                 }
             },
-            move |repeat_event| {
-                println!("Repeated key {:?}: {:x}.", repeat_event.state, repeat_event.keysym);
+            move |repeat_event: KeyRepeatEvent, _| {
+                println!("Repeated key {:x}.", repeat_event.keysym);
                 println!(" -> Modifers are {:?}", repeat_event.modifiers);
                 if let Some(txt) = repeat_event.utf8 {
                     println!(" -> Received text \"{}\".", txt);
