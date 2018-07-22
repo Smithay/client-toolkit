@@ -21,5 +21,5 @@ The documentation for the releases can be found on [docs.rs](https://docs.rs/smi
 
 ## Requirements
 
-Requires at least rust 1.20 to be used (using bitflags 1.0 for associated constants), and version 1.12 of the
+Requires at least rust 1.22 to be used (using bitflags 1.0 for associated constants), and version 1.12 of the
 wayland system libraries.
