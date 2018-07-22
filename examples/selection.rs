@@ -84,7 +84,7 @@ fn main() {
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
     let reader2 = reader.clone();
-    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(),  move |event: KbEvent, _| {
+    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
         match event {
             KbEvent::Key {
                 utf8: Some(text), ..
@@ -133,7 +133,7 @@ fn main() {
             Some(WEvent::Refresh) => {
                 window.refresh();
                 window.surface().commit();
-            },
+            }
             Some(WEvent::Configure { new_size, .. }) => {
                 if let Some((w, h)) = new_size {
                     window.resize(w, h);

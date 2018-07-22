@@ -21,8 +21,7 @@ use std::os::unix::io::{FromRawFd, RawFd};
 use std::ptr;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::Duration;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use memmap::MmapOptions;
 
@@ -360,9 +359,9 @@ pub enum KeyRepeatKind {
     None,
     /// keys will be repeated at a set rate and delay
     Fixed {
-        /// rate (in milisecond) at which the repetition should occur
+        /// rate (in milliseconds) at which the repetition should occur
         rate: u64,
-        /// delay (in milisecond) between a key press and the start of repetition
+        /// delay (in milliseconds) between a key press and the start of repetition
         delay: u64,
     },
     /// keys will be repeated at a rate and delay set by the wayland server
@@ -448,7 +447,7 @@ pub enum Event<'a> {
     },
 }
 
-/// An event sent at repeated intervals for keys determined by xkb_keymap_key_repeats
+/// An event sent at repeated intervals for certain keys determined by xkb_keymap_key_repeats
 pub struct KeyRepeatEvent {
     /// serial number of the event
     pub serial: u32,
@@ -489,11 +488,7 @@ where
         Ok(s) => s,
         Err(e) => return Err((e, keyboard)),
     };
-    Ok(implement_kbd(
-        keyboard,
-        state,
-        implementation,
-    ))
+    Ok(implement_kbd(keyboard, state, implementation))
 }
 
 /// Implement a keyboard for a predefined keymap
@@ -545,11 +540,7 @@ where
     }
 
     match init_state(rmlvo) {
-        Ok(state) => Ok(implement_kbd(
-            keyboard,
-            state,
-            implementation,
-        )),
+        Ok(state) => Ok(implement_kbd(keyboard, state, implementation)),
         Err(error) => return Err((error, keyboard)),
     }
 }
@@ -669,10 +660,10 @@ where
 
 /// Implement a keyboard to automatically detect the keymap and send KeyRepeatEvents
 /// at set intervals
-/// 
+///
 /// This requires you to provide an implementation to receive the events after they
 /// have been interpreted with the keymap, as well as an implementation to be called
-/// when key events get repeated at intervals set by the KeyRepeatKind argument.
+/// when KeyRepeatEvents are sent at intervals set by the KeyRepeatKind argument.
 ///
 /// The keymap information will be loaded from the events sent by the compositor,
 /// as such you need to call this method as soon as you have created the keyboard
@@ -707,7 +698,7 @@ where
 ///
 /// This requires you to provide an implementation to receive the events after they
 /// have been interpreted with the keymap, as well as an implementation to be called
-/// when key events get repeated at intervals set by the KeyRepeatKind argument.
+/// when KeyRepeatEvents are sent at intervals set by the KeyRepeatKind argument.
 ///
 /// The keymap will be loaded from the provided RMLVO rules. Any keymap provided
 /// by the compositor will be ignored.
@@ -866,7 +857,7 @@ where
                             }
                         };
                         match key_repeat_kind {
-                            KeyRepeatKind::Fixed {..} | KeyRepeatKind::System {..} => {
+                            KeyRepeatKind::Fixed { .. } | KeyRepeatKind::System { .. } => {
                                 if repeatable {
                                     key_held = Some(key);
                                     // Clone variables for the thread
@@ -876,8 +867,8 @@ where
                                         KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
                                         KeyRepeatKind::System { .. } => {
                                             *system_repeat_timing.lock().unwrap()
-                                        },
-                                        _ => (0, 0)
+                                        }
+                                        _ => (0, 0),
                                     };
                                     user_impl.receive(
                                         Event::Key {
@@ -897,47 +888,49 @@ where
                                         // Delay
                                         thread::sleep(Duration::from_millis(repeat_timing.1));
                                         match thread_kill_chan.lock().unwrap().1.try_recv() {
-                                            Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
+                                            Ok(_) | Err(mpsc::TryRecvError::Disconnected) => return,
                                             _ => {}
                                         }
                                         loop {
                                             let elapsed_time = time_tracker.elapsed();
-                                            thread_repeat_impl.lock().unwrap()(
-                                                KeyRepeatEvent {
-                                                    serial,
-                                                    time: time + elapsed_time.as_secs() as u32 * 1000 + elapsed_time.subsec_nanos() / 1000000,
-                                                    modifiers,
-                                                    rawkey: key,
-                                                    keysym: sym,
-                                                    state: key_state,
-                                                    utf8: utf8.clone(),
-                                                }
-                                            );
+                                            thread_repeat_impl.lock().unwrap()(KeyRepeatEvent {
+                                                serial,
+                                                time: time
+                                                    + elapsed_time.as_secs() as u32 * 1000
+                                                    + elapsed_time.subsec_nanos() / 1000000,
+                                                modifiers,
+                                                rawkey: key,
+                                                keysym: sym,
+                                                state: key_state,
+                                                utf8: utf8.clone(),
+                                            });
                                             // Rate
                                             thread::sleep(Duration::from_millis(repeat_timing.0));
                                             match thread_kill_chan.lock().unwrap().1.try_recv() {
-                                                Ok(_) | Err(mpsc::TryRecvError::Disconnected) => { return },
+                                                Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
+                                                    return
+                                                }
                                                 _ => {}
                                             }
                                         }
                                     });
-                                    return
+                                    return;
                                 }
-                            },
-                            _ => {} 
+                            }
+                            _ => {}
                         }
                         user_impl.receive(
-                                Event::Key {
-                                    serial,
-                                    time,
-                                    modifiers,
-                                    rawkey: key,
-                                    keysym: sym,
-                                    state: key_state,
-                                    utf8: utf8.clone(),
-                                },
-                                proxy.clone(),
-                            );
+                            Event::Key {
+                                serial,
+                                time,
+                                modifiers,
+                                rawkey: key,
+                                keysym: sym,
+                                state: key_state,
+                                utf8: utf8.clone(),
+                            },
+                            proxy.clone(),
+                        );
                     } else if key_held == Some(key) {
                         // If key released then send a kill message to the thread
                         kill_chan.lock().unwrap().0.send(()).unwrap();
@@ -972,4 +965,3 @@ where
         },
     )
 }
-
