@@ -859,7 +859,7 @@ where
 
                     if key_state == wl_keyboard::KeyState::Pressed {
                         let repeatable = unsafe {
-                            if (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, sym) == 1 {
+                            if (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, key + 8) == 1 {
                                 true
                             } else {
                                 false
