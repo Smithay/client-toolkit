@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::data_device::{DataDevice, DndEvent, ReadPipe};
-use sctk::keyboard::{map_keyboard_auto, Event as KbEvent, KeyRepeatKind};
+use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
@@ -84,7 +84,7 @@ fn main() {
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
     let reader2 = reader.clone();
-    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), KeyRepeatKind::None,  move |event: KbEvent, _| {
+    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(),  move |event: KbEvent, _| {
         match event {
             KbEvent::Key {
                 utf8: Some(text), ..
@@ -134,7 +134,7 @@ fn main() {
                 window.refresh();
                 window.surface().commit();
             },
-            Some(WEvent::Configure { new_size, states }) => {
+            Some(WEvent::Configure { new_size, .. }) => {
                 if let Some((w, h)) = new_size {
                     window.resize(w, h);
                     dimensions = (w, h)
@@ -176,7 +176,7 @@ fn redraw(
     let _ = pool.seek(SeekFrom::Start(0));
     {
         let mut writer = BufWriter::new(&mut *pool);
-        for i in 0..(buf_x * buf_y) {
+        for _ in 0..(buf_x * buf_y) {
             let _ = writer.write_u32::<NativeEndian>(0xFF000000);
         }
         let _ = writer.flush();

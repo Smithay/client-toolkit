@@ -872,19 +872,20 @@ where
                                         },
                                         _ => (0, 0)
                                     };
+                                    user_impl.receive(
+                                        Event::Key {
+                                            serial,
+                                            time,
+                                            modifiers,
+                                            rawkey: key,
+                                            keysym: sym,
+                                            state: key_state,
+                                            utf8: Some(utf8.clone()),
+                                        },
+                                        proxy,
+                                    );
                                     // Start thread to send key events
                                     thread::spawn(move || {
-                                        (thread_repeat_impl.lock().unwrap())(
-                                            KeyRepeatEvent {
-                                                serial,
-                                                time,
-                                                modifiers,
-                                                rawkey: key,
-                                                keysym: sym,
-                                                state: key_state,
-                                                utf8: Some(utf8.clone()),
-                                            }
-                                        );
                                         let time_tracker = Instant::now();
                                         // Delay
                                         thread::sleep(Duration::from_millis(repeat_timing.1));
