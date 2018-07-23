@@ -844,8 +844,7 @@ where
                     };
                     let modifiers = state.mods_state.clone();
 
-                    if key_state == wl_keyboard::KeyState::Pressed && key_held.is_none() {
-                        key_held = Some(key);
+                    if key_state == wl_keyboard::KeyState::Pressed {
                         let repeatable = unsafe {
                             if (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, key + 8) == 1 {
                                 true
@@ -856,6 +855,12 @@ where
                         match key_repeat_kind {
                             KeyRepeatKind::Fixed { .. } | KeyRepeatKind::System { .. } => {
                                 if repeatable {
+                                    if key_held.is_some() {
+                                        kill_chan.lock().unwrap().0.send(()).unwrap();
+                                        key_held = Some(key);
+                                    } else {
+                                        key_held = Some(key);
+                                    }
                                     // Clone variables for the thread
                                     let thread_kill_chan = kill_chan.clone();
                                     let thread_repeat_impl = repeat_impl.clone();
@@ -916,22 +921,23 @@ where
                             }
                             _ => {}
                         }
-                        user_impl.receive(
-                            Event::Key {
-                                serial,
-                                time,
-                                modifiers,
-                                rawkey: key,
-                                keysym: sym,
-                                state: key_state,
-                                utf8: utf8.clone(),
-                            },
-                            proxy.clone(),
-                        );
+                        if key_held.is_none() {
+                            user_impl.receive(
+                                Event::Key {
+                                    serial,
+                                    time,
+                                    modifiers,
+                                    rawkey: key,
+                                    keysym: sym,
+                                    state: key_state,
+                                    utf8: utf8.clone(),
+                                },
+                                proxy.clone(),
+                            );
+                        }
                     } else if key_held == Some(key) {
                         // If key released then send a kill message to the thread
                         kill_chan.lock().unwrap().0.send(()).unwrap();
-                        kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
                         key_held = None;
                         user_impl.receive(
                             Event::Key {
