@@ -765,7 +765,7 @@ where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
     RepeatImpl: Implementation<Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent> + Send
 {
-    let mut kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
+    let kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
     let mut key_held: Option<u32> = None;
     let system_repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
 
@@ -845,100 +845,71 @@ where
                     let modifiers = state.mods_state.clone();
 
                     if key_state == wl_keyboard::KeyState::Pressed {
-                        let repeatable = unsafe {
-                            if (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, key + 8) == 1 {
-                                true
-                            } else {
-                                false
+                        user_impl.receive(
+                            Event::Key {
+                                serial,
+                                time,
+                                modifiers,
+                                rawkey: key,
+                                keysym: sym,
+                                state: key_state,
+                                utf8: utf8.clone(),
+                            },
+                            proxy.clone(),
+                        );
+                        // Check with xkb if key is repeatable
+                        if unsafe { (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, key + 8) == 1 } {
+                            if key_held.is_some() {
+                                // If a key is being held then kill its repeat thread
+                                kill_chan.lock().unwrap().0.send(()).unwrap();
                             }
-                        };
-                        match key_repeat_kind {
-                            KeyRepeatKind::Fixed { .. } | KeyRepeatKind::System { .. } => {
-                                if repeatable {
-                                    if key_held.is_some() {
-                                        kill_chan.lock().unwrap().0.send(()).unwrap();
-                                        key_held = Some(key);
-                                    } else {
-                                        key_held = Some(key);
-                                    }
-                                    // Clone variables for the thread
-                                    let thread_kill_chan = kill_chan.clone();
-                                    let thread_repeat_impl = repeat_impl.clone();
-                                    let repeat_timing = match key_repeat_kind {
-                                        KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
-                                        KeyRepeatKind::System { .. } => {
-                                            *system_repeat_timing.lock().unwrap()
-                                        }
-                                        _ => (0, 0),
-                                    };
-                                    user_impl.receive(
-                                        Event::Key {
-                                            serial,
-                                            time,
+                            key_held = Some(key);
+                            // Clone variables for the thread
+                            let thread_kill_chan = kill_chan.clone();
+                            let thread_repeat_impl = repeat_impl.clone();
+                            let repeat_timing = match key_repeat_kind {
+                                KeyRepeatKind::Fixed { rate, delay, .. } => (rate, delay),
+                                KeyRepeatKind::System { .. } => *system_repeat_timing.lock().unwrap()
+                            };
+                            // Start thread to send key events
+                            thread::spawn(move || {
+                                let time_tracker = Instant::now();
+                                // Delay
+                                thread::sleep(Duration::from_millis(repeat_timing.1));
+                                match thread_kill_chan.lock().unwrap().1.try_recv() {
+                                    Ok(_) | Err(mpsc::TryRecvError::Disconnected) => return,
+                                    _ => {}
+                                }
+                                loop {
+                                    let elapsed_time = time_tracker.elapsed();
+                                    thread_repeat_impl.lock().unwrap().receive(
+                                        KeyRepeatEvent {
+                                            time: time
+                                                + elapsed_time.as_secs() as u32 * 1000
+                                                + elapsed_time.subsec_nanos() / 1000000,
                                             modifiers,
                                             rawkey: key,
                                             keysym: sym,
-                                            state: key_state,
                                             utf8: utf8.clone(),
                                         },
                                         proxy.clone(),
                                     );
-                                    // Start thread to send key events
-                                    thread::spawn(move || {
-                                        let time_tracker = Instant::now();
-                                        // Delay
-                                        thread::sleep(Duration::from_millis(repeat_timing.1));
-                                        match thread_kill_chan.lock().unwrap().1.try_recv() {
-                                            Ok(_) | Err(mpsc::TryRecvError::Disconnected) => return,
-                                            _ => {}
+                                    // Rate
+                                    thread::sleep(Duration::from_millis(repeat_timing.0));
+                                    match thread_kill_chan.lock().unwrap().1.try_recv() {
+                                        Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
+                                            return
                                         }
-                                        loop {
-                                            let elapsed_time = time_tracker.elapsed();
-                                            thread_repeat_impl.lock().unwrap().receive(
-                                                KeyRepeatEvent {
-                                                    time: time
-                                                        + elapsed_time.as_secs() as u32 * 1000
-                                                        + elapsed_time.subsec_nanos() / 1000000,
-                                                    modifiers,
-                                                    rawkey: key,
-                                                    keysym: sym,
-                                                    utf8: utf8.clone(),
-                                                },
-                                                proxy.clone(),
-                                            );
-                                            // Rate
-                                            thread::sleep(Duration::from_millis(repeat_timing.0));
-                                            match thread_kill_chan.lock().unwrap().1.try_recv() {
-                                                Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
-                                                    return
-                                                }
-                                                _ => {}
-                                            }
-                                        }
-                                    });
-                                    return;
+                                        _ => {}
+                                    }
                                 }
-                            }
-                            _ => {}
+                            });
                         }
-                        if key_held.is_none() {
-                            user_impl.receive(
-                                Event::Key {
-                                    serial,
-                                    time,
-                                    modifiers,
-                                    rawkey: key,
-                                    keysym: sym,
-                                    state: key_state,
-                                    utf8: utf8.clone(),
-                                },
-                                proxy.clone(),
-                            );
+                    } else {
+                        if key_held == Some(key) {
+                            kill_chan.lock().unwrap().0.send(()).unwrap();
+                            key_held = None;
                         }
-                    } else if key_held == Some(key) {
-                        // If key released then send a kill message to the thread
-                        kill_chan.lock().unwrap().0.send(()).unwrap();
-                        key_held = None;
                         user_impl.receive(
                             Event::Key {
                                 serial,
