@@ -541,7 +541,7 @@ where
 
 fn implement_kbd<Impl>(
     kbd: NewProxy<wl_keyboard::WlKeyboard>,
-    mut state: Arc<Mutex<KbState>>,
+    state: Arc<Mutex<KbState>>,
     key_repeat_kind: Option<KeyRepeatKind>,
     mut event_impl: Impl,
     repeat_impl: Option<Arc<Mutex<Implementation<Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent> + Send>>>,
