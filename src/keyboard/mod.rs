@@ -550,7 +550,7 @@ where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
 {
     let kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
-    let state_chan = Arc::new(Mutex::new(mpsc::channel::<Arc<Mutex<KbState>>>()));
+    let state_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
     let mut key_held: Option<u32> = None;
     let system_repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
 
@@ -613,24 +613,26 @@ where
                     state: key_state,
                 } => {
                     // Get the values to generate a key event
-                    let mut state = state.lock().unwrap();
-                    let sym = state.get_one_sym_raw(key);
-                    let utf8 = if state.compose_feed(sym)
-                        != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
-                    {
-                        None
-                    } else if let Some(status) = state.compose_status() {
-                        match status {
-                            ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
-                                state.compose_get_utf8()
+                    let sym = state.lock().unwrap().get_one_sym_raw(key);
+                    let utf8 = { 
+                        let mut state = state.lock().unwrap();
+                        if state.compose_feed(sym)
+                            != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
+                        {
+                            None
+                        } else if let Some(status) = state.compose_status() {
+                            match status {
+                                ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
+                                    state.compose_get_utf8()
+                                }
+                                ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => state.get_utf8_raw(key),
+                                _ => None,
                             }
-                            ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => state.get_utf8_raw(key),
-                            _ => None,
+                        } else {
+                            state.get_utf8_raw(key)
                         }
-                    } else {
-                        state.get_utf8_raw(key)
                     };
-                    let modifiers = state.mods_state.clone();
+                    let modifiers = state.lock().unwrap().mods_state.clone();
 
                     if key_state == wl_keyboard::KeyState::Pressed {
                         event_impl.receive(
@@ -647,7 +649,7 @@ where
                         );
                         if let Some(repeat_impl) = repeat_impl.clone() {
                             // Check with xkb if key is repeatable
-                            if unsafe { (XKBH.xkb_keymap_key_repeats)(state.xkb_keymap, key + 8) == 1 } {
+                            if unsafe { (XKBH.xkb_keymap_key_repeats)(state.lock().unwrap().xkb_keymap, key + 8) == 1 } {
                                 if key_held.is_some() {
                                     // If a key is being held then kill its repeat thread
                                     kill_chan.lock().unwrap().0.send(()).unwrap();
@@ -656,6 +658,7 @@ where
                                 // Clone variables for the thread
                                 let thread_kill_chan = kill_chan.clone();
                                 let thread_state_chan = state_chan.clone();
+                                let thread_state = state.clone();
                                 let thread_repeat_impl = repeat_impl.clone();
                                 let repeat_timing = match key_repeat_kind {
                                     Some(KeyRepeatKind::Fixed { rate, delay, .. }) => (rate, delay),
@@ -677,27 +680,29 @@ where
 
                                     loop {
                                         match thread_state_chan.lock().unwrap().1.try_recv() {
-                                            Ok(new_state) => {
-                                                let mut new_state = new_state.lock().unwrap();
-                                                thread_sym = new_state.get_one_sym_raw(key);
-                                                thread_utf8 = if new_state.compose_feed(sym)
-                                                    != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
-                                                {
-                                                    None
-                                                } else if let Some(status) = new_state.compose_status() {
-                                                    match status {
-                                                        ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
-                                                            new_state.compose_get_utf8()
+                                            Ok(_) => {
+                                                thread_sym = thread_state.lock().unwrap().get_one_sym_raw(key);
+                                                thread_utf8 = { 
+                                                    let mut thread_state = thread_state.lock().unwrap();
+                                                    if thread_state.compose_feed(sym)
+                                                        != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
+                                                    {
+                                                        None
+                                                    } else if let Some(status) = thread_state.compose_status() {
+                                                        match status {
+                                                            ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
+                                                                thread_state.compose_get_utf8()
+                                                            }
+                                                            ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => thread_state.get_utf8_raw(key),
+                                                            _ => None,
                                                         }
-                                                        ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => new_state.get_utf8_raw(key),
-                                                        _ => None,
+                                                    } else {
+                                                        thread_state.get_utf8_raw(key)
                                                     }
-                                                } else {
-                                                    new_state.get_utf8_raw(key)
                                                 };
-                                                thread_modifiers = new_state.mods_state.clone();
-                                            },
-                                            _ => {}
+                                                thread_modifiers = thread_state.lock().unwrap().mods_state.clone();
+                                            }
+                                            _ => {},
                                         }
                                         let elapsed_time = time_tracker.elapsed();
                                         thread_repeat_impl.lock().unwrap().receive(
@@ -751,7 +756,7 @@ where
                     ..
                 } => {
                     state.lock().unwrap().update_modifiers(mods_depressed, mods_latched, mods_locked, group);
-                    state_chan.lock().unwrap().0.send(state.clone()).unwrap();
+                    state_chan.lock().unwrap().0.send(()).unwrap();
                 },
                 wl_keyboard::Event::RepeatInfo { rate, delay } => {
                     event_impl.receive(Event::RepeatInfo { rate, delay }, proxy);
