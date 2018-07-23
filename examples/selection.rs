@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::data_device::{DataDevice, DndEvent, ReadPipe};
-use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
+use sctk::keyboard::{map_keyboard_auto, Event as KbEvent, KeyState};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
@@ -87,9 +87,10 @@ fn main() {
     let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
         match event {
             KbEvent::Key {
+                state,
                 utf8: Some(text), ..
             } => {
-                if text == "p" {
+                if text == "p" && state == KeyState::Pressed {
                     // pressed the 'p' key, try to read contents !
                     device.with_selection(|offer| {
                         if let Some(offer) = offer {
