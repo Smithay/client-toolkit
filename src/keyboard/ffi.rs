@@ -213,6 +213,7 @@ functions:
     fn xkb_keymap_ref(*mut xkb_keymap) -> *mut xkb_keymap,
     fn xkb_keymap_unref(*mut xkb_keymap) -> (),
     fn xkb_keymap_get_as_string(*mut xkb_keymap, xkb_keymap_format) -> *const c_char,
+    fn xkb_keymap_key_repeats(*mut xkb_keymap, xkb_keycode_t) -> c_int,
 
     fn xkb_state_new(*mut xkb_keymap) -> *mut xkb_state,
     fn xkb_state_ref(*mut xkb_state) -> *mut xkb_state,

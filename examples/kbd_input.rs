@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::keyboard::{map_keyboard_auto, Event as KbEvent};
+use sctk::keyboard::{map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatKind, KeyRepeatEvent};
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
@@ -80,41 +80,50 @@ fn main() {
 
     window.new_seat(&seat);
 
-    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
-        match event {
-            KbEvent::Enter {
-                modifiers, keysyms, ..
-            } => {
-                println!(
-                    "Gained focus while {} keys pressed and modifiers are {:?}.",
-                    keysyms.len(),
-                    modifiers
-                );
-            }
-            KbEvent::Leave { .. } => {
-                println!("Lost focus.");
-            }
-            KbEvent::Key {
-                keysym,
-                state,
-                utf8,
-                modifiers,
-                ..
-            } => {
-                println!("Key {:?}: {:x}.", state, keysym);
-                println!(" -> Modifers are {:?}", modifiers);
-                if let Some(txt) = utf8 {
-                    println!(" -> Received text \"{}\".", txt,);
+    let _keyboard = map_keyboard_auto_with_repeat(seat.get_keyboard().unwrap(), KeyRepeatKind::System, 
+            move |event: KbEvent, _| {
+                match event {
+                    KbEvent::Enter {
+                        modifiers, keysyms, ..
+                    } => {
+                        println!(
+                            "Gained focus while {} keys pressed and modifiers are {:?}.",
+                            keysyms.len(),
+                            modifiers
+                        );
+                    }
+                    KbEvent::Leave { .. } => {
+                        println!("Lost focus.");
+                    }
+                    KbEvent::Key {
+                        keysym,
+                        state,
+                        utf8,
+                        modifiers,
+                        ..
+                    } => {
+                        println!("Key {:?}: {:x}.", state, keysym);
+                        println!(" -> Modifers are {:?}", modifiers);
+                        if let Some(txt) = utf8 {
+                            println!(" -> Received text \"{}\".", txt);
+                        }
+                    }
+                    KbEvent::RepeatInfo { rate, delay } => {
+                        println!(
+                        "Received repeat info: start repeating every {}ms after an initial delay of {}ms",
+                        rate, delay
+                    );
+                    }
+                }
+            },
+            move |repeat_event: KeyRepeatEvent, _| {
+                println!("Repeated key {:x}.", repeat_event.keysym);
+                println!(" -> Modifers are {:?}", repeat_event.modifiers);
+                if let Some(txt) = repeat_event.utf8 {
+                    println!(" -> Received text \"{}\".", txt);
                 }
             }
-            KbEvent::RepeatInfo { rate, delay } => {
-                println!(
-                "Received repeat info: start repeating every {}ms after an initial delay of {}ms",
-                rate, delay
-            );
-            }
-        }
-    });
+    );
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell
