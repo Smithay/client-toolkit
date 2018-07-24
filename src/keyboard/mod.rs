@@ -334,6 +334,10 @@ impl KbState {
         Ok(())
     }
 
+    unsafe fn key_repeats(&mut self, xkb_keycode_t: ffi::xkb_keycode_t) -> bool {
+        (XKBH.xkb_keymap_key_repeats)(self.xkb_keymap, xkb_keycode_t) == 1
+    }
+
     #[inline]
     fn ready(&self) -> bool {
         !self.xkb_state.is_null()
@@ -456,8 +460,6 @@ pub struct KeyRepeatEvent {
     /// interpreted symbol of the key
     pub keysym: u32,
     /// utf8 interpretation of the entered text
-    ///
-    /// will always be `None` on key release events
     pub utf8: Option<String>,
 }
 
@@ -482,7 +484,7 @@ where
         Ok(s) => s,
         Err(e) => return Err((e, keyboard)),
     };
-    Ok(implement_kbd(keyboard, Arc::new(Mutex::new(state)), None, implementation, None))
+    Ok(implement_kbd(keyboard, state, implementation, None))
 }
 
 /// Implement a keyboard for a predefined keymap
@@ -534,21 +536,28 @@ where
     }
 
     match init_state(rmlvo) {
-        Ok(state) => Ok(implement_kbd(keyboard, Arc::new(Mutex::new(state)), None, implementation, None)),
+        Ok(state) => Ok(implement_kbd(keyboard, state, implementation, None)),
         Err(error) => return Err((error, keyboard)),
     }
 }
 
 fn implement_kbd<Impl>(
     kbd: NewProxy<wl_keyboard::WlKeyboard>,
-    state: Arc<Mutex<KbState>>,
-    key_repeat_kind: Option<KeyRepeatKind>,
+    state: KbState,
     mut event_impl: Impl,
-    repeat_impl: Option<Arc<Mutex<Implementation<Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent> + Send>>>,
+    repeat: Option<(KeyRepeatKind, Arc<Mutex<Implementation<Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent> + Send>>)>,
 ) -> Proxy<wl_keyboard::WlKeyboard>
 where
     for<'a> Impl: Implementation<Proxy<wl_keyboard::WlKeyboard>, Event<'a>> + Send,
 {
+    let safe_state = Arc::new(Mutex::new(state));
+    let (key_repeat_kind, repeat_impl) = {
+        if let Some(repeat) = repeat {
+            (Some(repeat.0), Some(repeat.1)) 
+        } else {
+            (None, None)
+        }
+    };
     let kill_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
     let state_chan = Arc::new(Mutex::new(mpsc::channel::<()>()));
     let mut key_held: Option<u32> = None;
@@ -556,9 +565,9 @@ where
 
     kbd.implement(
         move |event: wl_keyboard::Event, proxy: Proxy<wl_keyboard::WlKeyboard>| {
+            let mut state = safe_state.lock().unwrap();
             match event {
                 wl_keyboard::Event::Keymap { format, fd, size } => {
-                    let mut state = state.lock().unwrap();
                     if state.locked {
                         // state is locked, ignore keymap updates
                         return;
@@ -587,7 +596,6 @@ where
                         ::std::slice::from_raw_parts(keys.as_ptr() as *const u32, keys.len() / 4)
                     };
                     let (keys, modifiers) = {
-                        let mut state = state.lock().unwrap();
                         let keys: Vec<u32> =
                             rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
                         (keys, state.mods_state.clone())
@@ -613,9 +621,8 @@ where
                     state: key_state,
                 } => {
                     // Get the values to generate a key event
-                    let sym = state.lock().unwrap().get_one_sym_raw(key);
+                    let sym = state.get_one_sym_raw(key);
                     let utf8 = { 
-                        let mut state = state.lock().unwrap();
                         if state.compose_feed(sym)
                             != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
                         {
@@ -632,7 +639,7 @@ where
                             state.get_utf8_raw(key)
                         }
                     };
-                    let modifiers = state.lock().unwrap().mods_state.clone();
+                    let modifiers = state.mods_state.clone();
 
                     if key_state == wl_keyboard::KeyState::Pressed {
                         event_impl.receive(
@@ -649,7 +656,7 @@ where
                         );
                         if let Some(repeat_impl) = repeat_impl.clone() {
                             // Check with xkb if key is repeatable
-                            if unsafe { (XKBH.xkb_keymap_key_repeats)(state.lock().unwrap().xkb_keymap, key + 8) == 1 } {
+                            if unsafe { state.key_repeats(key + 8) } {
                                 if key_held.is_some() {
                                     // If a key is being held then kill its repeat thread
                                     kill_chan.lock().unwrap().0.send(()).unwrap();
@@ -658,7 +665,7 @@ where
                                 // Clone variables for the thread
                                 let thread_kill_chan = kill_chan.clone();
                                 let thread_state_chan = state_chan.clone();
-                                let thread_state = state.clone();
+                                let thread_state = safe_state.clone();
                                 let thread_repeat_impl = repeat_impl.clone();
                                 let repeat_timing = match key_repeat_kind {
                                     Some(KeyRepeatKind::Fixed { rate, delay, .. }) => (rate, delay),
@@ -681,26 +688,10 @@ where
                                     loop {
                                         match thread_state_chan.lock().unwrap().1.try_recv() {
                                             Ok(_) => {
-                                                thread_sym = thread_state.lock().unwrap().get_one_sym_raw(key);
-                                                thread_utf8 = { 
-                                                    let mut thread_state = thread_state.lock().unwrap();
-                                                    if thread_state.compose_feed(sym)
-                                                        != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
-                                                    {
-                                                        None
-                                                    } else if let Some(status) = thread_state.compose_status() {
-                                                        match status {
-                                                            ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
-                                                                thread_state.compose_get_utf8()
-                                                            }
-                                                            ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => thread_state.get_utf8_raw(key),
-                                                            _ => None,
-                                                        }
-                                                    } else {
-                                                        thread_state.get_utf8_raw(key)
-                                                    }
-                                                };
-                                                thread_modifiers = thread_state.lock().unwrap().mods_state.clone();
+                                                let mut thread_state = thread_state.lock().unwrap();
+                                                thread_sym = thread_state.get_one_sym_raw(key);
+                                                thread_utf8 = thread_state.get_utf8_raw(key);
+                                                thread_modifiers = thread_state.mods_state.clone();
                                             }
                                             _ => {},
                                         }
@@ -755,8 +746,10 @@ where
                     group,
                     ..
                 } => {
-                    state.lock().unwrap().update_modifiers(mods_depressed, mods_latched, mods_locked, group);
-                    state_chan.lock().unwrap().0.send(()).unwrap();
+                    state.update_modifiers(mods_depressed, mods_latched, mods_locked, group);
+                    if key_held.is_some() {
+                        state_chan.lock().unwrap().0.send(()).unwrap();
+                    }
                 },
                 wl_keyboard::Event::RepeatInfo { rate, delay } => {
                     event_impl.receive(Event::RepeatInfo { rate, delay }, proxy);
@@ -774,6 +767,7 @@ where
 /// have been interpreted with the keymap. You must also provide an implementation to be called
 /// when KeyRepeatEvents are sent at intervals set by the KeyRepeatKind argument, this
 /// implementation can be called at anytime, independent of the dispatching of wayland events.
+/// The dispatching of KeyRepeatEvents is handled with the spawning of threads.
 ///
 /// The keymap information will be loaded from the events sent by the compositor,
 /// as such you need to call this method as soon as you have created the keyboard
@@ -796,10 +790,9 @@ where
     };
     Ok(implement_kbd(
         keyboard,
-        Arc::new(Mutex::new(state)),
-        Some(key_repeat_kind),
+        state,
         implementation,
-        Some(Arc::new(Mutex::new(repeat_implementation))),
+        Some((key_repeat_kind, Arc::new(Mutex::new(repeat_implementation)))),
     ))
 }
 
@@ -810,6 +803,7 @@ where
 /// have been interpreted with the keymap. You must also provide an implementation to be called
 /// when KeyRepeatEvents are sent at intervals set by the KeyRepeatKind argument, this
 /// implementation can be called at anytime, independent of the dispatching of wayland events.
+/// The dispatching of KeyRepeatEvents is handled with the spawning of threads.
 ///
 /// The keymap will be loaded from the provided RMLVO rules. Any keymap provided
 /// by the compositor will be ignored.
@@ -860,10 +854,9 @@ where
     match init_state(rmlvo) {
         Ok(state) => Ok(implement_kbd(
             keyboard,
-            Arc::new(Mutex::new(state)),
-            Some(key_repeat_kind),
+            state,
             implementation,
-            Some(Arc::new(Mutex::new(repeat_implementation))),
+            Some((key_repeat_kind, Arc::new(Mutex::new(repeat_implementation)))),
         )),
         Err(error) => return Err((error, keyboard)),
     }
