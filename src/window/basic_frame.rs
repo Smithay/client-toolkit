@@ -42,6 +42,8 @@ mod colors {
     pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0xB0, 0xFF];
     pub const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
     pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
+    pub const BUTTON_OUTLINE: &[u8] = &[0x90, 0x90, 0x90, 0xFF];
+    pub const BUTTON_HOVER_SHADE: &[u8] = &[0x8a, 0x8a, 0x8a, 0xFF];
 }
 #[cfg(target_endian = "big")]
 mod colors {
@@ -54,6 +56,8 @@ mod colors {
     pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0xB0, 0x40];
     pub const YELLOW_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0xFF, 0x40];
     pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0xFF, 0x80, 0x80, 0x20];
+    pub const BUTTON_OUTLINE: &[u8] = &[0xFF, 0xb0, 0xb0, 0xb0];
+    pub const BUTTON_HOVER_SHADE: &[u8] = &[0xFF, 0x90, 0x90, 0x90];
 }
 
 /*
@@ -186,22 +190,22 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
     if (w >= 24)
         && (x >= (w - 24 - BUTTON_SPACE) as f64)
         && (x <= (w - BUTTON_SPACE) as f64)
-        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
-        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
+        && (y <= HEADER_SIZE as f64 / 2.0 + 12.0)
+        && (y >= HEADER_SIZE as f64 / 2.0 - 12.0)
     {
         Location::Button(UIButton::Close)
     } else if (w >= 56)
         && (x >= (w - 56 - BUTTON_SPACE) as f64)
         && (x <= (w - 32 - BUTTON_SPACE) as f64)
-        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
-        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
+        && (y <= HEADER_SIZE as f64 / 2.0 + 12.0)
+        && (y >= HEADER_SIZE as f64 / 2.0 - 12.0)
     {
         Location::Button(UIButton::Maximize)
     } else if (w >= 88)
         && (x >= (w - 88 - BUTTON_SPACE) as f64)
         && (x <= (w - 64 - BUTTON_SPACE) as f64)
-        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
-        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
+        && (y <= HEADER_SIZE as f64 / 2.0 + 12.0)
+        && (y >= HEADER_SIZE as f64 / 2.0 - 12.0)
     {
         Location::Button(UIButton::Minimize)
     } else {
@@ -466,6 +470,7 @@ impl Frame for BasicFrame {
                             }
                         })
                         .collect(),
+                    self.active,
                 );
                 let _ = writer.flush();
             }
@@ -728,12 +733,19 @@ fn draw_buttons(
     width: u32,
     maximizable: bool,
     mouses: Vec<Location>,
+    active: bool,
 ) {
     // draw up to 3 buttons, depending on the width of the window
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
     // buttons are 24x16
     let ds = BORDER_SIZE;
+
+    let background_color = if active {
+        colors::ACTIVE_BORDER
+    } else {
+        colors::INACTIVE_BORDER
+    };
 
     if width >= 24 + 2 * ds {
         // draw the red button
@@ -746,11 +758,27 @@ fn draw_buttons(
             colors::RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 12) + width - 24 - BUTTON_SPACE)) as u64,
         ));
-        for _ in 0..16 {
-            for _ in 0..24 {
-                let _ = pool.write(color);
+        for y in 0..24 {
+            for x in 0..24 {
+                if (y >= 9 && y <= 17 && x >= 8 && x <= 16)
+                    && ((y - 1 >= x - 1 && y - 1 <= x + 1)
+                        || (y - 1 >= 24 - x - 1 && y - 1 <= 24 - x + 1))
+                {
+                    let _ = pool.write(&[0, 0, 0, 255]);
+                } else if active && mouses
+                    .iter()
+                    .any(|&l| l == Location::Button(UIButton::Close))
+                {
+                    if y == 0 || x == 0 || y == 23 || x == 23 {
+                        let _ = pool.write(colors::BUTTON_OUTLINE);
+                    } else {
+                        let _ = pool.write(colors::BUTTON_HOVER_SHADE);
+                    }
+                } else {
+                    let _ = pool.write(background_color);
+                }
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
@@ -769,11 +797,28 @@ fn draw_buttons(
             colors::YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 12) + width - 56 - BUTTON_SPACE)) as u64,
         ));
-        for _ in 0..16 {
-            for _ in 0..24 {
-                let _ = pool.write(color);
+        for y in 0..24 {
+            for x in 0..24 {
+                if y >= 11 && y < 17 && x >= 9 && x < 15 {
+                    if y >= 13 && y < 15 && x >= 11 && x < 13 {
+                        let _ = pool.write(background_color);
+                    } else {
+                        let _ = pool.write(&[0, 0, 0, 255]);
+                    }
+                } else if active && mouses
+                    .iter()
+                    .any(|&l| l == Location::Button(UIButton::Maximize))
+                {
+                    if y == 0 || x == 0 || y == 23 || x == 23 {
+                        let _ = pool.write(colors::BUTTON_OUTLINE);
+                    } else {
+                        let _ = pool.write(colors::BUTTON_HOVER_SHADE);
+                    }
+                } else {
+                    let _ = pool.write(background_color);
+                }
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
@@ -790,11 +835,24 @@ fn draw_buttons(
             colors::GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
+            4 * ((width * (HEADER_SIZE / 2 - 12) + width - 88 - BUTTON_SPACE)) as u64,
         ));
-        for _ in 0..16 {
-            for _ in 0..24 {
-                let _ = pool.write(color);
+        for y in 0..24 {
+            for x in 0..24 {
+                if y >= 16 && y < 18 && x >= 8 && x < 16 {
+                    let _ = pool.write(&[0, 0, 0, 255]);
+                } else if active && mouses
+                    .iter()
+                    .any(|&l| l == Location::Button(UIButton::Minimize))
+                {
+                    if y == 0 || x == 0 || y == 23 || x == 23 {
+                        let _ = pool.write(colors::BUTTON_OUTLINE);
+                    } else {
+                        let _ = pool.write(colors::BUTTON_HOVER_SHADE);
+                    }
+                } else {
+                    let _ = pool.write(background_color);
+                }
             }
             let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
         }
