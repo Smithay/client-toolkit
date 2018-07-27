@@ -89,7 +89,8 @@ fn main() {
         match event {
             KbEvent::Key {
                 state,
-                utf8: Some(text), ..
+                utf8: Some(text),
+                ..
             } => {
                 if text == "p" && state == KeyState::Pressed {
                     // pressed the 'p' key, try to read contents !
