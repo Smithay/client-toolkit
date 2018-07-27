@@ -82,7 +82,8 @@ struct WindowInner<F> {
 pub struct Window<F: Frame> {
     frame: Arc<Mutex<F>>,
     surface: Proxy<wl_surface::WlSurface>,
-    decoration: Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
+    decoration: Mutex<Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>>,
+    decoration_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
     shell_surface: Arc<Box<shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
 }
@@ -116,8 +117,8 @@ impl<F: Frame + 'static> Window<F> {
         )
     }
 
-    /// Create a new window wrapping a given wayland surface as its main content and using
-    /// server decorations if available
+    /// Create a new window wrapping a given wayland surface as its main content and
+    /// following the compositor's preference regarding server-side decorations
     ///
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
@@ -234,11 +235,39 @@ impl<F: Frame + 'static> Window<F> {
             decorated: true,
         });
 
-        let decoration_frame = frame.clone();
-        let decoration_inner = inner.clone();
+        let window = Window {
+            frame,
+            shell_surface,
+            decoration: Mutex::new(None),
+            decoration_mgr: decoration_mgr.cloned(),
+            surface,
+            inner,
+        };
+
         // init decoration if applicable
-        let decoration = match (shell_surface.get_xdg(), decoration_mgr) {
-            (Some(toplevel), Some(mgr)) => mgr.get_toplevel_decoration(toplevel).ok().map(
+        {
+            let mut decoration = window.decoration.lock().unwrap();
+            window.ensure_decoration(&mut decoration);
+        }
+
+        Ok(window)
+    }
+
+    fn ensure_decoration(&self, decoration: &mut Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>) {
+        if self.decoration_mgr.is_none() {
+            return;
+        }
+
+        if let Some(ref decoration) = *decoration {
+            if decoration.is_alive() {
+                return;
+            }
+        }
+
+        let decoration_frame = self.frame.clone();
+        let decoration_inner = self.inner.clone();
+        *decoration = match (self.shell_surface.get_xdg(), &self.decoration_mgr) {
+            (Some(toplevel), &Some(ref mgr)) => mgr.get_toplevel_decoration(toplevel).ok().map(
                 move |newdec| {
                     newdec.implement(move |event, _| {
                         use self::zxdg_toplevel_decoration_v1::{Event, Mode};
@@ -262,14 +291,6 @@ impl<F: Frame + 'static> Window<F> {
             ),
             _ => None,
         };
-
-        Ok(Window {
-            frame,
-            shell_surface,
-            decoration,
-            surface,
-            inner,
-        })
     }
 
     /// Notify this window that a new seat is accessible
@@ -324,16 +345,17 @@ impl<F: Frame + 'static> Window<F> {
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
     pub fn set_decorate(&self, decorate: bool) {
-        use self::zxdg_toplevel_decoration_v1::Mode;
         self.frame.lock().unwrap().set_hidden(!decorate);
-        if let Some(ref dec) = self.decoration {
+        let mut decoration_guard = self.decoration.lock().unwrap();
+        self.ensure_decoration(&mut decoration_guard);
+        if let Some(ref dec) = *decoration_guard {
             if decorate {
                 // let the server decide decorations
                 dec.unset_mode();
             } else {
-                // we must be the decorators, to be able to not
-                // show any decoration
-                dec.set_mode(Mode::ClientSide);
+                // destroy the decoraiton object, so that the server does not
+                // decorate us
+                dec.destroy();
             }
         }
     }
