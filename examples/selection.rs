@@ -53,13 +53,14 @@ fn main() {
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<BasicFrame>::init(
+    let mut window = Window::<BasicFrame>::init_with_decorations(
         surface,
         dimensions,
         &env.compositor,
         &env.subcompositor,
         &env.shm,
         &env.shell,
+        env.decorations_mgr.as_ref(),
         move |evt, ()| {
             let mut next_action = waction.lock().unwrap();
             // Keep last event in priority order : Close > Configure > Refresh

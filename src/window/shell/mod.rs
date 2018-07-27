@@ -39,4 +39,5 @@ pub(crate) trait ShellSurface: Send + Sync {
     fn set_geometry(&self, x: i32, y: i32, width: i32, height: i32);
     fn set_min_size(&self, size: Option<(i32, i32)>);
     fn set_max_size(&self, size: Option<(i32, i32)>);
+    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>>;
 }

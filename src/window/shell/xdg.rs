@@ -122,6 +122,10 @@ impl ShellSurface for Xdg {
             self.toplevel.set_max_size(0, 0);
         }
     }
+
+    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>> {
+        Some(&self.toplevel)
+    }
 }
 
 impl Drop for Xdg {

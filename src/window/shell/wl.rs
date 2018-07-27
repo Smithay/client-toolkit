@@ -106,4 +106,8 @@ impl ShellSurface for Wl {
     fn set_max_size(&self, _: Option<(i32, i32)>) {
         /* not available */
     }
+
+    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>> {
+        None
+    }
 }

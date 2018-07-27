@@ -1,12 +1,19 @@
 use std::sync::{Arc, Mutex};
 
 use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor,
-                               wl_surface};
+use wayland_client::protocol::{
+    wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
+};
 use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
+
+use self::zxdg_decoration_manager_v1::RequestsTrait as DecorationMgrRequests;
+use self::zxdg_toplevel_decoration_v1::RequestsTrait as DecorationRequests;
+use wayland_protocols::unstable::xdg_decoration::v1::client::{
+    zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
+};
 
 use Shell;
 
@@ -54,6 +61,7 @@ struct WindowInner<F> {
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
     old_size: Option<(u32, u32)>,
+    decorated: bool,
 }
 
 /// A window
@@ -74,6 +82,7 @@ struct WindowInner<F> {
 pub struct Window<F: Frame> {
     frame: Arc<Mutex<F>>,
     surface: Proxy<wl_surface::WlSurface>,
+    decoration: Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
     shell_surface: Arc<Box<shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
 }
@@ -90,6 +99,36 @@ impl<F: Frame + 'static> Window<F> {
         subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
         shm: &Proxy<wl_shm::WlShm>,
         shell: &Shell,
+        implementation: Impl,
+    ) -> Result<Window<F>, F::Error>
+    where
+        Impl: Implementation<(), Event> + Send,
+    {
+        Self::init_with_decorations(
+            surface,
+            initial_dims,
+            compositor,
+            subcompositor,
+            shm,
+            shell,
+            None,
+            implementation,
+        )
+    }
+
+    /// Create a new window wrapping a given wayland surface as its main content and using
+    /// server decorations if available
+    ///
+    /// It can fail if the initialization of the frame fails (for example if the
+    /// frame class fails to initialize its SHM).
+    pub fn init_with_decorations<Impl>(
+        surface: Proxy<wl_surface::WlSurface>,
+        initial_dims: (u32, u32),
+        compositor: &Proxy<wl_compositor::WlCompositor>,
+        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
+        shm: &Proxy<wl_shm::WlShm>,
+        shell: &Shell,
+        decoration_mgr: Option<&Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
@@ -192,10 +231,42 @@ impl<F: Frame + 'static> Window<F> {
             max_size: None,
             current_size: initial_dims,
             old_size: None,
+            decorated: true,
         });
+
+        let decoration_frame = frame.clone();
+        let decoration_inner = inner.clone();
+        // init decoration if applicable
+        let decoration = match (shell_surface.get_xdg(), decoration_mgr) {
+            (Some(toplevel), Some(mgr)) => mgr.get_toplevel_decoration(toplevel).ok().map(
+                move |newdec| {
+                    newdec.implement(move |event, _| {
+                        use self::zxdg_toplevel_decoration_v1::{Event, Mode};
+                        let Event::Configure { mode } = event;
+                        match mode {
+                            Mode::ServerSide => {
+                                decoration_frame.lock().unwrap().set_hidden(true);
+                            }
+                            Mode::ClientSide => {
+                                let want_decorate = decoration_inner
+                                    .lock()
+                                    .unwrap()
+                                    .as_ref()
+                                    .map(|inner| inner.decorated)
+                                    .unwrap_or(false);
+                                decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                            }
+                        }
+                    })
+                },
+            ),
+            _ => None,
+        };
+
         Ok(Window {
             frame,
             shell_surface,
+            decoration,
             surface,
             inner,
         })
@@ -253,7 +324,18 @@ impl<F: Frame + 'static> Window<F> {
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
     pub fn set_decorate(&self, decorate: bool) {
+        use self::zxdg_toplevel_decoration_v1::Mode;
         self.frame.lock().unwrap().set_hidden(!decorate);
+        if let Some(ref dec) = self.decoration {
+            if decorate {
+                // let the server decide decorations
+                dec.unset_mode();
+            } else {
+                // we must be the decorators, to be able to not
+                // show any decoration
+                dec.set_mode(Mode::ClientSide);
+            }
+        }
     }
 
     /// Set whether the window should be resizeable by the user

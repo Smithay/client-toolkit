@@ -2,9 +2,12 @@ use std::io;
 use std::sync::{Arc, Mutex};
 
 use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_compositor, wl_data_device_manager, wl_output, wl_registry,
-                               wl_shell, wl_shm, wl_subcompositor};
+use wayland_client::protocol::{
+    wl_compositor, wl_data_device_manager, wl_output, wl_registry, wl_shell, wl_shm,
+    wl_subcompositor,
+};
 use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy, Proxy};
+use wayland_protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1;
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
 
@@ -60,6 +63,8 @@ pub struct Environment {
     pub data_device_manager: Proxy<wl_data_device_manager::WlDataDeviceManager>,
     /// A manager for handling the advertized outputs
     pub outputs: ::output::OutputMgr,
+    /// The decoration manager, if the server supports server-side decorations
+    pub decorations_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
 }
 
@@ -170,6 +175,16 @@ impl Environment {
             panic!("Server didn't advertize neither `xdg_wm_base` nor `wl_shell`?!");
         };
 
+        // try to retrieve the decoration manager
+        let decorations_mgr = if let Shell::Xdg(_) = shell {
+            manager
+                .instantiate_auto::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>()
+                .ok()
+                .map(|mgr| mgr.implement(|evt, _| match evt {}))
+        } else {
+            None
+        };
+
         // sync to retrieve the global events
         evq.sync_roundtrip()?;
 
@@ -181,6 +196,7 @@ impl Environment {
             shm,
             shm_formats,
             data_device_manager,
+            decorations_mgr,
             outputs,
         })
     }

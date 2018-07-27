@@ -2,8 +2,9 @@ use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 use wayland_client::Proxy;
 
-use wayland_protocols::unstable::xdg_shell::v6::client::{zxdg_shell_v6, zxdg_surface_v6,
-                                                         zxdg_toplevel_v6};
+use wayland_protocols::unstable::xdg_shell::v6::client::{
+    zxdg_shell_v6, zxdg_surface_v6, zxdg_toplevel_v6,
+};
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
 use self::zxdg_shell_v6_proto::zxdg_shell_v6::RequestsTrait as ShellRequests;
@@ -125,6 +126,10 @@ impl ShellSurface for Zxdg {
         } else {
             self.toplevel.set_max_size(0, 0);
         }
+    }
+
+    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>> {
+        None
     }
 }
 
