@@ -1,6 +1,7 @@
 use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat,
-                               wl_surface};
+use wayland_client::protocol::{
+    wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat, wl_surface,
+};
 use wayland_client::{NewProxy, Proxy, QueueToken};
 
 use wayland_client::protocol::wl_data_device::RequestsTrait as DeviceRequests;
