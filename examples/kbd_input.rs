@@ -7,7 +7,9 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::keyboard::{map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatKind, KeyRepeatEvent};
+use sctk::keyboard::{
+    map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatEvent, KeyRepeatKind,
+};
 use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
@@ -42,13 +44,14 @@ fn main() {
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<BasicFrame>::init(
+    let mut window = Window::<BasicFrame>::init_with_decorations(
         surface,
         dimensions,
         &env.compositor,
         &env.subcompositor,
         &env.shm,
         &env.shell,
+        env.decorations_mgr.as_ref(),
         move |evt, ()| {
             let mut next_action = waction.lock().unwrap();
             // Keep last event in priority order : Close > Configure > Refresh

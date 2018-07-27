@@ -46,4 +46,10 @@ fn main() {
             }
         }
     });
+
+    if env.decorations_mgr.is_some() {
+        println!("-> Compositor supports server-side decorations.")
+    } else {
+        println!("-> Compositor does not support server-side decorations.")
+    }
 }
