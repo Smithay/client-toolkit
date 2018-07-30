@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Window: add `init_with_decorations` to allow the use of server-side decorations
+
 ## 0.2.6 -- 2018-07-14
 
 Big thanks to @trimental for improving the visual look of the window decorations:
