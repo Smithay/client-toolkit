@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keyboard: add key repetition with 'map_keyboard_auto_with_repeat' and 'map_keyboard_rmlvo_with_repeat'
 - Window: add `init_with_decorations` to allow the use of server-side decorations
 
 ## 0.2.6 -- 2018-07-14
