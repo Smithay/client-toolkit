@@ -183,21 +183,21 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
 }
 
 fn find_button(x: f64, y: f64, w: u32) -> Location {
-    if (w >= 24 + BUTTON_SPACE)
+    if (w >= 24 + 2 * BUTTON_SPACE)
         && (x >= (w - 24 - BUTTON_SPACE) as f64)
         && (x <= (w - BUTTON_SPACE) as f64)
         && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
         && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Close)
-    } else if (w >= 56 + BUTTON_SPACE)
+    } else if (w >= 56 + 2 * BUTTON_SPACE)
         && (x >= (w - 56 - BUTTON_SPACE) as f64)
         && (x <= (w - 32 - BUTTON_SPACE) as f64)
         && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
         && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
     {
         Location::Button(UIButton::Maximize)
-    } else if (w >= 88 + BUTTON_SPACE)
+    } else if (w >= 88 + 2 * BUTTON_SPACE)
         && (x >= (w - 88 - BUTTON_SPACE) as f64)
         && (x <= (w - 64 - BUTTON_SPACE) as f64)
         && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
@@ -736,7 +736,7 @@ fn draw_buttons(
     // buttons are 24x16
     let ds = BORDER_SIZE;
 
-    if width >= 24 + 2 * ds {
+    if width >= 24 + 2 * BUTTON_SPACE {
         // draw the red button
         let color = if mouses
             .iter()
@@ -757,7 +757,7 @@ fn draw_buttons(
         }
     }
 
-    if width >= 56 + 2 * ds {
+    if width >= 56 + 2 * BUTTON_SPACE {
         // draw the yellow button
         let color = if !maximizable {
             colors::YELLOW_BUTTON_DISABLED
@@ -780,7 +780,7 @@ fn draw_buttons(
         }
     }
 
-    if width >= 88 + 2 * ds {
+    if width >= 88 + 2 * BUTTON_SPACE {
         // draw the green button
         let color = if mouses
             .iter()
