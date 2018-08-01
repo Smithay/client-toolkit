@@ -1,8 +1,11 @@
+use nix::fcntl;
+use nix::sys::stat;
+use std::env;
 use std::fs::File;
 use std::io;
 use std::os::unix::io::AsRawFd;
-
-use tempfile::tempfile;
+use std::os::unix::io::FromRawFd;
+use std::path;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
 use wayland_client::{NewProxy, Proxy};
@@ -58,8 +61,24 @@ pub struct MemPool {
 impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<MemPool> {
-        let tempfile = tempfile()?;
+        let tmpdir = match env::var_os("XDG_RUNTIME_DIR") {
+            Some(dir) => path::PathBuf::from(dir),
+            None => env::temp_dir(),
+        };
+        let tempfile = unsafe {
+            File::from_raw_fd(
+                fcntl::open(
+                    &tmpdir,
+                    fcntl::OFlag::O_CLOEXEC
+                        | fcntl::OFlag::O_EXCL
+                        | fcntl::OFlag::O_TMPFILE
+                        | fcntl::OFlag::O_RDWR,
+                    stat::Mode::S_IRUSR | stat::Mode::S_IWUSR,
+                ).expect("Could not create temp file"),
+            )
+        };
         tempfile.set_len(128)?;
+
         let pool = shm.create_pool(tempfile.as_raw_fd(), 128)
             .unwrap()
             .implement(|e, _| match e {});
