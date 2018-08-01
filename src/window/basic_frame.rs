@@ -734,8 +734,6 @@ fn draw_buttons(
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
     // buttons are 24x16
-    let ds = BORDER_SIZE;
-
     if width >= 24 + 2 * BUTTON_SPACE {
         // draw the red button
         let color = if mouses

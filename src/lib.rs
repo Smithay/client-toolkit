@@ -8,7 +8,6 @@ extern crate dlib;
 extern crate lazy_static;
 extern crate memmap;
 extern crate nix;
-extern crate tempfile;
 #[doc(hidden)]
 pub extern crate wayland_client;
 #[doc(hidden)]
