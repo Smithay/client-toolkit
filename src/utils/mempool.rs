@@ -64,16 +64,16 @@ impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<MemPool> {
         let mut rng = thread_rng();
+        let mut mem_file_handle = format!(
+            "/smithay-client-toolkit-{}",
+            rng.gen_range(0, ::std::u32::MAX)
+        );
         let mem_fd = match memfd::memfd_create(
             ::std::ffi::CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
             memfd::MemFdCreateFlag::MFD_CLOEXEC,
         ) {
             Ok(fd) => fd,
             Err(_) => loop {
-                let mem_file_handle = format!(
-                    "/smithay-client-toolkit-{}",
-                    rng.gen_range(0, ::std::u32::MAX)
-                );
                 match mman::shm_open(
                     mem_file_handle.as_str(),
                     fcntl::OFlag::O_CREAT
@@ -86,7 +86,15 @@ impl MemPool {
                         mman::shm_unlink(mem_file_handle.as_str()).unwrap();
                         break fd;
                     }
-                    Err(nix::Error::Sys(nix::errno::Errno::EEXIST)) => continue,
+                    Err(nix::Error::Sys(nix::errno::Errno::EEXIST)) => {
+                        // If a file with that handle exists then change the handle
+                        mem_file_handle = format!(
+                            "/smithay-client-toolkit-{}",
+                            rng.gen_range(0, ::std::u32::MAX)
+                        );
+                        continue;
+                    }
+                    Err(nix::Error::Sys(nix::errno::Errno::EINTR)) => continue,
                     Err(err) => panic!(err),
                 }
             },
