@@ -1,8 +1,10 @@
 use nix;
+use nix::errno::Errno;
 use nix::fcntl;
 use nix::sys::memfd;
 use nix::sys::mman;
 use nix::sys::stat;
+use std::ffi::CStr;
 use std::fs::File;
 use std::io;
 use std::os::unix::io::FromRawFd;
@@ -69,7 +71,7 @@ impl MemPool {
             rng.gen_range(0, ::std::u32::MAX)
         );
         let mem_fd = match memfd::memfd_create(
-            ::std::ffi::CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
+            CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
             memfd::MemFdCreateFlag::MFD_CLOEXEC,
         ) {
             Ok(fd) => fd,
@@ -86,7 +88,7 @@ impl MemPool {
                         mman::shm_unlink(mem_file_handle.as_str()).unwrap();
                         break fd;
                     }
-                    Err(nix::Error::Sys(nix::errno::Errno::EEXIST)) => {
+                    Err(nix::Error::Sys(Errno::EEXIST)) => {
                         // If a file with that handle exists then change the handle
                         mem_file_handle = format!(
                             "/smithay-client-toolkit-{}",
@@ -94,7 +96,7 @@ impl MemPool {
                         );
                         continue;
                     }
-                    Err(nix::Error::Sys(nix::errno::Errno::EINTR)) => continue,
+                    Err(nix::Error::Sys(Errno::EINTR)) => continue,
                     Err(err) => panic!(err),
                 }
             },
