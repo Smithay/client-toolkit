@@ -216,7 +216,8 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 pub struct BasicFrame {
     inner: Arc<Inner>,
     pools: DoubleMemPool,
-    buffers: Vec<Proxy<wl_buffer::WlBuffer>>,
+    inactive_buffers: Vec<Proxy<wl_buffer::WlBuffer>>,
+    swappable: Arc<Mutex<bool>>,
     active: bool,
     hidden: bool,
     pointers: Vec<AutoPointer>,
@@ -250,7 +251,8 @@ impl Frame for BasicFrame {
                 maximized: Mutex::new(false),
             }),
             pools,
-            buffers: Vec::new(),
+            inactive_buffers: Vec::new(),
+            swappable: Arc::new(Mutex::new(true)),
             active: false,
             hidden: false,
             pointers: Vec::new(),
@@ -391,10 +393,12 @@ impl Frame for BasicFrame {
             return;
         }
         let (width, height) = *(self.inner.size.lock().unwrap());
-        // destroy current pending buffers
-        // TODO: do double-buffering
-        for b in self.buffers.drain(..) {
-            b.destroy();
+        let swappable = { *self.swappable.lock().unwrap() };
+        // destroy old inactive buffers
+        if !swappable {
+            for b in self.inactive_buffers.drain(..) {
+                b.destroy();
+            }
         }
 
         {
@@ -470,8 +474,11 @@ impl Frame for BasicFrame {
                 let _ = writer.flush();
             }
 
+            let live_buffer_count = Arc::new(Mutex::new(5));
             // Create the buffers
             // -> head-subsurface
+            let my_live_buffer_count = live_buffer_count.clone();
+            let my_swappable = self.swappable.clone();
             let buffer =
                 pool.buffer(
                     0,
@@ -479,7 +486,17 @@ impl Frame for BasicFrame {
                     HEADER_SIZE as i32,
                     4 * width as i32,
                     wl_shm::Format::Argb8888,
-                ).implement(|_, _| {});
+                ).implement(
+                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                        wl_buffer::Event::Release => {
+                            buffer.destroy();
+                            *my_live_buffer_count.lock().unwrap() -= 1;
+                            if *my_live_buffer_count.lock().unwrap() == 0 {
+                                *my_swappable.lock().unwrap() = true;
+                            }
+                        }
+                    },
+                );
             self.inner.parts[HEAD]
                 .subsurface
                 .set_position(0, -(HEADER_SIZE as i32));
@@ -499,9 +516,13 @@ impl Frame for BasicFrame {
                     .damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
             self.inner.parts[HEAD].surface.commit();
-            self.buffers.push(buffer);
+            if !swappable {
+                self.inactive_buffers.push(buffer);
+            }
 
             // -> top-subsurface
+            let my_live_buffer_count = live_buffer_count.clone();
+            let my_swappable = self.swappable.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -509,7 +530,17 @@ impl Frame for BasicFrame {
                     BORDER_SIZE as i32,
                     4 * (width + 2 * BORDER_SIZE) as i32,
                     wl_shm::Format::Argb8888,
-                ).implement(|_, _| {});
+                ).implement(
+                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                        wl_buffer::Event::Release => {
+                            buffer.destroy();
+                            *my_live_buffer_count.lock().unwrap() -= 1;
+                            if *my_live_buffer_count.lock().unwrap() == 0 {
+                                *my_swappable.lock().unwrap() = true;
+                            }
+                        }
+                    },
+                );
             self.inner.parts[TOP].subsurface.set_position(
                 -(BORDER_SIZE as i32),
                 -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
@@ -533,9 +564,13 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[TOP].surface.commit();
-            self.buffers.push(buffer);
+            if !swappable {
+                self.inactive_buffers.push(buffer);
+            }
 
             // -> bottom-subsurface
+            let my_live_buffer_count = live_buffer_count.clone();
+            let my_swappable = self.swappable.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -543,7 +578,17 @@ impl Frame for BasicFrame {
                     BORDER_SIZE as i32,
                     4 * (width + 2 * BORDER_SIZE) as i32,
                     wl_shm::Format::Argb8888,
-                ).implement(|_, _| {});
+                ).implement(
+                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                        wl_buffer::Event::Release => {
+                            buffer.destroy();
+                            *my_live_buffer_count.lock().unwrap() -= 1;
+                            if *my_live_buffer_count.lock().unwrap() == 0 {
+                                *my_swappable.lock().unwrap() = true;
+                            }
+                        }
+                    },
+                );
             self.inner.parts[BOTTOM]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), height as i32);
@@ -566,9 +611,13 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[BOTTOM].surface.commit();
-            self.buffers.push(buffer);
+            if !swappable {
+                self.inactive_buffers.push(buffer);
+            }
 
             // -> left-subsurface
+            let my_live_buffer_count = live_buffer_count.clone();
+            let my_swappable = self.swappable.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -576,7 +625,17 @@ impl Frame for BasicFrame {
                     (height + HEADER_SIZE) as i32,
                     4 * (BORDER_SIZE as i32),
                     wl_shm::Format::Argb8888,
-                ).implement(|_, _| {});
+                ).implement(
+                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                        wl_buffer::Event::Release => {
+                            buffer.destroy();
+                            *my_live_buffer_count.lock().unwrap() -= 1;
+                            if *my_live_buffer_count.lock().unwrap() == 0 {
+                                *my_swappable.lock().unwrap() = true;
+                            }
+                        }
+                    },
+                );
             self.inner.parts[LEFT]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
@@ -599,9 +658,13 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[LEFT].surface.commit();
-            self.buffers.push(buffer);
+            if !swappable {
+                self.inactive_buffers.push(buffer);
+            }
 
             // -> right-subsurface
+            let my_live_buffer_count = live_buffer_count.clone();
+            let my_swappable = self.swappable.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -609,7 +672,17 @@ impl Frame for BasicFrame {
                     (height + HEADER_SIZE) as i32,
                     4 * (BORDER_SIZE as i32),
                     wl_shm::Format::Argb8888,
-                ).implement(|_, _| {});
+                ).implement(
+                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                        wl_buffer::Event::Release => {
+                            buffer.destroy();
+                            *my_live_buffer_count.lock().unwrap() -= 1;
+                            if *my_live_buffer_count.lock().unwrap() == 0 {
+                                *my_swappable.lock().unwrap() = true;
+                            }
+                        }
+                    },
+                );
             self.inner.parts[RIGHT]
                 .subsurface
                 .set_position(width as i32, -(HEADER_SIZE as i32));
@@ -632,10 +705,16 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[RIGHT].surface.commit();
-            self.buffers.push(buffer);
+            if !swappable {
+                self.inactive_buffers.push(buffer);
+            }
         }
         // swap the pool
-        self.pools.swap();
+        if swappable {
+            self.pools.swap();
+            self.inactive_buffers.clear();
+            *self.swappable.lock().unwrap() = false;
+        }
     }
 
     fn subtract_borders(&self, width: i32, height: i32) -> (i32, i32) {
