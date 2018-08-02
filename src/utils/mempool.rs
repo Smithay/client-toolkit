@@ -1,8 +1,12 @@
+use nix;
+use nix::fcntl;
+use nix::sys::mman;
+use nix::sys::stat;
 use std::fs::File;
 use std::io;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::FromRawFd;
 
-use tempfile::tempfile;
+use rand::prelude::*;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
 use wayland_client::{NewProxy, Proxy};
@@ -58,15 +62,39 @@ pub struct MemPool {
 impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<MemPool> {
-        let tempfile = tempfile()?;
-        tempfile.set_len(128)?;
+        let mut rng = thread_rng();
+        let mem_fd = loop {
+            let mem_file_handle = format!(
+                "/smithay-client-toolkit-{}",
+                rng.gen_range(0, ::std::u32::MAX)
+            );
+            match mman::shm_open(
+                mem_file_handle.as_str(),
+                fcntl::OFlag::O_CREAT
+                    | fcntl::OFlag::O_EXCL
+                    | fcntl::OFlag::O_RDWR
+                    | fcntl::OFlag::O_CLOEXEC,
+                stat::Mode::S_IRUSR | stat::Mode::S_IWUSR,
+            ) {
+                Ok(fd) => {
+                    mman::shm_unlink(mem_file_handle.as_str()).unwrap();
+                    break fd;
+                }
+                Err(nix::Error::Sys(nix::errno::Errno::EEXIST)) => continue,
+                Err(err) => panic!(err),
+            }
+        };
+        let mem_file = unsafe { File::from_raw_fd(mem_fd) };
+
+        mem_file.set_len(128)?;
+
         let pool = shm
-            .create_pool(tempfile.as_raw_fd(), 128)
+            .create_pool(mem_fd, 128)
             .unwrap()
             .implement(|e, _| match e {});
 
         Ok(MemPool {
-            file: tempfile,
+            file: mem_file,
             len: 128,
             pool: pool,
         })
