@@ -147,50 +147,49 @@ impl io::Seek for MemPool {
 }
 
 fn create_shm_fd() -> io::Result<RawFd> {
-    let mut rng = thread_rng();
-
     loop {
         match memfd::memfd_create(
             CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
             memfd::MemFdCreateFlag::MFD_CLOEXEC,
         ) {
-            Ok(fd) => break Ok(fd),
+            Ok(fd) => return Ok(fd),
             Err(nix::Error::Sys(Errno::EINTR)) => continue,
-            Err(nix::Error::Sys(errno)) => break Err(io::Error::from(errno)),
-            Err(_) => {
-                // Fallback to using shm_open
-                let mut mem_file_handle = format!(
+            Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+            Err(_) => break,
+        }
+    }
+
+    // Fallback to using shm_open
+    let mut rng = thread_rng();
+    let mut mem_file_handle = format!(
+        "/smithay-client-toolkit-{}",
+        rng.gen_range(0, ::std::u32::MAX)
+    );
+    loop {
+        match mman::shm_open(
+            mem_file_handle.as_str(),
+            fcntl::OFlag::O_CREAT
+                | fcntl::OFlag::O_EXCL
+                | fcntl::OFlag::O_RDWR
+                | fcntl::OFlag::O_CLOEXEC,
+            stat::Mode::S_IRUSR | stat::Mode::S_IWUSR,
+        ) {
+            Ok(fd) => match mman::shm_unlink(mem_file_handle.as_str()) {
+                Ok(_) => return Ok(fd),
+                Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+                Err(err) => panic!(err),
+            },
+            Err(nix::Error::Sys(Errno::EEXIST)) => {
+                // If a file with that handle exists then change the handle
+                mem_file_handle = format!(
                     "/smithay-client-toolkit-{}",
                     rng.gen_range(0, ::std::u32::MAX)
                 );
-                break loop {
-                    match mman::shm_open(
-                        mem_file_handle.as_str(),
-                        fcntl::OFlag::O_CREAT
-                            | fcntl::OFlag::O_EXCL
-                            | fcntl::OFlag::O_RDWR
-                            | fcntl::OFlag::O_CLOEXEC,
-                        stat::Mode::S_IRUSR | stat::Mode::S_IWUSR,
-                    ) {
-                        Ok(fd) => match mman::shm_unlink(mem_file_handle.as_str()) {
-                            Ok(_) => break Ok(fd),
-                            Err(nix::Error::Sys(errno)) => break Err(io::Error::from(errno)),
-                            Err(err) => panic!(err),
-                        },
-                        Err(nix::Error::Sys(Errno::EEXIST)) => {
-                            // If a file with that handle exists then change the handle
-                            mem_file_handle = format!(
-                                "/smithay-client-toolkit-{}",
-                                rng.gen_range(0, ::std::u32::MAX)
-                            );
-                            continue;
-                        }
-                        Err(nix::Error::Sys(Errno::EINTR)) => continue,
-                        Err(nix::Error::Sys(errno)) => break Err(io::Error::from(errno)),
-                        Err(err) => panic!(err),
-                    }
-                };
+                continue;
             }
-        };
+            Err(nix::Error::Sys(Errno::EINTR)) => continue,
+            Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+            Err(err) => panic!(err),
+        }
     }
 }
