@@ -393,7 +393,7 @@ impl Frame for BasicFrame {
             return;
         }
         let (width, height) = *(self.inner.size.lock().unwrap());
-        let swappable = { *self.swappable.lock().unwrap() };
+        let swappable = *self.swappable.lock().unwrap();
         // destroy old inactive buffers
         if !swappable {
             for b in self.inactive_buffers.drain(..) {
