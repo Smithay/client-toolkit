@@ -216,8 +216,9 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 pub struct BasicFrame {
     inner: Arc<Inner>,
     pools: Arc<Mutex<DoubleMemPool>>,
-    active_buffer_count: Arc<Mutex<u32>>,
-    inactive_buffers: Arc<Mutex<Vec<Proxy<wl_buffer::WlBuffer>>>>,
+    buffers: Arc<Mutex<[Vec<Proxy<wl_buffer::WlBuffer>>; 2]>>,
+    current_pool: Arc<Mutex<usize>>,
+    pending_swap: Arc<Mutex<bool>>,
     active: bool,
     hidden: bool,
     pointers: Vec<AutoPointer>,
@@ -251,8 +252,9 @@ impl Frame for BasicFrame {
                 maximized: Mutex::new(false),
             }),
             pools: Arc::new(Mutex::new(pools)),
-            active_buffer_count: Arc::new(Mutex::new(0)),
-            inactive_buffers: Arc::new(Mutex::new(Vec::new())),
+            buffers: Arc::new(Mutex::new([Vec::new(), Vec::new()])),
+            current_pool: Arc::new(Mutex::new(0)),
+            pending_swap: Arc::new(Mutex::new(false)),
             active: false,
             hidden: false,
             pointers: Vec::new(),
@@ -393,9 +395,10 @@ impl Frame for BasicFrame {
             return;
         }
         let (width, height) = *(self.inner.size.lock().unwrap());
-        // destroy old inactive buffers
-        let mut inactive_buffers = self.inactive_buffers.lock().unwrap();
-        for b in inactive_buffers.drain(..) {
+        let mut buffers = self.buffers.lock().unwrap();
+        let mut current_pool = self.current_pool.lock().unwrap();
+        // destroy currently pending buffers
+        for b in buffers.get_mut(*current_pool).unwrap().drain(..) {
             b.destroy();
         }
 
@@ -475,9 +478,10 @@ impl Frame for BasicFrame {
 
             // Create the buffers
             // -> head-subsurface
+            let my_buffers = self.buffers.clone();
+            let my_current_pool = current_pool.clone();
+            let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
-            let my_active_buffer_count = self.active_buffer_count.clone();
-            let my_inactive_buffers = self.inactive_buffers.clone();
             let buffer =
                 pool.buffer(
                     0,
@@ -489,13 +493,15 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            *my_active_buffer_count.lock().unwrap() -= 1;
-                            if *my_active_buffer_count.lock().unwrap() == 0
-                                && my_inactive_buffers.lock().unwrap().len() == 5
-                            {
+                            my_buffers
+                                .lock()
+                                .unwrap()
+                                .get_mut(my_current_pool)
+                                .unwrap()
+                                .pop();
+                            if *my_pending_swap.lock().unwrap() {
                                 my_pools.lock().unwrap().swap();
-                                my_inactive_buffers.lock().unwrap().clear();
-                                *my_active_buffer_count.lock().unwrap() = 5;
+                                *my_pending_swap.lock().unwrap() = false;
                             }
                         }
                     },
@@ -519,12 +525,13 @@ impl Frame for BasicFrame {
                     .damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
             self.inner.parts[HEAD].surface.commit();
-            inactive_buffers.push(buffer);
+            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> top-subsurface
+            let my_buffers = self.buffers.clone();
+            let my_current_pool = current_pool.clone();
+            let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
-            let my_active_buffer_count = self.active_buffer_count.clone();
-            let my_inactive_buffers = self.inactive_buffers.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -536,13 +543,15 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            *my_active_buffer_count.lock().unwrap() -= 1;
-                            if *my_active_buffer_count.lock().unwrap() == 0
-                                && my_inactive_buffers.lock().unwrap().len() == 5
-                            {
+                            my_buffers
+                                .lock()
+                                .unwrap()
+                                .get_mut(my_current_pool)
+                                .unwrap()
+                                .pop();
+                            if *my_pending_swap.lock().unwrap() {
                                 my_pools.lock().unwrap().swap();
-                                my_inactive_buffers.lock().unwrap().clear();
-                                *my_active_buffer_count.lock().unwrap() = 5;
+                                *my_pending_swap.lock().unwrap() = false;
                             }
                         }
                     },
@@ -570,12 +579,13 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[TOP].surface.commit();
-            inactive_buffers.push(buffer);
+            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> bottom-subsurface
+            let my_buffers = self.buffers.clone();
+            let my_current_pool = current_pool.clone();
+            let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
-            let my_active_buffer_count = self.active_buffer_count.clone();
-            let my_inactive_buffers = self.inactive_buffers.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -587,13 +597,15 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            *my_active_buffer_count.lock().unwrap() -= 1;
-                            if *my_active_buffer_count.lock().unwrap() == 0
-                                && my_inactive_buffers.lock().unwrap().len() == 5
-                            {
+                            my_buffers
+                                .lock()
+                                .unwrap()
+                                .get_mut(my_current_pool)
+                                .unwrap()
+                                .pop();
+                            if *my_pending_swap.lock().unwrap() {
                                 my_pools.lock().unwrap().swap();
-                                my_inactive_buffers.lock().unwrap().clear();
-                                *my_active_buffer_count.lock().unwrap() = 5;
+                                *my_pending_swap.lock().unwrap() = false;
                             }
                         }
                     },
@@ -620,12 +632,13 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[BOTTOM].surface.commit();
-            inactive_buffers.push(buffer);
+            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> left-subsurface
+            let my_buffers = self.buffers.clone();
+            let my_current_pool = current_pool.clone();
+            let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
-            let my_active_buffer_count = self.active_buffer_count.clone();
-            let my_inactive_buffers = self.inactive_buffers.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -637,13 +650,15 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            *my_active_buffer_count.lock().unwrap() -= 1;
-                            if *my_active_buffer_count.lock().unwrap() == 0
-                                && my_inactive_buffers.lock().unwrap().len() == 5
-                            {
+                            my_buffers
+                                .lock()
+                                .unwrap()
+                                .get_mut(my_current_pool)
+                                .unwrap()
+                                .pop();
+                            if *my_pending_swap.lock().unwrap() {
                                 my_pools.lock().unwrap().swap();
-                                my_inactive_buffers.lock().unwrap().clear();
-                                *my_active_buffer_count.lock().unwrap() = 5;
+                                *my_pending_swap.lock().unwrap() = false;
                             }
                         }
                     },
@@ -670,12 +685,13 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[LEFT].surface.commit();
-            inactive_buffers.push(buffer);
+            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> right-subsurface
+            let my_buffers = self.buffers.clone();
+            let my_current_pool = current_pool.clone();
+            let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
-            let my_active_buffer_count = self.active_buffer_count.clone();
-            let my_inactive_buffers = self.inactive_buffers.clone();
             let buffer =
                 pool.buffer(
                     4 * (width * HEADER_SIZE) as i32,
@@ -687,13 +703,15 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            *my_active_buffer_count.lock().unwrap() -= 1;
-                            if *my_active_buffer_count.lock().unwrap() == 0
-                                && my_inactive_buffers.lock().unwrap().len() == 5
-                            {
+                            my_buffers
+                                .lock()
+                                .unwrap()
+                                .get_mut(my_current_pool)
+                                .unwrap()
+                                .pop();
+                            if *my_pending_swap.lock().unwrap() {
                                 my_pools.lock().unwrap().swap();
-                                my_inactive_buffers.lock().unwrap().clear();
-                                *my_active_buffer_count.lock().unwrap() = 5;
+                                *my_pending_swap.lock().unwrap() = false;
                             }
                         }
                     },
@@ -720,13 +738,16 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[RIGHT].surface.commit();
-            inactive_buffers.push(buffer);
+            buffers.get_mut(*current_pool).unwrap().push(buffer);
         }
-        // If there are no active buffers, make the current buffers active
-        if *self.active_buffer_count.lock().unwrap() == 0 {
+        let other_pool = (*current_pool + 1 % 2 + 2) % 2;
+        if buffers.get(other_pool).unwrap().len() == 0 {
+            // If all buffers in the other pool are freed then swap
             self.pools.lock().unwrap().swap();
-            inactive_buffers.clear();
-            *self.active_buffer_count.lock().unwrap() = 5;
+            *current_pool = other_pool;
+        } else {
+            // If the other pool is still in use, set pending swap to true
+            *self.pending_swap.lock().unwrap() = true;
         }
     }
 
