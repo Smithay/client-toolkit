@@ -479,7 +479,8 @@ impl Frame for BasicFrame {
             // Create the buffers
             // -> head-subsurface
             let my_buffers = self.buffers.clone();
-            let my_current_pool = current_pool.clone();
+            let my_current_pool = self.current_pool.clone();
+            let my_pool = current_pool.clone();
             let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
             let buffer =
@@ -493,14 +494,12 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            my_buffers
-                                .lock()
-                                .unwrap()
-                                .get_mut(my_current_pool)
-                                .unwrap()
-                                .pop();
-                            if *my_pending_swap.lock().unwrap() {
+                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
+                            if *my_pending_swap.lock().unwrap()
+                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
+                            {
                                 my_pools.lock().unwrap().swap();
+                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
                                 *my_pending_swap.lock().unwrap() = false;
                             }
                         }
@@ -529,7 +528,8 @@ impl Frame for BasicFrame {
 
             // -> top-subsurface
             let my_buffers = self.buffers.clone();
-            let my_current_pool = current_pool.clone();
+            let my_current_pool = self.current_pool.clone();
+            let my_pool = current_pool.clone();
             let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
             let buffer =
@@ -543,14 +543,12 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            my_buffers
-                                .lock()
-                                .unwrap()
-                                .get_mut(my_current_pool)
-                                .unwrap()
-                                .pop();
-                            if *my_pending_swap.lock().unwrap() {
+                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
+                            if *my_pending_swap.lock().unwrap()
+                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
+                            {
                                 my_pools.lock().unwrap().swap();
+                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
                                 *my_pending_swap.lock().unwrap() = false;
                             }
                         }
@@ -583,7 +581,8 @@ impl Frame for BasicFrame {
 
             // -> bottom-subsurface
             let my_buffers = self.buffers.clone();
-            let my_current_pool = current_pool.clone();
+            let my_current_pool = self.current_pool.clone();
+            let my_pool = current_pool.clone();
             let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
             let buffer =
@@ -597,14 +596,12 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            my_buffers
-                                .lock()
-                                .unwrap()
-                                .get_mut(my_current_pool)
-                                .unwrap()
-                                .pop();
-                            if *my_pending_swap.lock().unwrap() {
+                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
+                            if *my_pending_swap.lock().unwrap()
+                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
+                            {
                                 my_pools.lock().unwrap().swap();
+                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
                                 *my_pending_swap.lock().unwrap() = false;
                             }
                         }
@@ -636,7 +633,8 @@ impl Frame for BasicFrame {
 
             // -> left-subsurface
             let my_buffers = self.buffers.clone();
-            let my_current_pool = current_pool.clone();
+            let my_current_pool = self.current_pool.clone();
+            let my_pool = current_pool.clone();
             let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
             let buffer =
@@ -650,14 +648,12 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            my_buffers
-                                .lock()
-                                .unwrap()
-                                .get_mut(my_current_pool)
-                                .unwrap()
-                                .pop();
-                            if *my_pending_swap.lock().unwrap() {
+                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
+                            if *my_pending_swap.lock().unwrap()
+                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
+                            {
                                 my_pools.lock().unwrap().swap();
+                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
                                 *my_pending_swap.lock().unwrap() = false;
                             }
                         }
@@ -689,7 +685,8 @@ impl Frame for BasicFrame {
 
             // -> right-subsurface
             let my_buffers = self.buffers.clone();
-            let my_current_pool = current_pool.clone();
+            let my_current_pool = self.current_pool.clone();
+            let my_pool = current_pool.clone();
             let my_pending_swap = self.pending_swap.clone();
             let my_pools = self.pools.clone();
             let buffer =
@@ -703,14 +700,12 @@ impl Frame for BasicFrame {
                     move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
-                            my_buffers
-                                .lock()
-                                .unwrap()
-                                .get_mut(my_current_pool)
-                                .unwrap()
-                                .pop();
-                            if *my_pending_swap.lock().unwrap() {
+                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
+                            if *my_pending_swap.lock().unwrap()
+                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
+                            {
                                 my_pools.lock().unwrap().swap();
+                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
                                 *my_pending_swap.lock().unwrap() = false;
                             }
                         }
