@@ -45,7 +45,7 @@ os:
 script:
   - |
       if [ -n "$BUILD_FMT" ]; then
-        cargo fmt -- --write-mode=diff
+        cargo fmt -- --check
       elif [ -n "$BUILD_DOC" ]; then
         cargo doc --no-deps --all-features
       elif [[ "$TRAVIS_RUST_VERSION" = "1.22.0" ]]; then
