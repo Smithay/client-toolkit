@@ -177,10 +177,11 @@ fn create_shm_fd() -> io::Result<RawFd> {
         ) {
             Ok(fd) => match mman::shm_unlink(mem_file_handle.as_str()) {
                 Ok(_) => return Ok(fd),
-                Err(nix::Error::Sys(errno)) => {
-                    unistd::close(fd);
-                    return Err(io::Error::from(errno));
-                }
+                Err(nix::Error::Sys(errno)) => match unistd::close(fd) {
+                    Ok(_) => return Err(io::Error::from(errno)),
+                    Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+                    Err(err) => panic!(err),
+                },
                 Err(err) => panic!(err),
             },
             Err(nix::Error::Sys(Errno::EEXIST)) => {
