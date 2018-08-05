@@ -132,8 +132,9 @@ fn main() {
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell
-        redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
-        pools.swap();
+        if let Some(pool) = pools.pool() {
+            redraw(pool, &mut buffer, window.surface(), dimensions)
+        }
         window.refresh();
     }
 
@@ -151,8 +152,9 @@ fn main() {
                 }
                 println!("Window states: {:?}", states);
                 window.refresh();
-                redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
-                pools.swap();
+                if let Some(pool) = pools.pool() {
+                    redraw(pool, &mut buffer, window.surface(), dimensions)
+                }
             }
             None => {}
         }
@@ -168,10 +170,6 @@ fn redraw(
     surface: &Proxy<wl_surface::WlSurface>,
     (buf_x, buf_y): (u32, u32),
 ) {
-    // destroy the old buffer if any
-    if let Some(b) = buffer.take() {
-        b.destroy();
-    }
     // resize the pool if relevant
     pool.resize((4 * buf_x * buf_y) as usize)
         .expect("Failed to resize the memory pool.");
@@ -190,14 +188,16 @@ fn redraw(
         let _ = writer.flush();
     }
     // get a buffer and attach it
-    let new_buffer =
-        pool.buffer(
-            0,
-            buf_x as i32,
-            buf_y as i32,
-            4 * buf_x as i32,
-            wl_shm::Format::Argb8888,
-        ).implement(|_, _| {});
+    let new_buffer = pool.buffer(
+        0,
+        buf_x as i32,
+        buf_y as i32,
+        4 * buf_x as i32,
+        wl_shm::Format::Argb8888,
+        |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+            wl_buffer::Event::Release => buffer.destroy(),
+        },
+    );
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     *buffer = Some(new_buffer);

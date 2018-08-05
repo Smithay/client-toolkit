@@ -215,10 +215,7 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 /// beautiful, but functional.
 pub struct BasicFrame {
     inner: Arc<Inner>,
-    pools: Arc<Mutex<DoubleMemPool>>,
-    buffers: Arc<Mutex<[Vec<Proxy<wl_buffer::WlBuffer>>; 2]>>,
-    current_pool: Arc<Mutex<usize>>,
-    pending_swap: Arc<Mutex<bool>>,
+    pools: DoubleMemPool,
     active: bool,
     hidden: bool,
     pointers: Vec<AutoPointer>,
@@ -251,10 +248,7 @@ impl Frame for BasicFrame {
                 implem: Mutex::new(implementation),
                 maximized: Mutex::new(false),
             }),
-            pools: Arc::new(Mutex::new(pools)),
-            buffers: Arc::new(Mutex::new([Vec::new(), Vec::new()])),
-            current_pool: Arc::new(Mutex::new(0)),
-            pending_swap: Arc::new(Mutex::new(false)),
+            pools,
             active: false,
             hidden: false,
             pointers: Vec::new(),
@@ -395,17 +389,13 @@ impl Frame for BasicFrame {
             return;
         }
         let (width, height) = *(self.inner.size.lock().unwrap());
-        let mut buffers = self.buffers.lock().unwrap();
-        let mut current_pool = self.current_pool.lock().unwrap();
-        // destroy currently pending buffers
-        for b in buffers.get_mut(*current_pool).unwrap().drain(..) {
-            b.destroy();
-        }
 
         {
             // grab the current pool
-            let mut pools = self.pools.lock().unwrap();
-            let pool = pools.pool();
+            let pool = match self.pools.pool() {
+                Some(pool) => pool,
+                None => return,
+            };
             // resize the pool as appropriate
             let pxcount = (HEADER_SIZE * width)
                 + max(
@@ -478,33 +468,16 @@ impl Frame for BasicFrame {
 
             // Create the buffers
             // -> head-subsurface
-            let my_buffers = self.buffers.clone();
-            let my_current_pool = self.current_pool.clone();
-            let my_pool = current_pool.clone();
-            let my_pending_swap = self.pending_swap.clone();
-            let my_pools = self.pools.clone();
-            let buffer =
-                pool.buffer(
-                    0,
-                    width as i32,
-                    HEADER_SIZE as i32,
-                    4 * width as i32,
-                    wl_shm::Format::Argb8888,
-                ).implement(
-                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                        wl_buffer::Event::Release => {
-                            buffer.destroy();
-                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
-                            if *my_pending_swap.lock().unwrap()
-                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
-                            {
-                                my_pools.lock().unwrap().swap();
-                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
-                                *my_pending_swap.lock().unwrap() = false;
-                            }
-                        }
-                    },
-                );
+            let buffer = pool.buffer(
+                0,
+                width as i32,
+                HEADER_SIZE as i32,
+                4 * width as i32,
+                wl_shm::Format::Argb8888,
+                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                    wl_buffer::Event::Release => buffer.destroy(),
+                },
+            );
             self.inner.parts[HEAD]
                 .subsurface
                 .set_position(0, -(HEADER_SIZE as i32));
@@ -524,36 +497,18 @@ impl Frame for BasicFrame {
                     .damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
             self.inner.parts[HEAD].surface.commit();
-            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> top-subsurface
-            let my_buffers = self.buffers.clone();
-            let my_current_pool = self.current_pool.clone();
-            let my_pool = current_pool.clone();
-            let my_pending_swap = self.pending_swap.clone();
-            let my_pools = self.pools.clone();
-            let buffer =
-                pool.buffer(
-                    4 * (width * HEADER_SIZE) as i32,
-                    (width + 2 * BORDER_SIZE) as i32,
-                    BORDER_SIZE as i32,
-                    4 * (width + 2 * BORDER_SIZE) as i32,
-                    wl_shm::Format::Argb8888,
-                ).implement(
-                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                        wl_buffer::Event::Release => {
-                            buffer.destroy();
-                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
-                            if *my_pending_swap.lock().unwrap()
-                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
-                            {
-                                my_pools.lock().unwrap().swap();
-                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
-                                *my_pending_swap.lock().unwrap() = false;
-                            }
-                        }
-                    },
-                );
+            let buffer = pool.buffer(
+                4 * (width * HEADER_SIZE) as i32,
+                (width + 2 * BORDER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                4 * (width + 2 * BORDER_SIZE) as i32,
+                wl_shm::Format::Argb8888,
+                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                    wl_buffer::Event::Release => buffer.destroy(),
+                },
+            );
             self.inner.parts[TOP].subsurface.set_position(
                 -(BORDER_SIZE as i32),
                 -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
@@ -577,36 +532,18 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[TOP].surface.commit();
-            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> bottom-subsurface
-            let my_buffers = self.buffers.clone();
-            let my_current_pool = self.current_pool.clone();
-            let my_pool = current_pool.clone();
-            let my_pending_swap = self.pending_swap.clone();
-            let my_pools = self.pools.clone();
-            let buffer =
-                pool.buffer(
-                    4 * (width * HEADER_SIZE) as i32,
-                    (width + 2 * BORDER_SIZE) as i32,
-                    BORDER_SIZE as i32,
-                    4 * (width + 2 * BORDER_SIZE) as i32,
-                    wl_shm::Format::Argb8888,
-                ).implement(
-                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                        wl_buffer::Event::Release => {
-                            buffer.destroy();
-                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
-                            if *my_pending_swap.lock().unwrap()
-                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
-                            {
-                                my_pools.lock().unwrap().swap();
-                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
-                                *my_pending_swap.lock().unwrap() = false;
-                            }
-                        }
-                    },
-                );
+            let buffer = pool.buffer(
+                4 * (width * HEADER_SIZE) as i32,
+                (width + 2 * BORDER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                4 * (width + 2 * BORDER_SIZE) as i32,
+                wl_shm::Format::Argb8888,
+                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                    wl_buffer::Event::Release => buffer.destroy(),
+                },
+            );
             self.inner.parts[BOTTOM]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), height as i32);
@@ -629,36 +566,18 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[BOTTOM].surface.commit();
-            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> left-subsurface
-            let my_buffers = self.buffers.clone();
-            let my_current_pool = self.current_pool.clone();
-            let my_pool = current_pool.clone();
-            let my_pending_swap = self.pending_swap.clone();
-            let my_pools = self.pools.clone();
-            let buffer =
-                pool.buffer(
-                    4 * (width * HEADER_SIZE) as i32,
-                    BORDER_SIZE as i32,
-                    (height + HEADER_SIZE) as i32,
-                    4 * (BORDER_SIZE as i32),
-                    wl_shm::Format::Argb8888,
-                ).implement(
-                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                        wl_buffer::Event::Release => {
-                            buffer.destroy();
-                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
-                            if *my_pending_swap.lock().unwrap()
-                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
-                            {
-                                my_pools.lock().unwrap().swap();
-                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
-                                *my_pending_swap.lock().unwrap() = false;
-                            }
-                        }
-                    },
-                );
+            let buffer = pool.buffer(
+                4 * (width * HEADER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                (height + HEADER_SIZE) as i32,
+                4 * (BORDER_SIZE as i32),
+                wl_shm::Format::Argb8888,
+                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                    wl_buffer::Event::Release => buffer.destroy(),
+                },
+            );
             self.inner.parts[LEFT]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
@@ -681,36 +600,18 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[LEFT].surface.commit();
-            buffers.get_mut(*current_pool).unwrap().push(buffer);
 
             // -> right-subsurface
-            let my_buffers = self.buffers.clone();
-            let my_current_pool = self.current_pool.clone();
-            let my_pool = current_pool.clone();
-            let my_pending_swap = self.pending_swap.clone();
-            let my_pools = self.pools.clone();
-            let buffer =
-                pool.buffer(
-                    4 * (width * HEADER_SIZE) as i32,
-                    BORDER_SIZE as i32,
-                    (height + HEADER_SIZE) as i32,
-                    4 * (BORDER_SIZE as i32),
-                    wl_shm::Format::Argb8888,
-                ).implement(
-                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                        wl_buffer::Event::Release => {
-                            buffer.destroy();
-                            my_buffers.lock().unwrap().get_mut(my_pool).unwrap().pop();
-                            if *my_pending_swap.lock().unwrap()
-                                && my_buffers.lock().unwrap().get(my_pool).unwrap().len() == 0
-                            {
-                                my_pools.lock().unwrap().swap();
-                                *my_current_pool.lock().unwrap() = (my_pool + 1 % 2 + 2) % 2;
-                                *my_pending_swap.lock().unwrap() = false;
-                            }
-                        }
-                    },
-                );
+            let buffer = pool.buffer(
+                4 * (width * HEADER_SIZE) as i32,
+                BORDER_SIZE as i32,
+                (height + HEADER_SIZE) as i32,
+                4 * (BORDER_SIZE as i32),
+                wl_shm::Format::Argb8888,
+                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                    wl_buffer::Event::Release => buffer.destroy(),
+                },
+            );
             self.inner.parts[RIGHT]
                 .subsurface
                 .set_position(width as i32, -(HEADER_SIZE as i32));
@@ -733,16 +634,6 @@ impl Frame for BasicFrame {
                 );
             }
             self.inner.parts[RIGHT].surface.commit();
-            buffers.get_mut(*current_pool).unwrap().push(buffer);
-        }
-        let other_pool = (*current_pool + 1 % 2 + 2) % 2;
-        if buffers.get(other_pool).unwrap().len() == 0 {
-            // If all buffers in the other pool are freed then swap
-            self.pools.lock().unwrap().swap();
-            *current_pool = other_pool;
-        } else {
-            // If the other pool is still in use, set pending swap to true
-            *self.pending_swap.lock().unwrap() = true;
         }
     }
 

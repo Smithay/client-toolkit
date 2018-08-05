@@ -10,11 +10,13 @@ use std::fs::File;
 use std::io;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
+use std::sync::{Arc, Mutex};
 
 use rand::prelude::*;
 
+use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
-use wayland_client::{NewProxy, Proxy};
+use wayland_client::Proxy;
 
 use wayland_client::protocol::wl_shm::RequestsTrait as ShmRequests;
 use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
@@ -41,13 +43,14 @@ impl DoubleMemPool {
     }
 
     /// Access the current drawing pool
-    pub fn pool(&mut self) -> &mut MemPool {
-        &mut self.pool1
-    }
-
-    /// Swap the pool
-    pub fn swap(&mut self) {
-        ::std::mem::swap(&mut self.pool1, &mut self.pool2);
+    pub fn pool(&mut self) -> Option<&mut MemPool> {
+        if !self.pool1.is_used() {
+            Some(&mut self.pool1)
+        } else if !self.pool2.is_used() {
+            Some(&mut self.pool2)
+        } else {
+            None
+        }
     }
 }
 
@@ -59,6 +62,7 @@ pub struct MemPool {
     file: File,
     len: usize,
     pool: Proxy<wl_shm_pool::WlShmPool>,
+    buffer_count: Arc<Mutex<u32>>,
 }
 
 impl MemPool {
@@ -77,6 +81,7 @@ impl MemPool {
             file: mem_file,
             len: 128,
             pool: pool,
+            buffer_count: Arc::new(Mutex::new(0)),
         })
     }
 
@@ -112,17 +117,38 @@ impl MemPool {
     /// - `format`: the encoding format of the pixels. Using a format that was not
     ///   advertized to the `wl_shm` global by the server is a protocol error and will
     ///   terminate your connexion
-    pub fn buffer(
+    pub fn buffer<Impl>(
         &self,
         offset: i32,
         width: i32,
         height: i32,
         stride: i32,
         format: wl_shm::Format,
-    ) -> NewProxy<wl_buffer::WlBuffer> {
+        implementation: Impl,
+    ) -> Proxy<wl_buffer::WlBuffer>
+    where
+        Impl: Implementation<Proxy<wl_buffer::WlBuffer>, wl_buffer::Event> + Send,
+    {
+        let implementation = Arc::new(Mutex::new(implementation));
+        *self.buffer_count.lock().unwrap() += 1;
+        let my_buffer_count = self.buffer_count.clone();
         self.pool
             .create_buffer(offset, width, height, stride, format)
             .unwrap()
+            .implement(move |event, buffer| {
+                match event {
+                    wl_buffer::Event::Release => {
+                        *my_buffer_count.lock().unwrap() -= 1;
+                    }
+                }
+                implementation.lock().unwrap().receive(event, buffer);
+            })
+    }
+
+    /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns
+    /// false
+    pub fn is_used(&self) -> bool {
+        *self.buffer_count.lock().unwrap() != 0
     }
 }
 

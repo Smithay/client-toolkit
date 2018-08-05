@@ -2,10 +2,8 @@ extern crate byteorder;
 extern crate image;
 extern crate smithay_client_toolkit as sctk;
 
-use std::cell::Cell;
 use std::env;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
@@ -14,8 +12,8 @@ use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequest
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm};
-use sctk::reexports::client::{Display, NewProxy, Proxy};
+use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::{Display, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, State, Window};
 use sctk::Environment;
@@ -176,22 +174,13 @@ fn main() {
     // First, we initialize a few boolean flags that we'll use to track our state:
     // - the window needs to be redrawn
     let mut need_redraw = false;
-    // - the frame needs to be refreshed
-    let mut need_refresh = false;
-    // - have we done the original bootstrap? Depending on the underlying shell
-    //   protocol, we may need to wait until we receive a first configure event
-    //   before drawing our window. This flag checks if this is done.
-    let mut bootstrapped = false;
-    // - number of currently free memory pool, which will be shared by the buffer
-    //   implementations
-    let free_pools = Rc::new(Cell::new(2u32));
     // - are we currently in the process of being resized? (to draw the image or
     //   black content)
     let mut resizing = false;
-    // - a QueueToken, we'll need it to implement the buffers
-    let token = event_queue.get_token();
     // - the size of our contents
     let mut dimensions = image.dimensions();
+
+    let mut buffer = None;
 
     // if our shell does not need to ait for a configure event, we draw right away.
     //
@@ -202,8 +191,17 @@ fn main() {
     // But if we have fallbacked to wl_shell, we need to draw right away because we'll
     // never receive a configure event if we don't draw something...
     if !env.shell.needs_configure() {
-        need_redraw = true;
-        bootstrapped = true;
+        // initial draw to bootstrap on wl_shell
+        if let Some(pool) = pools.pool() {
+            redraw(
+                pool,
+                &mut buffer,
+                window.surface(),
+                dimensions,
+                if resizing { None } else { Some(&image) },
+            )
+        }
+        window.refresh();
     }
 
     // We can now actually enter the event loop!
@@ -217,7 +215,8 @@ fn main() {
             // We receive a Refresh event, store that we need to refresh the
             // frame
             Some(WEvent::Refresh) => {
-                need_refresh = true;
+                window.refresh();
+                window.surface().commit();
             }
             // We received a configure event, our action depends on its
             // contents
@@ -228,29 +227,19 @@ fn main() {
                 if let Some((w, h)) = new_size {
                     if dimensions != (w, h) {
                         dimensions = (w, h);
-                        need_redraw = true;
                     }
                 }
+                window.resize(dimensions.0, dimensions.1);
+                window.refresh();
                 // Are we currently resizing ?
                 // We check if a resizing just started or stopped,
                 // because in this case we'll swap between drawing black
                 // and drawing the window (or the reverse), and thus we need to
                 // redraw
                 let new_resizing = states.contains(&State::Resizing);
-                if new_resizing != resizing {
-                    need_redraw = true;
-                }
                 resizing = new_resizing;
 
-                // If we have not bootstrapped yet, this is the first configure
-                // event, time to draw for the first time.
-                if !bootstrapped {
-                    bootstrapped = true;
-                    need_redraw = true;
-                }
-
-                // In all cases, schedule a refresh
-                need_refresh = true;
+                need_redraw = true;
             }
             // No event, nothing new to do.
             None => {}
@@ -261,85 +250,22 @@ fn main() {
             // memory pools is not currently used by the server. If both are
             // used, we'll keep the `need_redraw` flag to `true` and try again
             // at next iteration of the loop.
-            if free_pools.get() > 0 {
-                // Draw the contents in the pool and retrieve the buffer
-                let new_buffer = draw(
-                    pools.pool(),
-                    if resizing { None } else { Some(&image) },
+            // Draw the contents in the pool and retrieve the buffer
+            match pools.pool() {
+                Some(pool) => redraw(
+                    pool,
+                    &mut buffer,
+                    window.surface(),
                     dimensions,
-                );
-                // We implement this buffer to check when the server sends us the Release
-                // event.
-                // This method is unsafe for thread-safety reasons, as the callback we provide
-                // is not Send/Synd (it uses an Rc<Cell<>>). But our app is not multi-threaded
-                // here, so this is fine. =)
-                let buffer = unsafe {
-                    new_buffer.implement_nonsend(
-                        {
-                            // get a handle to the free pools counter, for the closure
-                            let notify = free_pools.clone();
-                            // The closure that will be called when the Release event is
-                            // received
-                            // - wl_buffer::Event is an enum with a single variant
-                            // - we need to annotate the buffer argument because rust's type
-                            //   inference is unfortunately not good enough to find it alone
-                            move |wl_buffer::Event::Release, buffer: Proxy<wl_buffer::WlBuffer>| {
-                                // This buffer has been released by the server. Increment the
-                                // count of free pools...
-                                notify.set(notify.get() + 1);
-                                // ... and destroy the buffer
-                                buffer.destroy();
-                            }
-                        },
-                        &token,
-                    )
-                };
-                // Now, swap the MemPools, so next time we'll draw on the other.
-                // THis is Double-buffering.
-                pools.swap();
-                // Register that one more pool is in use.
-                free_pools.set(free_pools.get() - 1);
-                // Attach this new buffer to our surface.
-                window.surface().attach(Some(&buffer), 0, 0);
-                // We need to tell the server which part of the surface have changed,
-                // it uses it to only reload/redraw relevant parts, for performance.
-                // In our case, everything has likely changed, so we damage everything.
-                //
-                // Two ways are possible for notifying this damage:
-                if window.surface().version() >= 4 {
-                    // If our server is recent enough and supports at least version 4 of the
-                    // wl_surface interface, we can specify the damage in buffer coordinates.
-                    // This is obviously the best and do that if possible.
-                    window
-                        .surface()
-                        .damage_buffer(0, 0, dimensions.0 as i32, dimensions.1 as i32);
-                } else {
-                    // Otherwise, we fallback to compatilibity mode. Here we specify damage
-                    // in surface coordinates, which would have been different if we had drawn
-                    // our buffer at HiDPI resolution. We didn't though, so it is ok.
-                    // Using `damage_buffer` in general is better though.
-                    window
-                        .surface()
-                        .damage(0, 0, dimensions.0 as i32, dimensions.1 as i32);
-                }
-                // We resize our frame, so that is is draw at the right size by SCTK
-                window.resize(dimensions.0, dimensions.1);
-                // We also refresh it, so that SCTK actually draw it with the new size
-                window.refresh();
-                // We commit our drawing surface, so that the server atomically applies
-                // all the changes we previously did.
-                window.surface().commit();
-                // We don't need to redraw or refresh anymore =)
-                need_redraw = false;
-                need_refresh = false;
+                    if resizing { None } else { Some(&image) },
+                ),
+                None => {}
             }
-        } else if need_refresh {
-            // If we don't need to redraw but only to refresh do it
-            window.refresh();
-            // We still need to commit our surface, as the decorations are drawn as
-            // subsurfaces of it.
+            // We commit our drawing surface, so that the server atomically applies
+            // all the changes we previously did.
             window.surface().commit();
-            need_refresh = false;
+            // We don't need to redraw or refresh anymore =)
+            need_redraw = false;
         }
 
         // These last two calls are necessary for the processing of wayland messages:
@@ -364,11 +290,13 @@ fn main() {
 // so that its dimensions follow the pointer during the resizing, but resizing the
 // image is costly and long. So during an interactive resize of the window we'll
 // just draw black contents to not feel laggy.
-fn draw(
+fn redraw(
     pool: &mut MemPool,
-    base_image: Option<&image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
+    buffer: &mut Option<Proxy<wl_buffer::WlBuffer>>,
+    surface: &Proxy<wl_surface::WlSurface>,
     (buf_x, buf_y): (u32, u32),
-) -> NewProxy<wl_buffer::WlBuffer> {
+    base_image: Option<&image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
+) {
     // First of all, we make sure the pool is big enough to hold our
     // image. We'll write in ARGB8888 format, meaning 4 bytes per pixel.
     // This resize method will only resize the pool if the requested size is bigger
@@ -434,12 +362,18 @@ fn draw(
     }
     // Now, we create a buffer to the memory pool pointing to the contents
     // we just wrote
-    return pool.buffer(
+    let new_buffer = pool.buffer(
         0,                // initial offset of the buffer in the pool
         buf_x as i32,     // width of the buffer, in pixels
         buf_y as i32,     // height of the buffer, in pixels
         4 * buf_x as i32, // stride: number of bytes between the start of two
         //   consecutive rows of pixels
         wl_shm::Format::Argb8888, // the pixel format we wrote in
+        |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+            wl_buffer::Event::Release => buffer.destroy(),
+        },
     );
+    surface.attach(Some(&new_buffer), 0, 0);
+    surface.commit();
+    *buffer = Some(new_buffer);
 }
