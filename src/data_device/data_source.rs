@@ -122,7 +122,8 @@ impl DataSource {
     where
         Impl: Implementation<(), DataSourceEvent> + Send,
     {
-        let source = mgr.create_data_source()
+        let source = mgr
+            .create_data_source()
             .expect("Provided a dead data device manager to create a data source.")
             .implement(move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem));
 
@@ -148,7 +149,8 @@ impl DataSource {
     where
         Impl: Implementation<(), DataSourceEvent>,
     {
-        let source = mgr.create_data_source()
+        let source = mgr
+            .create_data_source()
             .expect("Provided a dead data device manager to create a data source.")
             .implement_nonsend(
                 move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),

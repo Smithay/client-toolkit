@@ -26,7 +26,8 @@ fn main() {
     let env =
         Environment::from_registry(display.get_registry().unwrap(), &mut event_queue).unwrap();
 
-    let seat = env.manager
+    let seat = env
+        .manager
         .instantiate_auto::<wl_seat::WlSeat>()
         .unwrap()
         .implement(move |_, _| {});
@@ -45,7 +46,8 @@ fn main() {
 
     // we need a window to receive things actually
     let mut dimensions = (320u32, 240u32);
-    let surface = env.compositor
+    let surface = env
+        .compositor
         .create_surface()
         .unwrap()
         .implement(|_, _| {});
@@ -185,13 +187,14 @@ fn redraw(
         let _ = writer.flush();
     }
     // get a buffer and attach it
-    let new_buffer = pool.buffer(
-        0,
-        buf_x as i32,
-        buf_y as i32,
-        4 * buf_x as i32,
-        wl_shm::Format::Argb8888,
-    ).implement(|_, _| {});
+    let new_buffer =
+        pool.buffer(
+            0,
+            buf_x as i32,
+            buf_y as i32,
+            4 * buf_x as i32,
+            wl_shm::Format::Argb8888,
+        ).implement(|_, _| {});
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     *buffer = Some(new_buffer);

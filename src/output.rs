@@ -79,7 +79,8 @@ struct Inner {
 
 impl Inner {
     fn merge(&mut self, output: &Proxy<WlOutput>) {
-        let info = match self.outputs
+        let info = match self
+            .outputs
             .iter_mut()
             .find(|&&mut (_, ref o, _)| o.equals(output))
         {
@@ -96,7 +97,8 @@ impl Inner {
         // slow, but could be improved with Vec::drain_filter
         // see https://github.com/rust-lang/rust/issues/43244
         // this vec should be pretty small at all times anyway
-        while let Some(idx) = self.pendings
+        while let Some(idx) = self
+            .pendings
             .iter()
             .position(|&(ref o, _)| o.equals(output))
         {
@@ -133,7 +135,8 @@ impl Inner {
                     flags,
                 } => {
                     let mut found = false;
-                    if let Some(mode) = info.modes
+                    if let Some(mode) = info
+                        .modes
                         .iter_mut()
                         .find(|m| m.dimensions == (width, height) && m.refresh_rate == refresh)
                     {

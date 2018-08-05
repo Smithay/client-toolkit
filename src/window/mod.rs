@@ -253,7 +253,10 @@ impl<F: Frame + 'static> Window<F> {
         Ok(window)
     }
 
-    fn ensure_decoration(&self, decoration: &mut Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>) {
+    fn ensure_decoration(
+        &self,
+        decoration: &mut Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
+    ) {
         if self.decoration_mgr.is_none() {
             return;
         }

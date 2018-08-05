@@ -25,7 +25,8 @@ impl Inner {
 
     fn set_selection(&mut self, offer: Option<Proxy<wl_data_offer::WlDataOffer>>) {
         if let Some(offer) = offer {
-            if let Some(id) = self.known_offers
+            if let Some(id) = self
+                .known_offers
                 .iter()
                 .position(|o| o.offer.equals(&offer))
             {
@@ -41,7 +42,8 @@ impl Inner {
 
     fn set_dnd(&mut self, offer: Option<Proxy<wl_data_offer::WlDataOffer>>) {
         if let Some(offer) = offer {
-            if let Some(id) = self.known_offers
+            if let Some(id) = self
+                .known_offers
                 .iter()
                 .position(|o| o.offer.equals(&offer))
             {

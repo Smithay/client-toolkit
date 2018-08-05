@@ -60,7 +60,8 @@ impl MemPool {
     pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<MemPool> {
         let tempfile = tempfile()?;
         tempfile.set_len(128)?;
-        let pool = shm.create_pool(tempfile.as_raw_fd(), 128)
+        let pool = shm
+            .create_pool(tempfile.as_raw_fd(), 128)
             .unwrap()
             .implement(|e, _| match e {});
 

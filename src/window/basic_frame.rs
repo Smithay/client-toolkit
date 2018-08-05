@@ -209,7 +209,6 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
     }
 }
 
-
 /// A minimalistic set of decorations
 ///
 /// This class draws minimalistic decorations, which are arguably not very
@@ -473,13 +472,14 @@ impl Frame for BasicFrame {
 
             // Create the buffers
             // -> head-subsurface
-            let buffer = pool.buffer(
-                0,
-                width as i32,
-                HEADER_SIZE as i32,
-                4 * width as i32,
-                wl_shm::Format::Argb8888,
-            ).implement(|_, _| {});
+            let buffer =
+                pool.buffer(
+                    0,
+                    width as i32,
+                    HEADER_SIZE as i32,
+                    4 * width as i32,
+                    wl_shm::Format::Argb8888,
+                ).implement(|_, _| {});
             self.inner.parts[HEAD]
                 .subsurface
                 .set_position(0, -(HEADER_SIZE as i32));
@@ -502,13 +502,14 @@ impl Frame for BasicFrame {
             self.buffers.push(buffer);
 
             // -> top-subsurface
-            let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                (width + 2 * BORDER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                4 * (width + 2 * BORDER_SIZE) as i32,
-                wl_shm::Format::Argb8888,
-            ).implement(|_, _| {});
+            let buffer =
+                pool.buffer(
+                    4 * (width * HEADER_SIZE) as i32,
+                    (width + 2 * BORDER_SIZE) as i32,
+                    BORDER_SIZE as i32,
+                    4 * (width + 2 * BORDER_SIZE) as i32,
+                    wl_shm::Format::Argb8888,
+                ).implement(|_, _| {});
             self.inner.parts[TOP].subsurface.set_position(
                 -(BORDER_SIZE as i32),
                 -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
@@ -535,13 +536,14 @@ impl Frame for BasicFrame {
             self.buffers.push(buffer);
 
             // -> bottom-subsurface
-            let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                (width + 2 * BORDER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                4 * (width + 2 * BORDER_SIZE) as i32,
-                wl_shm::Format::Argb8888,
-            ).implement(|_, _| {});
+            let buffer =
+                pool.buffer(
+                    4 * (width * HEADER_SIZE) as i32,
+                    (width + 2 * BORDER_SIZE) as i32,
+                    BORDER_SIZE as i32,
+                    4 * (width + 2 * BORDER_SIZE) as i32,
+                    wl_shm::Format::Argb8888,
+                ).implement(|_, _| {});
             self.inner.parts[BOTTOM]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), height as i32);
@@ -567,13 +569,14 @@ impl Frame for BasicFrame {
             self.buffers.push(buffer);
 
             // -> left-subsurface
-            let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                (height + HEADER_SIZE) as i32,
-                4 * (BORDER_SIZE as i32),
-                wl_shm::Format::Argb8888,
-            ).implement(|_, _| {});
+            let buffer =
+                pool.buffer(
+                    4 * (width * HEADER_SIZE) as i32,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
+                    4 * (BORDER_SIZE as i32),
+                    wl_shm::Format::Argb8888,
+                ).implement(|_, _| {});
             self.inner.parts[LEFT]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
@@ -599,13 +602,14 @@ impl Frame for BasicFrame {
             self.buffers.push(buffer);
 
             // -> right-subsurface
-            let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                (height + HEADER_SIZE) as i32,
-                4 * (BORDER_SIZE as i32),
-                wl_shm::Format::Argb8888,
-            ).implement(|_, _| {});
+            let buffer =
+                pool.buffer(
+                    4 * (width * HEADER_SIZE) as i32,
+                    BORDER_SIZE as i32,
+                    (height + HEADER_SIZE) as i32,
+                    4 * (BORDER_SIZE as i32),
+                    wl_shm::Format::Argb8888,
+                ).implement(|_, _| {});
             self.inner.parts[RIGHT]
                 .subsurface
                 .set_position(width as i32, -(HEADER_SIZE as i32));
@@ -747,7 +751,7 @@ fn draw_buttons(
             colors::RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE)) as u64,
+            4 * (width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
@@ -770,7 +774,7 @@ fn draw_buttons(
             colors::YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE)) as u64,
+            4 * (width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {
@@ -791,7 +795,7 @@ fn draw_buttons(
             colors::GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * ((width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE)) as u64,
+            4 * (width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE) as u64,
         ));
         for _ in 0..16 {
             for _ in 0..24 {

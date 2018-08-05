@@ -50,7 +50,8 @@ impl Xdg {
                     let view: &[u32] = unsafe {
                         ::std::slice::from_raw_parts(states.as_ptr() as *const _, states.len() / 4)
                     };
-                    let states = view.iter()
+                    let states = view
+                        .iter()
                         .cloned()
                         .flat_map(xdg_toplevel::State::from_raw)
                         .collect::<Vec<_>>();

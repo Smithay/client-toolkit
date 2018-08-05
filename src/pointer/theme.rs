@@ -46,7 +46,8 @@ impl ThemeManager {
 
     /// Wrap a pointer to theme it
     pub fn theme_pointer(&self, pointer: Proxy<wl_pointer::WlPointer>) -> ThemedPointer {
-        let surface = self.compositor
+        let surface = self
+            .compositor
             .create_surface()
             .unwrap()
             .implement(|_, _| {});
@@ -73,7 +74,8 @@ impl ThemeManager {
     where
         Impl: Implementation<ThemedPointer, wl_pointer::Event> + Send + 'static,
     {
-        let surface = self.compositor
+        let surface = self
+            .compositor
             .create_surface()
             .unwrap()
             .implement(|_, _| {});
@@ -115,7 +117,8 @@ impl ThemeManager {
     where
         Impl: Implementation<ThemedPointer, wl_pointer::Event> + Send + 'static,
     {
-        let surface = self.compositor
+        let surface = self
+            .compositor
             .create_surface()
             .unwrap()
             .implement(|_, _| {});

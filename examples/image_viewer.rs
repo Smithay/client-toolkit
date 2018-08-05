@@ -100,12 +100,12 @@ fn main() {
     // borders it draws, you just need to implement the appropriate trait
     // to create your own.
     let mut window = Window::<BasicFrame>::init_with_decorations(
-        surface,            // the wl_surface that serves as the basis of this window
-        image.dimensions(), // the initial internal dimensions of the window
-        &env.compositor,    // -+
-        &env.subcompositor, //  | The Window constructor needs access to these globals
-        &env.shm,           //  | to initialize the window
-        &env.shell,         // -+
+        surface,                      // the wl_surface that serves as the basis of this window
+        image.dimensions(),           // the initial internal dimensions of the window
+        &env.compositor,              // -+
+        &env.subcompositor,           //  | The Window constructor needs access to these globals
+        &env.shm,                     //  | to initialize the window
+        &env.shell,                   // -+
         env.decorations_mgr.as_ref(), // to use native decorations if available
         move |evt, ()| {
             // This is the closure that process the Window events.
@@ -152,7 +152,8 @@ fn main() {
     // represent a single user. Most systems have only one seat, multi-seat configurations
     // are quite exotic.
     // Thus, we just automatically bind the first seat we find.
-    let seat = env.manager
+    let seat = env
+        .manager
         .instantiate_auto::<wl_seat::WlSeat>()
         .unwrap()
         .implement(move |_, _| {});

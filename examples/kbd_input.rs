@@ -36,7 +36,8 @@ fn main() {
      * Init wayland objects
      */
 
-    let surface = env.compositor
+    let surface = env
+        .compositor
         .create_surface()
         .unwrap()
         .implement(|_, _| {});
@@ -76,7 +77,8 @@ fn main() {
      */
 
     // initialize a seat to retrieve keyboard events
-    let seat = env.manager
+    let seat = env
+        .manager
         .instantiate_auto::<wl_seat::WlSeat>()
         .unwrap()
         .implement(move |_, _| {});
@@ -188,13 +190,14 @@ fn redraw(
         let _ = writer.flush();
     }
     // get a buffer and attach it
-    let new_buffer = pool.buffer(
-        0,
-        buf_x as i32,
-        buf_y as i32,
-        4 * buf_x as i32,
-        wl_shm::Format::Argb8888,
-    ).implement(|_, _| {});
+    let new_buffer =
+        pool.buffer(
+            0,
+            buf_x as i32,
+            buf_y as i32,
+            4 * buf_x as i32,
+            wl_shm::Format::Argb8888,
+        ).implement(|_, _| {});
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     *buffer = Some(new_buffer);
