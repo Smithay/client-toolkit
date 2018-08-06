@@ -634,7 +634,7 @@ impl Frame for BasicFrame {
         if self.hidden {
             (width, height)
         } else {
-            (width, height - HEADER_SIZE as i32)
+            (width - 1, height - HEADER_SIZE as i32)
         }
     }
 
@@ -642,7 +642,7 @@ impl Frame for BasicFrame {
         if self.hidden {
             (width, height)
         } else {
-            (width, height + HEADER_SIZE as i32)
+            (width + 1, height + HEADER_SIZE as i32)
         }
     }
 
