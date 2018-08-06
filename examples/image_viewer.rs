@@ -8,7 +8,6 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
@@ -165,7 +164,8 @@ fn main() {
     // DoubleMemPool::new() requires access to the wl_shm global, which represents
     // the capability of the server to use shared memory (SHM). All wayland servers
     // are required to support it.
-    let mut pools = DoubleMemPool::new(&env.shm).expect("Failed to create the memory pools.");
+    let mut pools =
+        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create the memory pools.");
 
     /*
      * Event Loop preparation and running
@@ -369,9 +369,6 @@ fn redraw(
         4 * buf_x as i32, // stride: number of bytes between the start of two
         //   consecutive rows of pixels
         wl_shm::Format::Argb8888, // the pixel format we wrote in
-        |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-            wl_buffer::Event::Release => buffer.destroy(),
-        },
     );
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();

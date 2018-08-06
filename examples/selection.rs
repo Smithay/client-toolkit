@@ -12,7 +12,6 @@ use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
 
-use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
@@ -81,7 +80,8 @@ fn main() {
 
     window.new_seat(&seat);
 
-    let mut pools = DoubleMemPool::new(&env.shm).expect("Failed to create a memory pool !");
+    let mut pools =
+        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create a memory pool !");
     let mut buffer = None;
 
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
@@ -191,9 +191,6 @@ fn redraw(
         buf_y as i32,
         4 * buf_x as i32,
         wl_shm::Format::Argb8888,
-        |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-            wl_buffer::Event::Release => buffer.destroy(),
-        },
     );
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();

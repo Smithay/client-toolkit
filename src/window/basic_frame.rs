@@ -4,12 +4,10 @@ use std::sync::{Arc, Mutex};
 
 use wayland_client::commons::Implementation;
 use wayland_client::protocol::{
-    wl_buffer, wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface,
-    wl_surface,
+    wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
 };
 use wayland_client::Proxy;
 
-use wayland_client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;
 use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
@@ -232,7 +230,6 @@ impl Frame for BasicFrame {
         shm: &Proxy<wl_shm::WlShm>,
         implementation: Box<Implementation<u32, FrameRequest> + Send>,
     ) -> Result<BasicFrame, ::std::io::Error> {
-        let pools = DoubleMemPool::new(&shm)?;
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
@@ -240,14 +237,23 @@ impl Frame for BasicFrame {
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
         ];
+        let inner = Arc::new(Inner {
+            parts: parts,
+            size: Mutex::new((1, 1)),
+            resizable: Mutex::new(true),
+            implem: Mutex::new(implementation),
+            maximized: Mutex::new(false),
+        });
+        let my_inner = inner.clone();
+        let pools = DoubleMemPool::new(&shm, move |_, _| {
+            my_inner
+                .implem
+                .lock()
+                .unwrap()
+                .receive(FrameRequest::Refresh, 0);
+        })?;
         Ok(BasicFrame {
-            inner: Arc::new(Inner {
-                parts: parts,
-                size: Mutex::new((1, 1)),
-                resizable: Mutex::new(true),
-                implem: Mutex::new(implementation),
-                maximized: Mutex::new(false),
-            }),
+            inner,
             pools,
             active: false,
             hidden: false,
@@ -474,9 +480,6 @@ impl Frame for BasicFrame {
                 HEADER_SIZE as i32,
                 4 * width as i32,
                 wl_shm::Format::Argb8888,
-                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                    wl_buffer::Event::Release => buffer.destroy(),
-                },
             );
             self.inner.parts[HEAD]
                 .subsurface
@@ -505,9 +508,6 @@ impl Frame for BasicFrame {
                 BORDER_SIZE as i32,
                 4 * (width + 2 * BORDER_SIZE) as i32,
                 wl_shm::Format::Argb8888,
-                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                    wl_buffer::Event::Release => buffer.destroy(),
-                },
             );
             self.inner.parts[TOP].subsurface.set_position(
                 -(BORDER_SIZE as i32),
@@ -540,9 +540,6 @@ impl Frame for BasicFrame {
                 BORDER_SIZE as i32,
                 4 * (width + 2 * BORDER_SIZE) as i32,
                 wl_shm::Format::Argb8888,
-                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                    wl_buffer::Event::Release => buffer.destroy(),
-                },
             );
             self.inner.parts[BOTTOM]
                 .subsurface
@@ -574,9 +571,6 @@ impl Frame for BasicFrame {
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
                 wl_shm::Format::Argb8888,
-                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                    wl_buffer::Event::Release => buffer.destroy(),
-                },
             );
             self.inner.parts[LEFT]
                 .subsurface
@@ -608,9 +602,6 @@ impl Frame for BasicFrame {
                 (height + HEADER_SIZE) as i32,
                 4 * (BORDER_SIZE as i32),
                 wl_shm::Format::Argb8888,
-                |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                    wl_buffer::Event::Release => buffer.destroy(),
-                },
             );
             self.inner.parts[RIGHT]
                 .subsurface
