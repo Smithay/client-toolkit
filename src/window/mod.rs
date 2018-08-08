@@ -217,7 +217,7 @@ impl<F: Frame + 'static> Window<F> {
         // setup size and geometry
         {
             let frame = frame.lock().unwrap();
-            let (minw, minh) = frame.add_borders(1, 1);
+            let (minw, minh) = frame.add_borders(2, 1);
             shell_surface.set_min_size(Some((minw, minh)));
             let (w, h) = frame.add_borders(initial_dims.0 as i32, initial_dims.1 as i32);
             let (x, y) = frame.location();
@@ -228,7 +228,7 @@ impl<F: Frame + 'static> Window<F> {
             frame: frame.clone(),
             shell_surface: shell_surface.clone(),
             user_impl: Box::new(implementation) as Box<_>,
-            min_size: (1, 1),
+            min_size: (2, 1),
             max_size: None,
             current_size: initial_dims,
             old_size: None,
@@ -457,11 +457,11 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// The provided size is the interior size, not counting decorations
     pub fn set_min_size(&mut self, size: Option<(u32, u32)>) {
-        let (w, h) = size.unwrap_or((1, 1));
+        let (w, h) = size.unwrap_or((2, 1));
         let (w, h) = self.frame.lock().unwrap().add_borders(w as i32, h as i32);
         self.shell_surface.set_min_size(Some((w, h)));
         if let Some(ref mut inner) = *(self.inner.lock().unwrap()) {
-            inner.min_size = size.unwrap_or((1, 1))
+            inner.min_size = size.unwrap_or((2, 1))
         }
     }
 
