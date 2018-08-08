@@ -157,7 +157,7 @@ fn create_shm_fd() -> io::Result<RawFd> {
             Err(nix::Error::Sys(Errno::EINTR)) => continue,
             Err(nix::Error::Sys(Errno::ENOSYS)) => break,
             Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
-            Err(err) => panic!(err),
+            Err(err) => unreachable!(err),
         }
     }
 
@@ -195,7 +195,7 @@ fn create_shm_fd() -> io::Result<RawFd> {
             }
             Err(nix::Error::Sys(Errno::EINTR)) => continue,
             Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
-            Err(err) => panic!(err),
+            Err(err) => unreachable!(err),
         }
     }
 }
