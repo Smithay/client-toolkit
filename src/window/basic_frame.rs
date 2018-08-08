@@ -245,6 +245,8 @@ impl Frame for BasicFrame {
             maximized: Mutex::new(false),
         });
         let my_inner = inner.clone();
+        // Send a Refresh request on callback from DoubleMemPool as it will be fired when
+        // None was previously returned from `pool()` and the draw was postponed
         let pools = DoubleMemPool::new(&shm, move |_, _| {
             my_inner
                 .implem

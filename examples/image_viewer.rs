@@ -180,8 +180,6 @@ fn main() {
     // - the size of our contents
     let mut dimensions = image.dimensions();
 
-    let mut buffer = None;
-
     // if our shell does not need to ait for a configure event, we draw right away.
     //
     // Note that this is only the case for the old wl_shell protocol, which is now
@@ -252,20 +250,19 @@ fn main() {
             // at next iteration of the loop.
             // Draw the contents in the pool and retrieve the buffer
             match pools.pool() {
-                Some(pool) => redraw(
-                    pool,
-                    &mut buffer,
-                    window.surface(),
-                    dimensions,
-                    if resizing { None } else { Some(&image) },
-                ),
+                Some(pool) => {
+                    // We don't need to redraw or refresh anymore =)
+                    need_redraw = false;
+                    redraw(
+                        pool,
+                        &mut buffer,
+                        window.surface(),
+                        dimensions,
+                        if resizing { None } else { Some(&image) },
+                    )
+                }
                 None => {}
             }
-            // We commit our drawing surface, so that the server atomically applies
-            // all the changes we previously did.
-            window.surface().commit();
-            // We don't need to redraw or refresh anymore =)
-            need_redraw = false;
         }
 
         // These last two calls are necessary for the processing of wayland messages:

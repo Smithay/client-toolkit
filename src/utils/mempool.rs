@@ -94,6 +94,9 @@ impl DoubleMemPool {
 /// Mempool will also handle the destruction of buffers and as such the `destroy()` method should not
 /// be used on buffers created from Mempool.
 ///
+/// Overwriting the contents of the memory pool before it is completely freed may cause graphical
+/// glitches due to the possible corruption of data while the compositor is reading it.
+///
 /// Mempool requires an implementation that will be called when the pool becomes free, this
 /// happens when all the pools buffers are released by the server.
 pub struct MemPool {
