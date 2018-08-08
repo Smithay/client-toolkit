@@ -1,8 +1,17 @@
+use nix;
+use nix::errno::Errno;
+use nix::fcntl;
+use nix::sys::memfd;
+use nix::sys::mman;
+use nix::sys::stat;
+use nix::unistd;
+use std::ffi::CStr;
 use std::fs::File;
 use std::io;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::FromRawFd;
+use std::os::unix::io::RawFd;
 
-use tempfile::tempfile;
+use rand::prelude::*;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
 use wayland_client::{NewProxy, Proxy};
@@ -42,12 +51,9 @@ impl DoubleMemPool {
     }
 }
 
-/// A wrapper handling an SHM memory pool backed by a temporary file
+/// A wrapper handling an SHM memory pool backed by a shared memory file
 ///
-/// On Linux, temporary files like this are never mapped on the disk, and
-/// as such stay in RAM, allowing for an efficient memory sharing.
-///
-/// This wrapper handles for you the creation of the tempfile and its synchronisation
+/// This wrapper handles for you the creation of the shared memory file and its synchronisation
 /// with the protocol.
 pub struct MemPool {
     file: File,
@@ -58,15 +64,17 @@ pub struct MemPool {
 impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<MemPool> {
-        let tempfile = tempfile()?;
-        tempfile.set_len(128)?;
+        let mem_fd = create_shm_fd()?;
+        let mem_file = unsafe { File::from_raw_fd(mem_fd) };
+        mem_file.set_len(128)?;
+
         let pool = shm
-            .create_pool(tempfile.as_raw_fd(), 128)
+            .create_pool(mem_fd, 128)
             .unwrap()
             .implement(|e, _| match e {});
 
         Ok(MemPool {
-            file: tempfile,
+            file: mem_file,
             len: 128,
             pool: pool,
         })
@@ -136,5 +144,58 @@ impl io::Write for MemPool {
 impl io::Seek for MemPool {
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         io::Seek::seek(&mut self.file, pos)
+    }
+}
+
+fn create_shm_fd() -> io::Result<RawFd> {
+    loop {
+        match memfd::memfd_create(
+            CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
+            memfd::MemFdCreateFlag::MFD_CLOEXEC,
+        ) {
+            Ok(fd) => return Ok(fd),
+            Err(nix::Error::Sys(Errno::EINTR)) => continue,
+            Err(nix::Error::Sys(Errno::ENOSYS)) => break,
+            Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+            Err(err) => unreachable!(err),
+        }
+    }
+
+    // Fallback to using shm_open
+    let mut rng = thread_rng();
+    let mut mem_file_handle = format!(
+        "/smithay-client-toolkit-{}",
+        rng.gen_range(0, ::std::u32::MAX)
+    );
+    loop {
+        match mman::shm_open(
+            mem_file_handle.as_str(),
+            fcntl::OFlag::O_CREAT
+                | fcntl::OFlag::O_EXCL
+                | fcntl::OFlag::O_RDWR
+                | fcntl::OFlag::O_CLOEXEC,
+            stat::Mode::S_IRUSR | stat::Mode::S_IWUSR,
+        ) {
+            Ok(fd) => match mman::shm_unlink(mem_file_handle.as_str()) {
+                Ok(_) => return Ok(fd),
+                Err(nix::Error::Sys(errno)) => match unistd::close(fd) {
+                    Ok(_) => return Err(io::Error::from(errno)),
+                    Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+                    Err(err) => panic!(err),
+                },
+                Err(err) => panic!(err),
+            },
+            Err(nix::Error::Sys(Errno::EEXIST)) => {
+                // If a file with that handle exists then change the handle
+                mem_file_handle = format!(
+                    "/smithay-client-toolkit-{}",
+                    rng.gen_range(0, ::std::u32::MAX)
+                );
+                continue;
+            }
+            Err(nix::Error::Sys(Errno::EINTR)) => continue,
+            Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
+            Err(err) => unreachable!(err),
+        }
     }
 }

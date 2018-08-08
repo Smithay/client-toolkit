@@ -1,7 +1,6 @@
 extern crate byteorder;
 extern crate image;
 extern crate smithay_client_toolkit as sctk;
-extern crate tempfile;
 
 use std::cell::Cell;
 use std::env;
