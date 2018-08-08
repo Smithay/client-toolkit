@@ -12,12 +12,11 @@ use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
 
-use sctk::reexports::client::protocol::wl_buffer::RequestsTrait as BufferRequests;
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_seat, wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 
 fn main() {
@@ -81,8 +80,8 @@ fn main() {
 
     window.new_seat(&seat);
 
-    let mut pools = DoubleMemPool::new(&env.shm).expect("Failed to create a memory pool !");
-    let mut buffer = None;
+    let mut pools =
+        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create a memory pool !");
 
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
@@ -127,8 +126,9 @@ fn main() {
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell
-        redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
-        pools.swap();
+        if let Some(pool) = pools.pool() {
+            redraw(pool, window.surface(), dimensions)
+        }
         window.refresh();
     }
 
@@ -145,8 +145,9 @@ fn main() {
                     dimensions = (w, h)
                 }
                 window.refresh();
-                redraw(pools.pool(), &mut buffer, window.surface(), dimensions);
-                pools.swap();
+                if let Some(pool) = pools.pool() {
+                    redraw(pool, window.surface(), dimensions)
+                }
             }
             None => {}
         }
@@ -164,16 +165,7 @@ fn main() {
     }
 }
 
-fn redraw(
-    pool: &mut MemPool,
-    buffer: &mut Option<Proxy<wl_buffer::WlBuffer>>,
-    surface: &Proxy<wl_surface::WlSurface>,
-    (buf_x, buf_y): (u32, u32),
-) {
-    // destroy the old buffer if any
-    if let Some(b) = buffer.take() {
-        b.destroy();
-    }
+fn redraw(pool: &mut MemPool, surface: &Proxy<wl_surface::WlSurface>, (buf_x, buf_y): (u32, u32)) {
     // resize the pool if relevant
     pool.resize((4 * buf_x * buf_y) as usize)
         .expect("Failed to resize the memory pool.");
@@ -187,15 +179,13 @@ fn redraw(
         let _ = writer.flush();
     }
     // get a buffer and attach it
-    let new_buffer =
-        pool.buffer(
-            0,
-            buf_x as i32,
-            buf_y as i32,
-            4 * buf_x as i32,
-            wl_shm::Format::Argb8888,
-        ).implement(|_, _| {});
+    let new_buffer = pool.buffer(
+        0,
+        buf_x as i32,
+        buf_y as i32,
+        4 * buf_x as i32,
+        wl_shm::Format::Argb8888,
+    );
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
-    *buffer = Some(new_buffer);
 }

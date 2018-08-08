@@ -10,12 +10,15 @@ use std::fs::File;
 use std::io;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
+use std::sync::{Arc, Mutex};
 
 use rand::prelude::*;
 
+use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
-use wayland_client::{NewProxy, Proxy};
+use wayland_client::Proxy;
 
+use wayland_client::protocol::wl_buffer::RequestsTrait;
 use wayland_client::protocol::wl_shm::RequestsTrait as ShmRequests;
 use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
 
@@ -25,29 +28,57 @@ use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
 /// use for conveniently implementing double-buffering in your
 /// apps.
 ///
-/// Just access the current drawing pool with the `pool()` method,
-/// and swap them using the `swap()` method between two frames.
+/// DoubleMemPool requires a implementation that is called when
+/// one of the two internal memory pools becomes free after None
+/// was returned from the `pool()` method.
 pub struct DoubleMemPool {
     pool1: MemPool,
     pool2: MemPool,
+    free: Arc<Mutex<bool>>,
 }
 
 impl DoubleMemPool {
     /// Create a double memory pool
-    pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<DoubleMemPool> {
-        let pool1 = MemPool::new(shm)?;
-        let pool2 = MemPool::new(shm)?;
-        Ok(DoubleMemPool { pool1, pool2 })
+    pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<DoubleMemPool>
+    where
+        Impl: Implementation<(), ()> + Send,
+    {
+        let free = Arc::new(Mutex::new(true));
+        let implementation = Arc::new(Mutex::new(implementation));
+        let my_free = free.clone();
+        let my_implementation = implementation.clone();
+        let pool1 = MemPool::new(shm, move |_, _| {
+            let mut my_free = my_free.lock().unwrap();
+            if !*my_free {
+                my_implementation.lock().unwrap().receive((), ());
+                *my_free = true
+            }
+        })?;
+        let my_free = free.clone();
+        let my_implementation = implementation.clone();
+        let pool2 = MemPool::new(shm, move |_, _| {
+            let mut my_free = my_free.lock().unwrap();
+            if !*my_free {
+                my_implementation.lock().unwrap().receive((), ());
+                *my_free = true
+            }
+        })?;
+        Ok(DoubleMemPool { pool1, pool2, free })
     }
 
-    /// Access the current drawing pool
-    pub fn pool(&mut self) -> &mut MemPool {
-        &mut self.pool1
-    }
-
-    /// Swap the pool
-    pub fn swap(&mut self) {
-        ::std::mem::swap(&mut self.pool1, &mut self.pool2);
+    /// This method checks both its internal memory pools and returns
+    /// one if that pool does not contain any buffers that are still in use
+    /// by the server. If both the memory pools contain buffers that are currently
+    /// in use by the server None will be returned.
+    pub fn pool(&mut self) -> Option<&mut MemPool> {
+        if !self.pool1.is_used() {
+            Some(&mut self.pool1)
+        } else if !self.pool2.is_used() {
+            Some(&mut self.pool2)
+        } else {
+            *self.free.lock().unwrap() = false;
+            None
+        }
     }
 }
 
@@ -55,15 +86,33 @@ impl DoubleMemPool {
 ///
 /// This wrapper handles for you the creation of the shared memory file and its synchronisation
 /// with the protocol.
+///
+/// Mempool internally tracks the lifetime of all buffers created from it and to ensure that
+/// this buffer count is correct all buffers must be attached to a surface. Once a buffer is attached to
+/// a surface it must be immediately commited to that surface before another buffer is attached.
+///
+/// Mempool will also handle the destruction of buffers and as such the `destroy()` method should not
+/// be used on buffers created from Mempool.
+///
+/// Overwriting the contents of the memory pool before it is completely freed may cause graphical
+/// glitches due to the possible corruption of data while the compositor is reading it.
+///
+/// Mempool requires an implementation that will be called when the pool becomes free, this
+/// happens when all the pools buffers are released by the server.
 pub struct MemPool {
     file: File,
     len: usize,
     pool: Proxy<wl_shm_pool::WlShmPool>,
+    buffer_count: Arc<Mutex<u32>>,
+    implementation: Arc<Mutex<Implementation<(), ()> + Send>>,
 }
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
-    pub fn new(shm: &Proxy<wl_shm::WlShm>) -> io::Result<MemPool> {
+    pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<MemPool>
+    where
+        Impl: Implementation<(), ()> + Send,
+    {
         let mem_fd = create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(mem_fd) };
         mem_file.set_len(128)?;
@@ -77,6 +126,8 @@ impl MemPool {
             file: mem_file,
             len: 128,
             pool: pool,
+            buffer_count: Arc::new(Mutex::new(0)),
+            implementation: Arc::new(Mutex::new(implementation)),
         })
     }
 
@@ -119,10 +170,31 @@ impl MemPool {
         height: i32,
         stride: i32,
         format: wl_shm::Format,
-    ) -> NewProxy<wl_buffer::WlBuffer> {
+    ) -> Proxy<wl_buffer::WlBuffer> {
+        *self.buffer_count.lock().unwrap() += 1;
+        let my_buffer_count = self.buffer_count.clone();
+        let my_implementation = self.implementation.clone();
         self.pool
             .create_buffer(offset, width, height, stride, format)
             .unwrap()
+            .implement(
+                move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                    wl_buffer::Event::Release => {
+                        buffer.destroy();
+                        let mut my_buffer_count = my_buffer_count.lock().unwrap();
+                        *my_buffer_count -= 1;
+                        if *my_buffer_count == 0 {
+                            my_implementation.lock().unwrap().receive((), ());
+                        }
+                    }
+                },
+            )
+    }
+
+    /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns
+    /// false
+    pub fn is_used(&self) -> bool {
+        *self.buffer_count.lock().unwrap() != 0
     }
 }
 
