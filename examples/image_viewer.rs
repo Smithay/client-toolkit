@@ -11,7 +11,7 @@ use byteorder::{NativeEndian, WriteBytesExt};
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use sctk::reexports::client::protocol::{wl_buffer, wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_seat, wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, State, Window};
@@ -193,7 +193,6 @@ fn main() {
         if let Some(pool) = pools.pool() {
             redraw(
                 pool,
-                &mut buffer,
                 window.surface(),
                 dimensions,
                 if resizing { None } else { Some(&image) },
@@ -255,7 +254,6 @@ fn main() {
                     need_redraw = false;
                     redraw(
                         pool,
-                        &mut buffer,
                         window.surface(),
                         dimensions,
                         if resizing { None } else { Some(&image) },
@@ -289,7 +287,6 @@ fn main() {
 // just draw black contents to not feel laggy.
 fn redraw(
     pool: &mut MemPool,
-    buffer: &mut Option<Proxy<wl_buffer::WlBuffer>>,
     surface: &Proxy<wl_surface::WlSurface>,
     (buf_x, buf_y): (u32, u32),
     base_image: Option<&image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
@@ -369,5 +366,4 @@ fn redraw(
     );
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
-    *buffer = Some(new_buffer);
 }
