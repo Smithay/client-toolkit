@@ -220,7 +220,8 @@ impl<F: Frame + 'static> Window<F> {
         // setup size and geometry
         {
             let frame = frame.lock().unwrap();
-            let (minw, minh) = frame.add_borders(MIN_WINDOW_SIZE.0 as i32, MIN_WINDOW_SIZE.1 as i32);
+            let (minw, minh) =
+                frame.add_borders(MIN_WINDOW_SIZE.0 as i32, MIN_WINDOW_SIZE.1 as i32);
             shell_surface.set_min_size(Some((minw, minh)));
             let (w, h) = frame.add_borders(initial_dims.0 as i32, initial_dims.1 as i32);
             let (x, y) = frame.location();
