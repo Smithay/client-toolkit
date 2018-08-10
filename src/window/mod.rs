@@ -197,11 +197,9 @@ impl<F: Frame + 'static> Window<F> {
                             if states.contains(&State::Maximized) {
                                 // we are getting maximized, store the size for restoration
                                 inner.old_size = Some(inner.current_size);
-                            } else {
+                            } else if new_size.is_none() {
                                 // we are getting de-maximized, restore the size
-                                if new_size.is_none() {
-                                    new_size = inner.old_size.take();
-                                }
+                                new_size = inner.old_size.take();
                             }
                         }
                         need_refresh |= frame.set_active(states.contains(&State::Activated));

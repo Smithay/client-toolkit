@@ -10,6 +10,7 @@ use std::fs::File;
 use std::io;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use rand::prelude::*;
@@ -34,7 +35,7 @@ use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
 pub struct DoubleMemPool {
     pool1: MemPool,
     pool2: MemPool,
-    free: Arc<Mutex<bool>>,
+    free: Arc<AtomicBool>,
 }
 
 impl DoubleMemPool {
@@ -43,24 +44,22 @@ impl DoubleMemPool {
     where
         Impl: Implementation<(), ()> + Send,
     {
-        let free = Arc::new(Mutex::new(true));
+        let free = Arc::new(AtomicBool::new(true));
         let implementation = Arc::new(Mutex::new(implementation));
         let my_free = free.clone();
         let my_implementation = implementation.clone();
         let pool1 = MemPool::new(shm, move |_, _| {
-            let mut my_free = my_free.lock().unwrap();
-            if !*my_free {
+            if !my_free.load(Ordering::Relaxed) {
                 my_implementation.lock().unwrap().receive((), ());
-                *my_free = true
+                my_free.store(true, Ordering::Relaxed);
             }
         })?;
         let my_free = free.clone();
         let my_implementation = implementation.clone();
         let pool2 = MemPool::new(shm, move |_, _| {
-            let mut my_free = my_free.lock().unwrap();
-            if !*my_free {
+            if !my_free.load(Ordering::Relaxed) {
                 my_implementation.lock().unwrap().receive((), ());
-                *my_free = true
+                my_free.store(true, Ordering::Relaxed);
             }
         })?;
         Ok(DoubleMemPool { pool1, pool2, free })
@@ -76,7 +75,7 @@ impl DoubleMemPool {
         } else if !self.pool2.is_used() {
             Some(&mut self.pool2)
         } else {
-            *self.free.lock().unwrap() = false;
+            self.free.store(false, Ordering::Relaxed);
             None
         }
     }
@@ -125,7 +124,7 @@ impl MemPool {
         Ok(MemPool {
             file: mem_file,
             len: 128,
-            pool: pool,
+            pool,
             buffer_count: Arc::new(Mutex::new(0)),
             implementation: Arc::new(Mutex::new(implementation)),
         })

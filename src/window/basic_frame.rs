@@ -1,5 +1,6 @@
 use std::cmp::max;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use wayland_client::commons::Implementation;
@@ -129,9 +130,9 @@ struct PointerUserData {
 struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
-    resizable: Mutex<bool>,
+    resizable: AtomicBool,
     implem: Mutex<Box<Implementation<u32, FrameRequest> + Send>>,
-    maximized: Mutex<bool>,
+    maximized: AtomicBool,
 }
 
 impl Inner {
@@ -157,9 +158,9 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
         Location::Head | Location::Button(_) => find_button(x, y, width),
 
         Location::Top | Location::TopLeft | Location::TopRight => {
-            if x <= BORDER_SIZE as f64 {
+            if x <= f64::from(BORDER_SIZE) {
                 Location::TopLeft
-            } else if x >= (width + BORDER_SIZE) as f64 {
+            } else if x >= f64::from(width + BORDER_SIZE) {
                 Location::TopRight
             } else {
                 Location::Top
@@ -167,9 +168,9 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
         }
 
         Location::Bottom | Location::BottomLeft | Location::BottomRight => {
-            if x <= BORDER_SIZE as f64 {
+            if x <= f64::from(BORDER_SIZE) {
                 Location::BottomLeft
-            } else if x >= (width + BORDER_SIZE) as f64 {
+            } else if x >= f64::from(width + BORDER_SIZE) {
                 Location::BottomRight
             } else {
                 Location::Bottom
@@ -182,24 +183,24 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
 
 fn find_button(x: f64, y: f64, w: u32) -> Location {
     if (w >= 24 + 2 * BUTTON_SPACE)
-        && (x >= (w - 24 - BUTTON_SPACE) as f64)
-        && (x <= (w - BUTTON_SPACE) as f64)
-        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
-        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
+        && (x >= f64::from(w - 24 - BUTTON_SPACE))
+        && (x <= f64::from(w - BUTTON_SPACE))
+        && (y <= f64::from(HEADER_SIZE) / 2.0 + 8.0)
+        && (y >= f64::from(HEADER_SIZE) / 2.0 - 8.0)
     {
         Location::Button(UIButton::Close)
     } else if (w >= 56 + 2 * BUTTON_SPACE)
-        && (x >= (w - 56 - BUTTON_SPACE) as f64)
-        && (x <= (w - 32 - BUTTON_SPACE) as f64)
-        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
-        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
+        && (x >= f64::from(w - 56 - BUTTON_SPACE))
+        && (x <= f64::from(w - 32 - BUTTON_SPACE))
+        && (y <= f64::from(HEADER_SIZE) / 2.0 + 8.0)
+        && (y >= f64::from(HEADER_SIZE) / 2.0 - 8.0)
     {
         Location::Button(UIButton::Maximize)
     } else if (w >= 88 + 2 * BUTTON_SPACE)
-        && (x >= (w - 88 - BUTTON_SPACE) as f64)
-        && (x <= (w - 64 - BUTTON_SPACE) as f64)
-        && (y <= HEADER_SIZE as f64 / 2.0 + 8.0)
-        && (y >= HEADER_SIZE as f64 / 2.0 - 8.0)
+        && (x >= f64::from(w - 88 - BUTTON_SPACE))
+        && (x <= f64::from(w - 64 - BUTTON_SPACE))
+        && (y <= f64::from(HEADER_SIZE) / 2.0 + 8.0)
+        && (y >= f64::from(HEADER_SIZE) / 2.0 - 8.0)
     {
         Location::Button(UIButton::Minimize)
     } else {
@@ -238,11 +239,11 @@ impl Frame for BasicFrame {
             Part::new(base_surface, compositor, subcompositor),
         ];
         let inner = Arc::new(Inner {
-            parts: parts,
+            parts,
             size: Mutex::new((1, 1)),
-            resizable: Mutex::new(true),
+            resizable: AtomicBool::new(true),
             implem: Mutex::new(implementation),
-            maximized: Mutex::new(false),
+            maximized: AtomicBool::new(false),
         });
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
@@ -273,7 +274,7 @@ impl Frame for BasicFrame {
             move |event, pointer: AutoPointer| {
                 let data = unsafe { &mut *(pointer.get_user_data() as *mut PointerUserData) };
                 let (width, _) = *(inner.size.lock().unwrap());
-                let resizable = *(inner.resizable.lock().unwrap());
+                let resizable = inner.resizable.load(Ordering::Relaxed);
                 match event {
                     Event::Enter {
                         serial,
@@ -336,7 +337,7 @@ impl Frame for BasicFrame {
                             let req = request_for_location(
                                 data.location,
                                 &data.seat,
-                                *(inner.maximized.lock().unwrap()),
+                                inner.maximized.load(Ordering::Relaxed),
                                 resizable,
                             );
                             if let Some(req) = req {
@@ -370,9 +371,8 @@ impl Frame for BasicFrame {
     }
 
     fn set_maximized(&mut self, maximized: bool) -> bool {
-        let mut my_maximized = self.inner.maximized.lock().unwrap();
-        if *my_maximized != maximized {
-            *my_maximized = maximized;
+        if self.inner.maximized.load(Ordering::Relaxed) != maximized {
+            self.inner.maximized.store(maximized, Ordering::Relaxed);
             true
         } else {
             false
@@ -380,7 +380,7 @@ impl Frame for BasicFrame {
     }
 
     fn set_resizable(&mut self, resizable: bool) {
-        *(self.inner.resizable.lock().unwrap()) = resizable;
+        self.inner.resizable.store(resizable, Ordering::Relaxed);
     }
 
     fn resize(&mut self, newsize: (u32, u32)) {
@@ -428,7 +428,7 @@ impl Frame for BasicFrame {
 
                 // For every pixel in header
                 for y in 0..HEADER_SIZE {
-                    if y < ROUNDING_SIZE && !*self.inner.maximized.lock().unwrap() {
+                    if y < ROUNDING_SIZE && !self.inner.maximized.load(Ordering::Relaxed) {
                         // Calculate the circle width at y using trigonometry and pythagoras theorem
                         let circle_width = ROUNDING_SIZE
                             - ((ROUNDING_SIZE as f32).powi(2)
@@ -458,7 +458,8 @@ impl Frame for BasicFrame {
                     &mut writer,
                     width,
                     true,
-                    self.pointers
+                    &self
+                        .pointers
                         .iter()
                         .flat_map(|p| {
                             if p.is_alive() {
@@ -724,14 +725,12 @@ fn draw_buttons(
     pool: &mut BufWriter<&mut MemPool>,
     width: u32,
     maximizable: bool,
-    mouses: Vec<Location>,
+    mouses: &Vec<Location>,
 ) {
     // draw up to 3 buttons, depending on the width of the window
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
     // buttons are 24x16
-    let ds = BORDER_SIZE;
-
     if width >= 24 + 2 * BUTTON_SPACE {
         // draw the red button
         let color = if mouses
@@ -743,13 +742,13 @@ fn draw_buttons(
             colors::RED_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * (width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE) as u64,
+            4 * u64::from(width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE),
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * i64::from(width - 24)));
         }
     }
 
@@ -766,13 +765,13 @@ fn draw_buttons(
             colors::YELLOW_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * (width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE) as u64,
+            4 * u64::from(width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE),
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * i64::from(width - 24)));
         }
     }
 
@@ -787,13 +786,13 @@ fn draw_buttons(
             colors::GREEN_BUTTON_REGULAR
         };
         let _ = pool.seek(SeekFrom::Start(
-            4 * (width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE) as u64,
+            4 * u64::from(width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE),
         ));
         for _ in 0..16 {
             for _ in 0..24 {
                 let _ = pool.write(color);
             }
-            let _ = pool.seek(SeekFrom::Current(4 * (width - 24) as i64));
+            let _ = pool.seek(SeekFrom::Current(4 * i64::from(width - 24)));
         }
     }
 }

@@ -52,9 +52,9 @@ impl ThemeManager {
             .unwrap()
             .implement(|_, _| {});
         ThemedPointer {
-            pointer: pointer,
+            pointer,
             inner: Arc::new(Mutex::new(PointerInner {
-                surface: surface,
+                surface,
                 theme: self.theme.clone(),
                 last_serial: 0,
             })),
@@ -81,7 +81,7 @@ impl ThemeManager {
             .implement(|_, _| {});
 
         let inner = Arc::new(Mutex::new(PointerInner {
-            surface: surface,
+            surface,
             theme: self.theme.clone(),
             last_serial: 0,
         }));
@@ -98,7 +98,7 @@ impl ThemeManager {
         });
 
         ThemedPointer {
-            pointer: pointer,
+            pointer,
             inner: inner2,
         }
     }
@@ -124,7 +124,7 @@ impl ThemeManager {
             .implement(|_, _| {});
 
         let inner = Arc::new(Mutex::new(PointerInner {
-            surface: surface,
+            surface,
             theme: self.theme.clone(),
             last_serial: 0,
         }));
@@ -144,7 +144,7 @@ impl ThemeManager {
         );
 
         ThemedPointer {
-            pointer: pointer,
+            pointer,
             inner: inner2,
         }
     }
