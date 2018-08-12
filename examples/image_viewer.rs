@@ -95,14 +95,10 @@ fn main() {
     // only provide this one, but if you don't like the (arguably ugly)
     // borders it draws, you just need to implement the appropriate trait
     // to create your own.
-    let mut window = Window::<BasicFrame>::init_with_decorations(
-        surface,                      // the wl_surface that serves as the basis of this window
-        image.dimensions(),           // the initial internal dimensions of the window
-        &env.compositor,              // -+
-        &env.subcompositor,           //  | The Window constructor needs access to these globals
-        &env.shm,                     //  | to initialize the window
-        &env.shell,                   // -+
-        env.decorations_mgr.as_ref(), // to use native decorations if available
+    let mut window = Window::<BasicFrame>::init_from_env(
+        &env,               // the environment containing the wayland globals
+        surface,            // the wl_surface that serves as the basis of this window
+        image.dimensions(), // the initial internal dimensions of the window
         move |evt, ()| {
             // This is the closure that process the Window events.
             // There are 3 possible events:

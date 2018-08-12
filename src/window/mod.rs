@@ -15,7 +15,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
-use Shell;
+use {Environment, Shell};
 
 mod basic_frame;
 mod shell;
@@ -93,6 +93,29 @@ pub struct Window<F: Frame> {
 }
 
 impl<F: Frame + 'static> Window<F> {
+    /// Create a new window wrapping a given wayland surface as its main content and
+    /// following the compositor's preference regarding server-side decorations.
+    pub fn init_from_env<Impl>(
+        env: &Environment,
+        surface: Proxy<wl_surface::WlSurface>,
+        initial_dims: (u32, u32),
+        implementation: Impl,
+    ) -> Result<Window<F>, F::Error>
+    where
+        Impl: Implementation<(), Event> + Send,
+    {
+        Self::init_with_decorations(
+            surface,
+            initial_dims,
+            &env.compositor,
+            &env.subcompositor,
+            &env.shm,
+            &env.shell,
+            env.decorations_mgr.as_ref(),
+            implementation,
+        )
+    }
+
     /// Create a new window wrapping a given wayland surface as its main content
     ///
     /// It can fail if the initialization of the frame fails (for example if the
