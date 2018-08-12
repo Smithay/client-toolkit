@@ -44,15 +44,8 @@ fn main() {
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<BasicFrame>::init_with_decorations(
-        surface,
-        dimensions,
-        &env.compositor,
-        &env.subcompositor,
-        &env.shm,
-        &env.shell,
-        env.decorations_mgr.as_ref(),
-        move |evt, ()| {
+    let mut window =
+        Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |evt, ()| {
             let mut next_action = waction.lock().unwrap();
             // Keep last event in priority order : Close > Configure > Refresh
             let replace = match (&evt, &*next_action) {
@@ -65,8 +58,7 @@ fn main() {
             if replace {
                 *next_action = Some(evt);
             }
-        },
-    ).expect("Failed to create a window !");
+        }).expect("Failed to create a window !");
 
     let mut pools =
         DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create a memory pool !");
