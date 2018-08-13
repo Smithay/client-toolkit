@@ -361,5 +361,18 @@ fn redraw(
         wl_shm::Format::Argb8888, // the pixel format we wrote in
     );
     surface.attach(Some(&new_buffer), 0, 0);
+    // damage the surface so that the compositor knows it needs to redraw it
+    if surface.version() >= 4 {
+        // If our server is recent enough and supports at least version 4 of the
+        // wl_surface interface, we can specify the damage in buffer coordinates.
+        // This is obviously the best and do that if possible.
+        surface.damage_buffer(0, 0, buf_x as i32, buf_y as i32);
+    } else {
+        // Otherwise, we fallback to compatilibity mode. Here we specify damage
+        // in surface coordinates, which would have been different if we had drawn
+        // our buffer at HiDPI resolution. We didn't though, so it is ok.
+        // Using `damage_buffer` in general is better though.
+        surface.damage(0, 0, buf_x as i32, buf_y as i32);
+    }
     surface.commit();
 }
