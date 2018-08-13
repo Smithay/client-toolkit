@@ -1,6 +1,5 @@
 use std::cmp::max;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use wayland_client::commons::Implementation;
@@ -130,9 +129,9 @@ struct PointerUserData {
 struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
-    resizable: AtomicBool,
+    resizable: Arc<Mutex<bool>>,
     implem: Mutex<Box<Implementation<u32, FrameRequest> + Send>>,
-    maximized: AtomicBool,
+    maximized: Arc<Mutex<bool>>,
 }
 
 impl Inner {
@@ -241,9 +240,9 @@ impl Frame for BasicFrame {
         let inner = Arc::new(Inner {
             parts,
             size: Mutex::new((1, 1)),
-            resizable: AtomicBool::new(true),
+            resizable: Arc::new(Mutex::new(true)),
             implem: Mutex::new(implementation),
-            maximized: AtomicBool::new(false),
+            maximized: Arc::new(Mutex::new(false)),
         });
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
@@ -274,7 +273,7 @@ impl Frame for BasicFrame {
             move |event, pointer: AutoPointer| {
                 let data = unsafe { &mut *(pointer.get_user_data() as *mut PointerUserData) };
                 let (width, _) = *(inner.size.lock().unwrap());
-                let resizable = inner.resizable.load(Ordering::Relaxed);
+                let resizable = *(inner.resizable.lock().unwrap());
                 match event {
                     Event::Enter {
                         serial,
@@ -337,7 +336,7 @@ impl Frame for BasicFrame {
                             let req = request_for_location(
                                 data.location,
                                 &data.seat,
-                                inner.maximized.load(Ordering::Relaxed),
+                                *(inner.maximized.lock().unwrap()),
                                 resizable,
                             );
                             if let Some(req) = req {
@@ -371,8 +370,9 @@ impl Frame for BasicFrame {
     }
 
     fn set_maximized(&mut self, maximized: bool) -> bool {
-        if self.inner.maximized.load(Ordering::Relaxed) != maximized {
-            self.inner.maximized.store(maximized, Ordering::Relaxed);
+        let mut my_maximized = self.inner.maximized.lock().unwrap();
+        if *my_maximized != maximized {
+            *my_maximized = maximized;
             true
         } else {
             false
@@ -380,7 +380,7 @@ impl Frame for BasicFrame {
     }
 
     fn set_resizable(&mut self, resizable: bool) {
-        self.inner.resizable.store(resizable, Ordering::Relaxed);
+        *(self.inner.resizable.lock().unwrap()) = resizable;
     }
 
     fn resize(&mut self, newsize: (u32, u32)) {
@@ -428,7 +428,7 @@ impl Frame for BasicFrame {
 
                 // For every pixel in header
                 for y in 0..HEADER_SIZE {
-                    if y < ROUNDING_SIZE && !self.inner.maximized.load(Ordering::Relaxed) {
+                    if y < ROUNDING_SIZE && !*self.inner.maximized.lock().unwrap() {
                         // Calculate the circle width at y using trigonometry and pythagoras theorem
                         let circle_width = ROUNDING_SIZE
                             - ((ROUNDING_SIZE as f32).powi(2)
