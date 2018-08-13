@@ -3,16 +3,16 @@
 
 use std::os::raw::{c_char, c_int, c_void, c_uint};
 
-pub const XKB_MOD_NAME_SHIFT   : &'static [u8]  = b"Shift\0";
-pub const XKB_MOD_NAME_CAPS    : &'static [u8]  = b"Lock\0";
-pub const XKB_MOD_NAME_CTRL    : &'static [u8]  = b"Control\0";
-pub const XKB_MOD_NAME_ALT     : &'static [u8]  = b"Mod1\0";
-pub const XKB_MOD_NAME_NUM     : &'static [u8]  = b"Mod2\0";
-pub const XKB_MOD_NAME_LOGO    : &'static [u8]  = b"Mod4\0";
+pub const XKB_MOD_NAME_SHIFT   : &[u8]  = b"Shift\0";
+pub const XKB_MOD_NAME_CAPS    : &[u8]  = b"Lock\0";
+pub const XKB_MOD_NAME_CTRL    : &[u8]  = b"Control\0";
+pub const XKB_MOD_NAME_ALT     : &[u8]  = b"Mod1\0";
+pub const XKB_MOD_NAME_NUM     : &[u8]  = b"Mod2\0";
+pub const XKB_MOD_NAME_LOGO    : &[u8]  = b"Mod4\0";
 
-pub const XKB_LED_NAME_CAPS    : &'static [u8]  = b"Caps Lock\0";
-pub const XKB_LED_NAME_NUM     : &'static [u8]  = b"Num Lock\0";
-pub const XKB_LED_NAME_SCROLL  : &'static [u8]  = b"Scroll Lock\0";
+pub const XKB_LED_NAME_CAPS    : &[u8]  = b"Caps Lock\0";
+pub const XKB_LED_NAME_NUM     : &[u8]  = b"Num Lock\0";
+pub const XKB_LED_NAME_SCROLL  : &[u8]  = b"Scroll Lock\0";
 
 pub struct xkb_context;
 pub struct xkb_keymap;

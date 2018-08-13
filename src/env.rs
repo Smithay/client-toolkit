@@ -107,16 +107,14 @@ impl Environment {
                     id,
                     ref interface,
                     version,
-                } => match &interface[..] {
-                    "wl_output" => outputs2.new_output(
+                } => if let "wl_output" = &interface[..] {
+                    outputs2.new_output(
                         id,
                         registry.bind::<wl_output::WlOutput>(version, id).unwrap(),
-                    ),
-                    _ => (),
+                    )
                 },
-                GlobalEvent::Removed { id, ref interface } => match &interface[..] {
-                    "wl_output" => outputs2.output_removed(id),
-                    _ => (),
+                GlobalEvent::Removed { id, ref interface } => if let "wl_output" = &interface[..] {
+                    outputs2.output_removed(id)
                 },
             }
             cb.receive(event, registry);

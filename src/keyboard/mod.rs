@@ -235,7 +235,7 @@ impl KbState {
         }
 
         let mut me = KbState {
-            xkb_context: xkb_context,
+            xkb_context,
             xkb_keymap: ptr::null_mut(),
             xkb_state: ptr::null_mut(),
             xkb_compose_table: ptr::null_mut(),
@@ -547,7 +547,7 @@ where
             implementation,
             None::<(_, fn(_, _))>,
         )),
-        Err(error) => return Err((error, keyboard)),
+        Err(error) => Err((error, keyboard)),
     }
 }
 
@@ -609,7 +609,7 @@ where
                     let (keys, modifiers) = {
                         let keys: Vec<u32> =
                             rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
-                        (keys, state.mods_state.clone())
+                        (keys, state.mods_state)
                     };
                     event_impl.receive(
                         Event::Enter {
@@ -652,7 +652,7 @@ where
                             state.get_utf8_raw(key)
                         }
                     };
-                    let modifiers = state.mods_state.clone();
+                    let modifiers = state.mods_state;
 
                     if key_state == wl_keyboard::KeyState::Pressed {
                         event_impl.receive(
@@ -701,21 +701,18 @@ where
                                     let mut thread_modifiers = modifiers;
 
                                     loop {
-                                        match thread_state_chan.lock().unwrap().1.try_recv() {
-                                            Ok(_) => {
-                                                let mut thread_state = thread_state.lock().unwrap();
-                                                thread_sym = thread_state.get_one_sym_raw(key);
-                                                thread_utf8 = thread_state.get_utf8_raw(key);
-                                                thread_modifiers = thread_state.mods_state.clone();
-                                            }
-                                            _ => {}
+                                        if thread_state_chan.lock().unwrap().1.try_recv().is_ok() {
+                                            let mut thread_state = thread_state.lock().unwrap();
+                                            thread_sym = thread_state.get_one_sym_raw(key);
+                                            thread_utf8 = thread_state.get_utf8_raw(key);
+                                            thread_modifiers = thread_state.mods_state;
                                         }
                                         let elapsed_time = time_tracker.elapsed();
                                         thread_repeat_impl.lock().unwrap().receive(
                                             KeyRepeatEvent {
                                                 time: time
                                                     + elapsed_time.as_secs() as u32 * 1000
-                                                    + elapsed_time.subsec_nanos() / 1000000,
+                                                    + elapsed_time.subsec_nanos() / 1_000_000,
                                                 modifiers: thread_modifiers,
                                                 rawkey: key,
                                                 keysym: thread_sym,
@@ -871,6 +868,6 @@ where
             implementation,
             Some((key_repeat_kind, repeat_implementation)),
         )),
-        Err(error) => return Err((error, keyboard)),
+        Err(error) => Err((error, keyboard)),
     }
 }

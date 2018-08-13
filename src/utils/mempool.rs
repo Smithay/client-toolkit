@@ -125,7 +125,7 @@ impl MemPool {
         Ok(MemPool {
             file: mem_file,
             len: 128,
-            pool: pool,
+            pool,
             buffer_count: Arc::new(Mutex::new(0)),
             implementation: Arc::new(Mutex::new(implementation)),
         })
