@@ -2,10 +2,12 @@
 
 ## Unreleased
 
+## 0.3.0 -- 2018-08-17
+
 - Window: the minimum window width is set to 2 pixels to circumvent a bug in mutter - https://gitlab.gnome.org/GNOME/mutter/issues/259
-- *Breaking* MemPool: MemPool now requires an implementation to be called when the pool becomes free
-- *Breaking* DoubleMemPool: DoubleMemPool now requires an implementation to be called when one of its pools becomes free
-- *Breaking* DoubleMemPool: `swap()` is removed as `pool()` will now automatically track and return any free pools avaliable or return None
+- **[Breaking]** MemPool: MemPool now requires an implementation to be called when the pool becomes free
+- **[Breaking]** DoubleMemPool: DoubleMemPool now requires an implementation to be called when one of its pools becomes free
+- **[Breaking]** DoubleMemPool: `swap()` is removed as `pool()` will now automatically track and return any free pools avaliable or return None
 - Keyboard: add key repetition with 'map_keyboard_auto_with_repeat' and 'map_keyboard_rmlvo_with_repeat'
 - Window: add `init_with_decorations` to allow the use of server-side decorations
 
