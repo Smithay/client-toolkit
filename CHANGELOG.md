@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keyboard: end key repetition when the keyboard loses focus
+
 ## 0.3.0 -- 2018-08-17
 
 - Window: the minimum window width is set to 2 pixels to circumvent a bug in mutter - https://gitlab.gnome.org/GNOME/mutter/issues/259
