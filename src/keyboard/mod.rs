@@ -623,6 +623,10 @@ where
                     );
                 }
                 wl_keyboard::Event::Leave { serial, surface } => {
+                    if key_held.is_some() {
+                        kill_chan.lock().unwrap().0.send(()).unwrap();
+                        key_held = None;
+                    }
                     event_impl.receive(Event::Leave { serial, surface }, proxy);
                 }
                 wl_keyboard::Event::Key {
