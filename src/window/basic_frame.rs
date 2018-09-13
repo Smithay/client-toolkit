@@ -131,7 +131,7 @@ struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
     resizable: Arc<Mutex<bool>>,
-    implem: Mutex<Box<FnMut(u32, FrameRequest) + Send>>,
+    implem: Mutex<Box<FnMut(FrameRequest, u32) + Send>>,
     maximized: Arc<Mutex<bool>>,
 }
 
@@ -229,7 +229,7 @@ impl Frame for BasicFrame {
         compositor: &Proxy<wl_compositor::WlCompositor>,
         subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
         shm: &Proxy<wl_shm::WlShm>,
-        implementation: Box<FnMut(u32, FrameRequest) + Send>,
+        implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<BasicFrame, ::std::io::Error> {
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
@@ -248,8 +248,8 @@ impl Frame for BasicFrame {
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
         // None was previously returned from `pool()` and the draw was postponed
-        let pools = DoubleMemPool::new(&shm, move |_, _| {
-            (&mut *my_inner.implem.lock().unwrap())(0, FrameRequest::Refresh);
+        let pools = DoubleMemPool::new(&shm, move || {
+            (&mut *my_inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
         })?;
         Ok(BasicFrame {
             inner,
@@ -257,7 +257,7 @@ impl Frame for BasicFrame {
             active: false,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(None, compositor.clone(), &shm),
+            themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
             surface_version: compositor.version(),
         })
     }
@@ -267,7 +267,7 @@ impl Frame for BasicFrame {
         let inner = self.inner.clone();
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
-            move |pointer: AutoPointer, event| {
+            move |event, pointer: AutoPointer| {
                 let data: &Mutex<PointerUserData> = pointer.user_data().unwrap();
                 let data = &mut *data.lock().unwrap();
                 let (width, _) = *(inner.size.lock().unwrap());
@@ -307,7 +307,7 @@ impl Frame for BasicFrame {
                             match (newpos, data.location) {
                                 (Location::Button(_), _) | (_, Location::Button(_)) => {
                                     // pointer movement involves a button, request refresh
-                                    (&mut *inner.implem.lock().unwrap())(0, FrameRequest::Refresh);
+                                    (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
                                 }
                                 _ => (),
                             }
@@ -334,7 +334,7 @@ impl Frame for BasicFrame {
                                 resizable,
                             );
                             if let Some(req) = req {
-                                (&mut *inner.implem.lock().unwrap())(serial, req);
+                                (&mut *inner.implem.lock().unwrap())(req, serial);
                             }
                         }
                     }

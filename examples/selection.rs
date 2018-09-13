@@ -27,17 +27,13 @@ fn main() {
         .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
         .unwrap();
 
-    let device = DataDevice::init_for_seat(
-        &env.data_device_manager,
-        &seat,
-        |_, event: DndEvent| match event {
-            // we don't accept drag'n'drop
-            DndEvent::Enter {
-                offer: Some(offer), ..
-            } => offer.accept(None),
-            _ => (),
-        },
-    );
+    let device = DataDevice::init_for_seat(&env.data_device_manager, &seat, |event| match event {
+        // we don't accept drag'n'drop
+        DndEvent::Enter {
+            offer: Some(offer), ..
+        } => offer.accept(None),
+        _ => (),
+    });
 
     // we need a window to receive things actually
     let mut dimensions = (320u32, 240u32);
@@ -49,26 +45,24 @@ fn main() {
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window =
-        Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |_, evt| {
-            let mut next_action = waction.lock().unwrap();
-            // Keep last event in priority order : Close > Configure > Refresh
-            let replace = match (&evt, &*next_action) {
-                (_, &None)
-                | (_, &Some(WEvent::Refresh))
-                | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-                | (&WEvent::Close, _) => true,
-                _ => false,
-            };
-            if replace {
-                *next_action = Some(evt);
-            }
-        }).expect("Failed to create a window !");
+    let mut window = Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |evt| {
+        let mut next_action = waction.lock().unwrap();
+        // Keep last event in priority order : Close > Configure > Refresh
+        let replace = match (&evt, &*next_action) {
+            (_, &None)
+            | (_, &Some(WEvent::Refresh))
+            | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+            | (&WEvent::Close, _) => true,
+            _ => false,
+        };
+        if replace {
+            *next_action = Some(evt);
+        }
+    }).expect("Failed to create a window !");
 
     window.new_seat(&seat);
 
-    let mut pools =
-        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create a memory pool !");
+    let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
 
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 

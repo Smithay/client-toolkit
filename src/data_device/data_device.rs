@@ -111,16 +111,12 @@ pub enum DndEvent<'a> {
     },
 }
 
-fn data_device_implem<Impl>(
-    event: wl_data_device::Event,
-    inner: &Arc<Mutex<Inner>>,
-    implem: &mut Impl,
-) where
-    for<'a> Impl: FnMut((), DndEvent<'a>),
+fn data_device_implem<Impl>(event: wl_data_device::Event, inner: &mut Inner, implem: &mut Impl)
+where
+    for<'a> Impl: FnMut(DndEvent<'a>),
 {
     use self::wl_data_device::Event;
 
-    let mut inner = inner.lock().unwrap();
     match event {
         Event::DataOffer { id } => inner.new_offer(id),
         Event::Enter {
@@ -131,36 +127,27 @@ fn data_device_implem<Impl>(
             id,
         } => {
             inner.set_dnd(id);
-            implem(
-                (),
-                DndEvent::Enter {
-                    serial,
-                    surface,
-                    x,
-                    y,
-                    offer: inner.current_dnd.as_ref(),
-                },
-            );
+            implem(DndEvent::Enter {
+                serial,
+                surface,
+                x,
+                y,
+                offer: inner.current_dnd.as_ref(),
+            });
         }
         Event::Motion { time, x, y } => {
-            implem(
-                (),
-                DndEvent::Motion {
-                    x,
-                    y,
-                    time,
-                    offer: inner.current_dnd.as_ref(),
-                },
-            );
+            implem(DndEvent::Motion {
+                x,
+                y,
+                time,
+                offer: inner.current_dnd.as_ref(),
+            });
         }
-        Event::Leave => implem((), DndEvent::Leave),
+        Event::Leave => implem(DndEvent::Leave),
         Event::Drop => {
-            implem(
-                (),
-                DndEvent::Drop {
-                    offer: inner.current_dnd.as_ref(),
-                },
-            );
+            implem(DndEvent::Drop {
+                offer: inner.current_dnd.as_ref(),
+            });
         }
         Event::Selection { id } => inner.set_selection(id),
     }
@@ -177,7 +164,7 @@ impl DataDevice {
         mut implem: Impl,
     ) -> DataDevice
     where
-        for<'a> Impl: FnMut((), DndEvent<'a>) + Send + 'static,
+        for<'a> Impl: FnMut(DndEvent<'a>) + Send + 'static,
     {
         let inner = Arc::new(Mutex::new(Inner {
             selection: None,
@@ -186,12 +173,12 @@ impl DataDevice {
         }));
 
         let inner2 = inner.clone();
-        let inner2 = move || inner2.clone();
         let device = manager
-            .get_data_device(seat, |device| {
+            .get_data_device(seat, move |device| {
                 device.implement(
                     move |evt, _| {
-                        data_device_implem(evt, &inner2(), &mut implem);
+                        let mut inner = inner2.lock().unwrap();
+                        data_device_implem(evt, &mut *inner, &mut implem);
                     },
                     (),
                 )
@@ -214,7 +201,7 @@ impl DataDevice {
         token: &QueueToken,
     ) -> DataDevice
     where
-        for<'a> Impl: FnMut((), DndEvent<'a>) + Send + 'static,
+        for<'a> Impl: FnMut(DndEvent<'a>) + Send + 'static,
     {
         let inner = Arc::new(Mutex::new(Inner {
             selection: None,
@@ -223,12 +210,12 @@ impl DataDevice {
         }));
 
         let inner2 = inner.clone();
-        let inner2 = move || inner2.clone();
         let device = manager
             .get_data_device(seat, move |device| {
                 device.implement_nonsend(
                     move |evt, _| {
-                        data_device_implem(evt, &inner2(), &mut implem);
+                        let mut inner = inner2.lock().unwrap();
+                        data_device_implem(evt, &mut *inner, &mut implem);
                     },
                     (),
                     token,
@@ -275,7 +262,7 @@ impl DataDevice {
     ///
     /// Correspond to traditional copy/paste behavior. Setting the
     /// source to `None` will clear the selection.
-    pub fn set_selection(&self, source: &Option<DataSource>, serial: u32) {
+    pub fn set_selection(&self, source: Option<DataSource>, serial: u32) {
         self.device
             .set_selection(source.as_ref().map(|s| &s.source), serial);
     }

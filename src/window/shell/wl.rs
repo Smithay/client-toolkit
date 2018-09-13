@@ -19,7 +19,7 @@ impl Wl {
         mut implementation: Impl,
     ) -> Wl
     where
-        Impl: FnMut((), Event) + Send + 'static,
+        Impl: FnMut(Event) + Send + 'static,
     {
         let shell_surface = shell
             .get_shell_surface(surface, |shell_surface| {
@@ -30,13 +30,10 @@ impl Wl {
                         }
                         wl_shell_surface::Event::Configure { width, height, .. } => {
                             use std::cmp::max;
-                            implementation(
-                                (),
-                                Event::Configure {
-                                    new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
-                                    states: Vec::new(),
-                                },
-                            );
+                            implementation(Event::Configure {
+                                new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
+                                states: Vec::new(),
+                            });
                         }
                         wl_shell_surface::Event::PopupDone => {
                             unreachable!();

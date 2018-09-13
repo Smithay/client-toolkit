@@ -59,7 +59,7 @@ pub enum Event {
 struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
     shell_surface: Arc<Box<shell::ShellSurface>>,
-    user_impl: Box<FnMut((), Event) + Send>,
+    user_impl: Box<FnMut(Event) + Send>,
     min_size: (u32, u32),
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
@@ -101,7 +101,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut((), Event) + Send + 'static,
+        Impl: FnMut(Event) + Send + 'static,
     {
         Self::init_with_decorations(
             surface,
@@ -129,7 +129,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut((), Event) + Send + 'static,
+        Impl: FnMut(Event) + Send + 'static,
     {
         Self::init_with_decorations(
             surface,
@@ -159,7 +159,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut((), Event) + Send + 'static,
+        Impl: FnMut(Event) + Send + 'static,
     {
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
@@ -169,7 +169,7 @@ impl<F: Frame + 'static> Window<F> {
             compositor,
             subcompositor,
             shm,
-            Box::new(move |serial, req| {
+            Box::new(move |req, serial| {
                 if let Some(ref mut inner) = *shell_inner.lock().unwrap() {
                     match req {
                         FrameRequest::Minimize => inner.shell_surface.set_minimized(),
@@ -179,62 +179,58 @@ impl<F: Frame + 'static> Window<F> {
                         FrameRequest::Resize(seat, edges) => {
                             inner.shell_surface.resize(&seat, serial, edges)
                         }
-                        FrameRequest::Close => (inner.user_impl)((), Event::Close),
-                        FrameRequest::Refresh => (inner.user_impl)((), Event::Refresh),
+                        FrameRequest::Close => (inner.user_impl)(Event::Close),
+                        FrameRequest::Refresh => (inner.user_impl)(Event::Refresh),
                     }
                 }
             }) as Box<_>,
         )?;
         frame.resize(initial_dims);
         let frame = Arc::new(Mutex::new(frame));
-        let shell_surface = Arc::new(shell::create_shell_surface(
-            shell,
-            &surface,
-            move |(), evt| {
-                if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
-                    if let Event::Configure {
-                        states,
-                        mut new_size,
-                    } = evt
-                    {
-                        let mut frame = inner.frame.lock().unwrap();
-                        // clamp size
-                        new_size = new_size.map(|(w, h)| {
-                            use std::cmp::{max, min};
-                            let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
-                            let (minw, minh) = inner.min_size;
-                            w = max(w, minw as i32);
-                            h = max(h, minh as i32);
-                            if let Some((maxw, maxh)) = inner.max_size {
-                                w = min(w, maxw as i32);
-                                h = min(h, maxh as i32);
-                            }
-                            (max(w, 1) as u32, max(h, 1) as u32)
-                        });
-                        // compute frame changes
-                        let mut need_refresh = false;
-                        need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
-                        if need_refresh {
-                            // the maximization state changed
-                            if states.contains(&State::Maximized) {
-                                // we are getting maximized, store the size for restoration
-                                inner.old_size = Some(inner.current_size);
-                            } else if new_size.is_none() {
-                                // we are getting de-maximized, restore the size
-                                new_size = inner.old_size.take();
-                            }
+        let shell_surface = Arc::new(shell::create_shell_surface(shell, &surface, move |evt| {
+            if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
+                if let Event::Configure {
+                    states,
+                    mut new_size,
+                } = evt
+                {
+                    let mut frame = inner.frame.lock().unwrap();
+                    // clamp size
+                    new_size = new_size.map(|(w, h)| {
+                        use std::cmp::{max, min};
+                        let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
+                        let (minw, minh) = inner.min_size;
+                        w = max(w, minw as i32);
+                        h = max(h, minh as i32);
+                        if let Some((maxw, maxh)) = inner.max_size {
+                            w = min(w, maxw as i32);
+                            h = min(h, maxh as i32);
                         }
-                        need_refresh |= frame.set_active(states.contains(&State::Activated));
-                        if need_refresh {
-                            (inner.user_impl)((), Event::Refresh);
+                        (max(w, 1) as u32, max(h, 1) as u32)
+                    });
+                    // compute frame changes
+                    let mut need_refresh = false;
+                    need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
+                    if need_refresh {
+                        // the maximization state changed
+                        if states.contains(&State::Maximized) {
+                            // we are getting maximized, store the size for restoration
+                            inner.old_size = Some(inner.current_size);
+                        } else if new_size.is_none() {
+                            // we are getting de-maximized, restore the size
+                            new_size = inner.old_size.take();
                         }
-                        (inner.user_impl)((), Event::Configure { states, new_size });
-                    } else {
-                        (inner.user_impl)((), evt);
                     }
+                    need_refresh |= frame.set_active(states.contains(&State::Activated));
+                    if need_refresh {
+                        (inner.user_impl)(Event::Refresh);
+                    }
+                    (inner.user_impl)(Event::Configure { states, new_size });
+                } else {
+                    (inner.user_impl)(evt);
                 }
-            },
-        ));
+            }
+        }));
 
         // setup size and geometry
         {
@@ -548,7 +544,7 @@ pub trait Frame: Sized + Send {
         compositor: &Proxy<wl_compositor::WlCompositor>,
         subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
         shm: &Proxy<wl_shm::WlShm>,
-        implementation: Box<FnMut(u32, FrameRequest) + Send>,
+        implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
     ///

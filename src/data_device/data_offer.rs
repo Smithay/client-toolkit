@@ -32,7 +32,7 @@ impl DataOffer {
         }));
         let inner2 = inner.clone();
         let offer = offer.implement(
-            move |event, _: Proxy<_>| {
+            move |event, _| {
                 use self::wl_data_offer::Event;
                 let mut inner = inner2.lock().unwrap();
                 match event {

@@ -40,25 +40,25 @@ impl DoubleMemPool {
     /// Create a double memory pool
     pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<DoubleMemPool>
     where
-        Impl: FnMut((), ()) + Send + 'static,
+        Impl: FnMut() + Send + 'static,
     {
         let free = Arc::new(Mutex::new(true));
         let implementation = Arc::new(Mutex::new(implementation));
         let my_free = free.clone();
         let my_implementation = implementation.clone();
-        let pool1 = MemPool::new(shm, move |_, _| {
+        let pool1 = MemPool::new(shm, move || {
             let mut my_free = my_free.lock().unwrap();
             if !*my_free {
-                (&mut *my_implementation.lock().unwrap())((), ());
+                (&mut *my_implementation.lock().unwrap())();
                 *my_free = true
             }
         })?;
         let my_free = free.clone();
         let my_implementation = implementation.clone();
-        let pool2 = MemPool::new(shm, move |_, _| {
+        let pool2 = MemPool::new(shm, move || {
             let mut my_free = my_free.lock().unwrap();
             if !*my_free {
-                (&mut *my_implementation.lock().unwrap())((), ());
+                (&mut *my_implementation.lock().unwrap())();
                 *my_free = true
             }
         })?;
@@ -103,14 +103,14 @@ pub struct MemPool {
     len: usize,
     pool: Proxy<wl_shm_pool::WlShmPool>,
     buffer_count: Arc<Mutex<u32>>,
-    implementation: Arc<Mutex<FnMut((), ()) + Send>>,
+    implementation: Arc<Mutex<FnMut() + Send>>,
 }
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<MemPool>
     where
-        Impl: FnMut((), ()) + Send + 'static,
+        Impl: FnMut() + Send + 'static,
     {
         let mem_fd = create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(mem_fd) };
@@ -181,7 +181,7 @@ impl MemPool {
                             let mut my_buffer_count = my_buffer_count.lock().unwrap();
                             *my_buffer_count -= 1;
                             if *my_buffer_count == 0 {
-                                (&mut *my_implementation.lock().unwrap())((), ());
+                                (&mut *my_implementation.lock().unwrap())();
                             }
                         }
                     },

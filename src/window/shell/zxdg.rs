@@ -26,7 +26,7 @@ impl Zxdg {
         mut implementation: Impl,
     ) -> Zxdg
     where
-        Impl: FnMut((), Event) + Send + 'static,
+        Impl: FnMut(Event) + Send + 'static,
     {
         let xdgs = shell
             .get_xdg_surface(surface, |xdgs| {
@@ -45,7 +45,7 @@ impl Zxdg {
                 toplevel.implement(
                     move |evt, _| {
                         match evt {
-                            zxdg_toplevel_v6::Event::Close => implementation((), Event::Close),
+                            zxdg_toplevel_v6::Event::Close => implementation(Event::Close),
                             zxdg_toplevel_v6::Event::Configure {
                                 width,
                                 height,
@@ -69,7 +69,7 @@ impl Zxdg {
                         // bit representation of xdg_toplevel_v6 and zxdg_toplevel_v6 matches
                         .flat_map(xdg_toplevel::State::from_raw)
                         .collect::<Vec<_>>();
-                                implementation((), Event::Configure { new_size, states });
+                                implementation(Event::Configure { new_size, states });
                             }
                         }
                     },

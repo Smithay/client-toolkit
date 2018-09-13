@@ -35,9 +35,9 @@ impl AutoThemer {
     pub fn init(
         name: Option<&str>,
         compositor: Proxy<wl_compositor::WlCompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        shm: Proxy<wl_shm::WlShm>,
     ) -> AutoThemer {
-        match ThemeManager::init(name, compositor, &shm) {
+        match ThemeManager::init(name, compositor, shm) {
             Ok(mgr) => AutoThemer::Themed(mgr),
             Err(()) => AutoThemer::UnThemed,
         }
@@ -63,14 +63,14 @@ impl AutoThemer {
         user_data: UD,
     ) -> AutoPointer
     where
-        Impl: FnMut(AutoPointer, wl_pointer::Event) + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, AutoPointer) + Send + 'static,
         UD: Send + Sync + 'static,
     {
         match *self {
             AutoThemer::Themed(ref mgr) => {
                 let pointer = mgr.theme_pointer_with_impl(
                     seat,
-                    move |seat, event| implementation(AutoPointer::Themed(seat), event),
+                    move |event, seat| implementation(event, AutoPointer::Themed(seat)),
                     user_data,
                 );
                 AutoPointer::Themed(pointer)
@@ -79,7 +79,7 @@ impl AutoThemer {
                 let pointer =
                     seat.get_pointer(|pointer| {
                         pointer.implement(
-                            move |event, seat| implementation(AutoPointer::UnThemed(seat), event),
+                            move |event, seat| implementation(event, AutoPointer::UnThemed(seat)),
                             user_data,
                         )
                     }).unwrap();
@@ -101,14 +101,14 @@ impl AutoThemer {
         token: &QueueToken,
     ) -> AutoPointer
     where
-        Impl: FnMut(AutoPointer, wl_pointer::Event) + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, AutoPointer) + Send + 'static,
         UD: Send + Sync + 'static,
     {
         match *self {
             AutoThemer::Themed(ref mgr) => {
                 let pointer = mgr.theme_pointer_with_nonsend_impl(
                     pointer,
-                    move |pointer, event| implementation(AutoPointer::Themed(pointer), event),
+                    move |event, pointer| implementation(event, AutoPointer::Themed(pointer)),
                     user_data,
                     token,
                 );
@@ -116,7 +116,7 @@ impl AutoThemer {
             }
             AutoThemer::UnThemed => {
                 let pointer = pointer.implement_nonsend(
-                    move |event, pointer| implementation(AutoPointer::UnThemed(pointer), event),
+                    move |event, pointer| implementation(event, AutoPointer::UnThemed(pointer)),
                     user_data,
                     token,
                 );

@@ -102,7 +102,7 @@ fn main() {
         &env,               // the environment containing the wayland globals
         surface,            // the wl_surface that serves as the basis of this window
         image.dimensions(), // the initial internal dimensions of the window
-        move |_, evt| {
+        move |evt| {
             // This is the closure that process the Window events.
             // There are 3 possible events:
             // - Close: the user requested the window to be closed, we'll then quit
@@ -149,7 +149,7 @@ fn main() {
     // Thus, we just automatically bind the first seat we find.
     let seat = env
         .manager
-        .instantiate_auto(|seat| seat.implement(move |_, _| {}, ()))
+        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
         .unwrap();
     // And advertize it to the Window so it knows of it and can process the
     // required pointer events.
@@ -163,7 +163,7 @@ fn main() {
     // the capability of the server to use shared memory (SHM). All wayland servers
     // are required to support it.
     let mut pools =
-        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create the memory pools.");
+        DoubleMemPool::new(&env.shm, || {}).expect("Failed to create the memory pools.");
 
     /*
      * Event Loop preparation and running

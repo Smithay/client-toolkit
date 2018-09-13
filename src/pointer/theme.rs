@@ -32,7 +32,7 @@ impl ThemeManager {
     pub fn init(
         name: Option<&str>,
         compositor: Proxy<wl_compositor::WlCompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        shm: Proxy<wl_shm::WlShm>,
     ) -> Result<ThemeManager, ()> {
         if !is_available() {
             return Err(());
@@ -72,7 +72,7 @@ impl ThemeManager {
         user_data: UD,
     ) -> ThemedPointer
     where
-        Impl: FnMut(ThemedPointer, wl_pointer::Event) + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, ThemedPointer) + Send + 'static,
         UD: Send + Sync + 'static,
     {
         let surface = self
@@ -92,11 +92,11 @@ impl ThemeManager {
                 pointer.implement(
                     move |event, ptr| {
                         implementation(
+                            event,
                             ThemedPointer {
                                 pointer: ptr,
                                 inner: inner.clone(),
                             },
-                            event,
                         )
                     },
                     user_data,
@@ -122,7 +122,7 @@ impl ThemeManager {
         token: &QueueToken,
     ) -> ThemedPointer
     where
-        Impl: FnMut(ThemedPointer, wl_pointer::Event) + 'static,
+        Impl: FnMut(wl_pointer::Event, ThemedPointer) + 'static,
         UD: Send + Sync + 'static,
     {
         let surface = self
@@ -140,11 +140,11 @@ impl ThemeManager {
         let pointer = pointer.implement_nonsend(
             move |event, ptr| {
                 implementation(
+                    event,
                     ThemedPointer {
                         pointer: ptr,
                         inner: inner.clone(),
                     },
-                    event,
                 )
             },
             user_data,

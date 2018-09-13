@@ -22,7 +22,7 @@ impl Xdg {
         mut implementation: Impl,
     ) -> Xdg
     where
-        Impl: FnMut((), Event) + Send + 'static,
+        Impl: FnMut(Event) + Send + 'static,
     {
         let xdgs = shell
             .get_xdg_surface(surface, |xdgs| {
@@ -41,7 +41,7 @@ impl Xdg {
                 toplevel.implement(
                     move |evt, _| {
                         match evt {
-                            xdg_toplevel::Event::Close => implementation((), Event::Close),
+                            xdg_toplevel::Event::Close => implementation(Event::Close),
                             xdg_toplevel::Event::Configure {
                                 width,
                                 height,
@@ -65,7 +65,7 @@ impl Xdg {
                                     .cloned()
                                     .flat_map(xdg_toplevel::State::from_raw)
                                     .collect::<Vec<_>>();
-                                implementation((), Event::Configure { new_size, states });
+                                implementation(Event::Configure { new_size, states });
                             }
                         }
                     },
