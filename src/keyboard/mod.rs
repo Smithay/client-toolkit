@@ -478,7 +478,7 @@ pub fn map_keyboard_auto<Impl>(
     implementation: Impl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
 where
-    for<'a> Impl: FnMut(Proxy<wl_keyboard::WlKeyboard>, Event<'a>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
 {
     let state = match KbState::new() {
         Ok(s) => s,
@@ -508,7 +508,7 @@ pub fn map_keyboard_rmlvo<Impl>(
     implementation: Impl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
 where
-    for<'a> Impl: FnMut(Proxy<wl_keyboard::WlKeyboard>, Event<'a>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
 {
     fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
         s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
@@ -558,8 +558,8 @@ fn implement_kbd<Impl, RepeatImpl>(
     repeat: Option<(KeyRepeatKind, RepeatImpl)>,
 ) -> Proxy<wl_keyboard::WlKeyboard>
 where
-    for<'a> Impl: FnMut(Proxy<wl_keyboard::WlKeyboard>, Event<'a>) + Send + 'static,
-    RepeatImpl: FnMut(Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    RepeatImpl: FnMut(KeyRepeatEvent, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
 {
     let safe_state = Arc::new(Mutex::new(state));
     let (key_repeat_kind, repeat_impl) = {
@@ -616,7 +616,6 @@ where
                             (keys, state.mods_state)
                         };
                         event_impl(
-                            proxy,
                             Event::Enter {
                                 serial,
                                 surface,
@@ -624,6 +623,7 @@ where
                                 rawkeys,
                                 keysyms: &keys,
                             },
+                            proxy,
                         );
                     }
                     wl_keyboard::Event::Leave { serial, surface } => {
@@ -631,7 +631,7 @@ where
                             kill_chan.lock().unwrap().0.send(()).unwrap();
                             key_held = None;
                         }
-                        event_impl(proxy, Event::Leave { serial, surface });
+                        event_impl(Event::Leave { serial, surface }, proxy);
                     }
                     wl_keyboard::Event::Key {
                         serial,
@@ -664,7 +664,6 @@ where
 
                         if key_state == wl_keyboard::KeyState::Pressed {
                             event_impl(
-                                proxy.clone(),
                                 Event::Key {
                                     serial,
                                     time,
@@ -674,6 +673,7 @@ where
                                     state: key_state,
                                     utf8: utf8.clone(),
                                 },
+                                proxy.clone(),
                             );
                             if let Some(repeat_impl) = repeat_impl.clone() {
                                 // Check with xkb if key is repeatable
@@ -725,7 +725,6 @@ where
                                             }
                                             let elapsed_time = time_tracker.elapsed();
                                             (&mut *thread_repeat_impl.lock().unwrap())(
-                                                proxy.clone(),
                                                 KeyRepeatEvent {
                                                     time: time
                                                         + elapsed_time.as_secs() as u32 * 1000
@@ -735,6 +734,7 @@ where
                                                     keysym: thread_sym,
                                                     utf8: thread_utf8.clone(),
                                                 },
+                                                proxy.clone(),
                                             );
                                             // Rate
                                             thread::sleep(Duration::from_millis(repeat_timing.0));
@@ -754,7 +754,6 @@ where
                                 key_held = None;
                             }
                             event_impl(
-                                proxy.clone(),
                                 Event::Key {
                                     serial,
                                     time,
@@ -764,6 +763,7 @@ where
                                     state: key_state,
                                     utf8: utf8.clone(),
                                 },
+                                proxy.clone(),
                             );
                         }
                     }
@@ -780,7 +780,7 @@ where
                         }
                     }
                     wl_keyboard::Event::RepeatInfo { rate, delay } => {
-                        event_impl(proxy, Event::RepeatInfo { rate, delay });
+                        event_impl(Event::RepeatInfo { rate, delay }, proxy);
                         *system_repeat_timing.lock().unwrap() = (rate as u64, delay as u64);
                     }
                 }
@@ -811,8 +811,8 @@ pub fn map_keyboard_auto_with_repeat<Impl, RepeatImpl>(
     repeat_implementation: RepeatImpl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
 where
-    for<'a> Impl: FnMut(Proxy<wl_keyboard::WlKeyboard>, Event<'a>) + Send + 'static,
-    RepeatImpl: FnMut(Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    RepeatImpl: FnMut(KeyRepeatEvent, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
 {
     let state = match KbState::new() {
         Ok(s) => s,
@@ -848,8 +848,8 @@ pub fn map_keyboard_rmlvo_with_repeat<Impl, RepeatImpl>(
     repeat_implementation: RepeatImpl,
 ) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
 where
-    for<'a> Impl: FnMut(Proxy<wl_keyboard::WlKeyboard>, Event<'a>) + Send + 'static,
-    RepeatImpl: FnMut(Proxy<wl_keyboard::WlKeyboard>, KeyRepeatEvent) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    RepeatImpl: FnMut(KeyRepeatEvent, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
 {
     fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
         s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))

@@ -39,22 +39,21 @@ fn main() {
     let image = image.to_rgba();
 
     /*
-     * Initalize the wayland connexion
+     * Initalize the wayland connection
      */
     let (display, mut event_queue) =
         Display::connect_to_env().expect("Failed to connect to the wayland server.");
 
-    // All request method of wayland objects return a result, as wayland-client
+    // All request methods of wayland objects return a result, as wayland-client
     // returns an error if you try to send a message on an object that has already
-    // been destroyed by a previous message. We know our display has not been
-    // destroyed, so we unwrap().
-
-    // The Environment takes a registry and a mutable borrow of the wayland event
+    // been destroyed by a previous message.
+    //
+    // The Environment takes a proxy to the display and a mutable borrow of the wayland event
     // queue. It uses the event queue internally to exchange messages with the server
     // to process the registry event.
-    // Like all manipulation of the event loop, it can fail (if the connexion is
+    // Like all manipulation of the event loop, it can fail (if the connection is
     // unexpectedly lost), and thus returns a result. This failing would prevent
-    // us to continue though, so we unrap().
+    // us to continue though, so we unwrap().
     let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     // Use the compositor global to create a new surface

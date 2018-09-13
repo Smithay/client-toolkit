@@ -112,7 +112,7 @@ impl DataSource {
     /// Create a new data source
     ///
     /// You'll then need to provide it to a data device to send it
-    /// either wia selection (aka copy/paste) or via a drag and drop.
+    /// either via selection (aka copy/paste) or via a drag and drop.
     pub fn new<Impl>(
         mgr: &Proxy<wl_data_device_manager::WlDataDeviceManager>,
         mime_types: &[&str],

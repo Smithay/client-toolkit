@@ -67,7 +67,7 @@ fn main() {
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
     let reader2 = reader.clone();
-    map_keyboard_auto(&seat, move |_, event: KbEvent| {
+    map_keyboard_auto(&seat, move |event: KbEvent, _| {
         match event {
             KbEvent::Key {
                 state,

@@ -71,9 +71,6 @@ impl Environment {
     /// It requires you to provide the `EventQueue` as well because
     /// the initialization process does a few roundtrip to the server
     /// to initialize all the globals.
-    ///
-    /// This may panic or fail if you do not provide the EventQueue hosting
-    /// the registry you provided.
     pub fn from_display(
         display: &Proxy<wl_display::WlDisplay>,
         evq: &mut EventQueue,
@@ -83,7 +80,7 @@ impl Environment {
 
     /// Create an environment wrapping a new registry
     ///
-    /// Additionnaly to `from_registry`, this allows you to provide
+    /// Additionnaly to `from_display`, this allows you to provide
     /// a callback to be notified of global events, just like
     /// `GlobalManager::new_with_cb`. Note that you will still
     /// receive events even if they are processed by this `Environment`.

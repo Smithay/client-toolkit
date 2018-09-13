@@ -72,7 +72,7 @@ fn main() {
     let _keyboard = map_keyboard_auto_with_repeat(
         &seat,
         KeyRepeatKind::System,
-        move |_, event: KbEvent| match event {
+        move |event: KbEvent, _| match event {
             KbEvent::Enter {
                 modifiers, keysyms, ..
             } => {
@@ -105,7 +105,7 @@ fn main() {
                     );
             }
         },
-        move |_, repeat_event: KeyRepeatEvent| {
+        move |repeat_event: KeyRepeatEvent, _| {
             println!("Repeated key {:x}.", repeat_event.keysym);
             println!(" -> Modifers are {:?}", repeat_event.modifiers);
             if let Some(txt) = repeat_event.utf8 {
