@@ -3,10 +3,8 @@
 use std::sync::{Arc, Mutex};
 
 use wayland_client::protocol::wl_output::{self, Event, RequestsTrait, WlOutput};
-use wayland_client::protocol::wl_registry;
+use wayland_client::protocol::wl_registry::{self, RequestsTrait as RegistryRequest};
 use wayland_client::Proxy;
-
-use wayland_client::protocol::wl_registry::RequestsTrait as RegistryRequest;
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 

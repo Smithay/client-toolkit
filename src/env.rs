@@ -90,7 +90,7 @@ impl Environment {
         mut cb: Impl,
     ) -> io::Result<Environment>
     where
-        Impl: FnMut(Proxy<wl_registry::WlRegistry>, GlobalEvent) + Send + 'static,
+        Impl: FnMut(GlobalEvent, Proxy<wl_registry::WlRegistry>) + Send + 'static,
     {
         let outputs = ::output::OutputMgr::new();
         let outputs2 = outputs.clone();
@@ -108,7 +108,7 @@ impl Environment {
                     outputs2.output_removed(id)
                 },
             }
-            cb(registry, event);
+            cb(event, registry);
         });
 
         // double sync to retrieve the global list
