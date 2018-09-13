@@ -31,21 +31,24 @@ impl DataOffer {
             serial: 0,
         }));
         let inner2 = inner.clone();
-        let offer = offer.implement(move |event, _: Proxy<_>| {
-            use self::wl_data_offer::Event;
-            let mut inner = inner2.lock().unwrap();
-            match event {
-                Event::Offer { mime_type } => {
-                    inner.mime_types.push(mime_type);
+        let offer = offer.implement(
+            move |event, _: Proxy<_>| {
+                use self::wl_data_offer::Event;
+                let mut inner = inner2.lock().unwrap();
+                match event {
+                    Event::Offer { mime_type } => {
+                        inner.mime_types.push(mime_type);
+                    }
+                    Event::SourceActions { source_actions } => {
+                        inner.actions = DndAction::from_bits_truncate(source_actions);
+                    }
+                    Event::Action { dnd_action } => {
+                        inner.current_action = DndAction::from_bits_truncate(dnd_action);
+                    }
                 }
-                Event::SourceActions { source_actions } => {
-                    inner.actions = DndAction::from_bits_truncate(source_actions);
-                }
-                Event::Action { dnd_action } => {
-                    inner.current_action = DndAction::from_bits_truncate(dnd_action);
-                }
-            }
-        });
+            },
+            (),
+        );
 
         DataOffer { offer, inner }
     }

@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{
     wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
 };
@@ -60,7 +59,7 @@ pub enum Event {
 struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
     shell_surface: Arc<Box<shell::ShellSurface>>,
-    user_impl: Box<Implementation<(), Event> + Send>,
+    user_impl: Box<FnMut((), Event) + Send>,
     min_size: (u32, u32),
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
@@ -102,7 +101,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: Implementation<(), Event> + Send,
+        Impl: FnMut((), Event) + Send + 'static,
     {
         Self::init_with_decorations(
             surface,
@@ -130,7 +129,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: Implementation<(), Event> + Send,
+        Impl: FnMut((), Event) + Send + 'static,
     {
         Self::init_with_decorations(
             surface,
@@ -160,7 +159,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: Implementation<(), Event> + Send,
+        Impl: FnMut((), Event) + Send + 'static,
     {
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
@@ -170,7 +169,7 @@ impl<F: Frame + 'static> Window<F> {
             compositor,
             subcompositor,
             shm,
-            Box::new(move |req, serial| {
+            Box::new(move |serial, req| {
                 if let Some(ref mut inner) = *shell_inner.lock().unwrap() {
                     match req {
                         FrameRequest::Minimize => inner.shell_surface.set_minimized(),
@@ -180,8 +179,8 @@ impl<F: Frame + 'static> Window<F> {
                         FrameRequest::Resize(seat, edges) => {
                             inner.shell_surface.resize(&seat, serial, edges)
                         }
-                        FrameRequest::Close => inner.user_impl.receive(Event::Close, ()),
-                        FrameRequest::Refresh => inner.user_impl.receive(Event::Refresh, ()),
+                        FrameRequest::Close => (inner.user_impl)((), Event::Close),
+                        FrameRequest::Refresh => (inner.user_impl)((), Event::Refresh),
                     }
                 }
             }) as Box<_>,
@@ -191,7 +190,7 @@ impl<F: Frame + 'static> Window<F> {
         let shell_surface = Arc::new(shell::create_shell_surface(
             shell,
             &surface,
-            move |evt, ()| {
+            move |(), evt| {
                 if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
                     if let Event::Configure {
                         states,
@@ -227,13 +226,11 @@ impl<F: Frame + 'static> Window<F> {
                         }
                         need_refresh |= frame.set_active(states.contains(&State::Activated));
                         if need_refresh {
-                            inner.user_impl.receive(Event::Refresh, ());
+                            (inner.user_impl)((), Event::Refresh);
                         }
-                        inner
-                            .user_impl
-                            .receive(Event::Configure { states, new_size }, ());
+                        (inner.user_impl)((), Event::Configure { states, new_size });
                     } else {
-                        inner.user_impl.receive(evt, ());
+                        (inner.user_impl)((), evt);
                     }
                 }
             },
@@ -296,28 +293,31 @@ impl<F: Frame + 'static> Window<F> {
         let decoration_frame = self.frame.clone();
         let decoration_inner = self.inner.clone();
         *decoration = match (self.shell_surface.get_xdg(), &self.decoration_mgr) {
-            (Some(toplevel), &Some(ref mgr)) => mgr.get_toplevel_decoration(toplevel).ok().map(
-                move |newdec| {
-                    newdec.implement(move |event, _| {
-                        use self::zxdg_toplevel_decoration_v1::{Event, Mode};
-                        let Event::Configure { mode } = event;
-                        match mode {
-                            Mode::ServerSide => {
-                                decoration_frame.lock().unwrap().set_hidden(true);
+            (Some(toplevel), &Some(ref mgr)) => {
+                mgr.get_toplevel_decoration(toplevel, |newdec| {
+                    newdec.implement(
+                        move |event, _| {
+                            use self::zxdg_toplevel_decoration_v1::{Event, Mode};
+                            let Event::Configure { mode } = event;
+                            match mode {
+                                Mode::ServerSide => {
+                                    decoration_frame.lock().unwrap().set_hidden(true);
+                                }
+                                Mode::ClientSide => {
+                                    let want_decorate = decoration_inner
+                                        .lock()
+                                        .unwrap()
+                                        .as_ref()
+                                        .map(|inner| inner.decorated)
+                                        .unwrap_or(false);
+                                    decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                                }
                             }
-                            Mode::ClientSide => {
-                                let want_decorate = decoration_inner
-                                    .lock()
-                                    .unwrap()
-                                    .as_ref()
-                                    .map(|inner| inner.decorated)
-                                    .unwrap_or(false);
-                                decoration_frame.lock().unwrap().set_hidden(!want_decorate);
-                            }
-                        }
-                    })
-                },
-            ),
+                        },
+                        (),
+                    )
+                }).ok()
+            }
             _ => None,
         };
     }
@@ -548,7 +548,7 @@ pub trait Frame: Sized + Send {
         compositor: &Proxy<wl_compositor::WlCompositor>,
         subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
         shm: &Proxy<wl_shm::WlShm>,
-        implementation: Box<Implementation<u32, FrameRequest> + Send>,
+        implementation: Box<FnMut(u32, FrameRequest) + Send>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
     ///

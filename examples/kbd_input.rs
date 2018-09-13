@@ -11,10 +11,8 @@ use sctk::keyboard::{
     map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatEvent, KeyRepeatKind,
 };
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
-use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use sctk::reexports::client::protocol::{wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, Window};
@@ -22,8 +20,7 @@ use sctk::Environment;
 
 fn main() {
     let (display, mut event_queue) = Display::connect_to_env().unwrap();
-    let env =
-        Environment::from_registry(display.get_registry().unwrap(), &mut event_queue).unwrap();
+    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     /*
      * Create a buffer with window contents
@@ -37,15 +34,14 @@ fn main() {
 
     let surface = env
         .compositor
-        .create_surface()
-        .unwrap()
-        .implement(|_, _| {});
+        .create_surface(|surface| surface.implement(|_, _| {}, ()))
+        .unwrap();
 
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
     let mut window =
-        Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |evt, ()| {
+        Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |_, evt| {
             let mut next_action = waction.lock().unwrap();
             // Keep last event in priority order : Close > Configure > Refresh
             let replace = match (&evt, &*next_action) {
@@ -70,16 +66,15 @@ fn main() {
     // initialize a seat to retrieve keyboard events
     let seat = env
         .manager
-        .instantiate_auto::<wl_seat::WlSeat>()
-        .unwrap()
-        .implement(move |_, _| {});
+        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .unwrap();
 
     window.new_seat(&seat);
 
     let _keyboard = map_keyboard_auto_with_repeat(
-        seat.get_keyboard().unwrap(),
+        &seat,
         KeyRepeatKind::System,
-        move |event: KbEvent, _| match event {
+        move |_, event: KbEvent| match event {
             KbEvent::Enter {
                 modifiers, keysyms, ..
             } => {
@@ -112,7 +107,7 @@ fn main() {
                     );
             }
         },
-        move |repeat_event: KeyRepeatEvent, _| {
+        move |_, repeat_event: KeyRepeatEvent| {
             println!("Repeated key {:x}.", repeat_event.keysym);
             println!(" -> Modifers are {:?}", repeat_event.modifiers);
             if let Some(txt) = repeat_event.utf8 {

@@ -3,7 +3,10 @@
 use std::sync::{Arc, Mutex};
 
 use wayland_client::protocol::wl_output::{self, Event, RequestsTrait, WlOutput};
-use wayland_client::{NewProxy, Proxy};
+use wayland_client::protocol::wl_registry;
+use wayland_client::Proxy;
+
+use wayland_client::protocol::wl_registry::RequestsTrait as RegistryRequest;
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 
@@ -176,21 +179,34 @@ impl OutputMgr {
         }
     }
 
-    pub(crate) fn new_output(&self, id: u32, output: NewProxy<WlOutput>) {
+    pub(crate) fn new_output(
+        &self,
+        id: u32,
+        version: u32,
+        registry: &Proxy<wl_registry::WlRegistry>,
+    ) {
         let inner = self.inner.clone();
-        let output = output.implement(move |event, output| {
-            let mut inner = inner.lock().unwrap();
-            if let Event::Done = event {
-                inner.merge(&output);
-            } else {
-                inner.pendings.push((output.clone(), event));
-                if output.version() < 2 {
-                    // in case of very old outputs, we can't treat the changes
-                    // atomically as the Done event does not exist
-                    inner.merge(&output);
-                }
-            }
-        });
+        let output = registry
+            .bind(version, id, |output| {
+                output.implement(
+                    move |event, output| {
+                        let mut inner = inner.lock().unwrap();
+                        if let Event::Done = event {
+                            inner.merge(&output);
+                        } else {
+                            inner.pendings.push((output.clone(), event));
+                            if output.version() < 2 {
+                                // in case of very old outputs, we can't treat the changes
+                                // atomically as the Done event does not exist
+                                inner.merge(&output);
+                            }
+                        }
+                    },
+                    (),
+                )
+            })
+            .unwrap();
+
         self.inner
             .lock()
             .unwrap()
