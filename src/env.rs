@@ -95,7 +95,8 @@ impl Environment {
         let outputs = ::output::OutputMgr::new();
         let outputs2 = outputs.clone();
 
-        let manager = GlobalManager::new_with_cb(&display, move |event, registry| {
+        let display_wrapper = display.make_wrapper(&evq.get_token()).unwrap();
+        let manager = GlobalManager::new_with_cb(&display_wrapper, move |event, registry| {
             match event {
                 GlobalEvent::New {
                     id,
