@@ -14,7 +14,6 @@ use std::sync::{Arc, Mutex};
 
 use rand::prelude::*;
 
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
 use wayland_client::Proxy;
 
@@ -41,25 +40,25 @@ impl DoubleMemPool {
     /// Create a double memory pool
     pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<DoubleMemPool>
     where
-        Impl: Implementation<(), ()> + Send,
+        Impl: FnMut() + Send + 'static,
     {
         let free = Arc::new(Mutex::new(true));
         let implementation = Arc::new(Mutex::new(implementation));
         let my_free = free.clone();
         let my_implementation = implementation.clone();
-        let pool1 = MemPool::new(shm, move |_, _| {
+        let pool1 = MemPool::new(shm, move || {
             let mut my_free = my_free.lock().unwrap();
             if !*my_free {
-                my_implementation.lock().unwrap().receive((), ());
+                (&mut *my_implementation.lock().unwrap())();
                 *my_free = true
             }
         })?;
         let my_free = free.clone();
         let my_implementation = implementation.clone();
-        let pool2 = MemPool::new(shm, move |_, _| {
+        let pool2 = MemPool::new(shm, move || {
             let mut my_free = my_free.lock().unwrap();
             if !*my_free {
-                my_implementation.lock().unwrap().receive((), ());
+                (&mut *my_implementation.lock().unwrap())();
                 *my_free = true
             }
         })?;
@@ -104,23 +103,22 @@ pub struct MemPool {
     len: usize,
     pool: Proxy<wl_shm_pool::WlShmPool>,
     buffer_count: Arc<Mutex<u32>>,
-    implementation: Arc<Mutex<Implementation<(), ()> + Send>>,
+    implementation: Arc<Mutex<FnMut() + Send>>,
 }
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<MemPool>
     where
-        Impl: Implementation<(), ()> + Send,
+        Impl: FnMut() + Send + 'static,
     {
         let mem_fd = create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(mem_fd) };
         mem_file.set_len(128)?;
 
         let pool = shm
-            .create_pool(mem_fd, 128)
-            .unwrap()
-            .implement(|e, _| match e {});
+            .create_pool(mem_fd, 128, |pool| pool.implement(|e, _| match e {}, ()))
+            .unwrap();
 
         Ok(MemPool {
             file: mem_file,
@@ -175,20 +173,22 @@ impl MemPool {
         let my_buffer_count = self.buffer_count.clone();
         let my_implementation = self.implementation.clone();
         self.pool
-            .create_buffer(offset, width, height, stride, format)
-            .unwrap()
-            .implement(
-                move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
-                    wl_buffer::Event::Release => {
-                        buffer.destroy();
-                        let mut my_buffer_count = my_buffer_count.lock().unwrap();
-                        *my_buffer_count -= 1;
-                        if *my_buffer_count == 0 {
-                            my_implementation.lock().unwrap().receive((), ());
+            .create_buffer(offset, width, height, stride, format, |buffer| {
+                buffer.implement(
+                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                        wl_buffer::Event::Release => {
+                            buffer.destroy();
+                            let mut my_buffer_count = my_buffer_count.lock().unwrap();
+                            *my_buffer_count -= 1;
+                            if *my_buffer_count == 0 {
+                                (&mut *my_implementation.lock().unwrap())();
+                            }
                         }
-                    }
-                },
-            )
+                    },
+                    (),
+                )
+            })
+            .unwrap()
     }
 
     /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns

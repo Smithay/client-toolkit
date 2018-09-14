@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **[Breaking]** Upgrade to wayland-rs 0.21
 - Keyboard: end key repetition when the keyboard loses focus
 
 ## 0.3.0 -- 2018-08-17

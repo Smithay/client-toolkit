@@ -2,7 +2,6 @@ use std::cmp::max;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
 
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
 };
@@ -10,7 +9,6 @@ use wayland_client::Proxy;
 
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;
-use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use wayland_client::protocol::wl_subcompositor::RequestsTrait as SubcompRequests;
 use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests;
 use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
@@ -97,11 +95,14 @@ impl Part {
         compositor: &Proxy<wl_compositor::WlCompositor>,
         subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
     ) -> Part {
-        let surface = compositor.create_surface().unwrap().implement(|_, _| {});
+        let surface = compositor
+            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .unwrap();
         let subsurface = subcompositor
-            .get_subsurface(&surface, parent)
-            .unwrap()
-            .implement(|_, _| {});
+            .get_subsurface(&surface, parent, |subsurface| {
+                subsurface.implement(|_, _| {}, ())
+            })
+            .unwrap();
         Part {
             surface,
             subsurface,
@@ -130,7 +131,7 @@ struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
     resizable: Arc<Mutex<bool>>,
-    implem: Mutex<Box<Implementation<u32, FrameRequest> + Send>>,
+    implem: Mutex<Box<FnMut(FrameRequest, u32) + Send>>,
     maximized: Arc<Mutex<bool>>,
 }
 
@@ -228,7 +229,7 @@ impl Frame for BasicFrame {
         compositor: &Proxy<wl_compositor::WlCompositor>,
         subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
         shm: &Proxy<wl_shm::WlShm>,
-        implementation: Box<Implementation<u32, FrameRequest> + Send>,
+        implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<BasicFrame, ::std::io::Error> {
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
@@ -247,12 +248,8 @@ impl Frame for BasicFrame {
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
         // None was previously returned from `pool()` and the draw was postponed
-        let pools = DoubleMemPool::new(&shm, move |_, _| {
-            my_inner
-                .implem
-                .lock()
-                .unwrap()
-                .receive(FrameRequest::Refresh, 0);
+        let pools = DoubleMemPool::new(&shm, move || {
+            (&mut *my_inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
         })?;
         Ok(BasicFrame {
             inner,
@@ -269,9 +266,10 @@ impl Frame for BasicFrame {
         use self::wl_pointer::Event;
         let inner = self.inner.clone();
         let pointer = self.themer.theme_pointer_with_impl(
-            seat.get_pointer().unwrap(),
+            seat,
             move |event, pointer: AutoPointer| {
-                let data = unsafe { &mut *(pointer.get_user_data() as *mut PointerUserData) };
+                let data: &Mutex<PointerUserData> = pointer.user_data().unwrap();
+                let data = &mut *data.lock().unwrap();
                 let (width, _) = *(inner.size.lock().unwrap());
                 let resizable = *(inner.resizable.lock().unwrap());
                 match event {
@@ -309,11 +307,7 @@ impl Frame for BasicFrame {
                             match (newpos, data.location) {
                                 (Location::Button(_), _) | (_, Location::Button(_)) => {
                                     // pointer movement involves a button, request refresh
-                                    inner
-                                        .implem
-                                        .lock()
-                                        .unwrap()
-                                        .receive(FrameRequest::Refresh, 0);
+                                    (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
                                 }
                                 _ => (),
                             }
@@ -340,19 +334,19 @@ impl Frame for BasicFrame {
                                 resizable,
                             );
                             if let Some(req) = req {
-                                inner.implem.lock().unwrap().receive(req, serial);
+                                (&mut *inner.implem.lock().unwrap())(req, serial);
                             }
                         }
                     }
                     _ => {}
                 }
             },
+            Mutex::new(PointerUserData {
+                location: Location::None,
+                position: (0.0, 0.0),
+                seat: seat.clone(),
+            }),
         );
-        pointer.set_user_data(Box::into_raw(Box::new(PointerUserData {
-            location: Location::None,
-            position: (0.0, 0.0),
-            seat: seat.clone(),
-        })) as *mut ());
         self.pointers.push(pointer);
     }
 
@@ -463,9 +457,8 @@ impl Frame for BasicFrame {
                         .iter()
                         .flat_map(|p| {
                             if p.is_alive() {
-                                let data =
-                                    unsafe { &mut *(p.get_user_data() as *mut PointerUserData) };
-                                Some(data.location)
+                                let data: &Mutex<PointerUserData> = p.user_data().unwrap();
+                                Some(data.lock().unwrap().location)
                             } else {
                                 None
                             }
@@ -659,8 +652,6 @@ impl Frame for BasicFrame {
 impl Drop for BasicFrame {
     fn drop(&mut self) {
         for ptr in self.pointers.drain(..) {
-            let _data = unsafe { Box::from_raw(ptr.get_user_data() as *mut PointerUserData) };
-            ptr.set_user_data(::std::ptr::null_mut());
             if ptr.version() >= 3 {
                 ptr.release();
             }

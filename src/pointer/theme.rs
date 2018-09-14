@@ -1,12 +1,12 @@
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
-use wayland_client::commons::Implementation;
 use wayland_client::cursor::{is_available, load_theme, CursorTheme};
-use wayland_client::protocol::{wl_compositor, wl_pointer, wl_shm, wl_surface};
+use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm, wl_surface};
 use wayland_client::{NewProxy, Proxy, QueueToken};
 
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;
+use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 
 /// Wrapper managing a system theme for pointer images
@@ -48,9 +48,8 @@ impl ThemeManager {
     pub fn theme_pointer(&self, pointer: Proxy<wl_pointer::WlPointer>) -> ThemedPointer {
         let surface = self
             .compositor
-            .create_surface()
-            .unwrap()
-            .implement(|_, _| {});
+            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .unwrap();
         ThemedPointer {
             pointer,
             inner: Arc::new(Mutex::new(PointerInner {
@@ -66,19 +65,20 @@ impl ThemeManager {
     /// You need to provide an implementation as if implementing a `wl_pointer`, but
     /// it will receive as `meta` argument a `ThemedPointer` wrapping your pointer,
     /// rather than a `Proxy<WlPointer>`.
-    pub fn theme_pointer_with_impl<Impl>(
+    pub fn theme_pointer_with_impl<Impl, UD>(
         &self,
-        pointer: NewProxy<wl_pointer::WlPointer>,
+        seat: &Proxy<wl_seat::WlSeat>,
         mut implementation: Impl,
+        user_data: UD,
     ) -> ThemedPointer
     where
-        Impl: Implementation<ThemedPointer, wl_pointer::Event> + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, ThemedPointer) + Send + 'static,
+        UD: Send + Sync + 'static,
     {
         let surface = self
             .compositor
-            .create_surface()
-            .unwrap()
-            .implement(|_, _| {});
+            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .unwrap();
 
         let inner = Arc::new(Mutex::new(PointerInner {
             surface,
@@ -87,15 +87,21 @@ impl ThemeManager {
         }));
         let inner2 = inner.clone();
 
-        let pointer = pointer.implement(move |event, ptr| {
-            implementation.receive(
-                event,
-                ThemedPointer {
-                    pointer: ptr,
-                    inner: inner.clone(),
-                },
-            )
-        });
+        let pointer =
+            seat.get_pointer(|pointer| {
+                pointer.implement(
+                    move |event, ptr| {
+                        implementation(
+                            event,
+                            ThemedPointer {
+                                pointer: ptr,
+                                inner: inner.clone(),
+                            },
+                        )
+                    },
+                    user_data,
+                )
+            }).unwrap();
 
         ThemedPointer {
             pointer,
@@ -108,20 +114,21 @@ impl ThemeManager {
     /// Like `theme_pointer_with_impl` but allows you to have a non-`Send` implementation.
     ///
     /// **Unsafe** for the same reasons as `NewProxy::implement_nonsend`.
-    pub unsafe fn theme_pointer_with_nonsend_impl<Impl>(
+    pub unsafe fn theme_pointer_with_nonsend_impl<Impl, UD>(
         &self,
         pointer: NewProxy<wl_pointer::WlPointer>,
         mut implementation: Impl,
+        user_data: UD,
         token: &QueueToken,
     ) -> ThemedPointer
     where
-        Impl: Implementation<ThemedPointer, wl_pointer::Event> + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, ThemedPointer) + 'static,
+        UD: Send + Sync + 'static,
     {
         let surface = self
             .compositor
-            .create_surface()
-            .unwrap()
-            .implement(|_, _| {});
+            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .unwrap();
 
         let inner = Arc::new(Mutex::new(PointerInner {
             surface,
@@ -132,7 +139,7 @@ impl ThemeManager {
 
         let pointer = pointer.implement_nonsend(
             move |event, ptr| {
-                implementation.receive(
+                implementation(
                     event,
                     ThemedPointer {
                         pointer: ptr,
@@ -140,6 +147,7 @@ impl ThemeManager {
                     },
                 )
             },
+            user_data,
             token,
         );
 

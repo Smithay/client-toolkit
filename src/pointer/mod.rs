@@ -2,9 +2,10 @@
 
 use std::ops::Deref;
 
-use wayland_client::commons::Implementation;
-use wayland_client::protocol::{wl_compositor, wl_pointer, wl_shm};
+use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm};
 use wayland_client::{NewProxy, Proxy, QueueToken};
+
+use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
 
 mod theme;
 
@@ -55,25 +56,33 @@ impl AutoThemer {
     /// You need to provide an implementation as if implementing a `wl_pointer`, but
     /// it will receive as `meta` argument an `AutoPointer` wrapping your pointer,
     /// rather than a `Proxy<WlPointer>`.
-    pub fn theme_pointer_with_impl<Impl>(
+    pub fn theme_pointer_with_impl<Impl, UD>(
         &self,
-        pointer: NewProxy<wl_pointer::WlPointer>,
+        seat: &Proxy<wl_seat::WlSeat>,
         mut implementation: Impl,
+        user_data: UD,
     ) -> AutoPointer
     where
-        Impl: Implementation<AutoPointer, wl_pointer::Event> + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, AutoPointer) + Send + 'static,
+        UD: Send + Sync + 'static,
     {
         match *self {
             AutoThemer::Themed(ref mgr) => {
-                let pointer = mgr.theme_pointer_with_impl(pointer, move |event, pointer| {
-                    implementation.receive(event, AutoPointer::Themed(pointer))
-                });
+                let pointer = mgr.theme_pointer_with_impl(
+                    seat,
+                    move |event, seat| implementation(event, AutoPointer::Themed(seat)),
+                    user_data,
+                );
                 AutoPointer::Themed(pointer)
             }
             AutoThemer::UnThemed => {
-                let pointer = pointer.implement(move |event, pointer| {
-                    implementation.receive(event, AutoPointer::UnThemed(pointer))
-                });
+                let pointer =
+                    seat.get_pointer(|pointer| {
+                        pointer.implement(
+                            move |event, seat| implementation(event, AutoPointer::UnThemed(seat)),
+                            user_data,
+                        )
+                    }).unwrap();
                 AutoPointer::UnThemed(pointer)
             }
         }
@@ -84,31 +93,31 @@ impl AutoThemer {
     /// Like `theme_pointer_with_impl` but allows you to have a non-`Send` implementation.
     ///
     /// **Unsafe** for the same reasons as `NewProxy::implement_nonsend`.
-    pub unsafe fn theme_pointer_with_nonsend_impl<Impl>(
+    pub unsafe fn theme_pointer_with_nonsend_impl<Impl, UD>(
         &self,
         pointer: NewProxy<wl_pointer::WlPointer>,
         mut implementation: Impl,
+        user_data: UD,
         token: &QueueToken,
     ) -> AutoPointer
     where
-        Impl: Implementation<AutoPointer, wl_pointer::Event> + Send + 'static,
+        Impl: FnMut(wl_pointer::Event, AutoPointer) + Send + 'static,
+        UD: Send + Sync + 'static,
     {
         match *self {
             AutoThemer::Themed(ref mgr) => {
                 let pointer = mgr.theme_pointer_with_nonsend_impl(
                     pointer,
-                    move |event, pointer| {
-                        implementation.receive(event, AutoPointer::Themed(pointer))
-                    },
+                    move |event, pointer| implementation(event, AutoPointer::Themed(pointer)),
+                    user_data,
                     token,
                 );
                 AutoPointer::Themed(pointer)
             }
             AutoThemer::UnThemed => {
                 let pointer = pointer.implement_nonsend(
-                    move |event, pointer| {
-                        implementation.receive(event, AutoPointer::UnThemed(pointer))
-                    },
+                    move |event, pointer| implementation(event, AutoPointer::UnThemed(pointer)),
+                    user_data,
                     token,
                 );
                 AutoPointer::UnThemed(pointer)

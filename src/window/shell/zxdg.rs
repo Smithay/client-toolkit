@@ -1,4 +1,3 @@
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 use wayland_client::Proxy;
 
@@ -27,42 +26,56 @@ impl Zxdg {
         mut implementation: Impl,
     ) -> Zxdg
     where
-        Impl: Implementation<(), Event> + Send,
+        Impl: FnMut(Event) + Send + 'static,
     {
-        let xdgs = shell.get_xdg_surface(surface).unwrap().implement(
-            |evt, xdgs: Proxy<_>| match evt {
-                zxdg_surface_v6::Event::Configure { serial } => {
-                    xdgs.ack_configure(serial);
-                }
-            },
-        );
-        let toplevel = xdgs.get_toplevel().unwrap().implement(move |evt, _| {
-            match evt {
-                zxdg_toplevel_v6::Event::Close => implementation.receive(Event::Close, ()),
-                zxdg_toplevel_v6::Event::Configure {
-                    width,
-                    height,
-                    states,
-                } => {
-                    use std::cmp::max;
-                    let new_size = if width == 0 || height == 0 {
-                        // if either w or h is zero, then we get to choose our size
-                        None
-                    } else {
-                        Some((max(width, 1) as u32, max(height, 1) as u32))
-                    };
-                    let view: &[u32] = unsafe {
-                        ::std::slice::from_raw_parts(states.as_ptr() as *const _, states.len() / 4)
-                    };
-                    let states = view.iter()
+        let xdgs = shell
+            .get_xdg_surface(surface, |xdgs| {
+                xdgs.implement(
+                    |evt, xdgs: Proxy<_>| match evt {
+                        zxdg_surface_v6::Event::Configure { serial } => {
+                            xdgs.ack_configure(serial);
+                        }
+                    },
+                    (),
+                )
+            })
+            .unwrap();
+        let toplevel =
+            xdgs.get_toplevel(|toplevel| {
+                toplevel.implement(
+                    move |evt, _| {
+                        match evt {
+                            zxdg_toplevel_v6::Event::Close => implementation(Event::Close),
+                            zxdg_toplevel_v6::Event::Configure {
+                                width,
+                                height,
+                                states,
+                            } => {
+                                use std::cmp::max;
+                                let new_size = if width == 0 || height == 0 {
+                                    // if either w or h is zero, then we get to choose our size
+                                    None
+                                } else {
+                                    Some((max(width, 1) as u32, max(height, 1) as u32))
+                                };
+                                let view: &[u32] = unsafe {
+                                    ::std::slice::from_raw_parts(
+                                        states.as_ptr() as *const _,
+                                        states.len() / 4,
+                                    )
+                                };
+                                let states = view.iter()
                         .cloned()
                         // bit representation of xdg_toplevel_v6 and zxdg_toplevel_v6 matches
                         .flat_map(xdg_toplevel::State::from_raw)
                         .collect::<Vec<_>>();
-                    implementation.receive(Event::Configure { new_size, states }, ());
-                }
-            }
-        });
+                                implementation(Event::Configure { new_size, states });
+                            }
+                        }
+                    },
+                    (),
+                )
+            }).unwrap();
         surface.commit();
         Zxdg {
             surface: xdgs,

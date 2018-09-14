@@ -9,9 +9,8 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use sctk::reexports::client::protocol::{wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{BasicFrame, Event as WEvent, State, Window};
@@ -40,40 +39,43 @@ fn main() {
     let image = image.to_rgba();
 
     /*
-     * Initalize the wayland connexion
+     * Initalize the wayland connection
      */
     let (display, mut event_queue) =
         Display::connect_to_env().expect("Failed to connect to the wayland server.");
 
-    // All request method of wayland objects return a result, as wayland-client
+    // All request methods of wayland objects return a result, as wayland-client
     // returns an error if you try to send a message on an object that has already
-    // been destroyed by a previous message. We know our display has not been
-    // destroyed, so we unwrap().
-    let registry = display.get_registry().unwrap();
-
-    // The Environment takes a registry and a mutable borrow of the wayland event
+    // been destroyed by a previous message.
+    //
+    // The Environment takes a proxy to the display and a mutable borrow of the wayland event
     // queue. It uses the event queue internally to exchange messages with the server
     // to process the registry event.
-    // Like all manipulation of the event loop, it can fail (if the connexion is
+    // Like all manipulation of the event loop, it can fail (if the connection is
     // unexpectedly lost), and thus returns a result. This failing would prevent
-    // us to continue though, so we unrap().
-    let env = Environment::from_registry(registry, &mut event_queue).unwrap();
+    // us to continue though, so we unwrap().
+    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     // Use the compositor global to create a new surface
-    let surface = env.compositor
-        .create_surface()
-        .unwrap() // unwrap for the same reasons as before, we know the compositor
-                  // is not yet destroyed
-        .implement(|_event, _surface| {
-            // Here we implement this surface with a closure processing
-            // the event
-            //
-            // Surface events notify us when it enters or leave an output,
-            // this is mostly useful to track DPI-scaling.
-            //
-            // We don't do it in this example, so this closures ignores all
-            // events by doing nothing.
-        });
+    let surface = env
+        .compositor
+        .create_surface(|surface| {
+            surface.implement(
+                |_surface, _event| {
+                    // Here we implement this surface with a closure processing
+                    // the event
+                    //
+                    // Surface events notify us when it enters or leave an output,
+                    // this is mostly useful to track DPI-scaling.
+                    //
+                    // We don't do it in this example, so this closures ignores all
+                    // events by doing nothing.
+                },
+                (),
+            )
+        })
+        .unwrap(); // unwrap for the same reasons as before, we know the compositor
+                   // is not yet destroyed
 
     /*
      * Init the window
@@ -99,7 +101,7 @@ fn main() {
         &env,               // the environment containing the wayland globals
         surface,            // the wl_surface that serves as the basis of this window
         image.dimensions(), // the initial internal dimensions of the window
-        move |evt, ()| {
+        move |evt| {
             // This is the closure that process the Window events.
             // There are 3 possible events:
             // - Close: the user requested the window to be closed, we'll then quit
@@ -146,9 +148,8 @@ fn main() {
     // Thus, we just automatically bind the first seat we find.
     let seat = env
         .manager
-        .instantiate_auto::<wl_seat::WlSeat>()
-        .unwrap()
-        .implement(move |_, _| {});
+        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .unwrap();
     // And advertize it to the Window so it knows of it and can process the
     // required pointer events.
     window.new_seat(&seat);
@@ -161,7 +162,7 @@ fn main() {
     // the capability of the server to use shared memory (SHM). All wayland servers
     // are required to support it.
     let mut pools =
-        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create the memory pools.");
+        DoubleMemPool::new(&env.shm, || {}).expect("Failed to create the memory pools.");
 
     /*
      * Event Loop preparation and running

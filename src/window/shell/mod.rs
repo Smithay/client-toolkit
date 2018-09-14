@@ -1,4 +1,3 @@
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 use wayland_client::Proxy;
 
@@ -17,7 +16,7 @@ pub(crate) fn create_shell_surface<Impl>(
     implem: Impl,
 ) -> Box<ShellSurface>
 where
-    Impl: Implementation<(), Event> + Send,
+    Impl: FnMut(Event) + Send + 'static,
 {
     match *shell {
         Shell::Wl(ref shell) => Box::new(wl::Wl::create(surface, shell, implem)) as Box<_>,

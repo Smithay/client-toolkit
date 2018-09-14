@@ -13,72 +13,61 @@ use sctk::window::{BasicFrame, Event as WEvent, Window};
 use sctk::Environment;
 
 use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
-use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
-use sctk::reexports::client::protocol::{wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 
 fn main() {
     let (display, mut event_queue) =
         Display::connect_to_env().expect("Failed to connect to the wayland server.");
-    let env =
-        Environment::from_registry(display.get_registry().unwrap(), &mut event_queue).unwrap();
+    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     let seat = env
         .manager
-        .instantiate_auto::<wl_seat::WlSeat>()
-        .unwrap()
-        .implement(move |_, _| {});
+        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .unwrap();
 
-    let device = DataDevice::init_for_seat(
-        &env.data_device_manager,
-        &seat,
-        |event: DndEvent, ()| match event {
-            // we don't accept drag'n'drop
-            DndEvent::Enter {
-                offer: Some(offer), ..
-            } => offer.accept(None),
-            _ => (),
-        },
-    );
+    let device = DataDevice::init_for_seat(&env.data_device_manager, &seat, |event| match event {
+        // we don't accept drag'n'drop
+        DndEvent::Enter {
+            offer: Some(offer), ..
+        } => offer.accept(None),
+        _ => (),
+    });
 
     // we need a window to receive things actually
     let mut dimensions = (320u32, 240u32);
     let surface = env
         .compositor
-        .create_surface()
-        .unwrap()
-        .implement(|_, _| {});
+        .create_surface(|surface| surface.implement(|_, _| {}, ()))
+        .unwrap();
 
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window =
-        Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |evt, ()| {
-            let mut next_action = waction.lock().unwrap();
-            // Keep last event in priority order : Close > Configure > Refresh
-            let replace = match (&evt, &*next_action) {
-                (_, &None)
-                | (_, &Some(WEvent::Refresh))
-                | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-                | (&WEvent::Close, _) => true,
-                _ => false,
-            };
-            if replace {
-                *next_action = Some(evt);
-            }
-        }).expect("Failed to create a window !");
+    let mut window = Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |evt| {
+        let mut next_action = waction.lock().unwrap();
+        // Keep last event in priority order : Close > Configure > Refresh
+        let replace = match (&evt, &*next_action) {
+            (_, &None)
+            | (_, &Some(WEvent::Refresh))
+            | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+            | (&WEvent::Close, _) => true,
+            _ => false,
+        };
+        if replace {
+            *next_action = Some(evt);
+        }
+    }).expect("Failed to create a window !");
 
     window.new_seat(&seat);
 
-    let mut pools =
-        DoubleMemPool::new(&env.shm, |_, _| {}).expect("Failed to create a memory pool !");
+    let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
 
     let reader = Arc::new(Mutex::new(None::<ReadPipe>));
 
     let reader2 = reader.clone();
-    let _keyboard = map_keyboard_auto(seat.get_keyboard().unwrap(), move |event: KbEvent, _| {
+    map_keyboard_auto(&seat, move |event: KbEvent, _| {
         match event {
             KbEvent::Key {
                 state,
@@ -114,7 +103,7 @@ fn main() {
             }
             _ => (),
         }
-    });
+    }).unwrap();
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell

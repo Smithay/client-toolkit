@@ -1,4 +1,3 @@
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_output, wl_seat, wl_shell, wl_shell_surface, wl_surface};
 use wayland_client::Proxy;
 
@@ -20,28 +19,30 @@ impl Wl {
         mut implementation: Impl,
     ) -> Wl
     where
-        Impl: Implementation<(), Event> + Send,
+        Impl: FnMut(Event) + Send + 'static,
     {
-        let shell_surface = shell.get_shell_surface(surface).unwrap().implement(
-            move |event, shell_surface: Proxy<_>| match event {
-                wl_shell_surface::Event::Ping { serial } => {
-                    shell_surface.pong(serial);
-                }
-                wl_shell_surface::Event::Configure { width, height, .. } => {
-                    use std::cmp::max;
-                    implementation.receive(
-                        Event::Configure {
-                            new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
-                            states: Vec::new(),
-                        },
-                        (),
-                    );
-                }
-                wl_shell_surface::Event::PopupDone => {
-                    unreachable!();
-                }
-            },
-        );
+        let shell_surface = shell
+            .get_shell_surface(surface, |shell_surface| {
+                shell_surface.implement(
+                    move |event, shell_surface: Proxy<_>| match event {
+                        wl_shell_surface::Event::Ping { serial } => {
+                            shell_surface.pong(serial);
+                        }
+                        wl_shell_surface::Event::Configure { width, height, .. } => {
+                            use std::cmp::max;
+                            implementation(Event::Configure {
+                                new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
+                                states: Vec::new(),
+                            });
+                        }
+                        wl_shell_surface::Event::PopupDone => {
+                            unreachable!();
+                        }
+                    },
+                    (),
+                )
+            })
+            .unwrap();
         shell_surface.set_toplevel();
         Wl { shell_surface }
     }

@@ -3,15 +3,12 @@ extern crate smithay_client_toolkit as sctk;
 use sctk::reexports::client::Display;
 use sctk::{Environment, Shell};
 
-use sctk::reexports::client::protocol::wl_display::RequestsTrait as DisplayRequests;
-
 // This is a small program that queries the compositor for
 // various information and prints them on the console before exiting.
 
 fn main() {
     let (display, mut event_queue) = Display::connect_to_env().unwrap();
-    let env =
-        Environment::from_registry(display.get_registry().unwrap(), &mut event_queue).unwrap();
+    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     println!("== Smithay's compositor info tool ==\n");
 

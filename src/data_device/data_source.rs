@@ -1,4 +1,3 @@
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{wl_data_device_manager, wl_data_source};
 use wayland_client::{Proxy, QueueToken};
 
@@ -84,7 +83,7 @@ fn data_source_impl<Impl>(
     source: Proxy<wl_data_source::WlDataSource>,
     implem: &mut Impl,
 ) where
-    Impl: Implementation<(), DataSourceEvent>,
+    Impl: FnMut(DataSourceEvent),
 {
     use self::wl_data_source::Event;
     let event = match evt {
@@ -106,26 +105,29 @@ fn data_source_impl<Impl>(
             DataSourceEvent::Finished
         }
     };
-    implem.receive(event, ());
+    implem(event);
 }
 
 impl DataSource {
     /// Create a new data source
     ///
     /// You'll then need to provide it to a data device to send it
-    /// either wia selection (aka copy/paste) or via a drag and drop.
+    /// either via selection (aka copy/paste) or via a drag and drop.
     pub fn new<Impl>(
         mgr: &Proxy<wl_data_device_manager::WlDataDeviceManager>,
         mime_types: &[&str],
         mut implem: Impl,
     ) -> DataSource
     where
-        Impl: Implementation<(), DataSourceEvent> + Send,
+        Impl: FnMut(DataSourceEvent) + Send + 'static,
     {
-        let source = mgr
-            .create_data_source()
-            .expect("Provided a dead data device manager to create a data source.")
-            .implement(move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem));
+        let source =
+            mgr.create_data_source(|source| {
+                source.implement(
+                    move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
+                    (),
+                )
+            }).expect("Provided a dead data device manager to create a data source.");
 
         for &mime in mime_types {
             source.offer(mime.into());
@@ -147,15 +149,16 @@ impl DataSource {
         token: &QueueToken,
     ) -> DataSource
     where
-        Impl: Implementation<(), DataSourceEvent>,
+        Impl: FnMut(DataSourceEvent) + 'static,
     {
-        let source = mgr
-            .create_data_source()
-            .expect("Provided a dead data device manager to create a data source.")
-            .implement_nonsend(
-                move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
-                token,
-            );
+        let source =
+            mgr.create_data_source(|source| {
+                source.implement_nonsend(
+                    move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
+                    (),
+                    token,
+                )
+            }).expect("Provided a dead data device manager to create a data source.");
 
         for &mime in mime_types {
             source.offer(mime.into());

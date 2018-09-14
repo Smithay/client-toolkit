@@ -1,4 +1,3 @@
-use wayland_client::commons::Implementation;
 use wayland_client::protocol::{
     wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat, wl_surface,
 };
@@ -114,9 +113,10 @@ pub enum DndEvent<'a> {
 
 fn data_device_implem<Impl>(event: wl_data_device::Event, inner: &mut Inner, implem: &mut Impl)
 where
-    for<'a> Impl: Implementation<(), DndEvent<'a>>,
+    for<'a> Impl: FnMut(DndEvent<'a>),
 {
     use self::wl_data_device::Event;
+
     match event {
         Event::DataOffer { id } => inner.new_offer(id),
         Event::Enter {
@@ -127,36 +127,27 @@ where
             id,
         } => {
             inner.set_dnd(id);
-            implem.receive(
-                DndEvent::Enter {
-                    serial,
-                    surface,
-                    x,
-                    y,
-                    offer: inner.current_dnd.as_ref(),
-                },
-                (),
-            );
+            implem(DndEvent::Enter {
+                serial,
+                surface,
+                x,
+                y,
+                offer: inner.current_dnd.as_ref(),
+            });
         }
         Event::Motion { time, x, y } => {
-            implem.receive(
-                DndEvent::Motion {
-                    x,
-                    y,
-                    time,
-                    offer: inner.current_dnd.as_ref(),
-                },
-                (),
-            );
+            implem(DndEvent::Motion {
+                x,
+                y,
+                time,
+                offer: inner.current_dnd.as_ref(),
+            });
         }
-        Event::Leave => implem.receive(DndEvent::Leave, ()),
+        Event::Leave => implem(DndEvent::Leave),
         Event::Drop => {
-            implem.receive(
-                DndEvent::Drop {
-                    offer: inner.current_dnd.as_ref(),
-                },
-                (),
-            );
+            implem(DndEvent::Drop {
+                offer: inner.current_dnd.as_ref(),
+            });
         }
         Event::Selection { id } => inner.set_selection(id),
     }
@@ -173,12 +164,8 @@ impl DataDevice {
         mut implem: Impl,
     ) -> DataDevice
     where
-        for<'a> Impl: Implementation<(), DndEvent<'a>> + Send,
+        for<'a> Impl: FnMut(DndEvent<'a>) + Send + 'static,
     {
-        let device = manager
-            .get_data_device(seat)
-            .expect("Invalid data device or seat.");
-
         let inner = Arc::new(Mutex::new(Inner {
             selection: None,
             current_dnd: None,
@@ -186,10 +173,17 @@ impl DataDevice {
         }));
 
         let inner2 = inner.clone();
-        let device = device.implement(move |evt, _| {
-            let mut inner = inner2.lock().unwrap();
-            data_device_implem(evt, &mut *inner, &mut implem);
-        });
+        let device = manager
+            .get_data_device(seat, move |device| {
+                device.implement(
+                    move |evt, _| {
+                        let mut inner = inner2.lock().unwrap();
+                        data_device_implem(evt, &mut *inner, &mut implem);
+                    },
+                    (),
+                )
+            })
+            .expect("Invalid data device or seat.");
 
         DataDevice { device, inner }
     }
@@ -207,12 +201,8 @@ impl DataDevice {
         token: &QueueToken,
     ) -> DataDevice
     where
-        for<'a> Impl: Implementation<(), DndEvent<'a>> + Send,
+        for<'a> Impl: FnMut(DndEvent<'a>) + Send + 'static,
     {
-        let device = manager
-            .get_data_device(seat)
-            .expect("Invalid data device or seat.");
-
         let inner = Arc::new(Mutex::new(Inner {
             selection: None,
             current_dnd: None,
@@ -220,13 +210,18 @@ impl DataDevice {
         }));
 
         let inner2 = inner.clone();
-        let device = device.implement_nonsend(
-            move |evt, _| {
-                let mut inner = inner2.lock().unwrap();
-                data_device_implem(evt, &mut *inner, &mut implem);
-            },
-            token,
-        );
+        let device = manager
+            .get_data_device(seat, move |device| {
+                device.implement_nonsend(
+                    move |evt, _| {
+                        let mut inner = inner2.lock().unwrap();
+                        data_device_implem(evt, &mut *inner, &mut implem);
+                    },
+                    (),
+                    token,
+                )
+            })
+            .expect("Invalid data device or seat.");
 
         DataDevice { device, inner }
     }
