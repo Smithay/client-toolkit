@@ -12,6 +12,7 @@ use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
 use std::sync::{Arc, Mutex};
 
+use memmap;
 use rand::prelude::*;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
@@ -188,6 +189,11 @@ impl MemPool {
                     (),
                 )
             }).unwrap()
+    }
+
+    /// Uses the memmap crate to map the underlying shared memory file
+    pub fn mmap(&self) -> Result<memmap::MmapMut, io::Error> {
+        unsafe { memmap::MmapMut::map_mut(&self.file) }
     }
 
     /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns
