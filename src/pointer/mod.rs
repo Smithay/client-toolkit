@@ -76,8 +76,8 @@ impl AutoThemer {
                 AutoPointer::Themed(pointer)
             }
             AutoThemer::UnThemed => {
-                let pointer =
-                    seat.get_pointer(|pointer| {
+                let pointer = seat
+                    .get_pointer(|pointer| {
                         pointer.implement(
                             move |event, seat| implementation(event, AutoPointer::UnThemed(seat)),
                             user_data,

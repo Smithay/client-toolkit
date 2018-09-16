@@ -73,9 +73,8 @@ fn main() {
                 },
                 (),
             )
-        })
-        .unwrap(); // unwrap for the same reasons as before, we know the compositor
-                   // is not yet destroyed
+        }).unwrap(); // unwrap for the same reasons as before, we know the compositor
+                     // is not yet destroyed
 
     /*
      * Init the window

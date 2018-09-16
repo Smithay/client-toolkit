@@ -87,8 +87,8 @@ impl ThemeManager {
         }));
         let inner2 = inner.clone();
 
-        let pointer =
-            seat.get_pointer(|pointer| {
+        let pointer = seat
+            .get_pointer(|pointer| {
                 pointer.implement(
                     move |event, ptr| {
                         implementation(

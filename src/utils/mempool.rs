@@ -187,8 +187,7 @@ impl MemPool {
                     },
                     (),
                 )
-            })
-            .unwrap()
+            }).unwrap()
     }
 
     /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns

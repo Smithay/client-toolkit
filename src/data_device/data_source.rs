@@ -121,8 +121,8 @@ impl DataSource {
     where
         Impl: FnMut(DataSourceEvent) + Send + 'static,
     {
-        let source =
-            mgr.create_data_source(|source| {
+        let source = mgr
+            .create_data_source(|source| {
                 source.implement(
                     move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
                     (),
@@ -151,8 +151,8 @@ impl DataSource {
     where
         Impl: FnMut(DataSourceEvent) + 'static,
     {
-        let source =
-            mgr.create_data_source(|source| {
+        let source = mgr
+            .create_data_source(|source| {
                 source.implement_nonsend(
                     move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
                     (),

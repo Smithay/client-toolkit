@@ -289,8 +289,8 @@ impl<F: Frame + 'static> Window<F> {
         let decoration_frame = self.frame.clone();
         let decoration_inner = self.inner.clone();
         *decoration = match (self.shell_surface.get_xdg(), &self.decoration_mgr) {
-            (Some(toplevel), &Some(ref mgr)) => {
-                mgr.get_toplevel_decoration(toplevel, |newdec| {
+            (Some(toplevel), &Some(ref mgr)) => mgr
+                .get_toplevel_decoration(toplevel, |newdec| {
                     newdec.implement(
                         move |event, _| {
                             use self::zxdg_toplevel_decoration_v1::{Event, Mode};
@@ -312,8 +312,7 @@ impl<F: Frame + 'static> Window<F> {
                         },
                         (),
                     )
-                }).ok()
-            }
+                }).ok(),
             _ => None,
         };
     }

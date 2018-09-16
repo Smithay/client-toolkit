@@ -34,10 +34,9 @@ impl Xdg {
                     },
                     (),
                 )
-            })
-            .unwrap();
-        let toplevel =
-            xdgs.get_toplevel(|toplevel| {
+            }).unwrap();
+        let toplevel = xdgs
+            .get_toplevel(|toplevel| {
                 toplevel.implement(
                     move |evt, _| {
                         match evt {

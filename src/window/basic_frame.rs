@@ -101,8 +101,7 @@ impl Part {
         let subsurface = subcompositor
             .get_subsurface(&surface, parent, |subsurface| {
                 subsurface.implement(|_, _| {}, ())
-            })
-            .unwrap();
+            }).unwrap();
         Part {
             surface,
             subsurface,
@@ -399,11 +398,10 @@ impl Frame for BasicFrame {
                 None => return,
             };
             // resize the pool as appropriate
-            let pxcount = (HEADER_SIZE * width)
-                + max(
-                    (width + 2 * BORDER_SIZE) * BORDER_SIZE,
-                    (height + HEADER_SIZE) * BORDER_SIZE,
-                );
+            let pxcount = (HEADER_SIZE * width) + max(
+                (width + 2 * BORDER_SIZE) * BORDER_SIZE,
+                (height + HEADER_SIZE) * BORDER_SIZE,
+            );
 
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
@@ -426,8 +424,8 @@ impl Frame for BasicFrame {
                         // Calculate the circle width at y using trigonometry and pythagoras theorem
                         let circle_width = ROUNDING_SIZE
                             - ((ROUNDING_SIZE as f32).powi(2)
-                                - ((ROUNDING_SIZE - y) as f32).powi(2))
-                                .sqrt() as u32;
+                                - ((ROUNDING_SIZE - y) as f32).powi(2)).sqrt()
+                                as u32;
 
                         for x in 0..width {
                             if x >= circle_width && x < width - circle_width {
@@ -462,8 +460,7 @@ impl Frame for BasicFrame {
                             } else {
                                 None
                             }
-                        })
-                        .collect(),
+                        }).collect(),
                 );
                 let _ = writer.flush();
             }
