@@ -104,6 +104,9 @@ fn main() {
                         rate, delay
                     );
             }
+            KbEvent::Modifiers { modifiers } => {
+                println!("Modifiers changed {:?}", modifiers);
+            }
         },
         move |repeat_event: KeyRepeatEvent, _| {
             println!("Repeated key {:x}.", repeat_event.keysym);
