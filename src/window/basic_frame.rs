@@ -416,9 +416,9 @@ impl Frame for BasicFrame {
                 colors::INACTIVE_BORDER
             };
 
-            let mut mmap = pool.mmap().unwrap();
             // draw the grey background
             {
+                let mut mmap = pool.mmap();
                 {
                     let mut header_canvas = Canvas::new(
                         &mut mmap[0..HEADER_SIZE as usize * width as usize * 4],
@@ -462,12 +462,14 @@ impl Frame for BasicFrame {
                 }
 
                 // For each pixel in borders
-                let mut writer = &mut mmap[HEADER_SIZE as usize * width as usize * 4..];
-                for _ in 0..pxcount {
-                    let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
+                {
+                    let mut writer = &mut mmap[HEADER_SIZE as usize * width as usize * 4..];
+                    for _ in 0..pxcount {
+                        let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
+                    }
                 }
+                let _ = mmap.flush();
             }
-            let _ = mmap.flush();
 
             // Create the buffers
             // -> head-subsurface

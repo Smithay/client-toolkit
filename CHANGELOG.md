@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- MemPool: add `mmap` method
 - **[Breaking]** Keyboard: remove `modifiers` field from `keyboard::Event::Enter`, `keyboard::Event::Key` and `keyboard::KeyRepeatEvent`
 - **[Breaking]** Keyboard: add `keyboard::Event::Modifiers`
 - **[Breaking]** Upgrade to wayland-rs 0.21
