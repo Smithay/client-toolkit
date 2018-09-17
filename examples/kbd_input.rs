@@ -73,13 +73,8 @@ fn main() {
         &seat,
         KeyRepeatKind::System,
         move |event: KbEvent, _| match event {
-            KbEvent::Enter {
-                keysyms, ..
-            } => {
-                println!(
-                    "Gained focus while {} keys pressed.",
-                    keysyms.len(),
-                );
+            KbEvent::Enter { keysyms, .. } => {
+                println!("Gained focus while {} keys pressed.", keysyms.len(),);
             }
             KbEvent::Leave { .. } => {
                 println!("Lost focus.");

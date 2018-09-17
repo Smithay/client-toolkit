@@ -447,7 +447,7 @@ pub enum Event<'a> {
     Modifiers {
         /// current state of the modifiers
         modifiers: ModifiersState,
-    }
+    },
 }
 
 /// An event sent at repeated intervals for certain keys determined by xkb_keymap_key_repeats
@@ -765,7 +765,12 @@ where
                         ..
                     } => {
                         state.update_modifiers(mods_depressed, mods_latched, mods_locked, group);
-                        event_impl(Event::Modifiers { modifiers: state.mods_state }, proxy);
+                        event_impl(
+                            Event::Modifiers {
+                                modifiers: state.mods_state,
+                            },
+                            proxy,
+                        );
                         if key_held.is_some() {
                             state_chan.lock().unwrap().0.send(()).unwrap();
                         }
