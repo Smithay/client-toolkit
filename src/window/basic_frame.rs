@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::io::Write;
 use std::sync::{Arc, Mutex};
 
 use andrew::shapes::rectangle;
@@ -418,7 +417,7 @@ impl Frame for BasicFrame {
 
             // draw the grey background
             {
-                let mut mmap = pool.mmap();
+                let mmap = pool.mmap();
                 {
                     let mut header_canvas = Canvas::new(
                         &mut mmap[0..HEADER_SIZE as usize * width as usize * 4],
@@ -463,9 +462,8 @@ impl Frame for BasicFrame {
 
                 // For each pixel in borders
                 {
-                    let mut writer = &mut mmap[HEADER_SIZE as usize * width as usize * 4..];
-                    for _ in 0..pxcount {
-                        let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
+                    for b in &mut mmap[HEADER_SIZE as usize * width as usize * 4..] {
+                        *b = 0x00;
                     }
                 }
                 let _ = mmap.flush();
