@@ -1,6 +1,8 @@
 use std::cmp::max;
-use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::sync::{Arc, Mutex};
+
+use andrew::shapes::rectangle;
+use andrew::Canvas;
 
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
@@ -15,7 +17,7 @@ use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 
 use super::{Frame, FrameRequest};
 use pointer::{AutoPointer, AutoThemer};
-use utils::{DoubleMemPool, MemPool};
+use utils::DoubleMemPool;
 
 /*
  * Drawing theme definitions
@@ -24,32 +26,32 @@ use utils::{DoubleMemPool, MemPool};
 const BORDER_SIZE: u32 = 12;
 const HEADER_SIZE: u32 = 32;
 const BUTTON_SPACE: u32 = 10;
-const ROUNDING_SIZE: u32 = 3;
+const ROUNDING_SIZE: u32 = 5;
 
 // defining the color scheme
 #[cfg(target_endian = "little")]
 mod colors {
-    pub const INACTIVE_BORDER: &[u8] = &[0x60, 0x60, 0x60, 0xFF];
-    pub const ACTIVE_BORDER: &[u8] = &[0x80, 0x80, 0x80, 0xFF];
-    pub const RED_BUTTON_REGULAR: &[u8] = &[0x40, 0x40, 0xB0, 0xFF];
-    pub const RED_BUTTON_HOVER: &[u8] = &[0x40, 0x40, 0xFF, 0xFF];
-    pub const GREEN_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0x40, 0xFF];
-    pub const GREEN_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0x40, 0xFF];
-    pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0x40, 0xB0, 0xB0, 0xFF];
-    pub const YELLOW_BUTTON_HOVER: &[u8] = &[0x40, 0xFF, 0xFF, 0xFF];
-    pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0x20, 0x80, 0x80, 0xFF];
+    pub const INACTIVE_BORDER: [u8; 4] = [0x60, 0x60, 0x60, 0xFF];
+    pub const ACTIVE_BORDER: [u8; 4] = [0x80, 0x80, 0x80, 0xFF];
+    pub const RED_BUTTON_REGULAR: [u8; 4] = [0x40, 0x40, 0xB0, 0xFF];
+    pub const RED_BUTTON_HOVER: [u8; 4] = [0x40, 0x40, 0xFF, 0xFF];
+    pub const GREEN_BUTTON_REGULAR: [u8; 4] = [0x40, 0xB0, 0x40, 0xFF];
+    pub const GREEN_BUTTON_HOVER: [u8; 4] = [0x40, 0xFF, 0x40, 0xFF];
+    pub const YELLOW_BUTTON_REGULAR: [u8; 4] = [0x40, 0xB0, 0xB0, 0xFF];
+    pub const YELLOW_BUTTON_HOVER: [u8; 4] = [0x40, 0xFF, 0xFF, 0xFF];
+    pub const YELLOW_BUTTON_DISABLED: [u8; 4] = [0x20, 0x80, 0x80, 0xFF];
 }
 #[cfg(target_endian = "big")]
 mod colors {
-    pub const INACTIVE_BORDER: &[u8] = &[0xFF, 0x60, 0x60, 0x60];
-    pub const ACTIVE_BORDER: &[u8] = &[0xFF, 0x80, 0x80, 0x80];
-    pub const RED_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0x40, 0x40];
-    pub const RED_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0x40, 0x40];
-    pub const GREEN_BUTTON_REGULAR: &[u8] = &[0xFF, 0x40, 0xB0, 0x40];
-    pub const GREEN_BUTTON_HOVER: &[u8] = &[0xFF, 0x40, 0xFF, 0x40];
-    pub const YELLOW_BUTTON_REGULAR: &[u8] = &[0xFF, 0xB0, 0xB0, 0x40];
-    pub const YELLOW_BUTTON_HOVER: &[u8] = &[0xFF, 0xFF, 0xFF, 0x40];
-    pub const YELLOW_BUTTON_DISABLED: &[u8] = &[0xFF, 0x80, 0x80, 0x20];
+    pub const INACTIVE_BORDER: [u8; 4] = [0xFF, 0x60, 0x60, 0x60];
+    pub const ACTIVE_BORDER: [u8; 4] = [0xFF, 0x80, 0x80, 0x80];
+    pub const RED_BUTTON_REGULAR: [u8; 4] = [0xFF, 0xB0, 0x40, 0x40];
+    pub const RED_BUTTON_HOVER: [u8; 4] = [0xFF, 0xFF, 0x40, 0x40];
+    pub const GREEN_BUTTON_REGULAR: [u8; 4] = [0xFF, 0x40, 0xB0, 0x40];
+    pub const GREEN_BUTTON_HOVER: [u8; 4] = [0xFF, 0x40, 0xFF, 0x40];
+    pub const YELLOW_BUTTON_REGULAR: [u8; 4] = [0xFF, 0xB0, 0xB0, 0x40];
+    pub const YELLOW_BUTTON_HOVER: [u8; 4] = [0xFF, 0xFF, 0xFF, 0x40];
+    pub const YELLOW_BUTTON_DISABLED: [u8; 4] = [0xFF, 0x80, 0x80, 0x20];
 }
 
 /*
@@ -413,56 +415,58 @@ impl Frame for BasicFrame {
                 colors::INACTIVE_BORDER
             };
 
-            let _ = pool.seek(SeekFrom::Start(0));
             // draw the grey background
             {
-                let mut writer = BufWriter::new(&mut *pool);
+                let mmap = pool.mmap();
+                {
+                    let mut header_canvas = Canvas::new(
+                        &mut mmap[0..HEADER_SIZE as usize * width as usize * 4],
+                        width as usize,
+                        HEADER_SIZE as usize,
+                        width as usize * 4,
+                    );
+                    header_canvas.clear();
 
-                // For every pixel in header
-                for y in 0..HEADER_SIZE {
-                    if y < ROUNDING_SIZE && !*self.inner.maximized.lock().unwrap() {
-                        // Calculate the circle width at y using trigonometry and pythagoras theorem
-                        let circle_width = ROUNDING_SIZE
-                            - ((ROUNDING_SIZE as f32).powi(2)
-                                - ((ROUNDING_SIZE - y) as f32).powi(2)).sqrt()
-                                as u32;
+                    let header_bar = rectangle::Rectangle::new(
+                        (0, 0),
+                        (width as usize - 1, HEADER_SIZE as usize - 1),
+                        Some((
+                            HEADER_SIZE as usize,
+                            color,
+                            rectangle::Sides::TOP,
+                            Some(ROUNDING_SIZE as usize),
+                        )),
+                        None,
+                    );
+                    header_canvas.draw(&header_bar);
 
-                        for x in 0..width {
-                            if x >= circle_width && x < width - circle_width {
-                                let _ = writer.write(color);
-                            } else {
-                                let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
-                            }
-                        }
-                    } else {
-                        for _ in 0..width {
-                            let _ = writer.write(color);
-                        }
+                    draw_buttons(
+                        &mut header_canvas,
+                        width,
+                        true,
+                        &self
+                            .pointers
+                            .iter()
+                            .flat_map(|p| {
+                                if p.is_alive() {
+                                    let data: &Mutex<
+                                        PointerUserData,
+                                    > = p.user_data().unwrap();
+                                    Some(data.lock().unwrap().location)
+                                } else {
+                                    None
+                                }
+                            }).collect(),
+                    );
+                }
+
+                // For each pixel in borders
+                {
+                    for b in &mut mmap[HEADER_SIZE as usize * width as usize * 4..] {
+                        *b = 0x00;
                     }
                 }
-
-                // For every pixel in borders
-                for _ in BORDER_SIZE * width..pxcount {
-                    let _ = writer.write(&[0x00, 0x00, 0x00, 0x00]);
-                }
-
-                draw_buttons(
-                    &mut writer,
-                    width,
-                    true,
-                    &self
-                        .pointers
-                        .iter()
-                        .flat_map(|p| {
-                            if p.is_alive() {
-                                let data: &Mutex<PointerUserData> = p.user_data().unwrap();
-                                Some(data.lock().unwrap().location)
-                            } else {
-                                None
-                            }
-                        }).collect(),
-                );
-                let _ = writer.flush();
+                let _ = mmap.flush();
             }
 
             // Create the buffers
@@ -709,12 +713,7 @@ fn request_for_location(
     }
 }
 
-fn draw_buttons(
-    pool: &mut BufWriter<&mut MemPool>,
-    width: u32,
-    maximizable: bool,
-    mouses: &Vec<Location>,
-) {
+fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &Vec<Location>) {
     // draw up to 3 buttons, depending on the width of the window
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
@@ -729,15 +728,16 @@ fn draw_buttons(
         } else {
             colors::RED_BUTTON_REGULAR
         };
-        let _ = pool.seek(SeekFrom::Start(
-            4 * u64::from(width * (HEADER_SIZE / 2 - 8) + width - 24 - BUTTON_SPACE),
-        ));
-        for _ in 0..16 {
-            for _ in 0..24 {
-                let _ = pool.write(color);
-            }
-            let _ = pool.seek(SeekFrom::Current(4 * i64::from(width - 24)));
-        }
+        let red_button = rectangle::Rectangle::new(
+            (
+                (width - 24 - BUTTON_SPACE) as usize,
+                (HEADER_SIZE / 2 - 8) as usize,
+            ),
+            (24, 16),
+            None,
+            Some(color),
+        );
+        canvas.draw(&red_button);
     }
 
     if width >= 56 + 2 * BUTTON_SPACE {
@@ -752,15 +752,16 @@ fn draw_buttons(
         } else {
             colors::YELLOW_BUTTON_REGULAR
         };
-        let _ = pool.seek(SeekFrom::Start(
-            4 * u64::from(width * (HEADER_SIZE / 2 - 8) + width - 56 - BUTTON_SPACE),
-        ));
-        for _ in 0..16 {
-            for _ in 0..24 {
-                let _ = pool.write(color);
-            }
-            let _ = pool.seek(SeekFrom::Current(4 * i64::from(width - 24)));
-        }
+        let yellow_button = rectangle::Rectangle::new(
+            (
+                (width - 56 - BUTTON_SPACE) as usize,
+                (HEADER_SIZE / 2 - 8) as usize,
+            ),
+            (24, 16),
+            None,
+            Some(color),
+        );
+        canvas.draw(&yellow_button);
     }
 
     if width >= 88 + 2 * BUTTON_SPACE {
@@ -773,14 +774,15 @@ fn draw_buttons(
         } else {
             colors::GREEN_BUTTON_REGULAR
         };
-        let _ = pool.seek(SeekFrom::Start(
-            4 * u64::from(width * (HEADER_SIZE / 2 - 8) + width - 88 - BUTTON_SPACE),
-        ));
-        for _ in 0..16 {
-            for _ in 0..24 {
-                let _ = pool.write(color);
-            }
-            let _ = pool.seek(SeekFrom::Current(4 * i64::from(width - 24)));
-        }
+        let green_button = rectangle::Rectangle::new(
+            (
+                (width - 88 - BUTTON_SPACE) as usize,
+                (HEADER_SIZE / 2 - 8) as usize,
+            ),
+            (24, 16),
+            None,
+            Some(color),
+        );
+        canvas.draw(&green_button);
     }
 }

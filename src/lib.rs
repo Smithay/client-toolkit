@@ -6,6 +6,7 @@ extern crate bitflags;
 extern crate dlib;
 #[macro_use]
 extern crate lazy_static;
+extern crate andrew;
 extern crate memmap;
 extern crate nix;
 extern crate rand;

@@ -12,6 +12,7 @@ use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
 use std::sync::{Arc, Mutex};
 
+use memmap::MmapMut;
 use rand::prelude::*;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
@@ -103,6 +104,7 @@ pub struct MemPool {
     len: usize,
     pool: Proxy<wl_shm_pool::WlShmPool>,
     buffer_count: Arc<Mutex<u32>>,
+    mmap: MmapMut,
     implementation: Arc<Mutex<FnMut() + Send>>,
 }
 
@@ -120,11 +122,14 @@ impl MemPool {
             .create_pool(mem_fd, 128, |pool| pool.implement(|e, _| match e {}, ()))
             .unwrap();
 
+        let mmap = unsafe { MmapMut::map_mut(&mem_file).unwrap() };
+
         Ok(MemPool {
             file: mem_file,
             len: 128,
             pool,
             buffer_count: Arc::new(Mutex::new(0)),
+            mmap,
             implementation: Arc::new(Mutex::new(implementation)),
         })
     }
@@ -145,6 +150,7 @@ impl MemPool {
             self.file.set_len(newsize as u64)?;
             self.pool.resize(newsize as i32);
             self.len = newsize;
+            self.mmap = unsafe { MmapMut::map_mut(&self.file).unwrap() };
         }
         Ok(())
     }
@@ -188,6 +194,11 @@ impl MemPool {
                     (),
                 )
             }).unwrap()
+    }
+
+    /// Uses the memmap crate to map the underlying shared memory file
+    pub fn mmap(&mut self) -> &mut MmapMut {
+        &mut self.mmap
     }
 
     /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns
