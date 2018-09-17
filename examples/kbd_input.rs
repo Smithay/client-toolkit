@@ -74,12 +74,11 @@ fn main() {
         KeyRepeatKind::System,
         move |event: KbEvent, _| match event {
             KbEvent::Enter {
-                modifiers, keysyms, ..
+                keysyms, ..
             } => {
                 println!(
-                    "Gained focus while {} keys pressed and modifiers are {:?}.",
+                    "Gained focus while {} keys pressed.",
                     keysyms.len(),
-                    modifiers
                 );
             }
             KbEvent::Leave { .. } => {
@@ -89,11 +88,9 @@ fn main() {
                 keysym,
                 state,
                 utf8,
-                modifiers,
                 ..
             } => {
                 println!("Key {:?}: {:x}.", state, keysym);
-                println!(" -> Modifers are {:?}", modifiers);
                 if let Some(txt) = utf8 {
                     println!(" -> Received text \"{}\".", txt);
                 }
@@ -110,7 +107,6 @@ fn main() {
         },
         move |repeat_event: KeyRepeatEvent, _| {
             println!("Repeated key {:x}.", repeat_event.keysym);
-            println!(" -> Modifers are {:?}", repeat_event.modifiers);
             if let Some(txt) = repeat_event.utf8 {
                 println!(" -> Received text \"{}\".", txt);
             }

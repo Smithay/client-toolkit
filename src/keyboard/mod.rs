@@ -407,8 +407,6 @@ pub enum Event<'a> {
         serial: u32,
         /// surface that was entered
         surface: Proxy<wl_surface::WlSurface>,
-        /// current state of the modifiers
-        modifiers: ModifiersState,
         /// raw values of the currently pressed keys
         rawkeys: &'a [u32],
         /// interpreted symbols of the currently pressed keys
@@ -427,8 +425,6 @@ pub enum Event<'a> {
         serial: u32,
         /// time at which the keypress occured
         time: u32,
-        /// current state of the modifiers
-        modifiers: ModifiersState,
         /// raw value of the key
         rawkey: u32,
         /// interpreted symbol of the key
@@ -458,8 +454,6 @@ pub enum Event<'a> {
 pub struct KeyRepeatEvent {
     /// time at which the keypress occured
     pub time: u32,
-    /// current state of the modifiers
-    pub modifiers: ModifiersState,
     /// raw value of the key
     pub rawkey: u32,
     /// interpreted symbol of the key
@@ -615,16 +609,12 @@ where
                                 keys.len() / 4,
                             )
                         };
-                        let (keys, modifiers) = {
-                            let keys: Vec<u32> =
-                                rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
-                            (keys, state.mods_state)
-                        };
+                        let keys: Vec<u32> =
+                            rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
                         event_impl(
                             Event::Enter {
                                 serial,
                                 surface,
-                                modifiers,
                                 rawkeys,
                                 keysyms: &keys,
                             },
@@ -672,7 +662,6 @@ where
                                 Event::Key {
                                     serial,
                                     time,
-                                    modifiers,
                                     rawkey: key,
                                     keysym: sym,
                                     state: key_state,
@@ -713,7 +702,6 @@ where
                                         }
                                         let mut thread_sym = sym;
                                         let mut thread_utf8 = utf8;
-                                        let mut thread_modifiers = modifiers;
 
                                         loop {
                                             if thread_state_chan
@@ -726,7 +714,6 @@ where
                                                 let mut thread_state = thread_state.lock().unwrap();
                                                 thread_sym = thread_state.get_one_sym_raw(key);
                                                 thread_utf8 = thread_state.get_utf8_raw(key);
-                                                thread_modifiers = thread_state.mods_state;
                                             }
                                             let elapsed_time = time_tracker.elapsed();
                                             (&mut *thread_repeat_impl.lock().unwrap())(
@@ -734,7 +721,6 @@ where
                                                     time: time
                                                         + elapsed_time.as_secs() as u32 * 1000
                                                         + elapsed_time.subsec_nanos() / 1_000_000,
-                                                    modifiers: thread_modifiers,
                                                     rawkey: key,
                                                     keysym: thread_sym,
                                                     utf8: thread_utf8.clone(),
@@ -762,7 +748,6 @@ where
                                 Event::Key {
                                     serial,
                                     time,
-                                    modifiers,
                                     rawkey: key,
                                     keysym: sym,
                                     state: key_state,

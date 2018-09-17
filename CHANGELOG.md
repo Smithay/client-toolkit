@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **[Breaking]** Keyboard: remove `modifiers` field from `keyboard::Event::Enter`, `keyboard::Event::Key` and `keyboard::KeyRepeatEvent`
 - **[Breaking]** Keyboard: add `keyboard::Event::Modifiers`
 - **[Breaking]** Upgrade to wayland-rs 0.21
 - Keyboard: end key repetition when the keyboard loses focus
