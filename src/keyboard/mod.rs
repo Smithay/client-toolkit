@@ -8,7 +8,7 @@
 //!
 //! Implementation of you `NewProxy<WlKeyboard>` can be done with the
 //! `map_keyboard_auto` or the `map_keyboard_rmlvo` functions depending
-//! on wether you wish to use the keymap provided by the server or a
+//! on whether you wish to use the keymap provided by the server or a
 //! specific one.
 
 use std::env;
@@ -356,7 +356,7 @@ impl Drop for KbState {
     }
 }
 
-/// Determines the behaviour of key repetition
+/// Determines the behavior of key repetition
 #[derive(PartialEq)]
 pub enum KeyRepeatKind {
     /// keys will be repeated at a set rate and delay
@@ -371,29 +371,29 @@ pub enum KeyRepeatKind {
 }
 
 #[derive(Debug)]
-/// An error that occured while trying to initialize a mapped keyboard
+/// An error that occurred while trying to initialize a mapped keyboard
 pub enum Error {
     /// libxkbcommon is not available
     XKBNotFound,
-    /// Provided RMLVO sepcified a keymap that would not be loaded
+    /// Provided RMLVO specified a keymap that would not be loaded
     BadNames,
 }
 
 /// The RMLVO description of a keymap
 ///
-/// All fiels are optional, and the system default
+/// All fields are optional, and the system default
 /// will be used if set to `None`.
 pub struct RMLVO {
     /// The rules file to use
     pub rules: Option<String>,
     /// The keyboard model by which to interpret keycodes and LEDs
     pub model: Option<String>,
-    /// A comma seperated list of layouts (languages) to include in the keymap
+    /// A comma separated list of layouts (languages) to include in the keymap
     pub layout: Option<String>,
-    /// A comma seperated list of variants, one per layout, which may modify or
+    /// A comma separated list of variants, one per layout, which may modify or
     /// augment the respective layout in various ways
     pub variant: Option<String>,
-    /// A comma seprated list of options, through which the user specifies
+    /// A comma separated list of options, through which the user specifies
     /// non-layout related preferences, like which key combinations are
     /// used for switching layouts, or which key is the Compose key.
     pub options: Option<String>,
@@ -419,11 +419,11 @@ pub enum Event<'a> {
         /// surface that was left
         surface: Proxy<wl_surface::WlSurface>,
     },
-    /// A key event occured
+    /// A key event occurred
     Key {
         /// serial number of the event
         serial: u32,
-        /// time at which the keypress occured
+        /// time at which the keypress occurred
         time: u32,
         /// raw value of the key
         rawkey: u32,
@@ -436,11 +436,11 @@ pub enum Event<'a> {
         /// will always be `None` on key release events
         utf8: Option<String>,
     },
-    /// Repetition information advertizing
+    /// Repetition information advertising
     RepeatInfo {
-        /// rate (in milisecond) at which the repetition should occur
+        /// rate (in millisecond) at which the repetition should occur
         rate: i32,
-        /// delay (in milisecond) between a key press and the start of repetition
+        /// delay (in millisecond) between a key press and the start of repetition
         delay: i32,
     },
     /// The key modifiers have changed state
@@ -452,7 +452,7 @@ pub enum Event<'a> {
 
 /// An event sent at repeated intervals for certain keys determined by xkb_keymap_key_repeats
 pub struct KeyRepeatEvent {
-    /// time at which the keypress occured
+    /// time at which the keypress occurred
     pub time: u32,
     /// raw value of the key
     pub rawkey: u32,

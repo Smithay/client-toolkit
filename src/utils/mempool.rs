@@ -84,12 +84,12 @@ impl DoubleMemPool {
 
 /// A wrapper handling an SHM memory pool backed by a shared memory file
 ///
-/// This wrapper handles for you the creation of the shared memory file and its synchronisation
+/// This wrapper handles for you the creation of the shared memory file and its synchronization
 /// with the protocol.
 ///
 /// Mempool internally tracks the lifetime of all buffers created from it and to ensure that
 /// this buffer count is correct all buffers must be attached to a surface. Once a buffer is attached to
-/// a surface it must be immediately commited to that surface before another buffer is attached.
+/// a surface it must be immediately committed to that surface before another buffer is attached.
 ///
 /// Mempool will also handle the destruction of buffers and as such the `destroy()` method should not
 /// be used on buffers created from Mempool.
@@ -140,7 +140,7 @@ impl MemPool {
     /// if you extend the temporary file size by writing to it, you need to
     /// call this method otherwise the server won't see the new size.
     ///
-    /// Memory pools can only be extented, as such this method wll do nothing
+    /// Memory pools can only be extented, as such this method will do nothing
     /// if the requested new size is smaller than the current size.
     ///
     /// This method allows you to ensure the underlying pool is large enough to
@@ -159,14 +159,14 @@ impl MemPool {
     ///
     /// The parameters are:
     ///
-    /// - `offset`: the offset (in bytes) from the beggining of the pool at which this
+    /// - `offset`: the offset (in bytes) from the beginning of the pool at which this
     ///   buffer starts
     /// - `width`: the width of this buffer (in pixels)
     /// - `height`: the height of this buffer (in pixels)
-    /// - `stride`: distance (in bytes) between the beggining of a row and the next one
+    /// - `stride`: distance (in bytes) between the beginning of a row and the next one
     /// - `format`: the encoding format of the pixels. Using a format that was not
-    ///   advertized to the `wl_shm` global by the server is a protocol error and will
-    ///   terminate your connexion
+    ///   advertised to the `wl_shm` global by the server is a protocol error and will
+    ///   terminate your connection
     pub fn buffer(
         &self,
         offset: i32,
@@ -201,7 +201,7 @@ impl MemPool {
         &mut self.mmap
     }
 
-    /// Retuns true if the pool contains buffers that are currently in use by the server otherwise it returns
+    /// Returns true if the pool contains buffers that are currently in use by the server otherwise it returns
     /// false
     pub fn is_used(&self) -> bool {
         *self.buffer_count.lock().unwrap() != 0

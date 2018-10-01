@@ -12,9 +12,9 @@ use wayland_protocols::xdg_shell::client::xdg_wm_base;
 
 /// Possible shell globals
 pub enum Shell {
-    /// Using xdg_shell protocol, the standart
+    /// Using xdg_shell protocol, the standard
     Xdg(Proxy<xdg_wm_base::XdgWmBase>),
-    /// Old version of xdg_shell, for compatiblity
+    /// Old version of xdg_shell, for compatibility
     Zxdg(Proxy<zxdg_shell_v6::ZxdgShellV6>),
     /// Using wl_shell, deprecated, compatibility mode
     Wl(Proxy<wl_shell::WlShell>),
@@ -58,7 +58,7 @@ pub struct Environment {
     /// The data device manager, used to handle drag&drop and selection
     /// copy/paste
     pub data_device_manager: Proxy<wl_data_device_manager::WlDataDeviceManager>,
-    /// A manager for handling the advertized outputs
+    /// A manager for handling the advertised outputs
     pub outputs: ::output::OutputMgr,
     /// The decoration manager, if the server supports server-side decorations
     pub decorations_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
@@ -80,7 +80,7 @@ impl Environment {
 
     /// Create an environment wrapping a new registry
     ///
-    /// Additionnaly to `from_display`, this allows you to provide
+    /// Additionally to `from_display`, this allows you to provide
     /// a callback to be notified of global events, just like
     /// `GlobalManager::new_with_cb`. Note that you will still
     /// receive events even if they are processed by this `Environment`.
@@ -120,12 +120,12 @@ impl Environment {
         // wl_compositor
         let compositor = manager
             .instantiate_auto(|compositor| compositor.implement(|_, _| {}, ()))
-            .expect("Server didn't advertize `wl_compositor`?!");
+            .expect("Server didn't advertise `wl_compositor`?!");
 
         // wl_subcompositor
         let subcompositor = manager
             .instantiate_auto(|subcompositor| subcompositor.implement(|_, _| {}, ()))
-            .expect("Server didn't advertize `wl_subcompositor`?!");
+            .expect("Server didn't advertise `wl_subcompositor`?!");
 
         // wl_shm
         let shm_formats = Arc::new(Mutex::new(Vec::new()));
@@ -138,11 +138,11 @@ impl Environment {
                     },
                     (),
                 )
-            }).expect("Server didn't advertize `wl_shm`?!");
+            }).expect("Server didn't advertise `wl_shm`?!");
 
         let data_device_manager = manager
             .instantiate_auto(|data_device_manager| data_device_manager.implement(|_, _| {}, ()))
-            .expect("Server didn't advertize `wl_data_device_manager`?!");
+            .expect("Server didn't advertise `wl_data_device_manager`?!");
 
         // shells
         let shell = if let Ok(wm_base) = manager.instantiate_auto(|wm_base| {
@@ -170,7 +170,7 @@ impl Environment {
         {
             Shell::Wl(wl_shell)
         } else {
-            panic!("Server didn't advertize neither `xdg_wm_base` nor `wl_shell`?!");
+            panic!("Server didn't advertise neither `xdg_wm_base` nor `wl_shell`?!");
         };
 
         // try to retrieve the decoration manager
@@ -198,7 +198,7 @@ impl Environment {
         })
     }
 
-    /// Retrive the accepted SHM formats of the server
+    /// Retrieve the accepted SHM formats of the server
     pub fn shm_formats(&self) -> Vec<wl_shm::Format> {
         self.shm_formats.lock().unwrap().clone()
     }

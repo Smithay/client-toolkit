@@ -146,7 +146,7 @@ impl AutoPointer {
     /// Does nothing an returns `Ok(())` if no theme is loaded (if
     /// `wayland-cursor` is not available).
     ///
-    /// If this is done as an anwser to an input event, you need to provide
+    /// If this is done as an answer to an input event, you need to provide
     /// the associated serial otherwise the server may ignore the request.
     pub fn set_cursor(&self, name: &str, serial: Option<u32>) -> Result<(), ()> {
         match *self {

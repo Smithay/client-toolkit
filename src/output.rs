@@ -26,9 +26,9 @@ pub struct Mode {
 #[derive(Clone, Debug)]
 /// Compiled information about an output
 pub struct OutputInfo {
-    /// The model name of this output as advertized by the server
+    /// The model name of this output as advertised by the server
     pub model: String,
-    /// The make name of this output as advertized by the server
+    /// The make name of this output as advertised by the server
     pub make: String,
     /// Location of the top-left corner of this output in compositor
     /// space
@@ -43,7 +43,7 @@ pub struct OutputInfo {
     /// The current transformation applied to this output
     ///
     /// You can pre-render your buffers taking this information
-    /// into account and advertizing it via `wl_buffer.set_tranform`
+    /// into account and advertising it via `wl_buffer.set_tranform`
     /// for better performances.
     pub transform: Transform,
     /// The scaling factor of this output
@@ -75,7 +75,7 @@ impl OutputInfo {
 
 struct Inner {
     outputs: Vec<(u32, Proxy<WlOutput>, OutputInfo)>,
-    pendings: Vec<(Proxy<WlOutput>, Event)>,
+    pending: Vec<(Proxy<WlOutput>, Event)>,
 }
 
 impl Inner {
@@ -88,10 +88,10 @@ impl Inner {
             Some(&mut (_, _, ref mut info)) => info,
             // trying to merge a non-existing output ?
             // well, might be some very bad luck of an
-            // output being conccurently destroyed at the bad time ?
+            // output being concurrently destroyed at the bad time ?
             None => {
                 // clean stale state
-                self.pendings.retain(|&(ref o, _)| o.is_alive());
+                self.pending.retain(|&(ref o, _)| o.is_alive());
                 return;
             }
         };
@@ -99,11 +99,11 @@ impl Inner {
         // see https://github.com/rust-lang/rust/issues/43244
         // this vec should be pretty small at all times anyway
         while let Some(idx) = self
-            .pendings
+            .pending
             .iter()
             .position(|&(ref o, _)| o.equals(output))
         {
-            let (_, event) = self.pendings.swap_remove(idx);
+            let (_, event) = self.pending.swap_remove(idx);
             match event {
                 Event::Geometry {
                     x,
@@ -172,7 +172,7 @@ impl OutputMgr {
         OutputMgr {
             inner: Arc::new(Mutex::new(Inner {
                 outputs: Vec::new(),
-                pendings: Vec::new(),
+                pending: Vec::new(),
             })),
         }
     }
@@ -192,7 +192,7 @@ impl OutputMgr {
                         if let Event::Done = event {
                             inner.merge(&output);
                         } else {
-                            inner.pendings.push((output.clone(), event));
+                            inner.pending.push((output.clone(), event));
                             if output.version() < 2 {
                                 // in case of very old outputs, we can't treat the changes
                                 // atomically as the Done event does not exist
@@ -215,8 +215,8 @@ impl OutputMgr {
         let mut inner = self.inner.lock().unwrap();
         if let Some(idx) = inner.outputs.iter().position(|&(i, _, _)| i == id) {
             let (_, output, _) = inner.outputs.swap_remove(idx);
-            // cleanup all remaining pendings if any
-            inner.pendings.retain(|&(ref o, _)| !o.equals(&output));
+            // cleanup all remaining pending if any
+            inner.pending.retain(|&(ref o, _)| !o.equals(&output));
             if output.version() >= 3 {
                 output.release();
             }
@@ -225,7 +225,7 @@ impl OutputMgr {
 
     /// Access the information of a specific output from its global id
     ///
-    /// If the requested ouput is not found (likely because it has been destroyed)
+    /// If the requested output is not found (likely because it has been destroyed)
     /// the closure is not called and `None` is returned.
     pub fn find_id<F, T>(&self, id: u32, f: F) -> Option<T>
     where
@@ -241,7 +241,7 @@ impl OutputMgr {
 
     /// Access the information of a specific output
     ///
-    /// If the requested ouput is not found (likely because it has been destroyed)
+    /// If the requested output is not found (likely because it has been destroyed)
     /// the closure is not called and `None` is returned.
     pub fn with_info<F, T>(&self, output: &Proxy<WlOutput>, f: F) -> Option<T>
     where

@@ -59,7 +59,7 @@ impl Inner {
 
 /// Handle to support data exchange on a given seat
 ///
-/// This type provides you with functionnality to send and receive
+/// This type provides you with functionality to send and receive
 /// data through drag'n'drop or copy/paste actions. It is associated
 /// with a seat upon creation.
 pub struct DataDevice {

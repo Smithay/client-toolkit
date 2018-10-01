@@ -23,7 +23,7 @@ fn main() {
     );
 
     env.outputs.with_all(|outputs| {
-        println!("-> Compositor advertized {} outputs:", outputs.len());
+        println!("-> Compositor advertised {} outputs:", outputs.len());
         for &(id, _, ref info) in outputs {
             println!(
                 "  -> #{}: {} ({}), with scale factor of {}",
