@@ -98,11 +98,7 @@ impl Inner {
         // slow, but could be improved with Vec::drain_filter
         // see https://github.com/rust-lang/rust/issues/43244
         // this vec should be pretty small at all times anyway
-        while let Some(idx) = self
-            .pending
-            .iter()
-            .position(|&(ref o, _)| o.equals(output))
-        {
+        while let Some(idx) = self.pending.iter().position(|&(ref o, _)| o.equals(output)) {
             let (_, event) = self.pending.swap_remove(idx);
             match event {
                 Event::Geometry {
