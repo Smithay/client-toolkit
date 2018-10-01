@@ -30,7 +30,7 @@ const MIN_WINDOW_SIZE: (u32, u32) = (2, 1);
 pub enum Event {
     /// The state of your window has been changed
     Configure {
-        /// Optionnal new size for your *inner* surface
+        /// Optional new size for your *inner* surface
         ///
         /// This is the new size of the contents of your window
         /// as suggested by the server. You can ignore it and choose
@@ -347,7 +347,7 @@ impl<F: Frame + 'static> Window<F> {
 
     /// Set a short title for the window.
     ///
-    /// This string may be used to identify the surface in a task bar, window list, or othe
+    /// This string may be used to identify the surface in a task bar, window list, or other
     /// user interface elements provided by the compositor.
     pub fn set_title(&self, title: String) {
         self.shell_surface.set_title(title);
@@ -377,7 +377,7 @@ impl<F: Frame + 'static> Window<F> {
                 // let the server decide decorations
                 dec.unset_mode();
             } else {
-                // destroy the decoraiton object, so that the server does not
+                // destroy the decoration object, so that the server does not
                 // decorate us
                 dec.destroy();
             }
@@ -390,7 +390,7 @@ impl<F: Frame + 'static> Window<F> {
     /// resize you forcibly if it wants. However it signals it that
     /// you don't want this window to be resized.
     ///
-    /// Additionnaly, the decorations will stop suggesting the user
+    /// Additionally, the decorations will stop suggesting the user
     /// to resize by dragging the borders if you set the window as
     /// non-resizable.
     ///

@@ -170,7 +170,7 @@ struct PointerInner {
 /// deref. It will *not* release the proxy when dropped.
 ///
 /// Just like `Proxy`, this is a `Rc`-like wrapper. You can clone it
-/// to have several handles to the same theming machinnery of a pointer.
+/// to have several handles to the same theming machinery of a pointer.
 pub struct ThemedPointer {
     pointer: Proxy<wl_pointer::WlPointer>,
     inner: Arc<Mutex<PointerInner>>,
@@ -182,7 +182,7 @@ impl ThemedPointer {
     /// Possible names depend on the theme. Does nothing and returns
     /// `Err(())` if given name is not available.
     ///
-    /// If this is done as an anwser to an input event, you need to provide
+    /// If this is done as an answer to an input event, you need to provide
     /// the associated serial otherwise the server may ignore the request.
     pub fn set_cursor(&self, name: &str, serial: Option<u32>) -> Result<(), ()> {
         let mut inner = self.inner.lock().unwrap();

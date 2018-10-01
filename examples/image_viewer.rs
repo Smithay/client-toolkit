@@ -149,7 +149,7 @@ fn main() {
         .manager
         .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
         .unwrap();
-    // And advertize it to the Window so it knows of it and can process the
+    // And advertise it to the Window so it knows of it and can process the
     // required pointer events.
     window.new_seat(&seat);
 
@@ -176,7 +176,7 @@ fn main() {
     // - the size of our contents
     let mut dimensions = image.dimensions();
 
-    // if our shell does not need to ait for a configure event, we draw right away.
+    // if our shell does not need to wait for a configure event, we draw right away.
     //
     // Note that this is only the case for the old wl_shell protocol, which is now
     // deprecated. This code is only for compatibility with old server that do not
@@ -292,7 +292,7 @@ fn redraw(
     // This resize method will only resize the pool if the requested size is bigger
     // than the current size, as wayland SHM pools are not allowed to shrink.
     //
-    // While writing on the file will automatically grow it, we need to advertize the
+    // While writing on the file will automatically grow it, we need to advertise the
     // server of its new size, so the call to this method is necessary.
     pool.resize((4 * buf_x * buf_y) as usize)
         .expect("Failed to resize the memory pool.");
@@ -305,7 +305,7 @@ fn redraw(
     {
         // A sub-scope to limit our borrow of the pool by this BufWriter.
         // This BufWrite will significantly improve our drawing performance,
-        // by reducing the number of syscals we do. =)
+        // by reducing the number of syscalls we do. =)
         let mut writer = BufWriter::new(&mut *pool);
         if let Some(base_image) = base_image {
             // We have an image to draw
@@ -317,12 +317,12 @@ fn redraw(
 
             // Now, we'll write the pixels of the image to the MemPool.
             //
-            // We do this in an horribly inneficient maneer, for the sake of simplicity.
-            // We'll send piels to the server in ARGB8888 format (this is one of the only
+            // We do this in an horribly inefficient manner, for the sake of simplicity.
+            // We'll send pixels to the server in ARGB8888 format (this is one of the only
             // formats that are guaranteed to be supported), but image provides it in
             // RGBA8888, so we need to do the conversion.
             //
-            // Aditionnaly, if the image has some transparent parts, we'll blend them into
+            // Additionally, if the image has some transparent parts, we'll blend them into
             // a white background, otherwise the server will draw our window with a
             // transparent background!
             for pixel in image.pixels() {
