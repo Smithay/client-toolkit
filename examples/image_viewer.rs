@@ -13,7 +13,7 @@ use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceReque
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{BasicFrame, Event as WEvent, State, Window};
+use sctk::window::{ConceptFrame, Event as WEvent, State, Window};
 use sctk::Environment;
 
 fn main() {
@@ -91,12 +91,10 @@ fn main() {
 
     // We clone the arc to pass one end to the closure
     let waction = next_action.clone();
-    // Now we actually create the window. The type parameter `BasicFrame` here
-    // specifies the type we want to use to draw the borders. SCTK currently
-    // only provide this one, but if you don't like the (arguably ugly)
-    // borders it draws, you just need to implement the appropriate trait
-    // to create your own.
-    let mut window = Window::<BasicFrame>::init_from_env(
+    // Now we actually create the window. The type parameter `ConceptFrame` here
+    // specifies the type we want to use to draw the borders. To create your own
+    // decorations you just need an object to implement the `Frame` trait.
+    let mut window = Window::<ConceptFrame>::init_from_env(
         &env,               // the environment containing the wayland globals
         surface,            // the wl_surface that serves as the basis of this window
         image.dimensions(), // the initial internal dimensions of the window
@@ -134,7 +132,7 @@ fn main() {
             }
         },
         // creating the window may fail if the code drawing the frame
-        // fails to initialize itself. For BasicFrame this should not happen
+        // fails to initialize itself. For ConceptFrame this should not happen
         // unless the system is utterly broken, though.
     ).expect("Failed to create a window !");
 

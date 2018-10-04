@@ -17,9 +17,11 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
 use {Environment, Shell};
 
 mod basic_frame;
+mod concept_frame;
 mod shell;
 
 pub use self::basic_frame::BasicFrame;
+pub use self::concept_frame::ConceptFrame;
 
 // Defines the minimum window size. Minimum width is set to 2 pixels to circumvent
 // a bug in mutter - https://gitlab.gnome.org/GNOME/mutter/issues/259

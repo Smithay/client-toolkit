@@ -15,7 +15,7 @@ use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceReque
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
 use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{BasicFrame, Event as WEvent, Window};
+use sctk::window::{ConceptFrame, Event as WEvent, Window};
 use sctk::Environment;
 
 fn main() {
@@ -40,7 +40,7 @@ fn main() {
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<BasicFrame>::init_from_env(&env, surface, dimensions, move |evt| {
+    let mut window = Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |evt| {
         let mut next_action = waction.lock().unwrap();
         // Keep last event in priority order : Close > Configure > Refresh
         let replace = match (&evt, &*next_action) {

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Window: add new `ConceptFrame` which provides an alternative to the `BasicFrame` window decorations
 - MemPool: add `mmap` method
 - **[Breaking]** Keyboard: remove `modifiers` field from `keyboard::Event::Enter`, `keyboard::Event::Key` and `keyboard::KeyRepeatEvent`
 - **[Breaking]** Keyboard: add `keyboard::Event::Modifiers`
