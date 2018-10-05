@@ -254,10 +254,11 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
     }
 }
 
-/// A minimalistic set of decorations
+/// A clean, modern and stylish set of decorations
 ///
-/// This class draws minimalistic decorations, which are arguably not very
-/// beautiful, but functional.
+/// This class draws clean and modern decorations with
+/// buttons inspired by breeze, material hover shade and
+/// a white header background
 pub struct ConceptFrame {
     inner: Arc<Inner>,
     pools: DoubleMemPool,
