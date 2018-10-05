@@ -47,7 +47,6 @@ impl Theme for DefaultTheme {
         }
     }
 
-    // Used for division line
     fn get_secondary_color(&self, _active: bool) -> [u8; 4] {
         [0x00, 0x00, 0x00, 0x00]
     }
