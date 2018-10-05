@@ -15,7 +15,7 @@ use wayland_client::protocol::wl_subcompositor::RequestsTrait as SubcompRequests
 use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests;
 use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 
-use super::{Frame, FrameRequest};
+use super::{ButtonState, Frame, FrameRequest, Theme};
 use pointer::{AutoPointer, AutoThemer};
 use utils::DoubleMemPool;
 
@@ -28,30 +28,88 @@ const HEADER_SIZE: u32 = 32;
 const BUTTON_SPACE: u32 = 10;
 const ROUNDING_SIZE: u32 = 5;
 
-// defining the color scheme
-#[cfg(target_endian = "little")]
-mod colors {
-    pub const INACTIVE_BORDER: [u8; 4] = [0x60, 0x60, 0x60, 0xFF];
-    pub const ACTIVE_BORDER: [u8; 4] = [0x80, 0x80, 0x80, 0xFF];
-    pub const RED_BUTTON_REGULAR: [u8; 4] = [0x40, 0x40, 0xB0, 0xFF];
-    pub const RED_BUTTON_HOVER: [u8; 4] = [0x40, 0x40, 0xFF, 0xFF];
-    pub const GREEN_BUTTON_REGULAR: [u8; 4] = [0x40, 0xB0, 0x40, 0xFF];
-    pub const GREEN_BUTTON_HOVER: [u8; 4] = [0x40, 0xFF, 0x40, 0xFF];
-    pub const YELLOW_BUTTON_REGULAR: [u8; 4] = [0x40, 0xB0, 0xB0, 0xFF];
-    pub const YELLOW_BUTTON_HOVER: [u8; 4] = [0x40, 0xFF, 0xFF, 0xFF];
-    pub const YELLOW_BUTTON_DISABLED: [u8; 4] = [0x20, 0x80, 0x80, 0xFF];
-}
-#[cfg(target_endian = "big")]
-mod colors {
-    pub const INACTIVE_BORDER: [u8; 4] = [0xFF, 0x60, 0x60, 0x60];
-    pub const ACTIVE_BORDER: [u8; 4] = [0xFF, 0x80, 0x80, 0x80];
-    pub const RED_BUTTON_REGULAR: [u8; 4] = [0xFF, 0xB0, 0x40, 0x40];
-    pub const RED_BUTTON_HOVER: [u8; 4] = [0xFF, 0xFF, 0x40, 0x40];
-    pub const GREEN_BUTTON_REGULAR: [u8; 4] = [0xFF, 0x40, 0xB0, 0x40];
-    pub const GREEN_BUTTON_HOVER: [u8; 4] = [0xFF, 0x40, 0xFF, 0x40];
-    pub const YELLOW_BUTTON_REGULAR: [u8; 4] = [0xFF, 0xB0, 0xB0, 0x40];
-    pub const YELLOW_BUTTON_HOVER: [u8; 4] = [0xFF, 0xFF, 0xFF, 0x40];
-    pub const YELLOW_BUTTON_DISABLED: [u8; 4] = [0xFF, 0x80, 0x80, 0x20];
+// Defining the theme
+struct DefaultTheme;
+
+impl Theme for DefaultTheme {
+    // Used for header color
+    fn get_primary_color(&self, active: bool) -> [u8; 4] {
+        if active {
+            #[cfg(target_endian = "little")]
+            return [0x80, 0x80, 0x80, 0xFF];
+            #[cfg(target_endian = "big")]
+            [0xFF, 0x80, 0x80, 0x80];
+        } else {
+            #[cfg(target_endian = "little")]
+            return [0x60, 0x60, 0x60, 0xFF];
+            #[cfg(target_endian = "big")]
+            [0xFF, 0x60, 0x60, 0x60];
+        }
+    }
+
+    // Used for division line
+    fn get_secondary_color(&self, _active: bool) -> [u8; 4] {
+        [0x00, 0x00, 0x00, 0x00]
+    }
+
+    fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
+        match state {
+            ButtonState::Hovered => {
+                #[cfg(target_endian = "little")]
+                return [0x40, 0x40, 0xFF, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0xFF, 0x40, 0x40]
+            }
+            ButtonState::Idle => {
+                #[cfg(target_endian = "little")]
+                return [0x40, 0x40, 0xB0, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0xB0, 0x40, 0x40]
+            }
+            _ => [0x00, 0x00, 0x00, 0x00],
+        }
+    }
+
+    fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
+        match state {
+            ButtonState::Hovered => {
+                #[cfg(target_endian = "little")]
+                return [0x40, 0xFF, 0xFF, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0xFF, 0xFF, 0x40]
+            }
+            ButtonState::Idle => {
+                #[cfg(target_endian = "little")]
+                return [0x40, 0xB0, 0xB0, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0xB0, 0xB0, 0x40]
+            }
+            ButtonState::Disabled => {
+                #[cfg(target_endian = "little")]
+                return [0x20, 0x80, 0x80, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0x80, 0x80, 0x20];
+            }
+        }
+    }
+
+    fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
+        match state {
+            ButtonState::Hovered => {
+                #[cfg(target_endian = "little")]
+                return [0x40, 0xFF, 0x40, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0x40, 0xFF, 0x40]
+            }
+            ButtonState::Idle => {
+                #[cfg(target_endian = "little")]
+                return [0x40, 0xB0, 0x40, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0x40, 0xB0, 0x40]
+            }
+            _ => [0x00, 0x00, 0x00, 0x00],
+        }
+    }
 }
 
 /*
@@ -221,6 +279,7 @@ pub struct BasicFrame {
     pointers: Vec<AutoPointer>,
     themer: AutoThemer,
     surface_version: u32,
+    theme: Box<Theme>,
 }
 
 impl Frame for BasicFrame {
@@ -260,6 +319,7 @@ impl Frame for BasicFrame {
             pointers: Vec::new(),
             themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
             surface_version: compositor.version(),
+            theme: Box::new(DefaultTheme),
         })
     }
 
@@ -408,17 +468,12 @@ impl Frame for BasicFrame {
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
-            // Redraw the grey borders
-            let color = if self.active {
-                colors::ACTIVE_BORDER
-            } else {
-                colors::INACTIVE_BORDER
-            };
-
-            // draw the grey background
+            // draw the grey header bar
             {
                 let mmap = pool.mmap();
                 {
+                    let color = self.theme.get_primary_color(self.active);
+
                     let mut header_canvas = Canvas::new(
                         &mut mmap[0..HEADER_SIZE as usize * width as usize * 4],
                         width as usize,
@@ -457,6 +512,7 @@ impl Frame for BasicFrame {
                                     None
                                 }
                             }).collect(),
+                        &self.theme,
                     );
                 }
 
@@ -648,6 +704,10 @@ impl Frame for BasicFrame {
             (0, -(HEADER_SIZE as i32))
         }
     }
+
+    fn set_theme<T: Theme>(&mut self, theme: T) {
+        self.theme = Box::new(theme)
+    }
 }
 
 impl Drop for BasicFrame {
@@ -713,21 +773,28 @@ fn request_for_location(
     }
 }
 
-fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &Vec<Location>) {
+fn draw_buttons(
+    canvas: &mut Canvas,
+    width: u32,
+    maximizable: bool,
+    mouses: &Vec<Location>,
+    theme: &Box<Theme>,
+) {
     // draw up to 3 buttons, depending on the width of the window
     // color of the button depends on whether a pointer is on it, and the maximizable
     // button can be disabled
     // buttons are 24x16
     if width >= 24 + 2 * BUTTON_SPACE {
         // draw the red button
-        let color = if mouses
+        let button_state = if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Close))
         {
-            colors::RED_BUTTON_HOVER
+            ButtonState::Hovered
         } else {
-            colors::RED_BUTTON_REGULAR
+            ButtonState::Idle
         };
+        let color = theme.get_close_button_color(button_state);
         let red_button = rectangle::Rectangle::new(
             (
                 (width - 24 - BUTTON_SPACE) as usize,
@@ -742,16 +809,18 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &Vec
 
     if width >= 56 + 2 * BUTTON_SPACE {
         // draw the yellow button
-        let color = if !maximizable {
-            colors::YELLOW_BUTTON_DISABLED
+        let button_state = if !maximizable {
+            ButtonState::Disabled
         } else if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Maximize))
         {
-            colors::YELLOW_BUTTON_HOVER
+            ButtonState::Hovered
         } else {
-            colors::YELLOW_BUTTON_REGULAR
+            ButtonState::Idle
         };
+        let color = theme.get_maximize_button_color(button_state);
+
         let yellow_button = rectangle::Rectangle::new(
             (
                 (width - 56 - BUTTON_SPACE) as usize,
@@ -766,14 +835,15 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &Vec
 
     if width >= 88 + 2 * BUTTON_SPACE {
         // draw the green button
-        let color = if mouses
+        let button_state = if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Minimize))
         {
-            colors::GREEN_BUTTON_HOVER
+            ButtonState::Hovered
         } else {
-            colors::GREEN_BUTTON_REGULAR
+            ButtonState::Idle
         };
+        let color = theme.get_minimize_button_color(button_state);
         let green_button = rectangle::Rectangle::new(
             (
                 (width - 88 - BUTTON_SPACE) as usize,

@@ -16,7 +16,7 @@ use wayland_client::protocol::wl_subcompositor::RequestsTrait as SubcompRequests
 use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests;
 use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 
-use super::{Frame, FrameRequest};
+use super::{ButtonState, Frame, FrameRequest, Theme};
 use pointer::{AutoPointer, AutoThemer};
 use utils::DoubleMemPool;
 
@@ -28,26 +28,75 @@ const BORDER_SIZE: u32 = 12;
 const HEADER_SIZE: u32 = 30;
 const BUTTON_SPACE: u32 = 10;
 
-// defining the color scheme
-#[cfg(target_endian = "little")]
-mod colors {
-    pub const INACTIVE_BORDER: [u8; 4] = [0xDC, 0xDC, 0xDC, 0xFF];
-    pub const ACTIVE_BORDER: [u8; 4] = [0xE6, 0xE6, 0xE6, 0xFF];
-    pub const RED_BUTTON_HOVER: [u8; 4] = [0x52, 0x43, 0xD9, 0xFF];
-    pub const GREEN_BUTTON_HOVER: [u8; 4] = [0x70, 0xCB, 0x2D, 0xFF];
-    pub const BLUE_BUTTON_HOVER: [u8; 4] = [0xE8, 0xAD, 0x3C, 0xFF];
-    pub const DIVISION_LINE: [u8; 4] = [0x78, 0x78, 0x78, 0xFF];
-    pub const BUTTON_SHADE: [u8; 4] = [0x1E, 0x1E, 0x1E, 0xFF];
-}
-#[cfg(target_endian = "big")]
-mod colors {
-    pub const INACTIVE_BORDER: [u8; 4] = [0xFF, 0xDC, 0xDC, 0xDC];
-    pub const ACTIVE_BORDER: [u8; 4] = [0xFF, 0xE6, 0xE6, 0xE6];
-    pub const RED_BUTTON_HOVER: [u8; 4] = [0xFF, 0xD9, 0x43, 0x52];
-    pub const GREEN_BUTTON_HOVER: [u8; 4] = [0xFF, 0x2D, 0xCB, 0x70];
-    pub const BLUE_BUTTON_HOVER: [u8; 4] = [0xFF, 0x3C, 0xAD, 0xE8];
-    pub const DIVISION_LINE: [u8; 4] = [0xFF, 0x78, 0x78, 0x78];
-    pub const BUTTON_SHADE: [u8; 4] = [0xFF, 0x1E, 0x1E, 0x1E];
+// Defining the theme
+struct DefaultTheme;
+
+impl Theme for DefaultTheme {
+    // Used for header color
+    fn get_primary_color(&self, active: bool) -> [u8; 4] {
+        if active {
+            #[cfg(target_endian = "little")]
+            return [0xE6, 0xE6, 0xE6, 0xFF];
+            #[cfg(target_endian = "big")]
+            [0xFF, 0xE6, 0xE6, 0xE6];
+        } else {
+            #[cfg(target_endian = "little")]
+            return [0xDC, 0xDC, 0xDC, 0xFF];
+            #[cfg(target_endian = "big")]
+            [0xFF, 0xDC, 0xDC, 0xDC];
+        }
+    }
+
+    // Used for division line
+    fn get_secondary_color(&self, active: bool) -> [u8; 4] {
+        if active {
+            #[cfg(target_endian = "little")]
+            return [0x1E, 0x1E, 0x1E, 0xFF];
+            #[cfg(target_endian = "big")]
+            [0xFF, 0x1E, 0x1E, 0x1E]
+        } else {
+            #[cfg(target_endian = "little")]
+            return [0x78, 0x78, 0x78, 0xFF];
+            #[cfg(target_endian = "big")]
+            [0xFF, 0x78, 0x78, 0x78];
+        }
+    }
+
+    fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
+        match state {
+            ButtonState::Hovered => {
+                #[cfg(target_endian = "little")]
+                return [0x52, 0x43, 0xD9, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0xD9, 0x43, 0x52];
+            }
+            _ => [0x00, 0x00, 0x00, 0x00],
+        }
+    }
+
+    fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
+        match state {
+            ButtonState::Hovered => {
+                #[cfg(target_endian = "little")]
+                return [0x70, 0xCB, 0x2D, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0x2D, 0xCB, 0x70];
+            }
+            _ => [0x00, 0x00, 0x00, 0x00],
+        }
+    }
+
+    fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
+        match state {
+            ButtonState::Hovered => {
+                #[cfg(target_endian = "little")]
+                return [0xE8, 0xAD, 0x3C, 0xFF];
+                #[cfg(target_endian = "big")]
+                [0xFF, 0x3C, 0xAD, 0xE8];
+            }
+            _ => [0x00, 0x00, 0x00, 0x00],
+        }
+    }
 }
 
 /*
@@ -217,6 +266,7 @@ pub struct ConceptFrame {
     pointers: Vec<AutoPointer>,
     themer: AutoThemer,
     surface_version: u32,
+    theme: Box<Theme>,
 }
 
 impl Frame for ConceptFrame {
@@ -256,6 +306,7 @@ impl Frame for ConceptFrame {
             pointers: Vec::new(),
             themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
             surface_version: compositor.version(),
+            theme: Box::new(DefaultTheme),
         })
     }
 
@@ -403,17 +454,12 @@ impl Frame for ConceptFrame {
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
 
-            // Redraw the grey borders
-            let color = if self.active {
-                colors::ACTIVE_BORDER
-            } else {
-                colors::INACTIVE_BORDER
-            };
-
-            // draw the grey background
+            // draw the white header bar
             {
                 let mmap = pool.mmap();
                 {
+                    let color = self.theme.get_primary_color(self.active);
+
                     let mut header_canvas = Canvas::new(
                         &mut mmap[0..HEADER_SIZE as usize * width as usize * 4],
                         width as usize,
@@ -447,6 +493,7 @@ impl Frame for ConceptFrame {
                                     None
                                 }
                             }).collect::<Vec<Location>>(),
+                        &self.theme,
                     );
                 }
 
@@ -638,6 +685,10 @@ impl Frame for ConceptFrame {
             (0, -(HEADER_SIZE as i32))
         }
     }
+
+    fn set_theme<T: Theme>(&mut self, theme: T) {
+        self.theme = Box::new(theme)
+    }
 }
 
 impl Drop for ConceptFrame {
@@ -703,15 +754,23 @@ fn request_for_location(
     }
 }
 
-fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Location]) {
+fn draw_buttons(
+    canvas: &mut Canvas,
+    width: u32,
+    maximizable: bool,
+    mouses: &[Location],
+    theme: &Box<Theme>,
+) {
     // Draw seperator between header and window contents
     let division_line = line::Line::new(
         (0, (HEADER_SIZE - 1) as usize),
         ((width) as usize, (HEADER_SIZE - 1) as usize),
-        colors::DIVISION_LINE,
+        theme.get_secondary_color(false),
         true,
     );
     canvas.draw(&division_line);
+
+    let button_color = theme.get_secondary_color(true);
 
     if width >= HEADER_SIZE {
         // Draw the red button
@@ -720,20 +779,21 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
             .any(|&l| l == Location::Button(UIButton::Close))
         {
             // Draw a red shading around close button if hovered over
+            let red_shade = theme.get_close_button_color(ButtonState::Hovered);
             let red_hover = rectangle::Rectangle::new(
                 ((width - HEADER_SIZE) as usize, 0),
                 (HEADER_SIZE as usize, HEADER_SIZE as usize),
                 None,
-                Some(colors::RED_BUTTON_HOVER),
+                Some(red_shade),
             );
             canvas.draw(&red_hover);
             let red_division_line = line::Line::new(
                 ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
                 ((width) as usize, (HEADER_SIZE - 1) as usize),
                 [
-                    colors::RED_BUTTON_HOVER[0].saturating_sub(50),
-                    colors::RED_BUTTON_HOVER[1].saturating_sub(50),
-                    colors::RED_BUTTON_HOVER[2].saturating_sub(50),
+                    red_shade[0].saturating_sub(50),
+                    red_shade[1].saturating_sub(50),
+                    red_shade[2].saturating_sub(50),
                     255,
                 ],
                 true,
@@ -752,7 +812,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - HEADER_SIZE / 2 + 4) as usize,
                     (HEADER_SIZE / 2 + 4 - i) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&diagonal_line);
@@ -765,7 +825,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - HEADER_SIZE / 2 + 4 - i) as usize,
                     (HEADER_SIZE / 2 + 4) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&diagonal_line);
@@ -778,7 +838,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - HEADER_SIZE / 2 - 4) as usize,
                     (HEADER_SIZE / 2 + 4 - i) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&diagonal_line);
@@ -791,7 +851,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - HEADER_SIZE / 2 - 4 + i) as usize,
                     (HEADER_SIZE / 2 + 4) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&diagonal_line);
@@ -806,11 +866,12 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
             .any(|&l| l == Location::Button(UIButton::Maximize))
         {
             // Draw a green shading around maximize button if hovered over
+            let green_shade = theme.get_maximize_button_color(ButtonState::Hovered);
             let green_hover = rectangle::Rectangle::new(
                 ((width - 2 * HEADER_SIZE) as usize, 0),
                 (HEADER_SIZE as usize, HEADER_SIZE as usize),
                 None,
-                Some(colors::GREEN_BUTTON_HOVER),
+                Some(green_shade),
             );
             canvas.draw(&green_hover);
             let green_division_line = line::Line::new(
@@ -820,9 +881,9 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                 ),
                 ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
                 [
-                    colors::GREEN_BUTTON_HOVER[0].saturating_sub(50),
-                    colors::GREEN_BUTTON_HOVER[1].saturating_sub(50),
-                    colors::GREEN_BUTTON_HOVER[2].saturating_sub(50),
+                    green_shade[0].saturating_sub(50),
+                    green_shade[1].saturating_sub(50),
+                    green_shade[2].saturating_sub(50),
                     255,
                 ],
                 true,
@@ -839,7 +900,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - HEADER_SIZE - HEADER_SIZE / 2) as usize,
                     (HEADER_SIZE / 2 - 2 - i) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&left_diagional);
@@ -852,7 +913,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - HEADER_SIZE - HEADER_SIZE / 2) as usize,
                     (HEADER_SIZE / 2 - 2 - i) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&right_diagional);
@@ -866,11 +927,12 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
             .any(|&l| l == Location::Button(UIButton::Minimize))
         {
             // Draw a blue shading around minimize button if hovered over
+            let blue_shade = theme.get_minimize_button_color(ButtonState::Hovered);
             let blue_hover = rectangle::Rectangle::new(
                 ((width - 3 * HEADER_SIZE) as usize, 0),
                 (HEADER_SIZE as usize, HEADER_SIZE as usize),
                 None,
-                Some(colors::BLUE_BUTTON_HOVER),
+                Some(blue_shade),
             );
             canvas.draw(&blue_hover);
             let blue_division_line = line::Line::new(
@@ -883,9 +945,9 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (HEADER_SIZE - 1) as usize,
                 ),
                 [
-                    colors::BLUE_BUTTON_HOVER[0].saturating_sub(50),
-                    colors::BLUE_BUTTON_HOVER[1].saturating_sub(50),
-                    colors::BLUE_BUTTON_HOVER[2].saturating_sub(50),
+                    blue_shade[0].saturating_sub(50),
+                    blue_shade[1].saturating_sub(50),
+                    blue_shade[2].saturating_sub(50),
                     255,
                 ],
                 true,
@@ -902,7 +964,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize,
                     (HEADER_SIZE / 2 + 1 + i) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&left_diagional);
@@ -915,7 +977,7 @@ fn draw_buttons(canvas: &mut Canvas, width: u32, maximizable: bool, mouses: &[Lo
                     (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize,
                     (HEADER_SIZE / 2 + 1 + i) as usize,
                 ),
-                colors::BUTTON_SHADE,
+                button_color,
                 true,
             );
             canvas.draw(&right_diagional);
