@@ -316,7 +316,7 @@ impl Frame for BasicFrame {
             active: false,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
+            themer: AutoThemer::init(None, compositor.clone(), &shm),
             surface_version: compositor.version(),
             theme: Box::new(DefaultTheme),
         })
@@ -510,8 +510,8 @@ impl Frame for BasicFrame {
                                 } else {
                                     None
                                 }
-                            }).collect(),
-                        &self.theme,
+                            }).collect::<Vec<Location>>(),
+                        &*self.theme,
                     );
                 }
 
@@ -776,8 +776,8 @@ fn draw_buttons(
     canvas: &mut Canvas,
     width: u32,
     maximizable: bool,
-    mouses: &Vec<Location>,
-    theme: &Box<Theme>,
+    mouses: &[Location],
+    theme: &Theme,
 ) {
     // draw up to 3 buttons, depending on the width of the window
     // color of the button depends on whether a pointer is on it, and the maximizable

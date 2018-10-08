@@ -32,7 +32,7 @@ impl ThemeManager {
     pub fn init(
         name: Option<&str>,
         compositor: Proxy<wl_compositor::WlCompositor>,
-        shm: Proxy<wl_shm::WlShm>,
+        shm: &Proxy<wl_shm::WlShm>,
     ) -> Result<ThemeManager, ()> {
         if !is_available() {
             return Err(());

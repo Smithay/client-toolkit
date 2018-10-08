@@ -260,7 +260,7 @@ impl DataDevice {
     ///
     /// Correspond to traditional copy/paste behavior. Setting the
     /// source to `None` will clear the selection.
-    pub fn set_selection(&self, source: Option<DataSource>, serial: u32) {
+    pub fn set_selection(&self, source: &Option<DataSource>, serial: u32) {
         self.device
             .set_selection(source.as_ref().map(|s| &s.source), serial);
     }

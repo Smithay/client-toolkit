@@ -38,6 +38,7 @@ pub const XKB_LED_INVALID     :u32 = 0xffffffff;
 pub const XKB_KEYCODE_MAX     :u32 = 0xffffffff - 1;
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct xkb_rule_names {
     pub rules:   *const c_char,
     pub model:   *const c_char ,

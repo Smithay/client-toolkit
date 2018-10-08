@@ -305,7 +305,7 @@ impl Frame for ConceptFrame {
             active: false,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
+            themer: AutoThemer::init(None, compositor.clone(), &shm),
             surface_version: compositor.version(),
             theme: Box::new(DefaultTheme),
         })
@@ -494,7 +494,7 @@ impl Frame for ConceptFrame {
                                     None
                                 }
                             }).collect::<Vec<Location>>(),
-                        &self.theme,
+                        &*self.theme,
                     );
                 }
 
@@ -760,7 +760,7 @@ fn draw_buttons(
     width: u32,
     maximizable: bool,
     mouses: &[Location],
-    theme: &Box<Theme>,
+    theme: &Theme,
 ) {
     // Draw seperator between header and window contents
     let division_line = line::Line::new(
