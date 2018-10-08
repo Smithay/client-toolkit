@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Pass `set_selection()` `Option<DataSource>` and `AutoThemer::init()` `Proxy<WlShm>` by reference
 - Window: add `set_theme()` function which takes an object implementing the trait `Theme` to adjust the look of window decorations
 - Window: add new `ConceptFrame` which provides an alternative to the `BasicFrame` window decorations
 - MemPool: add `mmap` method

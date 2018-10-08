@@ -80,7 +80,7 @@ pub enum DataSourceEvent {
 
 fn data_source_impl<Impl>(
     evt: wl_data_source::Event,
-    source: Proxy<wl_data_source::WlDataSource>,
+    source: &Proxy<wl_data_source::WlDataSource>,
     implem: &mut Impl,
 ) where
     Impl: FnMut(DataSourceEvent),
@@ -124,7 +124,7 @@ impl DataSource {
         let source = mgr
             .create_data_source(|source| {
                 source.implement(
-                    move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
+                    move |evt, source: Proxy<_>| data_source_impl(evt, &source, &mut implem),
                     (),
                 )
             }).expect("Provided a dead data device manager to create a data source.");
@@ -154,7 +154,7 @@ impl DataSource {
         let source = mgr
             .create_data_source(|source| {
                 source.implement_nonsend(
-                    move |evt, source: Proxy<_>| data_source_impl(evt, source, &mut implem),
+                    move |evt, source: Proxy<_>| data_source_impl(evt, &source, &mut implem),
                     (),
                     token,
                 )

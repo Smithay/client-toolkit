@@ -35,9 +35,9 @@ impl AutoThemer {
     pub fn init(
         name: Option<&str>,
         compositor: Proxy<wl_compositor::WlCompositor>,
-        shm: Proxy<wl_shm::WlShm>,
+        shm: &Proxy<wl_shm::WlShm>,
     ) -> AutoThemer {
-        match ThemeManager::init(name, compositor, shm) {
+        match ThemeManager::init(name, compositor, &shm) {
             Ok(mgr) => AutoThemer::Themed(mgr),
             Err(()) => AutoThemer::UnThemed,
         }
