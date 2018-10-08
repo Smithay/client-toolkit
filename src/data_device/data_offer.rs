@@ -98,7 +98,10 @@ impl DataOffer {
         let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(|_| ())?;
 
         self.offer.receive(mime_type, writefd);
-        let _ = close(writefd);
+
+        if let Err(err) = close(writefd) {
+            eprintln!("[SCTK] Data offer: failed to close write pipe: {}", err);
+        }
 
         Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
     }

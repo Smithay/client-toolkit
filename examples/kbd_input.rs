@@ -69,7 +69,7 @@ fn main() {
 
     window.new_seat(&seat);
 
-    let _keyboard = map_keyboard_auto_with_repeat(
+    map_keyboard_auto_with_repeat(
         &seat,
         KeyRepeatKind::System,
         move |event: KbEvent, _| match event {
@@ -106,12 +106,12 @@ fn main() {
                 println!(" -> Received text \"{}\".", txt);
             }
         },
-    );
+    ).expect("Failed to map keyboard");
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {
-            redraw(pool, window.surface(), dimensions)
+            redraw(pool, window.surface(), dimensions).expect("Failed to draw")
         }
         window.refresh();
     }
@@ -131,7 +131,7 @@ fn main() {
                 println!("Window states: {:?}", states);
                 window.refresh();
                 if let Some(pool) = pools.pool() {
-                    redraw(pool, window.surface(), dimensions)
+                    redraw(pool, window.surface(), dimensions).expect("Failed to draw")
                 }
             }
             None => {}
@@ -142,12 +142,16 @@ fn main() {
     }
 }
 
-fn redraw(pool: &mut MemPool, surface: &Proxy<wl_surface::WlSurface>, (buf_x, buf_y): (u32, u32)) {
+fn redraw(
+    pool: &mut MemPool,
+    surface: &Proxy<wl_surface::WlSurface>,
+    (buf_x, buf_y): (u32, u32),
+) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant
     pool.resize((4 * buf_x * buf_y) as usize)
         .expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
-    let _ = pool.seek(SeekFrom::Start(0));
+    pool.seek(SeekFrom::Start(0))?;
     {
         let mut writer = BufWriter::new(&mut *pool);
         for i in 0..(buf_x * buf_y) {
@@ -156,9 +160,9 @@ fn redraw(pool: &mut MemPool, surface: &Proxy<wl_surface::WlSurface>, (buf_x, bu
             let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
             let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
             let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
-            let _ = writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b);
+            writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b)?;
         }
-        let _ = writer.flush();
+        writer.flush()?;
     }
     // get a buffer and attach it
     let new_buffer = pool.buffer(
@@ -170,4 +174,5 @@ fn redraw(pool: &mut MemPool, surface: &Proxy<wl_surface::WlSurface>, (buf_x, bu
     );
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
+    Ok(())
 }

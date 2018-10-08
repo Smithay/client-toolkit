@@ -190,7 +190,7 @@ fn main() {
                 window.surface(),
                 dimensions,
                 if resizing { None } else { Some(&image) },
-            )
+            ).expect("Failed to draw")
         }
         window.refresh();
     }
@@ -251,7 +251,7 @@ fn main() {
                         window.surface(),
                         dimensions,
                         if resizing { None } else { Some(&image) },
-                    )
+                    ).expect("Failed to draw")
                 }
                 None => {}
             }
@@ -284,7 +284,7 @@ fn redraw(
     surface: &Proxy<wl_surface::WlSurface>,
     (buf_x, buf_y): (u32, u32),
     base_image: Option<&image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
-) {
+) -> Result<(), ::std::io::Error> {
     // First of all, we make sure the pool is big enough to hold our
     // image. We'll write in ARGB8888 format, meaning 4 bytes per pixel.
     // This resize method will only resize the pool if the requested size is bigger
@@ -299,7 +299,7 @@ fn redraw(
     // so we use it directly as a file to write on.
 
     // First, seek to the beginning, to overwrite our previous content.
-    let _ = pool.seek(SeekFrom::Start(0));
+    pool.seek(SeekFrom::Start(0))?;
     {
         // A sub-scope to limit our borrow of the pool by this BufWriter.
         // This BufWrite will significantly improve our drawing performance,
@@ -336,17 +336,17 @@ fn redraw(
                 // write the pixel
                 // We use byteorder, as the wayland protocol explicitly specifies
                 // that the pixels must be written in native endianness
-                let _ = writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b);
+                writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b)?;
             }
         } else {
             // We do not have any image to draw, so we draw black contents
             for _ in 0..(buf_x * buf_y) {
-                let _ = writer.write_u32::<NativeEndian>(0xFF000000);
+                writer.write_u32::<NativeEndian>(0xFF000000)?;
             }
         }
         // Don't forget to flush the writer, to make sure all the contents are
         // indeed written to the file.
-        let _ = writer.flush();
+        writer.flush()?;
     }
     // Now, we create a buffer to the memory pool pointing to the contents
     // we just wrote
@@ -373,4 +373,5 @@ fn redraw(
         surface.damage(0, 0, buf_x as i32, buf_y as i32);
     }
     surface.commit();
+    Ok(())
 }
