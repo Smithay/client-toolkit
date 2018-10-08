@@ -504,7 +504,12 @@ impl Frame for ConceptFrame {
                         *b = 0x00;
                     }
                 }
-                mmap.flush().unwrap();
+                if let Err(err) = mmap.flush() {
+                    eprintln!(
+                        "[SCTK] Basic frame: failed to flush frame memory map: {}",
+                        err
+                    );
+                }
             }
 
             // Create the buffers
@@ -714,7 +719,9 @@ fn change_pointer(pointer: &AutoPointer, location: Location, serial: Option<u32>
         Location::TopLeft => "top_left_corner",
         _ => "left_ptr",
     };
-    pointer.set_cursor(name, serial).unwrap()
+    if pointer.set_cursor(name, serial).is_err() {
+        eprintln!("[SCTK] Basic frame: failed to set cursor");
+    }
 }
 
 fn request_for_location(
