@@ -655,7 +655,6 @@ where
                                 state.get_utf8_raw(key)
                             }
                         };
-                        let modifiers = state.mods_state;
 
                         if key_state == wl_keyboard::KeyState::Pressed {
                             event_impl(
