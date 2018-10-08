@@ -136,6 +136,11 @@ fn main() {
         // unless the system is utterly broken, though.
     ).expect("Failed to create a window !");
 
+    // Setting the windows title allows the compositor to know what your
+    // window should be called and the title will be display on the header bar
+    // of the windows decorations
+    window.set_title("Image Viewer".to_string());
+
     // The window needs access to pointer inputs to handle the user interaction
     // with it: resizing/moving the window, or clicking its button.
     // user interaction in wayland is done via the wl_seat object, which represent

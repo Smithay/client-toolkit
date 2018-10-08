@@ -55,6 +55,8 @@ fn main() {
         }
     }).expect("Failed to create a window !");
 
+    window.set_title("Kbd Input".to_string());
+
     let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
 
     /*
