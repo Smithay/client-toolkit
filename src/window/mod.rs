@@ -380,6 +380,7 @@ impl<F: Frame + 'static> Window<F> {
     /// This string may be used to identify the surface in a task bar, window list, or other
     /// user interface elements provided by the compositor.
     pub fn set_title(&self, title: String) {
+        self.frame.lock().unwrap().set_title(title.clone());
         self.shell_surface.set_title(title);
     }
 
@@ -621,6 +622,10 @@ pub trait Frame: Sized + Send {
     fn location(&self) -> (i32, i32) {
         (0, 0)
     }
+
     /// Sets the theme for the frame
     fn set_theme<T: Theme>(&mut self, theme: T);
+
+    /// Sets the frames title
+    fn set_title(&mut self, title: String);
 }

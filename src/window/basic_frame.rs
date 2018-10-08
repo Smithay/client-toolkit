@@ -1,7 +1,10 @@
 use std::cmp::max;
+use std::io::Read;
 use std::sync::{Arc, Mutex};
 
 use andrew::shapes::rectangle;
+use andrew::text;
+use andrew::text::fontconfig;
 use andrew::Canvas;
 
 use wayland_client::protocol::{
@@ -279,6 +282,8 @@ pub struct BasicFrame {
     themer: AutoThemer,
     surface_version: u32,
     theme: Box<Theme>,
+    title: Option<String>,
+    font_data: Option<Vec<u8>>,
 }
 
 impl Frame for BasicFrame {
@@ -319,6 +324,8 @@ impl Frame for BasicFrame {
             themer: AutoThemer::init(None, compositor.clone(), &shm),
             surface_version: compositor.version(),
             theme: Box::new(DefaultTheme),
+            title: None,
+            font_data: None,
         })
     }
 
@@ -513,6 +520,63 @@ impl Frame for BasicFrame {
                             }).collect::<Vec<Location>>(),
                         &*self.theme,
                     );
+
+                    if let Some(title) = self.title.clone() {
+                        // If theres no stored font data, find the first ttf regular sans font and
+                        // store it
+                        if self.font_data.is_none() {
+                            if let Some(font) = fontconfig::FontConfig::new()
+                                .unwrap()
+                                .get_regular_family_fonts("sans")
+                                .unwrap()
+                                .iter()
+                                .filter_map(|p| {
+                                    if p.extension().unwrap() == "ttf" {
+                                        Some(p)
+                                    } else {
+                                        None
+                                    }
+                                }).nth(0)
+                            {
+                                let mut font_data = Vec::new();
+                                if let Ok(mut file) = ::std::fs::File::open(font) {
+                                    match file.read_to_end(&mut font_data) {
+                                        Ok(_) => self.font_data = Some(font_data),
+                                        Err(err) => eprintln!("Could not read font file: {}", err),
+                                    }
+                                }
+                            }
+                        }
+
+                        // Create text from stored title and font data
+                        if let Some(ref font_data) = self.font_data {
+                            let mut title_text = text::Text::new(
+                                (0, HEADER_SIZE as usize / 2 - 8),
+                                [0, 0, 0, 255],
+                                font_data,
+                                17.0,
+                                1.0,
+                                title,
+                            );
+
+                            // Check if text is bigger then the avaliable width
+                            if (width as isize - 88 - 4 * BUTTON_SPACE as isize)
+                                > (title_text.get_width() + BUTTON_SPACE as usize) as isize
+                            {
+                                title_text.pos.0 =
+                                    (width as usize) / 2 - (title_text.get_width() / 2);
+                                // Adjust position for buttons if both compete for space
+                                if (width as usize) / 2 + (title_text.get_width() / 2)
+                                    > (width - 88 - 2 * 2 * BUTTON_SPACE) as usize
+                                {
+                                    title_text.pos.0 -= ((width as usize) / 2
+                                        + (title_text.get_width() / 2))
+                                        - (width - 88 - 2 * 2 * BUTTON_SPACE) as usize;
+                                }
+                                header_canvas.draw(&title_text);
+                            }
+                        }
+                    }
                 }
 
                 // For each pixel in borders
@@ -711,6 +775,10 @@ impl Frame for BasicFrame {
 
     fn set_theme<T: Theme>(&mut self, theme: T) {
         self.theme = Box::new(theme)
+    }
+
+    fn set_title(&mut self, title: String) {
+        self.title = Some(title);
     }
 }
 
