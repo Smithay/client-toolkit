@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 -- 2018-10-09
+
 - BasicFrame: Display the title of the window in the window header
 - Pass `set_selection()` `Option<DataSource>` and `AutoThemer::init()` `Proxy<WlShm>` by reference
 - Window: add `set_theme()` function which takes an object implementing the trait `Theme` to adjust the look of window decorations
