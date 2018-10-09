@@ -779,6 +779,7 @@ impl Frame for BasicFrame {
 
     fn set_title(&mut self, title: String) {
         self.title = Some(title);
+        (&mut *self.inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
     }
 }
 
