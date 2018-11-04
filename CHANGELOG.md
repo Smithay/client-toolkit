@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Window: always request server-side decorations if available, otherwise ther compositor never configures us
+- keyboard: only compute utf8 value on keypress, not key release. Otherwise it confuses `xkb_compose`.
 
 ## 0.4.0 -- 2018-10-09
 

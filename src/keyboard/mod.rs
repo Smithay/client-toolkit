@@ -636,7 +636,7 @@ where
                     } => {
                         // Get the values to generate a key event
                         let sym = state.get_one_sym_raw(key);
-                        let utf8 = {
+                        let utf8 = if key_state == wl_keyboard::KeyState::Pressed {
                             if state.compose_feed(sym)
                                 != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
                             {
@@ -654,6 +654,8 @@ where
                             } else {
                                 state.get_utf8_raw(key)
                             }
+                        } else {
+                            None
                         };
 
                         if key_state == wl_keyboard::KeyState::Pressed {
