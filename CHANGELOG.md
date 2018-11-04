@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Window: always request server-side decorations if available, otherwise ther compositor never configures us
+
 ## 0.4.0 -- 2018-10-09
 
 - BasicFrame: Display the title of the window in the window header
