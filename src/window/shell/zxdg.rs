@@ -63,11 +63,12 @@ impl Zxdg {
                                         states.len() / 4,
                                     )
                                 };
-                                let states = view.iter()
-                        .cloned()
-                        // bit representation of xdg_toplevel_v6 and zxdg_toplevel_v6 matches
-                        .flat_map(xdg_toplevel::State::from_raw)
-                        .collect::<Vec<_>>();
+                                let states = view
+                                    .iter()
+                                    .cloned()
+                                    // bit representation of xdg_toplevel_v6 and zxdg_toplevel_v6 matches
+                                    .flat_map(xdg_toplevel::State::from_raw)
+                                    .collect::<Vec<_>>();
                                 implementation(Event::Configure { new_size, states });
                             }
                         }
