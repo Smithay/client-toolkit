@@ -59,6 +59,8 @@ script:
       elif [ -n "$BUILD_DOC" ]; then
         cargo doc --no-deps --all-features
       elif [[ "$TRAVIS_RUST_VERSION" = "1.22.0" ]]; then
+        # blacklist lazy_static>=1.2, which doe snot compile on rust<1.24
+        sed -i.bak 's/lazy_static = "1"/lazy_static = ">=1.0, <1.2"/' Cargo.toml
         # Only build, no tests on 1.22.0, as our dev-deps 'image' does not build on 1.22.0
         env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo build --all-features
       else
