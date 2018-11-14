@@ -30,6 +30,10 @@ matrix:
       env: BUILD_FMT=1
     - rust: stable
       env: BUILD_DOC=1
+    - rust: stable
+      env: TARGET=x86_64-unknown-freebsd
+      sudo: true
+      services: docker
 
 branches:
   only:
@@ -39,11 +43,16 @@ before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
   - mkdir $(pwd)/socket
   - export XDG_RUNTIME_DIR="$(pwd)/socket"
+  - cargo fetch
   - |
       if [ -n "$BUILD_FMT" ]; then
         rustup component add rustfmt-preview
       elif [ -n "$BUILD_DOC" ]; then
         echo "Building doc, nothing to install..."
+      elif [ -n "$TARGET" ]; then
+        which cargo-install-update || cargo install cargo-update
+        cargo install-update cargo-update
+        cargo install-update -i cross
       else
         # Building & running tests, we need to install the wayland lib
         ./travis_install_wayland.sh "1.12.0"
@@ -66,6 +75,8 @@ script:
         cargo update -p lazy_static --precise 1.1.0
         # Only build, no tests on 1.22.0, as our dev-deps 'image' does not build on 1.22.0
         env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo build --all-features
+      elif [[ -n "$TARGET" ]]; then
+        cross build --target "$TARGET"
       else
         env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo test --all-features
       fi
