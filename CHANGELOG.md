@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.4.2 -- 2018-11-14
+
+- Fix compilation on BSD systems
+
 ## 0.4.1 -- 2018-11-06
 
 - Window: always request server-side decorations if available, otherwise ther compositor never configures us
