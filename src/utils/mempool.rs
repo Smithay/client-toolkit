@@ -1,6 +1,7 @@
 use nix;
 use nix::errno::Errno;
 use nix::fcntl;
+#[cfg(target_os = "linux")]
 use nix::sys::memfd;
 use nix::sys::mman;
 use nix::sys::stat;
@@ -230,6 +231,8 @@ impl io::Seek for MemPool {
 }
 
 fn create_shm_fd() -> io::Result<RawFd> {
+    // Only try memfd on linux
+    #[cfg(target_os = "linux")]
     loop {
         match memfd::memfd_create(
             CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
