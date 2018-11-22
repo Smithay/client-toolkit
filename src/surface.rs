@@ -1,20 +1,61 @@
 //! Utility functions for creating dpi aware wayland surfaces.
 use env::Environment;
+use output::OutputMgr;
 use std::sync::Mutex;
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequest;
 use wayland_client::protocol::{wl_output, wl_surface};
 use wayland_client::Proxy;
 
-struct SurfaceUserData {
+pub(crate) struct SurfaceUserData {
     dpi_factor: i32,
     outputs: Vec<Proxy<wl_output::WlOutput>>,
+    output_manager: OutputMgr,
+    dpi_change_cb: Box<FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static>,
 }
 
 impl SurfaceUserData {
-    fn new() -> Self {
+    fn new(
+        output_manager: OutputMgr,
+        dpi_change_cb: Box<FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static>,
+    ) -> Self {
         SurfaceUserData {
             dpi_factor: 1,
             outputs: Vec::new(),
+            output_manager,
+            dpi_change_cb,
+        }
+    }
+
+    pub(crate) fn enter(
+        &mut self,
+        output: Proxy<wl_output::WlOutput>,
+        surface: Proxy<wl_surface::WlSurface>,
+    ) {
+        self.outputs.push(output);
+        self.compute_dpi_factor(surface);
+    }
+
+    pub(crate) fn leave(
+        &mut self,
+        output: &Proxy<wl_output::WlOutput>,
+        surface: Proxy<wl_surface::WlSurface>,
+    ) {
+        self.outputs.retain(|output2| !output.equals(output2));
+        self.compute_dpi_factor(surface);
+    }
+
+    fn compute_dpi_factor(&mut self, surface: Proxy<wl_surface::WlSurface>) {
+        let mut scale_factor = 1;
+        for output in &self.outputs {
+            let scale_factor2 = self
+                .output_manager
+                .with_info(&output, |_id, info| info.scale_factor)
+                .unwrap();
+            scale_factor = ::std::cmp::max(scale_factor, scale_factor2);
+        }
+        if self.dpi_factor != scale_factor {
+            self.dpi_factor = scale_factor;
+            (self.dpi_change_cb)(scale_factor, surface.clone());
         }
     }
 }
@@ -25,9 +66,9 @@ impl SurfaceUserData {
 /// the surface is displayed on. The dpi factor is stored in the Proxy's user
 /// data. When the dpi value is updated the caller is notified through the
 /// dpi_change closure.
-pub fn create_surface<F>(
+pub(crate) fn create_surface<F>(
     environment: &Environment,
-    mut dpi_change: F,
+    dpi_change: Box<F>,
 ) -> Proxy<wl_surface::WlSurface>
 where
     F: FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static,
@@ -35,7 +76,6 @@ where
     environment
         .compositor
         .create_surface(move |surface| {
-            let output_manager = environment.outputs.clone();
             surface.implement(
                 move |event, surface| {
                     let mut user_data = surface
@@ -45,27 +85,17 @@ where
                         .unwrap();
                     match event {
                         wl_surface::Event::Enter { output } => {
-                            user_data.outputs.push(output);
+                            user_data.enter(output, surface.clone());
                         }
                         wl_surface::Event::Leave { output } => {
-                            user_data
-                                .outputs
-                                .retain(|output2| output.id() != output2.id());
+                            user_data.leave(&output, surface.clone());
                         }
                     };
-                    let mut scale_factor = 1;
-                    for output in &user_data.outputs {
-                        let scale_factor2 = output_manager
-                            .with_info(&output, |_id, info| info.scale_factor)
-                            .unwrap();
-                        scale_factor = ::std::cmp::max(scale_factor, scale_factor2);
-                    }
-                    if user_data.dpi_factor != scale_factor {
-                        user_data.dpi_factor = scale_factor;
-                        dpi_change(scale_factor, surface.clone());
-                    }
                 },
-                Mutex::new(SurfaceUserData::new()),
+                Mutex::new(SurfaceUserData::new(
+                    environment.outputs.clone(),
+                    dpi_change,
+                )),
             )
         }).unwrap()
 }

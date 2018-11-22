@@ -1,9 +1,10 @@
 use std::io;
 use std::sync::{Arc, Mutex};
 
+use surface::{create_surface, SurfaceUserData};
 use wayland_client::protocol::{
     wl_compositor, wl_data_device_manager, wl_display, wl_registry, wl_shell, wl_shm,
-    wl_subcompositor,
+    wl_subcompositor, wl_surface,
 };
 use wayland_client::{EventQueue, GlobalEvent, GlobalManager, Proxy};
 use wayland_protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1;
@@ -63,6 +64,7 @@ pub struct Environment {
     /// The decoration manager, if the server supports server-side decorations
     pub decorations_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
+    surfaces: Arc<Mutex<Vec<Proxy<wl_surface::WlSurface>>>>,
 }
 
 impl Environment {
@@ -95,6 +97,10 @@ impl Environment {
         let outputs = ::output::OutputMgr::new();
         let outputs2 = outputs.clone();
 
+        let surfaces: Arc<Mutex<Vec<Proxy<wl_surface::WlSurface>>>> =
+            Arc::new(Mutex::new(Vec::new()));
+        let surfaces2 = surfaces.clone();
+
         let display_wrapper = display.make_wrapper(&evq.get_token()).unwrap();
         let manager = GlobalManager::new_with_cb(&display_wrapper, move |event, registry| {
             match event {
@@ -102,12 +108,27 @@ impl Environment {
                     id,
                     ref interface,
                     version,
-                } => if let "wl_output" = &interface[..] {
-                    outputs2.new_output(id, version, &registry)
-                },
-                GlobalEvent::Removed { id, ref interface } => if let "wl_output" = &interface[..] {
-                    outputs2.output_removed(id)
-                },
+                } => {
+                    if let "wl_output" = &interface[..] {
+                        outputs2.new_output(id, version, &registry)
+                    }
+                }
+                GlobalEvent::Removed { id, ref interface } => {
+                    if let "wl_output" = &interface[..] {
+                        let output = outputs2
+                            .find_id(id, |output, _info| output.clone())
+                            .unwrap();
+                        for surface in &*surfaces2.lock().unwrap() {
+                            surface
+                                .user_data::<Mutex<SurfaceUserData>>()
+                                .expect("Surface was not created with create_surface.")
+                                .lock()
+                                .unwrap()
+                                .leave(&output, surface.clone())
+                        }
+                        outputs2.output_removed(id)
+                    }
+                }
             }
             cb(event, registry);
         });
@@ -195,11 +216,22 @@ impl Environment {
             data_device_manager,
             decorations_mgr,
             outputs,
+            surfaces,
         })
     }
 
     /// Retrieve the accepted SHM formats of the server
     pub fn shm_formats(&self) -> Vec<wl_shm::Format> {
         self.shm_formats.lock().unwrap().clone()
+    }
+
+    /// Create a new dpi aware surface
+    pub fn create_surface<F>(&self, dpi_change: Box<F>) -> Proxy<wl_surface::WlSurface>
+    where
+        F: FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static,
+    {
+        let surface = create_surface(&self, dpi_change);
+        self.surfaces.lock().unwrap().push(surface.clone());
+        surface
     }
 }
