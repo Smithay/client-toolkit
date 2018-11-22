@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Surface: `create_surface` and `get_dpi_factor` utilities for creating dpi aware surfaces.
+
 ## 0.4.2 -- 2018-11-14
 
 - Fix compilation on BSD systems

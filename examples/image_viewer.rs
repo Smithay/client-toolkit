@@ -8,10 +8,10 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
+use sctk::surface::create_surface;
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, State, Window};
 use sctk::Environment;
@@ -57,24 +57,9 @@ fn main() {
     let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     // Use the compositor global to create a new surface
-    let surface = env
-        .compositor
-        .create_surface(|surface| {
-            surface.implement(
-                |_surface, _event| {
-                    // Here we implement this surface with a closure processing
-                    // the event
-                    //
-                    // Surface events notify us when it enters or leave an output,
-                    // this is mostly useful to track DPI-scaling.
-                    //
-                    // We don't do it in this example, so this closures ignores all
-                    // events by doing nothing.
-                },
-                (),
-            )
-        }).unwrap(); // unwrap for the same reasons as before, we know the compositor
-                     // is not yet destroyed
+    let surface = create_surface(&env, |dpi| {
+        println!("dpi changed to {}", dpi);
+    });
 
     /*
      * Init the window

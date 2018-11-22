@@ -12,6 +12,7 @@ Currently a work in progress, it currently provides the following utilities:
 - Abstraction to create windows (aka toplevel surfaces), abstracting the interaction
   with the shell (`xdg_shell` or `wl_shell`) and the drawing of decorations
 - Wrapper for `wl_keyboard` for automatic keymap interpretation using `libxkbcommon.so`.
+- Utilites for creating dpi aware surfaces.
 
 ## Documentation
 
