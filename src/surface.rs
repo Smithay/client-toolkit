@@ -48,9 +48,9 @@ where
                             user_data.outputs.push(output);
                         }
                         wl_surface::Event::Leave { output } => {
-                            user_data.outputs.retain(|output2| {
-                                output.id() != output2.id()
-                            });
+                            user_data
+                                .outputs
+                                .retain(|output2| output.id() != output2.id());
                         }
                     };
                     let mut scale_factor = 1;
@@ -81,9 +81,7 @@ pub fn get_dpi_factor(surface: &Proxy<wl_surface::WlSurface>) -> i32 {
 }
 
 /// Returns a list of outputs the surface is displayed on.
-pub fn get_outputs<'a>(
-    surface: &'a Proxy<wl_surface::WlSurface>,
-) -> Vec<Proxy<wl_output::WlOutput>> {
+pub fn get_outputs(surface: &Proxy<wl_surface::WlSurface>) -> Vec<Proxy<wl_output::WlOutput>> {
     surface
         .user_data::<Mutex<SurfaceUserData>>()
         .expect("Surface was not created with create_surface.")
