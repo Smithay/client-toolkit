@@ -40,7 +40,7 @@ where
                         let scale_factor2 = output_manager
                             .with_info(&output, |_id, info| info.scale_factor)
                             .unwrap();
-                        scale_factor = std::cmp::max(scale_factor, scale_factor2);
+                        scale_factor = ::std::cmp::max(scale_factor, scale_factor2);
                     }
                     if old_scale_factor != scale_factor {
                         {
@@ -53,8 +53,7 @@ where
                 },
                 Mutex::new(1),
             )
-        })
-        .unwrap()
+        }).unwrap()
 }
 
 /// Returns the current dpi factor of a surface.
