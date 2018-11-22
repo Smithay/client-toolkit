@@ -57,7 +57,7 @@ fn main() {
     let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     // Use the compositor global to create a new surface
-    let surface = create_surface(&env, |_surface, dpi| {
+    let surface = create_surface(&env, |dpi, _surface| {
         println!("dpi changed to {}", dpi);
     });
 
