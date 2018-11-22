@@ -1,9 +1,23 @@
 //! Utility functions for creating dpi aware wayland surfaces.
 use env::Environment;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequest;
-use wayland_client::protocol::wl_surface;
+use wayland_client::protocol::{wl_output, wl_surface};
 use wayland_client::Proxy;
+
+struct SurfaceUserData {
+    dpi_factor: Arc<Mutex<i32>>,
+    outputs: Arc<RwLock<Vec<Proxy<wl_output::WlOutput>>>>,
+}
+
+impl SurfaceUserData {
+    fn new() -> Self {
+        SurfaceUserData {
+            dpi_factor: Arc::new(Mutex::new(1)),
+            outputs: Arc::new(RwLock::new(Vec::new())),
+        }
+    }
+}
 
 /// Creates a WlSurface from an Environment.
 ///
@@ -16,16 +30,20 @@ pub fn create_surface<F>(
     mut dpi_change: F,
 ) -> Proxy<wl_surface::WlSurface>
 where
-    F: FnMut(i32) + Send + 'static,
+    F: FnMut(&Proxy<wl_surface::WlSurface>, i32) + Send + 'static,
 {
     environment
         .compositor
         .create_surface(move |surface| {
             let output_manager = environment.outputs.clone();
-            let outputs = Arc::new(Mutex::new(Vec::new()));
             surface.implement(
                 move |event, surface| {
-                    let mut outputs = outputs.lock().unwrap();
+                    let mut outputs = surface
+                        .user_data::<SurfaceUserData>()
+                        .unwrap()
+                        .outputs
+                        .write()
+                        .unwrap();
                     let old_scale_factor = get_dpi_factor(&surface);
                     match event {
                         wl_surface::Event::Enter { output } => {
@@ -44,14 +62,18 @@ where
                     }
                     if old_scale_factor != scale_factor {
                         {
-                            let mut ref_scale_factor =
-                                surface.user_data::<Mutex<i32>>().unwrap().lock().unwrap();
+                            let mut ref_scale_factor = surface
+                                .user_data::<SurfaceUserData>()
+                                .unwrap()
+                                .dpi_factor
+                                .lock()
+                                .unwrap();
                             *ref_scale_factor = scale_factor;
                         }
-                        dpi_change(scale_factor);
+                        dpi_change(&surface, scale_factor);
                     }
                 },
-                Mutex::new(1),
+                SurfaceUserData::new(),
             )
         }).unwrap()
 }
@@ -59,8 +81,21 @@ where
 /// Returns the current dpi factor of a surface.
 pub fn get_dpi_factor(surface: &Proxy<wl_surface::WlSurface>) -> i32 {
     *surface
-        .user_data::<Mutex<i32>>()
+        .user_data::<SurfaceUserData>()
         .expect("Surface was not created with create_surface.")
+        .dpi_factor
         .lock()
+        .unwrap()
+}
+
+/// Returns a list of outputs the surface is displayed on.
+pub fn get_outputs<'a>(
+    surface: &'a Proxy<wl_surface::WlSurface>,
+) -> RwLockReadGuard<Vec<Proxy<wl_output::WlOutput>>> {
+    surface
+        .user_data::<SurfaceUserData>()
+        .expect("Surface was not created with create_surface.")
+        .outputs
+        .read()
         .unwrap()
 }
