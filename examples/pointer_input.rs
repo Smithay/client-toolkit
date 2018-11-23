@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_pointer, wl_shm, wl_surface};
@@ -16,42 +15,88 @@ use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, Window};
 use sctk::Environment;
 
+#[derive(Debug)]
+enum NextAction {
+    Refresh,
+    Redraw,
+    Exit,
+}
+
+struct WindowConfig {
+    width: u32,
+    height: u32,
+    dpi_scale: i32,
+    next_action: Option<NextAction>,
+}
+
+impl WindowConfig {
+    pub fn new() -> Self {
+        WindowConfig {
+            width: 320,
+            height: 240,
+            dpi_scale: 1,
+            next_action: None,
+        }
+    }
+
+    pub fn dimensions(&self) -> (u32, u32) {
+        (
+            self.width * self.dpi_scale as u32,
+            self.height * self.dpi_scale as u32,
+        )
+    }
+
+    pub fn handle_action(&mut self, new_action: NextAction) {
+        let replace = match (&self.next_action, &new_action) {
+            (&None, _)
+            | (&Some(NextAction::Refresh), _)
+            | (&Some(NextAction::Redraw), &NextAction::Exit) => true,
+            _ => false,
+        };
+        if replace {
+            self.next_action = Some(new_action);
+        }
+    }
+}
+
 fn main() {
+    let window_config = Arc::new(Mutex::new(WindowConfig::new()));
     let (display, mut event_queue) = Display::connect_to_env().unwrap();
     let env = Environment::from_display(&*display, &mut event_queue).unwrap();
-
-    /*
-     * Create a buffer with window contents
-     */
-
-    let mut dimensions = (320u32, 240u32);
 
     /*
      * Init wayland objects
      */
 
-    let surface = env
-        .compositor
-        .create_surface(|surface| surface.implement(|_, _| {}, ()))
-        .unwrap();
+    let surface = {
+        let window_config = window_config.clone();
+        env.create_surface(move |dpi, surface| {
+            surface.set_buffer_scale(dpi);
+            let mut guard = window_config.lock().unwrap();
+            guard.dpi_scale = dpi;
+            guard.handle_action(NextAction::Redraw);
+        })
+    };
 
-    let next_action = Arc::new(Mutex::new(None::<WEvent>));
-
-    let waction = next_action.clone();
-    let mut window = Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |evt| {
-        let mut next_action = waction.lock().unwrap();
-        // Keep last event in priority order : Close > Configure > Refresh
-        let replace = match (&evt, &*next_action) {
-            (_, &None)
-            | (_, &Some(WEvent::Refresh))
-            | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-            | (&WEvent::Close, _) => true,
-            _ => false,
-        };
-        if replace {
-            *next_action = Some(evt);
-        }
-    }).expect("Failed to create a window !");
+    let mut window = {
+        let window_config = window_config.clone();
+        let dimensions = window_config.lock().unwrap().dimensions();
+        Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |event| {
+            let mut guard = window_config.lock().unwrap();
+            if let WEvent::Configure { new_size, .. } = event {
+                if let Some((width, height)) = new_size {
+                    guard.width = width;
+                    guard.height = height;
+                }
+            }
+            let next_action = match event {
+                WEvent::Refresh => NextAction::Refresh,
+                WEvent::Configure { .. } => NextAction::Redraw,
+                WEvent::Close => NextAction::Exit,
+            };
+            guard.handle_action(next_action);
+        }).expect("Failed to create a window !")
+    };
 
     let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
 
@@ -101,29 +146,29 @@ fn main() {
     }).unwrap();
 
     if !env.shell.needs_configure() {
-        // initial draw to bootstrap on wl_shell
-        if let Some(pool) = pools.pool() {
-            redraw(pool, window.surface(), dimensions).expect("Failed to draw")
-        }
-        window.refresh();
+        window_config
+            .lock()
+            .unwrap()
+            .handle_action(NextAction::Redraw);
     }
 
     loop {
-        match next_action.lock().unwrap().take() {
-            Some(WEvent::Close) => break,
-            Some(WEvent::Refresh) => {
+        let next_action = window_config.lock().unwrap().next_action.take();
+        println!("{:?}", next_action);
+        match next_action {
+            Some(NextAction::Exit) => break,
+            Some(NextAction::Refresh) => {
                 window.refresh();
                 window.surface().commit();
             }
-            Some(WEvent::Configure { new_size, states }) => {
-                if let Some((w, h)) = new_size {
-                    window.resize(w, h);
-                    dimensions = (w, h)
-                }
-                println!("Window states: {:?}", states);
+            Some(NextAction::Redraw) => {
                 window.refresh();
                 if let Some(pool) = pools.pool() {
-                    redraw(pool, window.surface(), dimensions).expect("Failed to draw")
+                    redraw(
+                        pool,
+                        window.surface(),
+                        window_config.lock().unwrap().dimensions(),
+                    ).expect("Failed to draw")
                 }
             }
             None => {}
