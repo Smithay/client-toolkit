@@ -226,11 +226,11 @@ impl Environment {
     }
 
     /// Create a new dpi aware surface
-    pub fn create_surface<F>(&self, dpi_change: Box<F>) -> Proxy<wl_surface::WlSurface>
+    pub fn create_surface<F>(&self, dpi_change: F) -> Proxy<wl_surface::WlSurface>
     where
         F: FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static,
     {
-        let surface = create_surface(&self, dpi_change);
+        let surface = create_surface(&self, Box::new(dpi_change));
         self.surfaces.lock().unwrap().push(surface.clone());
         surface
     }
