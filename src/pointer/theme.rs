@@ -40,7 +40,7 @@ impl ThemeManager {
 
         Ok(ThemeManager {
             compositor,
-            theme: Arc::new(Mutex::new(load_theme(name, 16, &shm))),
+            theme: Arc::new(Mutex::new(load_theme(name, 16 * 16, &shm))),
         })
     }
 
@@ -50,6 +50,8 @@ impl ThemeManager {
             .compositor
             .create_surface(|surface| surface.implement(|_, _| {}, ()))
             .unwrap();
+        surface.set_buffer_scale(4);
+
         ThemedPointer {
             pointer,
             inner: Arc::new(Mutex::new(PointerInner {
@@ -79,6 +81,7 @@ impl ThemeManager {
             .compositor
             .create_surface(|surface| surface.implement(|_, _| {}, ()))
             .unwrap();
+        surface.set_buffer_scale(4);
 
         let inner = Arc::new(Mutex::new(PointerInner {
             surface,
@@ -129,6 +132,7 @@ impl ThemeManager {
             .compositor
             .create_surface(|surface| surface.implement(|_, _| {}, ()))
             .unwrap();
+        surface.set_buffer_scale(4);
 
         let inner = Arc::new(Mutex::new(PointerInner {
             surface,
