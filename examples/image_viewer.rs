@@ -11,7 +11,6 @@ use byteorder::{NativeEndian, WriteBytesExt};
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
-use sctk::surface::create_surface;
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, State, Window};
 use sctk::Environment;
@@ -57,7 +56,7 @@ fn main() {
     let env = Environment::from_display(&*display, &mut event_queue).unwrap();
 
     // Use the compositor global to create a new surface
-    let surface = create_surface(&env, |dpi| {
+    let surface = env.create_surface(|dpi, _surface| {
         println!("dpi changed to {}", dpi);
     });
 
