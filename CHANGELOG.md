@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.3 -- 2018-12-03
+
 - Update dependencies: rand, memmap, nix and image
 - Surface: `create_surface` and `get_dpi_factor` utilities for creating dpi aware surfaces.
 
