@@ -226,6 +226,12 @@ impl Environment {
     }
 
     /// Create a new dpi aware surface
+    ///
+    /// The provided callback will be fired whenever the DPI factor associated to it
+    /// changes.
+    ///
+    /// The DPI factor associated to a surface is defined as the maximum of the DPI
+    /// factors of the outputs it is displayed on.
     pub fn create_surface<F>(&self, dpi_change: F) -> Proxy<wl_surface::WlSurface>
     where
         F: FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static,
