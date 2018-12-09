@@ -159,7 +159,8 @@ impl Environment {
                     },
                     (),
                 )
-            }).expect("Server didn't advertise `wl_shm`?!");
+            })
+            .expect("Server didn't advertise `wl_shm`?!");
 
         let data_device_manager = manager
             .instantiate_auto(|data_device_manager| data_device_manager.implement(|_, _| {}, ()))

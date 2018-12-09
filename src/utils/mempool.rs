@@ -194,7 +194,8 @@ impl MemPool {
                     },
                     (),
                 )
-            }).unwrap()
+            })
+            .unwrap()
     }
 
     /// Uses the memmap crate to map the underlying shared memory file

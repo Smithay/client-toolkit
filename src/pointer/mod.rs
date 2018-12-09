@@ -82,7 +82,8 @@ impl AutoThemer {
                             move |event, seat| implementation(event, AutoPointer::UnThemed(seat)),
                             user_data,
                         )
-                    }).unwrap();
+                    })
+                    .unwrap();
                 AutoPointer::UnThemed(pointer)
             }
         }

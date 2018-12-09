@@ -118,7 +118,8 @@ fn main() {
         // creating the window may fail if the code drawing the frame
         // fails to initialize itself. For ConceptFrame this should not happen
         // unless the system is utterly broken, though.
-    ).expect("Failed to create a window !");
+    )
+    .expect("Failed to create a window !");
 
     // Setting the windows title allows the compositor to know what your
     // window should be called and the title will be display on the header bar
@@ -179,7 +180,8 @@ fn main() {
                 window.surface(),
                 dimensions,
                 if resizing { None } else { Some(&image) },
-            ).expect("Failed to draw")
+            )
+            .expect("Failed to draw")
         }
         window.refresh();
     }
@@ -240,7 +242,8 @@ fn main() {
                         window.surface(),
                         dimensions,
                         if resizing { None } else { Some(&image) },
-                    ).expect("Failed to draw")
+                    )
+                    .expect("Failed to draw")
                 }
                 None => {}
             }

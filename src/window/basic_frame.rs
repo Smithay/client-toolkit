@@ -163,7 +163,8 @@ impl Part {
         let subsurface = subcompositor
             .get_subsurface(&surface, parent, |subsurface| {
                 subsurface.implement(|_, _| {}, ())
-            }).unwrap();
+            })
+            .unwrap();
         Part {
             surface,
             subsurface,
@@ -466,10 +467,11 @@ impl Frame for BasicFrame {
                 None => return,
             };
             // resize the pool as appropriate
-            let pxcount = (HEADER_SIZE * width) + max(
-                (width + 2 * BORDER_SIZE) * BORDER_SIZE,
-                (height + HEADER_SIZE) * BORDER_SIZE,
-            );
+            let pxcount = (HEADER_SIZE * width)
+                + max(
+                    (width + 2 * BORDER_SIZE) * BORDER_SIZE,
+                    (height + HEADER_SIZE) * BORDER_SIZE,
+                );
 
             pool.resize(4 * pxcount as usize)
                 .expect("I/O Error while redrawing the borders");
@@ -510,14 +512,13 @@ impl Frame for BasicFrame {
                             .iter()
                             .flat_map(|p| {
                                 if p.is_alive() {
-                                    let data: &Mutex<
-                                        PointerUserData,
-                                    > = p.user_data().unwrap();
+                                    let data: &Mutex<PointerUserData> = p.user_data().unwrap();
                                     Some(data.lock().unwrap().location)
                                 } else {
                                     None
                                 }
-                            }).collect::<Vec<Location>>(),
+                            })
+                            .collect::<Vec<Location>>(),
                         &*self.theme,
                     );
 
@@ -536,7 +537,8 @@ impl Frame for BasicFrame {
                                     } else {
                                         None
                                     }
-                                }).nth(0)
+                                })
+                                .nth(0)
                             {
                                 let mut font_data = Vec::new();
                                 if let Ok(mut file) = ::std::fs::File::open(font) {
@@ -838,11 +840,13 @@ fn request_for_location(
         }
         Location::Head => Some(FrameRequest::Move(seat.clone())),
         Location::Button(UIButton::Close) => Some(FrameRequest::Close),
-        Location::Button(UIButton::Maximize) => if maximized {
-            Some(FrameRequest::UnMaximize)
-        } else {
-            Some(FrameRequest::Maximize)
-        },
+        Location::Button(UIButton::Maximize) => {
+            if maximized {
+                Some(FrameRequest::UnMaximize)
+            } else {
+                Some(FrameRequest::Maximize)
+            }
+        }
         Location::Button(UIButton::Minimize) => Some(FrameRequest::Minimize),
         _ => None,
     }

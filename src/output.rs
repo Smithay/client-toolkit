@@ -198,7 +198,8 @@ impl OutputMgr {
                     },
                     (),
                 )
-            }).unwrap();
+            })
+            .unwrap();
 
         self.inner
             .lock()

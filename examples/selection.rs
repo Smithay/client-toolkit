@@ -58,7 +58,8 @@ fn main() {
         if replace {
             *next_action = Some(evt);
         }
-    }).expect("Failed to create a window !");
+    })
+    .expect("Failed to create a window !");
 
     window.new_seat(&seat);
     window.set_title("Selection".to_string());
@@ -104,7 +105,8 @@ fn main() {
             }
             _ => (),
         }
-    }).unwrap();
+    })
+    .unwrap();
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell

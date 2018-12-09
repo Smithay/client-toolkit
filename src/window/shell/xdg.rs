@@ -34,7 +34,8 @@ impl Xdg {
                     },
                     (),
                 )
-            }).unwrap();
+            })
+            .unwrap();
         let toplevel = xdgs
             .get_toplevel(|toplevel| {
                 toplevel.implement(
@@ -70,7 +71,8 @@ impl Xdg {
                     },
                     (),
                 )
-            }).unwrap();
+            })
+            .unwrap();
         surface.commit();
         Xdg {
             surface: xdgs,

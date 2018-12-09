@@ -784,7 +784,8 @@ where
             },
             (),
         )
-    }).unwrap()
+    })
+    .unwrap()
 }
 
 /// Implement a keyboard to automatically detect the keymap and send KeyRepeatEvents

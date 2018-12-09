@@ -53,7 +53,8 @@ fn main() {
         if replace {
             *next_action = Some(evt);
         }
-    }).expect("Failed to create a window !");
+    })
+    .expect("Failed to create a window !");
 
     window.set_title("Kbd Input".to_string());
 

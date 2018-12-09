@@ -182,7 +182,8 @@ impl DataDevice {
                     },
                     (),
                 )
-            }).expect("Invalid data device or seat.");
+            })
+            .expect("Invalid data device or seat.");
 
         DataDevice { device, inner }
     }
@@ -219,7 +220,8 @@ impl DataDevice {
                     (),
                     token,
                 )
-            }).expect("Invalid data device or seat.");
+            })
+            .expect("Invalid data device or seat.");
 
         DataDevice { device, inner }
     }

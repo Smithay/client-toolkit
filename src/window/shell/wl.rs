@@ -41,7 +41,8 @@ impl Wl {
                     },
                     (),
                 )
-            }).unwrap();
+            })
+            .unwrap();
         shell_surface.set_toplevel();
         Wl { shell_surface }
     }

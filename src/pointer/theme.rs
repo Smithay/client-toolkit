@@ -101,7 +101,8 @@ impl ThemeManager {
                     },
                     user_data,
                 )
-            }).unwrap();
+            })
+            .unwrap();
 
         ThemedPointer {
             pointer,

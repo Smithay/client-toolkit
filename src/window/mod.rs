@@ -342,7 +342,8 @@ impl<F: Frame + 'static> Window<F> {
                         },
                         (),
                     )
-                }).ok()
+                })
+                .ok()
                 .map(|decoration| {
                     decoration.set_mode(Mode::ServerSide);
                     decoration

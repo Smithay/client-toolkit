@@ -97,7 +97,8 @@ where
                     dpi_change,
                 )),
             )
-        }).unwrap()
+        })
+        .unwrap()
 }
 
 /// Returns the current dpi factor of a surface.

@@ -127,7 +127,8 @@ impl DataSource {
                     move |evt, source: Proxy<_>| data_source_impl(evt, &source, &mut implem),
                     (),
                 )
-            }).expect("Provided a dead data device manager to create a data source.");
+            })
+            .expect("Provided a dead data device manager to create a data source.");
 
         for &mime in mime_types {
             source.offer(mime.into());
@@ -158,7 +159,8 @@ impl DataSource {
                     (),
                     token,
                 )
-            }).expect("Provided a dead data device manager to create a data source.");
+            })
+            .expect("Provided a dead data device manager to create a data source.");
 
         for &mime in mime_types {
             source.offer(mime.into());

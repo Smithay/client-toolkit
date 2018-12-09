@@ -95,7 +95,8 @@ fn main() {
                 WEvent::Close => NextAction::Exit,
             };
             guard.handle_action(next_action);
-        }).expect("Failed to create a window !")
+        })
+        .expect("Failed to create a window !")
     };
 
     let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
@@ -143,7 +144,8 @@ fn main() {
             },
             (),
         )
-    }).unwrap();
+    })
+    .unwrap();
 
     if !env.shell.needs_configure() {
         window_config
@@ -168,7 +170,8 @@ fn main() {
                         pool,
                         window.surface(),
                         window_config.lock().unwrap().dimensions(),
-                    ).expect("Failed to draw")
+                    )
+                    .expect("Failed to draw")
                 }
             }
             None => {}
