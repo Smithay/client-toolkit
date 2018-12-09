@@ -2,14 +2,15 @@
 
 use std::ops::Deref;
 
-use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm};
-use wayland_client::{NewProxy, Proxy, QueueToken};
+use wayland_client::protocol::{wl_pointer, wl_seat};
+use wayland_client::Proxy;
 
 use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
 
 mod theme;
 
 pub use self::theme::{ThemeManager, ThemedPointer};
+use env::Environment;
 
 /// Wrapper to gracefully handle a missing `libwayland-cursor`
 ///
@@ -32,22 +33,10 @@ impl AutoThemer {
     /// Will use the default theme of the system if name is `None`.
     ///
     /// Falls back to `UnThemed` if `libwayland-cursor` is not available.
-    pub fn init(
-        name: Option<&str>,
-        compositor: Proxy<wl_compositor::WlCompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
-    ) -> AutoThemer {
-        match ThemeManager::init(name, compositor, &shm) {
+    pub fn init(environment: &Environment, name: Option<String>) -> Self {
+        match ThemeManager::init(environment, name) {
             Ok(mgr) => AutoThemer::Themed(mgr),
             Err(()) => AutoThemer::UnThemed,
-        }
-    }
-
-    /// Wrap a pointer to theme it
-    pub fn theme_pointer(&self, pointer: Proxy<wl_pointer::WlPointer>) -> AutoPointer {
-        match *self {
-            AutoThemer::Themed(ref mgr) => AutoPointer::Themed(mgr.theme_pointer(pointer)),
-            AutoThemer::UnThemed => AutoPointer::UnThemed(pointer),
         }
     }
 
@@ -84,43 +73,6 @@ impl AutoThemer {
                         )
                     })
                     .unwrap();
-                AutoPointer::UnThemed(pointer)
-            }
-        }
-    }
-
-    /// Initialize a new pointer as a ThemedPointer with an adapter implementation
-    ///
-    /// Like `theme_pointer_with_impl` but allows you to have a non-`Send` implementation.
-    ///
-    /// **Unsafe** for the same reasons as `NewProxy::implement_nonsend`.
-    pub unsafe fn theme_pointer_with_nonsend_impl<Impl, UD>(
-        &self,
-        pointer: NewProxy<wl_pointer::WlPointer>,
-        mut implementation: Impl,
-        user_data: UD,
-        token: &QueueToken,
-    ) -> AutoPointer
-    where
-        Impl: FnMut(wl_pointer::Event, AutoPointer) + Send + 'static,
-        UD: Send + Sync + 'static,
-    {
-        match *self {
-            AutoThemer::Themed(ref mgr) => {
-                let pointer = mgr.theme_pointer_with_nonsend_impl(
-                    pointer,
-                    move |event, pointer| implementation(event, AutoPointer::Themed(pointer)),
-                    user_data,
-                    token,
-                );
-                AutoPointer::Themed(pointer)
-            }
-            AutoThemer::UnThemed => {
-                let pointer = pointer.implement_nonsend(
-                    move |event, pointer| implementation(event, AutoPointer::UnThemed(pointer)),
-                    user_data,
-                    token,
-                );
                 AutoPointer::UnThemed(pointer)
             }
         }
