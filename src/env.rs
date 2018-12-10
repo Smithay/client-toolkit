@@ -1,7 +1,9 @@
 use std::io;
 use std::sync::{Arc, Mutex};
 
+use shell::{create_shell_surface, Event, ShellSurface};
 use surface::{create_surface, SurfaceUserData};
+
 use wayland_client::protocol::{
     wl_compositor, wl_data_device_manager, wl_display, wl_registry, wl_shell, wl_shm,
     wl_subcompositor, wl_surface,
@@ -240,5 +242,17 @@ impl Environment {
         let surface = create_surface(&self, Box::new(dpi_change));
         self.surfaces.lock().unwrap().push(surface.clone());
         surface
+    }
+
+    /// Create a new shell surface
+    pub fn create_shell_surface<Impl>(
+        &self,
+        surface: &Proxy<wl_surface::WlSurface>,
+        shell_impl: Impl,
+    ) -> Box<ShellSurface>
+    where
+        Impl: FnMut(Event) + Send + 'static,
+    {
+        create_shell_surface(&self.shell, surface, shell_impl)
     }
 }

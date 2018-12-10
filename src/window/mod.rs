@@ -1,3 +1,4 @@
+//! Window abstraction
 use std::sync::{Arc, Mutex};
 
 use wayland_client::protocol::{
@@ -18,7 +19,7 @@ use {Environment, Shell};
 
 mod basic_frame;
 mod concept_frame;
-mod shell;
+use shell;
 
 pub use self::basic_frame::BasicFrame;
 pub use self::concept_frame::ConceptFrame;
@@ -217,47 +218,49 @@ impl<F: Frame + 'static> Window<F> {
         )?;
         frame.resize(initial_dims);
         let frame = Arc::new(Mutex::new(frame));
-        let shell_surface = Arc::new(shell::create_shell_surface(shell, &surface, move |evt| {
+        let shell_surface = Arc::new(shell::create_shell_surface(shell, &surface, move |event| {
             if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
-                if let Event::Configure {
-                    states,
-                    mut new_size,
-                } = evt
-                {
-                    let mut frame = inner.frame.lock().unwrap();
-                    // clamp size
-                    new_size = new_size.map(|(w, h)| {
-                        use std::cmp::{max, min};
-                        let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
-                        let (minw, minh) = inner.min_size;
-                        w = max(w, minw as i32);
-                        h = max(h, minh as i32);
-                        if let Some((maxw, maxh)) = inner.max_size {
-                            w = min(w, maxw as i32);
-                            h = min(h, maxh as i32);
+                match event {
+                    shell::Event::Configure {
+                        states,
+                        mut new_size,
+                    } => {
+                        let mut frame = inner.frame.lock().unwrap();
+                        // clamp size
+                        new_size = new_size.map(|(w, h)| {
+                            use std::cmp::{max, min};
+                            let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
+                            let (minw, minh) = inner.min_size;
+                            w = max(w, minw as i32);
+                            h = max(h, minh as i32);
+                            if let Some((maxw, maxh)) = inner.max_size {
+                                w = min(w, maxw as i32);
+                                h = min(h, maxh as i32);
+                            }
+                            (max(w, 1) as u32, max(h, 1) as u32)
+                        });
+                        // compute frame changes
+                        let mut need_refresh = false;
+                        need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
+                        if need_refresh {
+                            // the maximization state changed
+                            if states.contains(&State::Maximized) {
+                                // we are getting maximized, store the size for restoration
+                                inner.old_size = Some(inner.current_size);
+                            } else if new_size.is_none() {
+                                // we are getting de-maximized, restore the size
+                                new_size = inner.old_size.take();
+                            }
                         }
-                        (max(w, 1) as u32, max(h, 1) as u32)
-                    });
-                    // compute frame changes
-                    let mut need_refresh = false;
-                    need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
-                    if need_refresh {
-                        // the maximization state changed
-                        if states.contains(&State::Maximized) {
-                            // we are getting maximized, store the size for restoration
-                            inner.old_size = Some(inner.current_size);
-                        } else if new_size.is_none() {
-                            // we are getting de-maximized, restore the size
-                            new_size = inner.old_size.take();
+                        need_refresh |= frame.set_active(states.contains(&State::Activated));
+                        if need_refresh {
+                            (inner.user_impl)(Event::Refresh);
                         }
+                        (inner.user_impl)(Event::Configure { states, new_size });
                     }
-                    need_refresh |= frame.set_active(states.contains(&State::Activated));
-                    if need_refresh {
-                        (inner.user_impl)(Event::Refresh);
+                    shell::Event::Close => {
+                        (inner.user_impl)(Event::Close);
                     }
-                    (inner.user_impl)(Event::Configure { states, new_size });
-                } else {
-                    (inner.user_impl)(evt);
                 }
             }
         }));

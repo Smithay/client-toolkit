@@ -1,3 +1,7 @@
+//! Smithay Client Toolkit
+//!
+//! Provides various utilities and abstractions for comunicating with various
+//! Wayland compositors.
 #![warn(missing_docs)]
 
 #[macro_use]
@@ -27,6 +31,7 @@ pub mod data_device;
 pub mod keyboard;
 pub mod output;
 pub mod pointer;
+pub mod shell;
 pub mod surface;
 pub mod utils;
 pub mod window;
