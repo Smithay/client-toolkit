@@ -1,3 +1,4 @@
+//! Window abstraction
 use std::sync::{Arc, Mutex};
 
 use wayland_client::protocol::{

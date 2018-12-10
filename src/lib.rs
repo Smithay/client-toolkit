@@ -1,3 +1,7 @@
+//! Smithay Client Toolkit
+//!
+//! Provides various utilities and abstractions for comunicating with various
+//! Wayland compositors.
 #![warn(missing_docs)]
 
 #[macro_use]
