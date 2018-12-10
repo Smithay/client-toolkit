@@ -223,7 +223,7 @@ impl<F: Frame + 'static> Window<F> {
                 match event {
                     shell::Event::Configure {
                         states,
-                        mut new_size
+                        mut new_size,
                     } => {
                         let mut frame = inner.frame.lock().unwrap();
                         // clamp size
