@@ -19,6 +19,7 @@ use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests
 use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
+use env::Environment;
 use pointer::{AutoPointer, AutoThemer};
 use utils::DoubleMemPool;
 
@@ -289,13 +290,15 @@ pub struct BasicFrame {
 
 impl Frame for BasicFrame {
     type Error = ::std::io::Error;
+
     fn init(
+        environment: &Environment,
         base_surface: &Proxy<wl_surface::WlSurface>,
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
         implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<BasicFrame, ::std::io::Error> {
+        let compositor = &environment.compositor;
+        let subcompositor = &environment.subcompositor;
+        let shm = &environment.shm;
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
@@ -322,7 +325,7 @@ impl Frame for BasicFrame {
             active: false,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(None, compositor.clone(), &shm),
+            themer: AutoThemer::init(environment, None),
             surface_version: compositor.version(),
             theme: Box::new(DefaultTheme),
             title: None,

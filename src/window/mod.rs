@@ -1,9 +1,7 @@
 //! Window abstraction
 use std::sync::{Arc, Mutex};
 
-use wayland_client::protocol::{
-    wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
-};
+use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
@@ -15,7 +13,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
-use {Environment, Shell};
+use env::Environment;
 
 mod basic_frame;
 mod concept_frame;
@@ -125,81 +123,26 @@ pub struct Window<F: Frame> {
 impl<F: Frame + 'static> Window<F> {
     /// Create a new window wrapping a given wayland surface as its main content and
     /// following the compositor's preference regarding server-side decorations.
-    pub fn init_from_env<Impl>(
-        env: &Environment,
-        surface: Proxy<wl_surface::WlSurface>,
-        initial_dims: (u32, u32),
-        implementation: Impl,
-    ) -> Result<Window<F>, F::Error>
-    where
-        Impl: FnMut(Event) + Send + 'static,
-    {
-        Self::init_with_decorations(
-            surface,
-            initial_dims,
-            &env.compositor,
-            &env.subcompositor,
-            &env.shm,
-            &env.shell,
-            env.decorations_mgr.as_ref(),
-            implementation,
-        )
-    }
-
-    /// Create a new window wrapping a given wayland surface as its main content
     ///
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
     pub fn init<Impl>(
+        environment: &Environment,
         surface: Proxy<wl_surface::WlSurface>,
         initial_dims: (u32, u32),
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
-        shell: &Shell,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
         Impl: FnMut(Event) + Send + 'static,
     {
-        Self::init_with_decorations(
-            surface,
-            initial_dims,
-            compositor,
-            subcompositor,
-            shm,
-            shell,
-            None,
-            implementation,
-        )
-    }
-
-    /// Create a new window wrapping a given wayland surface as its main content and
-    /// following the compositor's preference regarding server-side decorations
-    ///
-    /// It can fail if the initialization of the frame fails (for example if the
-    /// frame class fails to initialize its SHM).
-    pub fn init_with_decorations<Impl>(
-        surface: Proxy<wl_surface::WlSurface>,
-        initial_dims: (u32, u32),
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
-        shell: &Shell,
-        decoration_mgr: Option<&Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
-        implementation: Impl,
-    ) -> Result<Window<F>, F::Error>
-    where
-        Impl: FnMut(Event) + Send + 'static,
-    {
+        let shell = &environment.shell;
+        let decoration_mgr = environment.decorations_mgr.as_ref();
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
         let shell_inner = inner.clone();
         let mut frame = F::init(
+            environment,
             &surface,
-            compositor,
-            subcompositor,
-            shm,
             Box::new(move |req, serial| {
                 if let Some(ref mut inner) = *shell_inner.lock().unwrap() {
                     match req {
@@ -590,10 +533,8 @@ pub trait Frame: Sized + Send {
     type Error;
     /// Initialize the Frame
     fn init(
+        environment: &Environment,
         base_surface: &Proxy<wl_surface::WlSurface>,
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
         implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
