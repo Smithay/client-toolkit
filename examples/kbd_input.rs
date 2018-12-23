@@ -10,7 +10,6 @@ use byteorder::{NativeEndian, WriteBytesExt};
 use sctk::keyboard::{
     map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatEvent, KeyRepeatKind,
 };
-use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
 use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, Proxy};
@@ -32,15 +31,12 @@ fn main() {
      * Init wayland objects
      */
 
-    let surface = env
-        .compositor
-        .create_surface(|surface| surface.implement(|_, _| {}, ()))
-        .unwrap();
+    let surface = env.create_surface(|_, _| {});
 
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |evt| {
+    let mut window = Window::<ConceptFrame>::init(&env, surface, dimensions, move |evt| {
         let mut next_action = waction.lock().unwrap();
         // Keep last event in priority order : Close > Configure > Refresh
         let replace = match (&evt, &*next_action) {

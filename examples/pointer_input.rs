@@ -81,7 +81,7 @@ fn main() {
     let mut window = {
         let window_config = window_config.clone();
         let dimensions = window_config.lock().unwrap().dimensions();
-        Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |event| {
+        Window::<ConceptFrame>::init(&env, surface, dimensions, move |event| {
             let mut guard = window_config.lock().unwrap();
             if let WEvent::Configure { new_size, .. } = event {
                 if let Some((width, height)) = new_size {

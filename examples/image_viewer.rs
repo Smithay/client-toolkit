@@ -78,8 +78,8 @@ fn main() {
     // Now we actually create the window. The type parameter `ConceptFrame` here
     // specifies the type we want to use to draw the borders. To create your own
     // decorations you just need an object to implement the `Frame` trait.
-    let mut window = Window::<ConceptFrame>::init_from_env(
-        &env,               // the environment containing the wayland globals
+    let mut window = Window::<ConceptFrame>::init(
+        &env,        // the environment containing the wayland globals
         surface,            // the wl_surface that serves as the basis of this window
         image.dimensions(), // the initial internal dimensions of the window
         move |evt| {

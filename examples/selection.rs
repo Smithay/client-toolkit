@@ -45,7 +45,7 @@ fn main() {
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |evt| {
+    let mut window = Window::<ConceptFrame>::init(&env, surface, dimensions, move |evt| {
         let mut next_action = waction.lock().unwrap();
         // Keep last event in priority order : Close > Configure > Refresh
         let replace = match (&evt, &*next_action) {
