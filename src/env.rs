@@ -1,8 +1,9 @@
 use std::io;
 use std::sync::{Arc, Mutex};
 
+use output::OutputMgr;
 use shell::{create_shell_surface, Event, ShellSurface};
-use surface::{create_surface, SurfaceUserData};
+use surface::SurfaceManager;
 
 use wayland_client::protocol::{
     wl_compositor, wl_data_device_manager, wl_display, wl_registry, wl_shell, wl_shm,
@@ -63,10 +64,11 @@ pub struct Environment {
     pub data_device_manager: Proxy<wl_data_device_manager::WlDataDeviceManager>,
     /// A manager for handling the advertised outputs
     pub outputs: ::output::OutputMgr,
+    /// A manager for handling surfaces and dpi changes
+    pub surface_manager: SurfaceManager,
     /// The decoration manager, if the server supports server-side decorations
     pub decorations_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
-    surfaces: Arc<Mutex<Vec<Proxy<wl_surface::WlSurface>>>>,
 }
 
 impl Environment {
@@ -96,44 +98,34 @@ impl Environment {
     where
         Impl: FnMut(GlobalEvent, Proxy<wl_registry::WlRegistry>) + Send + 'static,
     {
-        let outputs = ::output::OutputMgr::new();
-        let outputs2 = outputs.clone();
-
-        let surfaces: Arc<Mutex<Vec<Proxy<wl_surface::WlSurface>>>> =
-            Arc::new(Mutex::new(Vec::new()));
-        let surfaces2 = surfaces.clone();
+        let output_manager = OutputMgr::new();
+        let surface_manager = SurfaceManager::new(output_manager.clone());
 
         let display_wrapper = display.make_wrapper(&evq.get_token()).unwrap();
-        let manager = GlobalManager::new_with_cb(&display_wrapper, move |event, registry| {
-            match event {
-                GlobalEvent::New {
-                    id,
-                    ref interface,
-                    version,
-                } => {
-                    if let "wl_output" = &interface[..] {
-                        outputs2.new_output(id, version, &registry)
-                    }
-                }
-                GlobalEvent::Removed { id, ref interface } => {
-                    if let "wl_output" = &interface[..] {
-                        let output = outputs2
-                            .find_id(id, |output, _info| output.clone())
-                            .unwrap();
-                        for surface in &*surfaces2.lock().unwrap() {
-                            surface
-                                .user_data::<Mutex<SurfaceUserData>>()
-                                .expect("Surface was not created with create_surface.")
-                                .lock()
-                                .unwrap()
-                                .leave(&output, surface.clone())
+        let manager = {
+            let output_manager = output_manager.clone();
+            let surface_manager = surface_manager.clone();
+            GlobalManager::new_with_cb(&display_wrapper, move |event, registry| {
+                match event {
+                    GlobalEvent::New {
+                        id,
+                        ref interface,
+                        version,
+                    } => {
+                        if let "wl_output" = &interface[..] {
+                            output_manager.new_output(id, version, &registry)
                         }
-                        outputs2.output_removed(id)
+                    }
+                    GlobalEvent::Removed { id, ref interface } => {
+                        if let "wl_output" = &interface[..] {
+                            surface_manager.leave_output(id);
+                            output_manager.output_removed(id)
+                        }
                     }
                 }
-            }
-            cb(event, registry);
-        });
+                cb(event, registry);
+            })
+        };
 
         // double sync to retrieve the global list
         // and the globals metadata
@@ -218,8 +210,8 @@ impl Environment {
             shm_formats,
             data_device_manager,
             decorations_mgr,
-            outputs,
-            surfaces,
+            outputs: output_manager,
+            surface_manager,
         })
     }
 
@@ -239,9 +231,7 @@ impl Environment {
     where
         F: FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static,
     {
-        let surface = create_surface(&self, Box::new(dpi_change));
-        self.surfaces.lock().unwrap().push(surface.clone());
-        surface
+        self.surface_manager.create_surface(&self.compositor, dpi_change)
     }
 
     /// Create a new shell surface
