@@ -38,15 +38,17 @@ impl Theme for DefaultTheme {
     // Used for header color
     fn get_primary_color(&self, active: bool) -> [u8; 4] {
         if active {
-            #[cfg(target_endian = "little")]
-            return [0x80, 0x80, 0x80, 0xFF];
-            #[cfg(target_endian = "big")]
-            [0xFF, 0x80, 0x80, 0x80];
+            if cfg!(target_endian = "little") {
+                [0x80, 0x80, 0x80, 0xFF]
+            } else {
+                [0xFF, 0x80, 0x80, 0x80]
+            }
         } else {
-            #[cfg(target_endian = "little")]
-            return [0x60, 0x60, 0x60, 0xFF];
-            #[cfg(target_endian = "big")]
-            [0xFF, 0x60, 0x60, 0x60];
+            if cfg!(target_endian = "little") {
+                [0x60, 0x60, 0x60, 0xFF]
+            } else {
+                [0xFF, 0x60, 0x60, 0x60]
+            }
         }
     }
 
@@ -57,16 +59,18 @@ impl Theme for DefaultTheme {
     fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => {
-                #[cfg(target_endian = "little")]
-                return [0x40, 0x40, 0xFF, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0xFF, 0x40, 0x40]
+                if cfg!(target_endian = "little") {
+                    [0x40, 0x40, 0xFF, 0xFF]
+                } else {
+                    [0xFF, 0xFF, 0x40, 0x40]
+                }
             }
             ButtonState::Idle => {
-                #[cfg(target_endian = "little")]
-                return [0x40, 0x40, 0xB0, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0xB0, 0x40, 0x40]
+                if cfg!(target_endian = "little") {
+                    [0x40, 0x40, 0xB0, 0xFF]
+                } else {
+                    [0xFF, 0xB0, 0x40, 0x40]
+                }
             }
             _ => [0x00, 0x00, 0x00, 0x00],
         }
@@ -75,22 +79,25 @@ impl Theme for DefaultTheme {
     fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => {
-                #[cfg(target_endian = "little")]
-                return [0x40, 0xFF, 0xFF, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0xFF, 0xFF, 0x40]
+                if cfg!(target_endian = "little") {
+                    [0x40, 0xFF, 0xFF, 0xFF]
+                } else {
+                    [0xFF, 0xFF, 0xFF, 0x40]
+                }
             }
             ButtonState::Idle => {
-                #[cfg(target_endian = "little")]
-                return [0x40, 0xB0, 0xB0, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0xB0, 0xB0, 0x40]
+                if cfg!(target_endian = "little") {
+                    [0x40, 0xB0, 0xB0, 0xFF]
+                } else {
+                    [0xFF, 0xB0, 0xB0, 0x40]
+                }
             }
             ButtonState::Disabled => {
-                #[cfg(target_endian = "little")]
-                return [0x20, 0x80, 0x80, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0x80, 0x80, 0x20];
+                if cfg!(target_endian = "little") {
+                    [0x20, 0x80, 0x80, 0xFF]
+                } else {
+                    [0xFF, 0x80, 0x80, 0x20]
+                }
             }
         }
     }
@@ -98,16 +105,18 @@ impl Theme for DefaultTheme {
     fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => {
-                #[cfg(target_endian = "little")]
-                return [0x40, 0xFF, 0x40, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0x40, 0xFF, 0x40]
+                if cfg!(target_endian = "little") {
+                    [0x40, 0xFF, 0x40, 0xFF]
+                } else {
+                    [0xFF, 0x40, 0xFF, 0x40]
+                }
             }
             ButtonState::Idle => {
-                #[cfg(target_endian = "little")]
-                return [0x40, 0xB0, 0x40, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0x40, 0xB0, 0x40]
+                if cfg!(target_endian = "little") {
+                    [0x40, 0xB0, 0x40, 0xFF]
+                } else {
+                    [0xFF, 0x40, 0xB0, 0x40]
+                }
             }
             _ => [0x00, 0x00, 0x00, 0x00],
         }

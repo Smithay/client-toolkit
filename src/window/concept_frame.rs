@@ -38,40 +38,45 @@ impl Theme for DefaultTheme {
     // Used for header color
     fn get_primary_color(&self, active: bool) -> [u8; 4] {
         if active {
-            #[cfg(target_endian = "little")]
-            return [0xE6, 0xE6, 0xE6, 0xFF];
-            #[cfg(target_endian = "big")]
-            [0xFF, 0xE6, 0xE6, 0xE6];
+            if cfg!(target_endian = "little") {
+                [0xE6, 0xE6, 0xE6, 0xFF]
+            } else {
+                [0xFF, 0xE6, 0xE6, 0xE6]
+            }
         } else {
-            #[cfg(target_endian = "little")]
-            return [0xDC, 0xDC, 0xDC, 0xFF];
-            #[cfg(target_endian = "big")]
-            [0xFF, 0xDC, 0xDC, 0xDC];
+            if cfg!(target_endian = "little") {
+                [0xDC, 0xDC, 0xDC, 0xFF]
+            } else {
+                [0xFF, 0xDC, 0xDC, 0xDC]
+            }
         }
     }
 
     // Used for division line
     fn get_secondary_color(&self, active: bool) -> [u8; 4] {
         if active {
-            #[cfg(target_endian = "little")]
-            return [0x1E, 0x1E, 0x1E, 0xFF];
-            #[cfg(target_endian = "big")]
-            [0xFF, 0x1E, 0x1E, 0x1E]
+            if cfg!(target_endian = "little") {
+                [0x1E, 0x1E, 0x1E, 0xFF]
+            } else {
+                [0xFF, 0x1E, 0x1E, 0x1E]
+            }
         } else {
-            #[cfg(target_endian = "little")]
-            return [0x78, 0x78, 0x78, 0xFF];
-            #[cfg(target_endian = "big")]
-            [0xFF, 0x78, 0x78, 0x78];
+            if cfg!(target_endian = "little") {
+                [0x78, 0x78, 0x78, 0xFF]
+            } else {
+                [0xFF, 0x78, 0x78, 0x78]
+            }
         }
     }
 
     fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => {
-                #[cfg(target_endian = "little")]
-                return [0x52, 0x43, 0xD9, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0xD9, 0x43, 0x52];
+                if cfg!(target_endian = "little") {
+                    [0x52, 0x43, 0xD9, 0xFF]
+                } else {
+                    [0xFF, 0xD9, 0x43, 0x52]
+                }
             }
             _ => [0x00, 0x00, 0x00, 0x00],
         }
@@ -80,10 +85,11 @@ impl Theme for DefaultTheme {
     fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => {
-                #[cfg(target_endian = "little")]
-                return [0x70, 0xCB, 0x2D, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0x2D, 0xCB, 0x70];
+                if cfg!(target_endian = "little") {
+                    [0x70, 0xCB, 0x2D, 0xFF]
+                } else {
+                    [0xFF, 0x2D, 0xCB, 0x70]
+                }
             }
             _ => [0x00, 0x00, 0x00, 0x00],
         }
@@ -92,10 +98,11 @@ impl Theme for DefaultTheme {
     fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => {
-                #[cfg(target_endian = "little")]
-                return [0xE8, 0xAD, 0x3C, 0xFF];
-                #[cfg(target_endian = "big")]
-                [0xFF, 0x3C, 0xAD, 0xE8];
+                if cfg!(target_endian = "little") {
+                    [0xE8, 0xAD, 0x3C, 0xFF]
+                } else {
+                    [0xFF, 0x3C, 0xAD, 0xE8]
+                }
             }
             _ => [0x00, 0x00, 0x00, 0x00],
         }
