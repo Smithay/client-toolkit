@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## 0.4.4 -- 2018-12-27
+
 - Shell: expose shell interface and add `create_shell_surface` to `Environment`.
+- Fix build failure on big endian targets
 
 ## 0.4.3 -- 2018-12-03
 
