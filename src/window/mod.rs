@@ -388,6 +388,9 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// This string may be used to identify the surface in a task bar, window list, or other
     /// user interface elements provided by the compositor.
+    ///
+    /// You need to call `refresh()` afterwards for this to properly
+    /// take effect.
     pub fn set_title(&self, title: String) {
         self.frame.lock().unwrap().set_title(title.clone());
         self.shell_surface.set_title(title);
