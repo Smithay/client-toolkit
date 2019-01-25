@@ -47,11 +47,12 @@ impl SurfaceUserData {
     fn compute_dpi_factor(&mut self, surface: Proxy<wl_surface::WlSurface>) {
         let mut scale_factor = 1;
         for output in &self.outputs {
-            let scale_factor2 = self
+            if let Some(scale_factor2) = self
                 .output_manager
                 .with_info(&output, |_id, info| info.scale_factor)
-                .unwrap();
-            scale_factor = ::std::cmp::max(scale_factor, scale_factor2);
+            {
+                scale_factor = ::std::cmp::max(scale_factor, scale_factor2);
+            }
         }
         if self.dpi_factor != scale_factor {
             self.dpi_factor = scale_factor;
