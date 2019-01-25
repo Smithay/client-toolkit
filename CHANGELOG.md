@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Surface: fix panic in `compute_dpi_factor()` by only computing the dpi factor on surfaces known to the OutputMgr
 - Window: `set_title()` now requires a manual `refresh()` for the change to take effect
 
 ## 0.4.4 -- 2018-12-27
