@@ -12,9 +12,10 @@ use std::io;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 use memmap::MmapMut;
-use rand::prelude::*;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
 use wayland_client::Proxy;
@@ -248,10 +249,10 @@ fn create_shm_fd() -> io::Result<RawFd> {
     }
 
     // Fallback to using shm_open
-    let mut rng = thread_rng();
+    let sys_time = SystemTime::now();
     let mut mem_file_handle = format!(
         "/smithay-client-toolkit-{}",
-        rng.gen_range(0, ::std::u32::MAX)
+        sys_time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
     );
     loop {
         match mman::shm_open(
@@ -275,7 +276,7 @@ fn create_shm_fd() -> io::Result<RawFd> {
                 // If a file with that handle exists then change the handle
                 mem_file_handle = format!(
                     "/smithay-client-toolkit-{}",
-                    rng.gen_range(0, ::std::u32::MAX)
+                    sys_time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
                 );
                 continue;
             }
