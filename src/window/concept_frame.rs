@@ -6,7 +6,7 @@ use andrew::line;
 use andrew::shapes::rectangle;
 use andrew::text;
 use andrew::text::fontconfig;
-use andrew::Canvas;
+use andrew::{Canvas, Endian};
 
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
@@ -38,72 +38,38 @@ impl Theme for DefaultTheme {
     // Used for header color
     fn get_primary_color(&self, active: bool) -> [u8; 4] {
         if active {
-            if cfg!(target_endian = "little") {
-                [0xE6, 0xE6, 0xE6, 0xFF]
-            } else {
-                [0xFF, 0xE6, 0xE6, 0xE6]
-            }
+            [0xFF, 0xE6, 0xE6, 0xE6]
         } else {
-            if cfg!(target_endian = "little") {
-                [0xDC, 0xDC, 0xDC, 0xFF]
-            } else {
-                [0xFF, 0xDC, 0xDC, 0xDC]
-            }
+            [0xFF, 0xDC, 0xDC, 0xDC]
         }
     }
 
     // Used for division line
     fn get_secondary_color(&self, active: bool) -> [u8; 4] {
         if active {
-            if cfg!(target_endian = "little") {
-                [0x1E, 0x1E, 0x1E, 0xFF]
-            } else {
-                [0xFF, 0x1E, 0x1E, 0x1E]
-            }
+            [0xFF, 0x1E, 0x1E, 0x1E]
         } else {
-            if cfg!(target_endian = "little") {
-                [0x78, 0x78, 0x78, 0xFF]
-            } else {
-                [0xFF, 0x78, 0x78, 0x78]
-            }
+            [0xFF, 0x78, 0x78, 0x78]
         }
     }
 
     fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
-            ButtonState::Hovered => {
-                if cfg!(target_endian = "little") {
-                    [0x52, 0x43, 0xD9, 0xFF]
-                } else {
-                    [0xFF, 0xD9, 0x43, 0x52]
-                }
-            }
+            ButtonState::Hovered => [0xFF, 0xD9, 0x43, 0x52],
             _ => [0x00, 0x00, 0x00, 0x00],
         }
     }
 
     fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
-            ButtonState::Hovered => {
-                if cfg!(target_endian = "little") {
-                    [0x70, 0xCB, 0x2D, 0xFF]
-                } else {
-                    [0xFF, 0x2D, 0xCB, 0x70]
-                }
-            }
+            ButtonState::Hovered => [0xFF, 0x2D, 0xCB, 0x70],
             _ => [0x00, 0x00, 0x00, 0x00],
         }
     }
 
     fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
-            ButtonState::Hovered => {
-                if cfg!(target_endian = "little") {
-                    [0xE8, 0xAD, 0x3C, 0xFF]
-                } else {
-                    [0xFF, 0x3C, 0xAD, 0xE8]
-                }
-            }
+            ButtonState::Hovered => [0xFF, 0x3C, 0xAD, 0xE8],
             _ => [0x00, 0x00, 0x00, 0x00],
         }
     }
@@ -482,6 +448,7 @@ impl Frame for ConceptFrame {
                         width as usize,
                         HEADER_SIZE as usize,
                         width as usize * 4,
+                        Endian::native(),
                     );
                     header_canvas.clear();
 
