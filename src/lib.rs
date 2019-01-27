@@ -13,7 +13,6 @@ extern crate lazy_static;
 extern crate andrew;
 extern crate memmap;
 extern crate nix;
-extern crate rand;
 #[doc(hidden)]
 pub extern crate wayland_client;
 #[doc(hidden)]
