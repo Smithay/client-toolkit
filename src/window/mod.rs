@@ -549,8 +549,7 @@ impl<F: Frame + 'static> Window<F> {
     /// Provide a type that implements the 'Theme' trait to adjust
     /// the look of the windows decorations
     ///
-    /// The theme must return colors of the format of ARGB8888 and in
-    /// the order of byte endianess
+    /// The theme must return colors of the format of ARGB8888
     pub fn set_theme<T: Theme>(&mut self, theme: T) {
         self.frame.lock().unwrap().set_theme(theme)
     }

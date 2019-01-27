@@ -18,7 +18,7 @@ nix = "0.13"
 dlib = "0.4"
 lazy_static = "1"
 memmap = "0.7"
-andrew = "0.1.2"
+andrew = "0.2.0"
 wayland-commons = { version = "0.21" }
 wayland-client = { version = "0.21", features = ["cursor"] }
 wayland-protocols = { version = "0.21", features = ["native_client", "unstable_protocols"] }

@@ -361,7 +361,7 @@ impl Drop for KbState {
 pub enum KeyRepeatKind {
     /// keys will be repeated at a set rate and delay
     Fixed {
-        /// rate (in milliseconds) at which the repetition should occur
+        /// the number of repetitions per second that should occur
         rate: u64,
         /// delay (in milliseconds) between a key press and the start of repetition
         delay: u64,
@@ -729,10 +729,12 @@ where
                                                 proxy.clone(),
                                             );
                                             // Rate
-                                            thread::sleep(Duration::from_millis(repeat_timing.0));
+                                            thread::sleep(
+                                                Duration::from_secs(1) / repeat_timing.0 as u32,
+                                            );
                                             match thread_kill_chan.lock().unwrap().1.try_recv() {
                                                 Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
-                                                    break
+                                                    break;
                                                 }
                                                 _ => {}
                                             }
