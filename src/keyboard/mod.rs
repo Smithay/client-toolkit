@@ -734,7 +734,7 @@ where
                                             );
                                             match thread_kill_chan.lock().unwrap().1.try_recv() {
                                                 Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
-                                                    break
+                                                    break;
                                                 }
                                                 _ => {}
                                             }
