@@ -729,7 +729,9 @@ where
                                                 proxy.clone(),
                                             );
                                             // Rate
-                                            thread::sleep(Duration::from_millis(repeat_timing.0));
+                                            thread::sleep(
+                                                Duration::from_secs(1) / repeat_timing.0 as u32,
+                                            );
                                             match thread_kill_chan.lock().unwrap().1.try_recv() {
                                                 Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
                                                     break
