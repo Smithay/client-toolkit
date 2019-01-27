@@ -361,7 +361,7 @@ impl Drop for KbState {
 pub enum KeyRepeatKind {
     /// keys will be repeated at a set rate and delay
     Fixed {
-        /// rate (in milliseconds) at which the repetition should occur
+        /// the number of repetitions per second that should occur
         rate: u64,
         /// delay (in milliseconds) between a key press and the start of repetition
         delay: u64,
