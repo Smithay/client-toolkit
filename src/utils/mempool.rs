@@ -18,11 +18,7 @@ use std::time::UNIX_EPOCH;
 use memmap::MmapMut;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
-use wayland_client::Proxy;
-
-use wayland_client::protocol::wl_buffer::RequestsTrait;
-use wayland_client::protocol::wl_shm::RequestsTrait as ShmRequests;
-use wayland_client::protocol::wl_shm_pool::RequestsTrait as PoolRequests;
+use wayland_client::NewProxy;
 
 /// A Double memory pool, for convenient double-buffering
 ///
@@ -41,7 +37,7 @@ pub struct DoubleMemPool {
 
 impl DoubleMemPool {
     /// Create a double memory pool
-    pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<DoubleMemPool>
+    pub fn new<Impl>(shm: &wl_shm::WlShm, implementation: Impl) -> io::Result<DoubleMemPool>
     where
         Impl: FnMut() + Send + 'static,
     {
@@ -104,7 +100,7 @@ impl DoubleMemPool {
 pub struct MemPool {
     file: File,
     len: usize,
-    pool: Proxy<wl_shm_pool::WlShmPool>,
+    pool: wl_shm_pool::WlShmPool,
     buffer_count: Arc<Mutex<u32>>,
     mmap: MmapMut,
     implementation: Arc<Mutex<FnMut() + Send>>,
@@ -112,7 +108,7 @@ pub struct MemPool {
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
-    pub fn new<Impl>(shm: &Proxy<wl_shm::WlShm>, implementation: Impl) -> io::Result<MemPool>
+    pub fn new<Impl>(shm: &wl_shm::WlShm, implementation: Impl) -> io::Result<MemPool>
     where
         Impl: FnMut() + Send + 'static,
     {
@@ -121,7 +117,7 @@ impl MemPool {
         mem_file.set_len(128)?;
 
         let pool = shm
-            .create_pool(mem_fd, 128, |pool| pool.implement(|e, _| match e {}, ()))
+            .create_pool(mem_fd, 128, NewProxy::implement_dummy)
             .unwrap();
 
         let mmap = unsafe { MmapMut::map_mut(&mem_file).unwrap() };
@@ -176,14 +172,14 @@ impl MemPool {
         height: i32,
         stride: i32,
         format: wl_shm::Format,
-    ) -> Proxy<wl_buffer::WlBuffer> {
+    ) -> wl_buffer::WlBuffer {
         *self.buffer_count.lock().unwrap() += 1;
         let my_buffer_count = self.buffer_count.clone();
         let my_implementation = self.implementation.clone();
         self.pool
             .create_buffer(offset, width, height, stride, format, |buffer| {
-                buffer.implement(
-                    move |event, buffer: Proxy<wl_buffer::WlBuffer>| match event {
+                buffer.implement_closure(
+                    move |event, buffer: wl_buffer::WlBuffer| match event {
                         wl_buffer::Event::Release => {
                             buffer.destroy();
                             let mut my_buffer_count = my_buffer_count.lock().unwrap();
@@ -192,6 +188,7 @@ impl MemPool {
                                 (&mut *my_implementation.lock().unwrap())();
                             }
                         }
+                        _ => unreachable!(),
                     },
                     (),
                 )

@@ -7,10 +7,8 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::reexports::client::protocol::wl_seat::RequestsTrait as SeatRequests;
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_pointer, wl_shm, wl_surface};
-use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::{Display, NewProxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, Window};
 use sctk::Environment;
@@ -108,14 +106,14 @@ fn main() {
     // initialize a seat to retrieve keyboard events
     let seat = env
         .manager
-        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .instantiate_auto(NewProxy::implement_dummy)
         .unwrap();
 
     window.new_seat(&seat);
 
     let main_surface = window.surface().clone();
     seat.get_pointer(move |ptr| {
-        ptr.implement(
+        ptr.implement_closure(
             move |evt, _| match evt {
                 wl_pointer::Event::Enter {
                     surface,
@@ -184,7 +182,7 @@ fn main() {
 
 fn redraw(
     pool: &mut MemPool,
-    surface: &Proxy<wl_surface::WlSurface>,
+    surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant

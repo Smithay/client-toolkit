@@ -8,9 +8,8 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
-use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::{Display, NewProxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, State, Window};
 use sctk::Environment;
@@ -135,7 +134,7 @@ fn main() {
     // Thus, we just automatically bind the first seat we find.
     let seat = env
         .manager
-        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .instantiate_auto(NewProxy::implement_dummy)
         .unwrap();
     // And advertise it to the Window so it knows of it and can process the
     // required pointer events.
@@ -261,10 +260,7 @@ fn main() {
 }
 
 // The draw function, which drawn `base_image` in the provided `MemPool`,
-// at given dimensions, and returns a wl_buffer to it.
-//
-// It simply returns the `NewProxy`, as we'll take care of implementing the
-// wl_buffer outside of this function.
+// at given dimensions.
 //
 // If `base_image` is `None`, it'll just draw black contents. This is to
 // improve performance during resizing: we need to redraw the window frequently
@@ -273,7 +269,7 @@ fn main() {
 // just draw black contents to not feel laggy.
 fn redraw(
     pool: &mut MemPool,
-    surface: &Proxy<wl_surface::WlSurface>,
+    surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
     base_image: Option<&image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
 ) -> Result<(), ::std::io::Error> {
@@ -352,7 +348,7 @@ fn redraw(
     );
     surface.attach(Some(&new_buffer), 0, 0);
     // damage the surface so that the compositor knows it needs to redraw it
-    if surface.version() >= 4 {
+    if surface.as_ref().version() >= 4 {
         // If our server is recent enough and supports at least version 4 of the
         // wl_surface interface, we can specify the damage in buffer coordinates.
         // This is obviously the best and do that if possible.

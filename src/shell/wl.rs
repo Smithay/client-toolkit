@@ -1,21 +1,17 @@
 use wayland_client::protocol::{wl_output, wl_seat, wl_shell, wl_shell_surface, wl_surface};
-use wayland_client::Proxy;
-
-use wayland_client::protocol::wl_shell::RequestsTrait as ShellRequests;
-use wayland_client::protocol::wl_shell_surface::RequestsTrait as ShellSurfaceRequests;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
 use super::{Event, ShellSurface};
 
 pub(crate) struct Wl {
-    shell_surface: Proxy<wl_shell_surface::WlShellSurface>,
+    shell_surface: wl_shell_surface::WlShellSurface,
 }
 
 impl Wl {
     pub(crate) fn create<Impl>(
-        surface: &Proxy<wl_surface::WlSurface>,
-        shell: &Proxy<wl_shell::WlShell>,
+        surface: &wl_surface::WlSurface,
+        shell: &wl_shell::WlShell,
         mut implementation: Impl,
     ) -> Wl
     where
@@ -23,8 +19,8 @@ impl Wl {
     {
         let shell_surface = shell
             .get_shell_surface(surface, |shell_surface| {
-                shell_surface.implement(
-                    move |event, shell_surface: Proxy<_>| match event {
+                shell_surface.implement_closure(
+                    move |event, shell_surface| match event {
                         wl_shell_surface::Event::Ping { serial } => {
                             shell_surface.pong(serial);
                         }
@@ -38,6 +34,7 @@ impl Wl {
                         wl_shell_surface::Event::PopupDone => {
                             unreachable!();
                         }
+                        _ => unreachable!(),
                     },
                     (),
                 )
@@ -49,7 +46,7 @@ impl Wl {
 }
 
 impl ShellSurface for Wl {
-    fn resize(&self, seat: &Proxy<wl_seat::WlSeat>, serial: u32, edges: xdg_toplevel::ResizeEdge) {
+    fn resize(&self, seat: &wl_seat::WlSeat, serial: u32, edges: xdg_toplevel::ResizeEdge) {
         let edges = match edges {
             xdg_toplevel::ResizeEdge::None => wl_shell_surface::Resize::None,
             xdg_toplevel::ResizeEdge::Top => wl_shell_surface::Resize::Top,
@@ -60,11 +57,12 @@ impl ShellSurface for Wl {
             xdg_toplevel::ResizeEdge::TopRight => wl_shell_surface::Resize::TopRight,
             xdg_toplevel::ResizeEdge::BottomLeft => wl_shell_surface::Resize::BottomLeft,
             xdg_toplevel::ResizeEdge::BottomRight => wl_shell_surface::Resize::BottomRight,
+            _ => unreachable!(),
         };
         self.shell_surface.resize(seat, serial, edges);
     }
 
-    fn move_(&self, seat: &Proxy<wl_seat::WlSeat>, serial: u32) {
+    fn move_(&self, seat: &wl_seat::WlSeat, serial: u32) {
         self.shell_surface._move(seat, serial);
     }
 
@@ -75,7 +73,7 @@ impl ShellSurface for Wl {
     fn set_app_id(&self, app_id: String) {
         self.shell_surface.set_class(app_id);
     }
-    fn set_fullscreen(&self, output: Option<&Proxy<wl_output::WlOutput>>) {
+    fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
         self.shell_surface
             .set_fullscreen(wl_shell_surface::FullscreenMethod::Default, 0, output)
     }
@@ -108,7 +106,7 @@ impl ShellSurface for Wl {
         /* not available */
     }
 
-    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>> {
+    fn get_xdg(&self) -> Option<&xdg_toplevel::XdgToplevel> {
         None
     }
 }

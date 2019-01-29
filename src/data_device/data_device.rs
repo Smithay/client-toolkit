@@ -1,11 +1,7 @@
 use wayland_client::protocol::{
     wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat, wl_surface,
 };
-use wayland_client::{NewProxy, Proxy, QueueToken};
-
-use wayland_client::protocol::wl_data_device::RequestsTrait as DeviceRequests;
-use wayland_client::protocol::wl_data_device_manager::RequestsTrait as MgrRequests;
-use wayland_client::protocol::wl_data_source::RequestsTrait as SourceRequests;
+use wayland_client::NewProxy;
 
 use std::sync::{Arc, Mutex};
 
@@ -22,12 +18,12 @@ impl Inner {
         self.known_offers.push(DataOffer::new(offer));
     }
 
-    fn set_selection(&mut self, offer: Option<Proxy<wl_data_offer::WlDataOffer>>) {
+    fn set_selection(&mut self, offer: Option<wl_data_offer::WlDataOffer>) {
         if let Some(offer) = offer {
             if let Some(id) = self
                 .known_offers
                 .iter()
-                .position(|o| o.offer.equals(&offer))
+                .position(|o| o.offer.as_ref().equals(&offer.as_ref()))
             {
                 self.selection = Some(self.known_offers.swap_remove(id));
             } else {
@@ -39,12 +35,12 @@ impl Inner {
         }
     }
 
-    fn set_dnd(&mut self, offer: Option<Proxy<wl_data_offer::WlDataOffer>>) {
+    fn set_dnd(&mut self, offer: Option<wl_data_offer::WlDataOffer>) {
         if let Some(offer) = offer {
             if let Some(id) = self
                 .known_offers
                 .iter()
-                .position(|o| o.offer.equals(&offer))
+                .position(|o| o.offer.as_ref().equals(&offer.as_ref()))
             {
                 self.current_dnd = Some(self.known_offers.swap_remove(id));
             } else {
@@ -63,7 +59,7 @@ impl Inner {
 /// data through drag'n'drop or copy/paste actions. It is associated
 /// with a seat upon creation.
 pub struct DataDevice {
-    device: Proxy<wl_data_device::WlDataDevice>,
+    device: wl_data_device::WlDataDevice,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -79,7 +75,7 @@ pub enum DndEvent<'a> {
         /// A serial associated with the entry of this dnd
         serial: u32,
         /// The entered surface
-        surface: Proxy<wl_surface::WlSurface>,
+        surface: wl_surface::WlSurface,
         /// horizontal location on the surface
         x: f64,
         /// vertical location on the surface
@@ -150,6 +146,7 @@ where
             });
         }
         Event::Selection { id } => inner.set_selection(id),
+        _ => unreachable!(),
     }
 }
 
@@ -159,12 +156,12 @@ impl DataDevice {
     /// You need to provide an implementation that will handle drag'n'drop
     /// events.
     pub fn init_for_seat<Impl>(
-        manager: &Proxy<wl_data_device_manager::WlDataDeviceManager>,
-        seat: &Proxy<wl_seat::WlSeat>,
+        manager: &wl_data_device_manager::WlDataDeviceManager,
+        seat: &wl_seat::WlSeat,
         mut implem: Impl,
     ) -> DataDevice
     where
-        for<'a> Impl: FnMut(DndEvent<'a>) + Send + 'static,
+        for<'a> Impl: FnMut(DndEvent<'a>) + 'static,
     {
         let inner = Arc::new(Mutex::new(Inner {
             selection: None,
@@ -175,50 +172,12 @@ impl DataDevice {
         let inner2 = inner.clone();
         let device = manager
             .get_data_device(seat, move |device| {
-                device.implement(
+                device.implement_closure(
                     move |evt, _| {
                         let mut inner = inner2.lock().unwrap();
                         data_device_implem(evt, &mut *inner, &mut implem);
                     },
                     (),
-                )
-            })
-            .expect("Invalid data device or seat.");
-
-        DataDevice { device, inner }
-    }
-
-    /// Create the DataDevice helper for this seat.
-    ///
-    /// Same as `init_for_seat()`, but allows the implementation to
-    /// not be send.
-    ///
-    /// **unsafety**: unsafe for the same reasons as `NewProxy::implement_nonsend`.
-    pub unsafe fn init_for_seat_nonsend<Impl>(
-        manager: &Proxy<wl_data_device_manager::WlDataDeviceManager>,
-        seat: &Proxy<wl_seat::WlSeat>,
-        mut implem: Impl,
-        token: &QueueToken,
-    ) -> DataDevice
-    where
-        for<'a> Impl: FnMut(DndEvent<'a>) + Send + 'static,
-    {
-        let inner = Arc::new(Mutex::new(Inner {
-            selection: None,
-            current_dnd: None,
-            known_offers: Vec::new(),
-        }));
-
-        let inner2 = inner.clone();
-        let device = manager
-            .get_data_device(seat, move |device| {
-                device.implement_nonsend(
-                    move |evt, _| {
-                        let mut inner = inner2.lock().unwrap();
-                        data_device_implem(evt, &mut *inner, &mut implem);
-                    },
-                    (),
-                    token,
                 )
             })
             .expect("Invalid data device or seat.");
@@ -243,10 +202,10 @@ impl DataDevice {
     /// this drag'n'drop for user visibility.
     pub fn start_drag(
         &self,
-        origin: &Proxy<wl_surface::WlSurface>,
+        origin: &wl_surface::WlSurface,
         source: Option<DataSource>,
         actions: DndAction,
-        icon: Option<&Proxy<wl_surface::WlSurface>>,
+        icon: Option<&wl_surface::WlSurface>,
         serial: u32,
     ) {
         if let Some(source) = source {

@@ -8,7 +8,7 @@ use wayland_client::protocol::{
     wl_compositor, wl_data_device_manager, wl_display, wl_registry, wl_shell, wl_shm,
     wl_subcompositor, wl_surface,
 };
-use wayland_client::{EventQueue, GlobalEvent, GlobalManager, Proxy};
+use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy};
 use wayland_protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1;
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
@@ -16,11 +16,11 @@ use wayland_protocols::xdg_shell::client::xdg_wm_base;
 /// Possible shell globals
 pub enum Shell {
     /// Using xdg_shell protocol, the standard
-    Xdg(Proxy<xdg_wm_base::XdgWmBase>),
+    Xdg(xdg_wm_base::XdgWmBase),
     /// Old version of xdg_shell, for compatibility
-    Zxdg(Proxy<zxdg_shell_v6::ZxdgShellV6>),
+    Zxdg(zxdg_shell_v6::ZxdgShellV6),
     /// Using wl_shell, deprecated, compatibility mode
-    Wl(Proxy<wl_shell::WlShell>),
+    Wl(wl_shell::WlShell),
 }
 
 impl Shell {
@@ -48,25 +48,25 @@ pub struct Environment {
     /// The underlying GlobalManager wrapping your registry
     pub manager: GlobalManager,
     /// The compositor global, used to create surfaces
-    pub compositor: Proxy<wl_compositor::WlCompositor>,
+    pub compositor: wl_compositor::WlCompositor,
     /// The subcompositor global, used to create subsurfaces
-    pub subcompositor: Proxy<wl_subcompositor::WlSubcompositor>,
+    pub subcompositor: wl_subcompositor::WlSubcompositor,
     /// The shell global, used make your surfaces into windows
     ///
     /// This tries to bind using the xdg_shell protocol, and fallbacks
     /// to wl_shell if it fails
     pub shell: Shell,
     /// The SHM global, to create shared memory buffers
-    pub shm: Proxy<wl_shm::WlShm>,
+    pub shm: wl_shm::WlShm,
     /// The data device manager, used to handle drag&drop and selection
     /// copy/paste
-    pub data_device_manager: Proxy<wl_data_device_manager::WlDataDeviceManager>,
+    pub data_device_manager: wl_data_device_manager::WlDataDeviceManager,
     /// A manager for handling the advertised outputs
     pub outputs: ::output::OutputMgr,
     /// The decoration manager, if the server supports server-side decorations
-    pub decorations_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
+    pub decorations_mgr: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
-    surfaces: Arc<Mutex<Vec<Proxy<wl_surface::WlSurface>>>>,
+    surfaces: Arc<Mutex<Vec<wl_surface::WlSurface>>>,
 }
 
 impl Environment {
@@ -76,7 +76,7 @@ impl Environment {
     /// the initialization process does a few roundtrip to the server
     /// to initialize all the globals.
     pub fn from_display(
-        display: &Proxy<wl_display::WlDisplay>,
+        display: &wl_display::WlDisplay,
         evq: &mut EventQueue,
     ) -> io::Result<Environment> {
         Environment::from_display_with_cb(display, evq, |_, _| {})
@@ -89,21 +89,24 @@ impl Environment {
     /// `GlobalManager::new_with_cb`. Note that you will still
     /// receive events even if they are processed by this `Environment`.
     pub fn from_display_with_cb<Impl>(
-        display: &Proxy<wl_display::WlDisplay>,
+        display: &wl_display::WlDisplay,
         evq: &mut EventQueue,
         mut cb: Impl,
     ) -> io::Result<Environment>
     where
-        Impl: FnMut(GlobalEvent, Proxy<wl_registry::WlRegistry>) + Send + 'static,
+        Impl: FnMut(GlobalEvent, wl_registry::WlRegistry) + 'static,
     {
         let outputs = ::output::OutputMgr::new();
         let outputs2 = outputs.clone();
 
-        let surfaces: Arc<Mutex<Vec<Proxy<wl_surface::WlSurface>>>> =
-            Arc::new(Mutex::new(Vec::new()));
+        let surfaces: Arc<Mutex<Vec<wl_surface::WlSurface>>> = Arc::new(Mutex::new(Vec::new()));
         let surfaces2 = surfaces.clone();
 
-        let display_wrapper = display.make_wrapper(&evq.get_token()).unwrap();
+        let display_wrapper = display
+            .as_ref()
+            .make_wrapper(&evq.get_token())
+            .unwrap()
+            .into();
         let manager = GlobalManager::new_with_cb(&display_wrapper, move |event, registry| {
             match event {
                 GlobalEvent::New {
@@ -122,6 +125,7 @@ impl Environment {
                             .unwrap();
                         for surface in &*surfaces2.lock().unwrap() {
                             surface
+                                .as_ref()
                                 .user_data::<Mutex<SurfaceUserData>>()
                                 .expect("Surface was not created with create_surface.")
                                 .lock()
@@ -142,22 +146,24 @@ impl Environment {
 
         // wl_compositor
         let compositor = manager
-            .instantiate_auto(|compositor| compositor.implement(|_, _| {}, ()))
+            .instantiate_range(1, 4, NewProxy::implement_dummy)
             .expect("Server didn't advertise `wl_compositor`?!");
 
         // wl_subcompositor
         let subcompositor = manager
-            .instantiate_auto(|subcompositor| subcompositor.implement(|_, _| {}, ()))
+            .instantiate_range(1, 1, NewProxy::implement_dummy)
             .expect("Server didn't advertise `wl_subcompositor`?!");
 
         // wl_shm
         let shm_formats = Arc::new(Mutex::new(Vec::new()));
         let shm_formats2 = shm_formats.clone();
         let shm = manager
-            .instantiate_auto(|shm| {
-                shm.implement(
-                    move |wl_shm::Event::Format { format }, _| {
-                        shm_formats2.lock().unwrap().push(format);
+            .instantiate_range(1, 1, |shm| {
+                shm.implement_closure(
+                    move |evt, _| {
+                        if let wl_shm::Event::Format { format } = evt {
+                            shm_formats2.lock().unwrap().push(format);
+                        }
                     },
                     (),
                 )
@@ -165,33 +171,36 @@ impl Environment {
             .expect("Server didn't advertise `wl_shm`?!");
 
         let data_device_manager = manager
-            .instantiate_auto(|data_device_manager| data_device_manager.implement(|_, _| {}, ()))
+            .instantiate_range(1, 3, NewProxy::implement_dummy)
             .expect("Server didn't advertise `wl_data_device_manager`?!");
 
         // shells
-        let shell = if let Ok(wm_base) = manager.instantiate_auto(|wm_base| {
-            wm_base.implement(
-                |xdg_wm_base::Event::Ping { serial }, proxy: Proxy<_>| {
-                    use self::xdg_wm_base::RequestsTrait;
-                    proxy.pong(serial)
-                },
-                (),
-            )
-        }) {
+        let shell = if let Ok(wm_base) =
+            manager.instantiate_exact(1, |wm_base: NewProxy<xdg_wm_base::XdgWmBase>| {
+                wm_base.implement_closure(
+                    |evt, shell| {
+                        if let xdg_wm_base::Event::Ping { serial } = evt {
+                            shell.pong(serial)
+                        }
+                    },
+                    (),
+                )
+            }) {
             Shell::Xdg(wm_base)
-        } else if let Ok(xdg_shell) = manager.instantiate_auto(|xdg_shell| {
-            xdg_shell.implement(
-                |zxdg_shell_v6::Event::Ping { serial }, proxy: Proxy<_>| {
-                    use self::zxdg_shell_v6::RequestsTrait;
-                    proxy.pong(serial)
-                },
-                (),
-            )
-        }) {
-            Shell::Zxdg(xdg_shell)
-        } else if let Ok(wl_shell) =
-            manager.instantiate_auto(|wl_shell| wl_shell.implement(|_, _| {}, ()))
+        } else if let Ok(xdg_shell) =
+            manager.instantiate_exact(1, |xdg_shell: NewProxy<zxdg_shell_v6::ZxdgShellV6>| {
+                xdg_shell.implement_closure(
+                    |evt, shell| {
+                        if let zxdg_shell_v6::Event::Ping { serial } = evt {
+                            shell.pong(serial);
+                        }
+                    },
+                    (),
+                )
+            })
         {
+            Shell::Zxdg(xdg_shell)
+        } else if let Ok(wl_shell) = manager.instantiate_exact(1, NewProxy::implement_dummy) {
             Shell::Wl(wl_shell)
         } else {
             panic!("Server didn't advertise neither `xdg_wm_base` nor `wl_shell`?!");
@@ -199,9 +208,7 @@ impl Environment {
 
         // try to retrieve the decoration manager
         let decorations_mgr = if let Shell::Xdg(_) = shell {
-            manager
-                .instantiate_auto(|mgr| mgr.implement(|_, _| {}, ()))
-                .ok()
+            manager.instantiate_exact(1, NewProxy::implement_dummy).ok()
         } else {
             None
         };
@@ -235,9 +242,9 @@ impl Environment {
     ///
     /// The DPI factor associated to a surface is defined as the maximum of the DPI
     /// factors of the outputs it is displayed on.
-    pub fn create_surface<F>(&self, dpi_change: F) -> Proxy<wl_surface::WlSurface>
+    pub fn create_surface<F>(&self, dpi_change: F) -> wl_surface::WlSurface
     where
-        F: FnMut(i32, Proxy<wl_surface::WlSurface>) + Send + 'static,
+        F: FnMut(i32, wl_surface::WlSurface) + Send + 'static,
     {
         let surface = create_surface(&self, Box::new(dpi_change));
         self.surfaces.lock().unwrap().push(surface.clone());
@@ -247,7 +254,7 @@ impl Environment {
     /// Create a new shell surface
     pub fn create_shell_surface<Impl>(
         &self,
-        surface: &Proxy<wl_surface::WlSurface>,
+        surface: &wl_surface::WlSurface,
         shell_impl: Impl,
     ) -> Box<ShellSurface>
     where

@@ -6,7 +6,7 @@
 //! You simply need to provide an implementation to receive the
 //! intepreted events, as described by the `Event` enum of this modules.
 //!
-//! Implementation of you `NewProxy<WlKeyboard>` can be done with the
+//! Implementation of your `NewProxy<WlKeyboard>` can be done with the
 //! `map_keyboard_auto` or the `map_keyboard_rmlvo` functions depending
 //! on whether you wish to use the keymap provided by the server or a
 //! specific one.
@@ -26,9 +26,6 @@ use memmap::MmapOptions;
 
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::protocol::{wl_keyboard, wl_seat, wl_surface};
-use wayland_client::Proxy;
-
-use wayland_client::protocol::wl_seat::RequestsTrait;
 
 use self::ffi::xkb_state_component;
 use self::ffi::XKBCOMMON_HANDLE as XKBH;
@@ -406,7 +403,7 @@ pub enum Event<'a> {
         /// serial number of the event
         serial: u32,
         /// surface that was entered
-        surface: Proxy<wl_surface::WlSurface>,
+        surface: wl_surface::WlSurface,
         /// raw values of the currently pressed keys
         rawkeys: &'a [u32],
         /// interpreted symbols of the currently pressed keys
@@ -417,7 +414,7 @@ pub enum Event<'a> {
         /// serial number of the event
         serial: u32,
         /// surface that was left
-        surface: Proxy<wl_surface::WlSurface>,
+        surface: wl_surface::WlSurface,
     },
     /// A key event occurred
     Key {
@@ -473,11 +470,11 @@ pub struct KeyRepeatEvent {
 ///
 /// Returns an error if xkbcommon could not be initialized.
 pub fn map_keyboard_auto<Impl>(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     implementation: Impl,
-) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
+) -> Result<wl_keyboard::WlKeyboard, Error>
 where
-    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + Send + 'static,
 {
     let state = match KbState::new() {
         Ok(s) => s,
@@ -502,12 +499,12 @@ where
 /// Returns an error if xkbcommon could not be initialized or the RMLVO specification
 /// contained invalid values.
 pub fn map_keyboard_rmlvo<Impl>(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     rmlvo: RMLVO,
     implementation: Impl,
-) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
+) -> Result<wl_keyboard::WlKeyboard, Error>
 where
-    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + Send + 'static,
 {
     fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
         s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
@@ -551,14 +548,14 @@ where
 }
 
 fn implement_kbd<Impl, RepeatImpl>(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     state: KbState,
     mut event_impl: Impl,
     repeat: Option<(KeyRepeatKind, RepeatImpl)>,
-) -> Proxy<wl_keyboard::WlKeyboard>
+) -> wl_keyboard::WlKeyboard
 where
-    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
-    RepeatImpl: FnMut(KeyRepeatEvent, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + Send + 'static,
+    RepeatImpl: FnMut(KeyRepeatEvent, wl_keyboard::WlKeyboard) + Send + 'static,
 {
     let safe_state = Arc::new(Mutex::new(state));
     let (key_repeat_kind, repeat_impl) = {
@@ -574,8 +571,8 @@ where
     let system_repeat_timing: Arc<Mutex<(u64, u64)>> = Arc::new(Mutex::new((30, 500)));
 
     seat.get_keyboard(|kbd| {
-        kbd.implement(
-            move |event: wl_keyboard::Event, proxy: Proxy<wl_keyboard::WlKeyboard>| {
+        kbd.implement_closure(
+            move |event: wl_keyboard::Event, proxy: wl_keyboard::WlKeyboard| {
                 let mut state = safe_state.lock().unwrap();
                 match event {
                     wl_keyboard::Event::Keymap { format, fd, size } => {
@@ -805,14 +802,14 @@ where
 ///
 /// Returns an error if xkbcommon could not be initialized.
 pub fn map_keyboard_auto_with_repeat<Impl, RepeatImpl>(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
     repeat_implementation: RepeatImpl,
-) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
+) -> Result<wl_keyboard::WlKeyboard, Error>
 where
-    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
-    RepeatImpl: FnMut(KeyRepeatEvent, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + Send + 'static,
+    RepeatImpl: FnMut(KeyRepeatEvent, wl_keyboard::WlKeyboard) + Send + 'static,
 {
     let state = match KbState::new() {
         Ok(s) => s,
@@ -841,15 +838,15 @@ where
 /// Returns an error if xkbcommon could not be initialized or the RMLVO specification
 /// contained invalid values.
 pub fn map_keyboard_rmlvo_with_repeat<Impl, RepeatImpl>(
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     rmlvo: RMLVO,
     key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
     repeat_implementation: RepeatImpl,
-) -> Result<Proxy<wl_keyboard::WlKeyboard>, Error>
+) -> Result<wl_keyboard::WlKeyboard, Error>
 where
-    for<'a> Impl: FnMut(Event<'a>, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
-    RepeatImpl: FnMut(KeyRepeatEvent, Proxy<wl_keyboard::WlKeyboard>) + Send + 'static,
+    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + Send + 'static,
+    RepeatImpl: FnMut(KeyRepeatEvent, wl_keyboard::WlKeyboard) + Send + 'static,
 {
     fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
         s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))

@@ -1,24 +1,18 @@
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
-use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base};
-
-use wayland_client::protocol::wl_surface::RequestsTrait as WlSurfaceRequests;
-use wayland_protocols::xdg_shell::client::xdg_surface::RequestsTrait as SurfaceRequests;
-use wayland_protocols::xdg_shell::client::xdg_toplevel::RequestsTrait as ToplevelRequests;
-use wayland_protocols::xdg_shell::client::xdg_wm_base::RequestsTrait as ShellRequests;
 
 use super::{Event, ShellSurface};
 
 pub(crate) struct Xdg {
-    surface: Proxy<xdg_surface::XdgSurface>,
-    toplevel: Proxy<xdg_toplevel::XdgToplevel>,
+    surface: xdg_surface::XdgSurface,
+    toplevel: xdg_toplevel::XdgToplevel,
 }
 
 impl Xdg {
     pub(crate) fn create<Impl>(
-        surface: &Proxy<wl_surface::WlSurface>,
-        shell: &Proxy<xdg_wm_base::XdgWmBase>,
+        surface: &wl_surface::WlSurface,
+        shell: &xdg_wm_base::XdgWmBase,
         mut implementation: Impl,
     ) -> Xdg
     where
@@ -26,11 +20,12 @@ impl Xdg {
     {
         let xdgs = shell
             .get_xdg_surface(surface, |xdgs| {
-                xdgs.implement(
-                    |evt, xdgs: Proxy<_>| match evt {
+                xdgs.implement_closure(
+                    |evt, xdgs| match evt {
                         xdg_surface::Event::Configure { serial } => {
                             xdgs.ack_configure(serial);
                         }
+                        _ => unreachable!(),
                     },
                     (),
                 )
@@ -38,7 +33,7 @@ impl Xdg {
             .unwrap();
         let toplevel = xdgs
             .get_toplevel(|toplevel| {
-                toplevel.implement(
+                toplevel.implement_closure(
                     move |evt, _| {
                         match evt {
                             xdg_toplevel::Event::Close => implementation(Event::Close),
@@ -67,6 +62,7 @@ impl Xdg {
                                     .collect::<Vec<_>>();
                                 implementation(Event::Configure { new_size, states });
                             }
+                            _ => unreachable!(),
                         }
                     },
                     (),
@@ -82,11 +78,11 @@ impl Xdg {
 }
 
 impl ShellSurface for Xdg {
-    fn resize(&self, seat: &Proxy<wl_seat::WlSeat>, serial: u32, edges: xdg_toplevel::ResizeEdge) {
+    fn resize(&self, seat: &wl_seat::WlSeat, serial: u32, edges: xdg_toplevel::ResizeEdge) {
         self.toplevel.resize(seat, serial, edges as u32);
     }
 
-    fn move_(&self, seat: &Proxy<wl_seat::WlSeat>, serial: u32) {
+    fn move_(&self, seat: &wl_seat::WlSeat, serial: u32) {
         self.toplevel._move(seat, serial);
     }
 
@@ -98,7 +94,7 @@ impl ShellSurface for Xdg {
         self.toplevel.set_app_id(app_id);
     }
 
-    fn set_fullscreen(&self, output: Option<&Proxy<wl_output::WlOutput>>) {
+    fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
         self.toplevel.set_fullscreen(output)
     }
 
@@ -138,7 +134,7 @@ impl ShellSurface for Xdg {
         }
     }
 
-    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>> {
+    fn get_xdg(&self) -> Option<&xdg_toplevel::XdgToplevel> {
         Some(&self.toplevel)
     }
 }

@@ -1,8 +1,6 @@
 use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
-use wayland_client::{NewProxy, Proxy};
-
-use wayland_client::protocol::wl_data_offer::RequestsTrait as OfferRequests;
+use wayland_client::NewProxy;
 
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::sync::{Arc, Mutex};
@@ -18,7 +16,7 @@ struct Inner {
 /// A data offer for receiving data though copy/paste or
 /// drag and drop
 pub struct DataOffer {
-    pub(crate) offer: Proxy<wl_data_offer::WlDataOffer>,
+    pub(crate) offer: wl_data_offer::WlDataOffer,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -31,7 +29,7 @@ impl DataOffer {
             serial: 0,
         }));
         let inner2 = inner.clone();
-        let offer = offer.implement(
+        let offer = offer.implement_closure(
             move |event, _| {
                 use self::wl_data_offer::Event;
                 let mut inner = inner2.lock().unwrap();
@@ -45,6 +43,7 @@ impl DataOffer {
                     Event::Action { dnd_action } => {
                         inner.current_action = DndAction::from_bits_truncate(dnd_action);
                     }
+                    _ => unreachable!(),
                 }
             },
             (),

@@ -2,9 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 
-use wayland_client::protocol::wl_output::{self, Event, RequestsTrait, WlOutput};
-use wayland_client::protocol::wl_registry::{self, RequestsTrait as RegistryRequest};
-use wayland_client::Proxy;
+use wayland_client::protocol::wl_output::{self, Event, WlOutput};
+use wayland_client::protocol::wl_registry;
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 
@@ -74,16 +73,16 @@ impl OutputInfo {
 }
 
 struct Inner {
-    outputs: Vec<(u32, Proxy<WlOutput>, OutputInfo)>,
-    pending: Vec<(Proxy<WlOutput>, Event)>,
+    outputs: Vec<(u32, WlOutput, OutputInfo)>,
+    pending: Vec<(WlOutput, Event)>,
 }
 
 impl Inner {
-    fn merge(&mut self, output: &Proxy<WlOutput>) {
+    fn merge(&mut self, output: &WlOutput) {
         let info = match self
             .outputs
             .iter_mut()
-            .find(|&&mut (_, ref o, _)| o.equals(output))
+            .find(|&&mut (_, ref o, _)| o.as_ref().equals(output.as_ref()))
         {
             Some(&mut (_, _, ref mut info)) => info,
             // trying to merge a non-existing output ?
@@ -91,14 +90,18 @@ impl Inner {
             // output being concurrently destroyed at the bad time ?
             None => {
                 // clean stale state
-                self.pending.retain(|&(ref o, _)| o.is_alive());
+                self.pending.retain(|&(ref o, _)| o.as_ref().is_alive());
                 return;
             }
         };
         // slow, but could be improved with Vec::drain_filter
         // see https://github.com/rust-lang/rust/issues/43244
         // this vec should be pretty small at all times anyway
-        while let Some(idx) = self.pending.iter().position(|&(ref o, _)| o.equals(output)) {
+        while let Some(idx) = self
+            .pending
+            .iter()
+            .position(|&(ref o, _)| o.as_ref().equals(output.as_ref()))
+        {
             let (_, event) = self.pending.swap_remove(idx);
             match event {
                 Event::Geometry {
@@ -152,6 +155,7 @@ impl Inner {
                         })
                     }
                 }
+                _ => unreachable!(),
             }
         }
     }
@@ -173,23 +177,18 @@ impl OutputMgr {
         }
     }
 
-    pub(crate) fn new_output(
-        &self,
-        id: u32,
-        version: u32,
-        registry: &Proxy<wl_registry::WlRegistry>,
-    ) {
+    pub(crate) fn new_output(&self, id: u32, version: u32, registry: &wl_registry::WlRegistry) {
         let inner = self.inner.clone();
         let output = registry
             .bind(version, id, |output| {
-                output.implement(
+                output.implement_closure(
                     move |event, output| {
                         let mut inner = inner.lock().unwrap();
                         if let Event::Done = event {
                             inner.merge(&output);
                         } else {
                             inner.pending.push((output.clone(), event));
-                            if output.version() < 2 {
+                            if output.as_ref().version() < 2 {
                                 // in case of very old outputs, we can't treat the changes
                                 // atomically as the Done event does not exist
                                 inner.merge(&output);
@@ -213,8 +212,10 @@ impl OutputMgr {
         if let Some(idx) = inner.outputs.iter().position(|&(i, _, _)| i == id) {
             let (_, output, _) = inner.outputs.swap_remove(idx);
             // cleanup all remaining pending if any
-            inner.pending.retain(|&(ref o, _)| !o.equals(&output));
-            if output.version() >= 3 {
+            inner
+                .pending
+                .retain(|&(ref o, _)| !o.as_ref().equals(&output.as_ref()));
+            if output.as_ref().version() >= 3 {
                 output.release();
             }
         }
@@ -226,7 +227,7 @@ impl OutputMgr {
     /// the closure is not called and `None` is returned.
     pub fn find_id<F, T>(&self, id: u32, f: F) -> Option<T>
     where
-        F: FnOnce(&Proxy<wl_output::WlOutput>, &OutputInfo) -> T,
+        F: FnOnce(&wl_output::WlOutput, &OutputInfo) -> T,
     {
         let inner = self.inner.lock().unwrap();
         if let Some(&(_, ref proxy, ref info)) = inner.outputs.iter().find(|&&(i, _, _)| i == id) {
@@ -240,7 +241,7 @@ impl OutputMgr {
     ///
     /// If the requested output is not found (likely because it has been destroyed)
     /// the closure is not called and `None` is returned.
-    pub fn with_info<F, T>(&self, output: &Proxy<WlOutput>, f: F) -> Option<T>
+    pub fn with_info<F, T>(&self, output: &WlOutput, f: F) -> Option<T>
     where
         F: FnOnce(u32, &OutputInfo) -> T,
     {
@@ -248,7 +249,7 @@ impl OutputMgr {
         if let Some(&(id, _, ref info)) = inner
             .outputs
             .iter()
-            .find(|&&(_, ref o, _)| o.equals(output))
+            .find(|&&(_, ref o, _)| o.as_ref().equals(output.as_ref()))
         {
             Some(f(id, info))
         } else {
@@ -259,7 +260,7 @@ impl OutputMgr {
     /// Access all output information
     pub fn with_all<F, T>(&self, f: F) -> T
     where
-        F: FnOnce(&[(u32, Proxy<WlOutput>, OutputInfo)]) -> T,
+        F: FnOnce(&[(u32, WlOutput, OutputInfo)]) -> T,
     {
         let inner = self.inner.lock().unwrap();
         f(&inner.outputs)
