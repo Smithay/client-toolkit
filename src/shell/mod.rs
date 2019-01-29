@@ -8,7 +8,6 @@
 //! looking for a more battery-included abstraction for creating windows,
 //! consider the `Window` type.
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
-use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
@@ -50,7 +49,7 @@ pub enum Event {
 
 pub(crate) fn create_shell_surface<Impl>(
     shell: &Shell,
-    surface: &Proxy<wl_surface::WlSurface>,
+    surface: &wl_surface::WlSurface,
     implem: Impl,
 ) -> Box<ShellSurface>
 where
@@ -70,15 +69,15 @@ where
 /// provided for older protocols.
 pub trait ShellSurface: Send + Sync {
     /// Resizes the shell surface
-    fn resize(&self, seat: &Proxy<wl_seat::WlSeat>, serial: u32, edges: xdg_toplevel::ResizeEdge);
+    fn resize(&self, seat: &wl_seat::WlSeat, serial: u32, edges: xdg_toplevel::ResizeEdge);
     /// Moves the shell surface
-    fn move_(&self, seat: &Proxy<wl_seat::WlSeat>, serial: u32);
+    fn move_(&self, seat: &wl_seat::WlSeat, serial: u32);
     /// Set the title of the shell surface
     fn set_title(&self, title: String);
     /// Set the app id of the shell surface
     fn set_app_id(&self, app_id: String);
     /// Make fullscreen
-    fn set_fullscreen(&self, output: Option<&Proxy<wl_output::WlOutput>>);
+    fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>);
     /// Unset fullscreen
     fn unset_fullscreen(&self);
     /// Maximize surface
@@ -98,5 +97,5 @@ pub trait ShellSurface: Send + Sync {
     ///
     /// This allows interactions with other protocol extensions, like
     /// `xdg_decoratins` for example.
-    fn get_xdg(&self) -> Option<&Proxy<xdg_toplevel::XdgToplevel>>;
+    fn get_xdg(&self) -> Option<&xdg_toplevel::XdgToplevel>;
 }

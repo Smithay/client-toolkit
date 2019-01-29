@@ -4,13 +4,10 @@ use std::sync::{Arc, Mutex};
 use wayland_client::protocol::{
     wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
 };
-use wayland_client::Proxy;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
 
-use self::zxdg_decoration_manager_v1::RequestsTrait as DecorationMgrRequests;
-use self::zxdg_toplevel_decoration_v1::RequestsTrait as DecorationRequests;
 use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
@@ -115,9 +112,9 @@ struct WindowInner<F> {
 /// the `Frame` trait can do.
 pub struct Window<F: Frame> {
     frame: Arc<Mutex<F>>,
-    surface: Proxy<wl_surface::WlSurface>,
-    decoration: Mutex<Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>>,
-    decoration_mgr: Option<Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
+    surface: wl_surface::WlSurface,
+    decoration: Mutex<Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
+    decoration_mgr: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
     shell_surface: Arc<Box<shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
 }
@@ -127,7 +124,7 @@ impl<F: Frame + 'static> Window<F> {
     /// following the compositor's preference regarding server-side decorations.
     pub fn init_from_env<Impl>(
         env: &Environment,
-        surface: Proxy<wl_surface::WlSurface>,
+        surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
@@ -151,11 +148,11 @@ impl<F: Frame + 'static> Window<F> {
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
     pub fn init<Impl>(
-        surface: Proxy<wl_surface::WlSurface>,
+        surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        compositor: &wl_compositor::WlCompositor,
+        subcompositor: &wl_subcompositor::WlSubcompositor,
+        shm: &wl_shm::WlShm,
         shell: &Shell,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
@@ -180,13 +177,13 @@ impl<F: Frame + 'static> Window<F> {
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
     pub fn init_with_decorations<Impl>(
-        surface: Proxy<wl_surface::WlSurface>,
+        surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        compositor: &wl_compositor::WlCompositor,
+        subcompositor: &wl_subcompositor::WlSubcompositor,
+        shm: &wl_shm::WlShm,
         shell: &Shell,
-        decoration_mgr: Option<&Proxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
+        decoration_mgr: Option<&zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
@@ -307,14 +304,14 @@ impl<F: Frame + 'static> Window<F> {
 
     fn ensure_decoration(
         &self,
-        decoration: &mut Option<Proxy<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
+        decoration: &mut Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
     ) {
         if self.decoration_mgr.is_none() {
             return;
         }
 
         if let Some(ref decoration) = *decoration {
-            if decoration.is_alive() {
+            if decoration.as_ref().is_alive() {
                 return;
             }
         }
@@ -325,21 +322,23 @@ impl<F: Frame + 'static> Window<F> {
             (Some(toplevel), &Some(ref mgr)) => {
                 use self::zxdg_toplevel_decoration_v1::{Event, Mode};
                 mgr.get_toplevel_decoration(toplevel, |newdec| {
-                    newdec.implement(
+                    newdec.implement_closure(
                         move |event, _| {
-                            let Event::Configure { mode } = event;
-                            match mode {
-                                Mode::ServerSide => {
-                                    decoration_frame.lock().unwrap().set_hidden(true);
-                                }
-                                Mode::ClientSide => {
-                                    let want_decorate = decoration_inner
-                                        .lock()
-                                        .unwrap()
-                                        .as_ref()
-                                        .map(|inner| inner.decorated)
-                                        .unwrap_or(false);
-                                    decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                            if let Event::Configure { mode } = event {
+                                match mode {
+                                    Mode::ServerSide => {
+                                        decoration_frame.lock().unwrap().set_hidden(true);
+                                    }
+                                    Mode::ClientSide => {
+                                        let want_decorate = decoration_inner
+                                            .lock()
+                                            .unwrap()
+                                            .as_ref()
+                                            .map(|inner| inner.decorated)
+                                            .unwrap_or(false);
+                                        decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                                    }
+                                    _ => unreachable!(),
                                 }
                             }
                         },
@@ -360,12 +359,12 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// This allows the decoration manager to get an handle to the pointer
     /// to manage pointer events and change the pointer image appropriately.
-    pub fn new_seat(&mut self, seat: &Proxy<wl_seat::WlSeat>) {
+    pub fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
         self.frame.lock().unwrap().new_seat(seat);
     }
 
     /// Access the surface wrapped in this Window
-    pub fn surface(&self) -> &Proxy<wl_surface::WlSurface> {
+    pub fn surface(&self) -> &wl_surface::WlSurface {
         &self.surface
     }
 
@@ -505,7 +504,7 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// Note: you need to manually disable the decorations if you
     /// want to hide them!
-    pub fn set_fullscreen(&self, output: Option<&Proxy<wl_output::WlOutput>>) {
+    pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
         self.shell_surface.set_fullscreen(output);
     }
 
@@ -575,9 +574,9 @@ pub enum FrameRequest {
     /// The window should be closed
     Close,
     /// An interactive move should be started
-    Move(Proxy<wl_seat::WlSeat>),
+    Move(wl_seat::WlSeat),
     /// An interactive resize should be started
-    Resize(Proxy<wl_seat::WlSeat>, ResizeEdge),
+    Resize(wl_seat::WlSeat, ResizeEdge),
     /// The frame requests to be refreshed
     Refresh,
 }
@@ -592,10 +591,10 @@ pub trait Frame: Sized + Send {
     type Error;
     /// Initialize the Frame
     fn init(
-        base_surface: &Proxy<wl_surface::WlSurface>,
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        base_surface: &wl_surface::WlSurface,
+        compositor: &wl_compositor::WlCompositor,
+        subcompositor: &wl_subcompositor::WlSubcompositor,
+        shm: &wl_shm::WlShm,
         implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
@@ -616,7 +615,7 @@ pub trait Frame: Sized + Send {
     /// and reacted to
     fn set_resizable(&mut self, resizable: bool);
     /// Notify that a new wl_seat should be handled
-    fn new_seat(&mut self, seat: &Proxy<wl_seat::WlSeat>);
+    fn new_seat(&mut self, seat: &wl_seat::WlSeat);
     /// Change the size of the decorations
     ///
     /// Calling this should *not* trigger a redraw

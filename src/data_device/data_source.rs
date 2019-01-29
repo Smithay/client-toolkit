@@ -1,8 +1,4 @@
 use wayland_client::protocol::{wl_data_device_manager, wl_data_source};
-use wayland_client::{Proxy, QueueToken};
-
-use wayland_client::protocol::wl_data_device_manager::RequestsTrait as MgrRequests;
-use wayland_client::protocol::wl_data_source::RequestsTrait as SourceRequests;
 
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::{fs, io};
@@ -10,7 +6,7 @@ use std::{fs, io};
 /// A data source for sending data though copy/paste or
 /// drag and drop
 pub struct DataSource {
-    pub(crate) source: Proxy<wl_data_source::WlDataSource>,
+    pub(crate) source: wl_data_source::WlDataSource,
 }
 
 /// Possible events a data source needs to react to
@@ -80,7 +76,7 @@ pub enum DataSourceEvent {
 
 fn data_source_impl<Impl>(
     evt: wl_data_source::Event,
-    source: &Proxy<wl_data_source::WlDataSource>,
+    source: &wl_data_source::WlDataSource,
     implem: &mut Impl,
 ) where
     Impl: FnMut(DataSourceEvent),
@@ -104,6 +100,7 @@ fn data_source_impl<Impl>(
             source.destroy();
             DataSourceEvent::Finished
         }
+        _ => unreachable!(),
     };
     implem(event);
 }
@@ -114,50 +111,18 @@ impl DataSource {
     /// You'll then need to provide it to a data device to send it
     /// either via selection (aka copy/paste) or via a drag and drop.
     pub fn new<Impl>(
-        mgr: &Proxy<wl_data_device_manager::WlDataDeviceManager>,
+        mgr: &wl_data_device_manager::WlDataDeviceManager,
         mime_types: &[&str],
         mut implem: Impl,
-    ) -> DataSource
-    where
-        Impl: FnMut(DataSourceEvent) + Send + 'static,
-    {
-        let source = mgr
-            .create_data_source(|source| {
-                source.implement(
-                    move |evt, source: Proxy<_>| data_source_impl(evt, &source, &mut implem),
-                    (),
-                )
-            })
-            .expect("Provided a dead data device manager to create a data source.");
-
-        for &mime in mime_types {
-            source.offer(mime.into());
-        }
-
-        DataSource { source }
-    }
-
-    /// Create a data source
-    ///
-    /// Like `new`, but the implementation does not require to
-    /// be `Send`.
-    ///
-    /// **unsafety**: for the same reasons as `NewProxy::implement_nonsend`
-    pub unsafe fn new_nonsend<Impl>(
-        mgr: &Proxy<wl_data_device_manager::WlDataDeviceManager>,
-        mime_types: &[&str],
-        mut implem: Impl,
-        token: &QueueToken,
     ) -> DataSource
     where
         Impl: FnMut(DataSourceEvent) + 'static,
     {
         let source = mgr
             .create_data_source(|source| {
-                source.implement_nonsend(
-                    move |evt, source: Proxy<_>| data_source_impl(evt, &source, &mut implem),
+                source.implement_closure(
+                    move |evt, source| data_source_impl(evt, &source, &mut implem),
                     (),
-                    token,
                 )
             })
             .expect("Provided a dead data device manager to create a data source.");

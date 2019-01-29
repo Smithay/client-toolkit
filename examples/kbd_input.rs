@@ -10,10 +10,8 @@ use byteorder::{NativeEndian, WriteBytesExt};
 use sctk::keyboard::{
     map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatEvent, KeyRepeatKind,
 };
-use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
-use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::{Display, NewProxy};
 use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, Window};
 use sctk::Environment;
@@ -34,7 +32,7 @@ fn main() {
 
     let surface = env
         .compositor
-        .create_surface(|surface| surface.implement(|_, _| {}, ()))
+        .create_surface(NewProxy::implement_dummy)
         .unwrap();
 
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
@@ -67,7 +65,7 @@ fn main() {
     // initialize a seat to retrieve keyboard events
     let seat = env
         .manager
-        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .instantiate_auto(NewProxy::implement_dummy)
         .unwrap();
 
     window.new_seat(&seat);
@@ -147,7 +145,7 @@ fn main() {
 
 fn redraw(
     pool: &mut MemPool,
-    surface: &Proxy<wl_surface::WlSurface>,
+    surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant

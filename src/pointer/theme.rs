@@ -2,12 +2,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use wayland_client::cursor::{is_available, load_theme, CursorTheme};
 use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm, wl_surface};
-use wayland_client::{NewProxy, Proxy, QueueToken};
-
-use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;
-use wayland_client::protocol::wl_seat::RequestsTrait as SeatRequests;
-use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
+use wayland_client::NewProxy;
 
 /// Wrapper managing a system theme for pointer images
 ///
@@ -20,7 +15,7 @@ use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 /// Note that it is however not `Send` nor `Sync`
 pub struct ThemeManager {
     theme: Arc<Mutex<CursorTheme>>,
-    compositor: Proxy<wl_compositor::WlCompositor>,
+    compositor: wl_compositor::WlCompositor,
 }
 
 impl ThemeManager {
@@ -31,8 +26,8 @@ impl ThemeManager {
     /// Fails if `libwayland-cursor` is not available.
     pub fn init(
         name: Option<&str>,
-        compositor: Proxy<wl_compositor::WlCompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        compositor: wl_compositor::WlCompositor,
+        shm: &wl_shm::WlShm,
     ) -> Result<ThemeManager, ()> {
         if !is_available() {
             return Err(());
@@ -45,10 +40,10 @@ impl ThemeManager {
     }
 
     /// Wrap a pointer to theme it
-    pub fn theme_pointer(&self, pointer: Proxy<wl_pointer::WlPointer>) -> ThemedPointer {
+    pub fn theme_pointer(&self, pointer: wl_pointer::WlPointer) -> ThemedPointer {
         let surface = self
             .compositor
-            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .create_surface(NewProxy::implement_dummy)
             .unwrap();
         ThemedPointer {
             pointer,
@@ -64,20 +59,20 @@ impl ThemeManager {
     ///
     /// You need to provide an implementation as if implementing a `wl_pointer`, but
     /// it will receive as `meta` argument a `ThemedPointer` wrapping your pointer,
-    /// rather than a `Proxy<WlPointer>`.
+    /// rather than a `WlPointer`.
     pub fn theme_pointer_with_impl<Impl, UD>(
         &self,
-        seat: &Proxy<wl_seat::WlSeat>,
+        seat: &wl_seat::WlSeat,
         mut implementation: Impl,
         user_data: UD,
     ) -> ThemedPointer
     where
-        Impl: FnMut(wl_pointer::Event, ThemedPointer) + Send + 'static,
-        UD: Send + Sync + 'static,
+        Impl: FnMut(wl_pointer::Event, ThemedPointer) + 'static,
+        UD: 'static,
     {
         let surface = self
             .compositor
-            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .create_surface(NewProxy::implement_dummy)
             .unwrap();
 
         let inner = Arc::new(Mutex::new(PointerInner {
@@ -89,7 +84,7 @@ impl ThemeManager {
 
         let pointer = seat
             .get_pointer(|pointer| {
-                pointer.implement(
+                pointer.implement_closure(
                     move |event, ptr| {
                         implementation(
                             event,
@@ -109,71 +104,23 @@ impl ThemeManager {
             inner: inner2,
         }
     }
-
-    /// Initialize a new pointer as a ThemedPointer with an adapter implementation
-    ///
-    /// Like `theme_pointer_with_impl` but allows you to have a non-`Send` implementation.
-    ///
-    /// **Unsafe** for the same reasons as `NewProxy::implement_nonsend`.
-    pub unsafe fn theme_pointer_with_nonsend_impl<Impl, UD>(
-        &self,
-        pointer: NewProxy<wl_pointer::WlPointer>,
-        mut implementation: Impl,
-        user_data: UD,
-        token: &QueueToken,
-    ) -> ThemedPointer
-    where
-        Impl: FnMut(wl_pointer::Event, ThemedPointer) + 'static,
-        UD: Send + Sync + 'static,
-    {
-        let surface = self
-            .compositor
-            .create_surface(|surface| surface.implement(|_, _| {}, ()))
-            .unwrap();
-
-        let inner = Arc::new(Mutex::new(PointerInner {
-            surface,
-            theme: self.theme.clone(),
-            last_serial: 0,
-        }));
-        let inner2 = inner.clone();
-
-        let pointer = pointer.implement_nonsend(
-            move |event, ptr| {
-                implementation(
-                    event,
-                    ThemedPointer {
-                        pointer: ptr,
-                        inner: inner.clone(),
-                    },
-                )
-            },
-            user_data,
-            token,
-        );
-
-        ThemedPointer {
-            pointer,
-            inner: inner2,
-        }
-    }
 }
 
 struct PointerInner {
-    surface: Proxy<wl_surface::WlSurface>,
+    surface: wl_surface::WlSurface,
     theme: Arc<Mutex<CursorTheme>>,
     last_serial: u32,
 }
 
 /// Wrapper of a themed pointer
 ///
-/// You can access the underlying `Proxy<wl_pointer::WlPointer>` via
+/// You can access the underlying `wl_pointer::WlPointer` via
 /// deref. It will *not* release the proxy when dropped.
 ///
 /// Just like `Proxy`, this is a `Rc`-like wrapper. You can clone it
 /// to have several handles to the same theming machinery of a pointer.
 pub struct ThemedPointer {
-    pointer: Proxy<wl_pointer::WlPointer>,
+    pointer: wl_pointer::WlPointer,
     inner: Arc<Mutex<PointerInner>>,
 }
 
@@ -206,7 +153,7 @@ impl ThemedPointer {
         }
 
         surface.attach(Some(&buffer), 0, 0);
-        if surface.version() >= 4 {
+        if surface.as_ref().version() >= 4 {
             surface.damage_buffer(0, 0, w, h);
         } else {
             // surface is old and does not support damage_buffer, so we damage
@@ -230,8 +177,8 @@ impl Clone for ThemedPointer {
 }
 
 impl Deref for ThemedPointer {
-    type Target = Proxy<wl_pointer::WlPointer>;
-    fn deref(&self) -> &Proxy<wl_pointer::WlPointer> {
+    type Target = wl_pointer::WlPointer;
+    fn deref(&self) -> &wl_pointer::WlPointer {
         &self.pointer
     }
 }

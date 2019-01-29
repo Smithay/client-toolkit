@@ -11,13 +11,7 @@ use andrew::{Canvas, Endian};
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
 };
-use wayland_client::Proxy;
-
-use wayland_client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use wayland_client::protocol::wl_pointer::RequestsTrait as PointerRequests;
-use wayland_client::protocol::wl_subcompositor::RequestsTrait as SubcompRequests;
-use wayland_client::protocol::wl_subsurface::RequestsTrait as SubsurfaceRequests;
-use wayland_client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
+use wayland_client::NewProxy;
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
 use pointer::{AutoPointer, AutoThemer};
@@ -108,23 +102,21 @@ enum UIButton {
 }
 
 struct Part {
-    surface: Proxy<wl_surface::WlSurface>,
-    subsurface: Proxy<wl_subsurface::WlSubsurface>,
+    surface: wl_surface::WlSurface,
+    subsurface: wl_subsurface::WlSubsurface,
 }
 
 impl Part {
     fn new(
-        parent: &Proxy<wl_surface::WlSurface>,
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
+        parent: &wl_surface::WlSurface,
+        compositor: &wl_compositor::WlCompositor,
+        subcompositor: &wl_subcompositor::WlSubcompositor,
     ) -> Part {
         let surface = compositor
-            .create_surface(|surface| surface.implement(|_, _| {}, ()))
+            .create_surface(NewProxy::implement_dummy)
             .unwrap();
         let subsurface = subcompositor
-            .get_subsurface(&surface, parent, |subsurface| {
-                subsurface.implement(|_, _| {}, ())
-            })
+            .get_subsurface(&surface, parent, NewProxy::implement_dummy)
             .unwrap();
         Part {
             surface,
@@ -143,7 +135,7 @@ impl Drop for Part {
 struct PointerUserData {
     location: Location,
     position: (f64, f64),
-    seat: Proxy<wl_seat::WlSeat>,
+    seat: wl_seat::WlSeat,
 }
 
 /*
@@ -159,16 +151,19 @@ struct Inner {
 }
 
 impl Inner {
-    fn find_surface(&self, surface: &Proxy<wl_surface::WlSurface>) -> Location {
-        if surface.equals(&self.parts[HEAD].surface) {
+    fn find_surface(&self, surface: &wl_surface::WlSurface) -> Location {
+        if surface.as_ref().equals(&self.parts[HEAD].surface.as_ref()) {
             Location::Head
-        } else if surface.equals(&self.parts[TOP].surface) {
+        } else if surface.as_ref().equals(&self.parts[TOP].surface.as_ref()) {
             Location::Top
-        } else if surface.equals(&self.parts[BOTTOM].surface) {
+        } else if surface
+            .as_ref()
+            .equals(&self.parts[BOTTOM].surface.as_ref())
+        {
             Location::Bottom
-        } else if surface.equals(&self.parts[LEFT].surface) {
+        } else if surface.as_ref().equals(&self.parts[LEFT].surface.as_ref()) {
             Location::Left
-        } else if surface.equals(&self.parts[RIGHT].surface) {
+        } else if surface.as_ref().equals(&self.parts[RIGHT].surface.as_ref()) {
             Location::Right
         } else {
             Location::None
@@ -252,10 +247,10 @@ pub struct ConceptFrame {
 impl Frame for ConceptFrame {
     type Error = ::std::io::Error;
     fn init(
-        base_surface: &Proxy<wl_surface::WlSurface>,
-        compositor: &Proxy<wl_compositor::WlCompositor>,
-        subcompositor: &Proxy<wl_subcompositor::WlSubcompositor>,
-        shm: &Proxy<wl_shm::WlShm>,
+        base_surface: &wl_surface::WlSurface,
+        compositor: &wl_compositor::WlCompositor,
+        subcompositor: &wl_subcompositor::WlSubcompositor,
+        shm: &wl_shm::WlShm,
         implementation: Box<FnMut(FrameRequest, u32) + Send>,
     ) -> Result<ConceptFrame, ::std::io::Error> {
         let parts = [
@@ -285,20 +280,20 @@ impl Frame for ConceptFrame {
             hidden: false,
             pointers: Vec::new(),
             themer: AutoThemer::init(None, compositor.clone(), &shm),
-            surface_version: compositor.version(),
+            surface_version: compositor.as_ref().version(),
             theme: Box::new(DefaultTheme),
             title: None,
             font_data: None,
         })
     }
 
-    fn new_seat(&mut self, seat: &Proxy<wl_seat::WlSeat>) {
+    fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
         use self::wl_pointer::Event;
         let inner = self.inner.clone();
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
             move |event, pointer: AutoPointer| {
-                let data: &Mutex<PointerUserData> = pointer.user_data().unwrap();
+                let data: &Mutex<PointerUserData> = pointer.as_ref().user_data().unwrap();
                 let data = &mut *data.lock().unwrap();
                 let (width, _) = *(inner.size.lock().unwrap());
                 let resizable = *(inner.resizable.lock().unwrap());
@@ -468,8 +463,9 @@ impl Frame for ConceptFrame {
                             .pointers
                             .iter()
                             .flat_map(|p| {
-                                if p.is_alive() {
-                                    let data: &Mutex<PointerUserData> = p.user_data().unwrap();
+                                if p.as_ref().is_alive() {
+                                    let data: &Mutex<PointerUserData> =
+                                        p.as_ref().user_data().unwrap();
                                     Some(data.lock().unwrap().location)
                                 } else {
                                     None
@@ -744,7 +740,7 @@ impl Frame for ConceptFrame {
 impl Drop for ConceptFrame {
     fn drop(&mut self) {
         for ptr in self.pointers.drain(..) {
-            if ptr.version() >= 3 {
+            if ptr.as_ref().version() >= 3 {
                 ptr.release();
             }
         }
@@ -770,7 +766,7 @@ fn change_pointer(pointer: &AutoPointer, location: Location, serial: Option<u32>
 
 fn request_for_location(
     location: Location,
-    seat: &Proxy<wl_seat::WlSeat>,
+    seat: &wl_seat::WlSeat,
     maximized: bool,
     resizable: bool,
 ) -> Option<FrameRequest> {

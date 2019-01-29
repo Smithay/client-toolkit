@@ -12,10 +12,8 @@ use sctk::utils::{DoubleMemPool, MemPool};
 use sctk::window::{ConceptFrame, Event as WEvent, Window};
 use sctk::Environment;
 
-use sctk::reexports::client::protocol::wl_compositor::RequestsTrait as CompositorRequests;
-use sctk::reexports::client::protocol::wl_surface::RequestsTrait as SurfaceRequests;
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
-use sctk::reexports::client::{Display, Proxy};
+use sctk::reexports::client::{Display, NewProxy};
 
 fn main() {
     let (display, mut event_queue) =
@@ -24,7 +22,7 @@ fn main() {
 
     let seat = env
         .manager
-        .instantiate_auto(|seat| seat.implement(|_, _| {}, ()))
+        .instantiate_auto(NewProxy::implement_dummy)
         .unwrap();
 
     let device = DataDevice::init_for_seat(&env.data_device_manager, &seat, |event| match event {
@@ -39,7 +37,7 @@ fn main() {
     let mut dimensions = (320u32, 240u32);
     let surface = env
         .compositor
-        .create_surface(|surface| surface.implement(|_, _| {}, ()))
+        .create_surface(NewProxy::implement_dummy)
         .unwrap();
 
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
@@ -151,7 +149,7 @@ fn main() {
 
 fn redraw(
     pool: &mut MemPool,
-    surface: &Proxy<wl_surface::WlSurface>,
+    surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant
