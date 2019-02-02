@@ -134,7 +134,7 @@ fn main() {
     // Thus, we just automatically bind the first seat we find.
     let seat = env
         .manager
-        .instantiate_auto(NewProxy::implement_dummy)
+        .instantiate_range(1, 6, NewProxy::implement_dummy)
         .unwrap();
     // And advertise it to the Window so it knows of it and can process the
     // required pointer events.

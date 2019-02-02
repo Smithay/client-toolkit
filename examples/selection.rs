@@ -22,7 +22,7 @@ fn main() {
 
     let seat = env
         .manager
-        .instantiate_auto(NewProxy::implement_dummy)
+        .instantiate_range(1, 6, NewProxy::implement_dummy)
         .unwrap();
 
     let device = DataDevice::init_for_seat(&env.data_device_manager, &seat, |event| match event {
