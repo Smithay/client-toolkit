@@ -65,7 +65,7 @@ fn main() {
     // initialize a seat to retrieve keyboard events
     let seat = env
         .manager
-        .instantiate_auto(NewProxy::implement_dummy)
+        .instantiate_range(1, 6, NewProxy::implement_dummy)
         .unwrap();
 
     window.new_seat(&seat);
