@@ -175,7 +175,6 @@ fn main() {
             None => {}
         }
 
-        display.flush().unwrap();
         event_queue.dispatch().unwrap();
     }
 }

@@ -115,6 +115,17 @@ fn main() {
     }
 
     loop {
+        if let Some(mut reader) = reader.lock().unwrap().take() {
+            // we have something to read
+            // We flush the display, to ensure the server correctly did receive our request
+            // for it to send the contents
+            display.flush().unwrap();
+            // when we read the contents
+            let mut text = String::new();
+            reader.read_to_string(&mut text).unwrap();
+            println!("The selection buffer contained: \"{}\"", text);
+        }
+
         match next_action.lock().unwrap().take() {
             Some(WEvent::Close) => break,
             Some(WEvent::Refresh) => {
@@ -132,15 +143,6 @@ fn main() {
                 }
             }
             None => {}
-        }
-
-        display.flush().unwrap();
-
-        if let Some(mut reader) = reader.lock().unwrap().take() {
-            // we have something to read
-            let mut text = String::new();
-            reader.read_to_string(&mut text).unwrap();
-            println!("The selection buffer contained: \"{}\"", text);
         }
 
         event_queue.dispatch().unwrap();
