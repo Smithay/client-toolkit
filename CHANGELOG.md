@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 -- 2019-02-05
+
 #### Breaking changes
 
 - Update the crate to `wayland-client` version 0.22
