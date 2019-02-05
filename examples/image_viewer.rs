@@ -248,13 +248,11 @@ fn main() {
             }
         }
 
-        // These last two calls are necessary for the processing of wayland messages:
-        // - first, flush all our requests to the server on the unix socket
-        display.flush().unwrap();
-        // - then, retrieve all the incoming messages
-        //   this method blocks until a message arrives from the server, and will process
-        //   all events by calling the implementation of the target object or each,
-        //   and only return once all pending messages have been processed.
+        // Finally, dispatch the event queue. This method blocks until a message
+        // sends all our request to the server, then blocks until an event arrives
+        // from it. It then processes all events by calling the implementation of
+        // the target object for each, and only return once all pending messages
+        // have been processed.
         event_queue.dispatch().unwrap();
     }
 }
