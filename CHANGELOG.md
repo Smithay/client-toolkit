@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.0 -- 2019-02-18
+
+#### Breaking changes
+
+- Upgrade to `wayland-client` version 0.23
+
 ## 0.5.0 -- 2019-02-05
 
 #### Breaking changes

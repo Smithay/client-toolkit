@@ -16,8 +16,6 @@ extern crate nix;
 #[doc(hidden)]
 pub extern crate wayland_client;
 #[doc(hidden)]
-pub extern crate wayland_commons;
-#[doc(hidden)]
 pub extern crate wayland_protocols;
 
 /// Re-exports of some crates, for convenience

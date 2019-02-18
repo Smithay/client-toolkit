@@ -19,11 +19,10 @@ dlib = "0.4"
 lazy_static = "1"
 memmap = "0.7"
 andrew = "0.2.0"
-wayland-commons = { version = "0.22" }
-wayland-client = { version = "0.22", features = ["cursor"] }
-wayland-protocols = { version = "0.22", features = ["native_client", "unstable_protocols"] }
+wayland-client = { version = "0.23", features = ["cursor"] }
+wayland-protocols = { version = "0.23", features = ["client", "unstable_protocols"] }
 
 [dev-dependencies]
 image = "0.21"
-wayland-client = { version = "0.22", features = ["dlopen"] }
+wayland-client = { version = "0.23", features = ["dlopen"] }
 byteorder = "1.0"
