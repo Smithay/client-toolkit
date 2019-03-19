@@ -820,16 +820,39 @@ fn draw_buttons(
     );
     canvas.draw(&division_line);
 
-    let button_color = theme.get_secondary_color(true);
-
     if width >= HEADER_SIZE {
         // Draw the red button
+        let mut button_color = theme.get_close_button_icon_color(ButtonState::Idle);
         if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Close))
         {
             // Draw a red shading around close button if hovered over
             let red_shade = theme.get_close_button_color(ButtonState::Hovered);
+            // Change the button color (yet to be drawn) to the hovered version
+            button_color = theme.get_close_button_icon_color(ButtonState::Hovered);
+            let red_hover = rectangle::Rectangle::new(
+                ((width - HEADER_SIZE) as usize, 0),
+                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                None,
+                Some(red_shade),
+            );
+            canvas.draw(&red_hover);
+            let red_division_line = line::Line::new(
+                ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
+                ((width) as usize, (HEADER_SIZE - 1) as usize),
+                [
+                    red_shade[0].saturating_sub(50),
+                    red_shade[1].saturating_sub(50),
+                    red_shade[2].saturating_sub(50),
+                    255,
+                ],
+                true,
+            );
+            canvas.draw(&red_division_line);
+        } else {
+            // draw shading if around close button when idle
+            let red_shade = theme.get_close_button_color(ButtonState::Idle);
             let red_hover = rectangle::Rectangle::new(
                 ((width - HEADER_SIZE) as usize, 0),
                 (HEADER_SIZE as usize, HEADER_SIZE as usize),
@@ -910,6 +933,7 @@ fn draw_buttons(
 
     if width >= 2 * HEADER_SIZE {
         // Draw the green button
+        let mut button_color = theme.get_maximize_button_icon_color(ButtonState::Idle);
         if !maximizable {
         } else if mouses
             .iter()
@@ -917,6 +941,8 @@ fn draw_buttons(
         {
             // Draw a green shading around maximize button if hovered over
             let green_shade = theme.get_maximize_button_color(ButtonState::Hovered);
+            // Change the button color (yet to be drawn) to the hovered version
+            button_color = theme.get_maximize_button_icon_color(ButtonState::Hovered);
             let green_hover = rectangle::Rectangle::new(
                 ((width - 2 * HEADER_SIZE) as usize, 0),
                 (HEADER_SIZE as usize, HEADER_SIZE as usize),
@@ -939,7 +965,34 @@ fn draw_buttons(
                 true,
             );
             canvas.draw(&green_division_line);
+        } else {
+            // Draw a green shading around maximize button if idle
+            let green_shade = theme.get_maximize_button_color(ButtonState::Idle);
+            let green_hover = rectangle::Rectangle::new(
+                ((width - 2 * HEADER_SIZE) as usize, 0),
+                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                None,
+                Some(green_shade),
+            );
+            canvas.draw(&green_hover);
+            let green_division_line = line::Line::new(
+                (
+                    (width - 2 * HEADER_SIZE) as usize,
+                    (HEADER_SIZE - 1) as usize,
+                ),
+                ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
+                [
+                    green_shade[0].saturating_sub(50),
+                    green_shade[1].saturating_sub(50),
+                    green_shade[2].saturating_sub(50),
+                    255,
+                ],
+                true,
+            );
+            canvas.draw(&green_division_line);
+
         };
+
         for i in 0..3 {
             let left_diagional = line::Line::new(
                 (
@@ -972,12 +1025,43 @@ fn draw_buttons(
 
     if width >= 3 * HEADER_SIZE {
         // Draw the blue button
+        let mut button_color = theme.get_minimize_button_icon_color(ButtonState::Idle);
         if mouses
             .iter()
             .any(|&l| l == Location::Button(UIButton::Minimize))
         {
             // Draw a blue shading around minimize button if hovered over
             let blue_shade = theme.get_minimize_button_color(ButtonState::Hovered);
+            // Change the button color (yet to be drawn) to the hovered version
+            button_color = theme.get_minimize_button_icon_color(ButtonState::Hovered);
+            let blue_hover = rectangle::Rectangle::new(
+                ((width - 3 * HEADER_SIZE) as usize, 0),
+                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                None,
+                Some(blue_shade),
+            );
+            canvas.draw(&blue_hover);
+            let blue_division_line = line::Line::new(
+                (
+                    (width - 3 * HEADER_SIZE) as usize,
+                    (HEADER_SIZE - 1) as usize,
+                ),
+                (
+                    (width - 2 * HEADER_SIZE) as usize,
+                    (HEADER_SIZE - 1) as usize,
+                ),
+                [
+                    blue_shade[0].saturating_sub(50),
+                    blue_shade[1].saturating_sub(50),
+                    blue_shade[2].saturating_sub(50),
+                    255,
+                ],
+                true,
+            );
+            canvas.draw(&blue_division_line);
+        } else {
+            // Draw a blue shading around minimize button if idle
+            let blue_shade = theme.get_minimize_button_color(ButtonState::Idle);
             let blue_hover = rectangle::Rectangle::new(
                 ((width - 3 * HEADER_SIZE) as usize, 0),
                 (HEADER_SIZE as usize, HEADER_SIZE as usize),
@@ -1004,6 +1088,7 @@ fn draw_buttons(
             );
             canvas.draw(&blue_division_line);
         }
+
         for i in 0..3 {
             let left_diagional = line::Line::new(
                 (
