@@ -7,13 +7,10 @@ use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
-use sctk::keyboard::{
-    map_keyboard_auto_with_repeat, Event as KbEvent, KeyRepeatEvent, KeyRepeatKind,
-};
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::reexports::client::{Display, NewProxy};
 use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{ConceptFrame, Event as WEvent, Window, Theme, ButtonState};
+use sctk::window::{ButtonState, ConceptFrame, Event as WEvent, Theme, Window};
 use sctk::Environment;
 
 fn main() {
@@ -86,45 +83,6 @@ fn main() {
         .unwrap();
 
     window.new_seat(&seat);
-
-    map_keyboard_auto_with_repeat(
-        &seat,
-        KeyRepeatKind::System,
-        move |event: KbEvent, _| match event {
-            KbEvent::Enter { keysyms, .. } => {
-                println!("Gained focus while {} keys pressed.", keysyms.len(),);
-            }
-            KbEvent::Leave { .. } => {
-                println!("Lost focus.");
-            }
-            KbEvent::Key {
-                keysym,
-                state,
-                utf8,
-                ..
-            } => {
-                println!("Key {:?}: {:x}.", state, keysym);
-                if let Some(txt) = utf8 {
-                    println!(" -> Received text \"{}\".", txt);
-                }
-            }
-            KbEvent::RepeatInfo { rate, delay } => {
-                println!(
-                        "Received repeat info: start repeating every {}ms after an initial delay of {}ms",
-                        rate, delay
-                    );
-            }
-            KbEvent::Modifiers { modifiers } => {
-                println!("Modifiers changed {:?}", modifiers);
-            }
-        },
-        move |repeat_event: KeyRepeatEvent, _| {
-            println!("Repeated key {:x}.", repeat_event.keysym);
-            if let Some(txt) = repeat_event.utf8 {
-                println!(" -> Received text \"{}\".", txt);
-            }
-        },
-    ).expect("Failed to map keyboard");
 
     if !env.shell.needs_configure() {
         // initial draw to bootstrap on wl_shell
@@ -246,7 +204,7 @@ impl Theme for WaylandTheme {
             _ => self.close_button,
         }
     }
-    
+
     fn get_close_button_icon_color(&self, state: ButtonState) -> [u8; 4] {
         match state {
             ButtonState::Hovered => self.close_button_icon_hovered,

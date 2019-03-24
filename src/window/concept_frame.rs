@@ -990,7 +990,6 @@ fn draw_buttons(
                 true,
             );
             canvas.draw(&green_division_line);
-
         };
 
         for i in 0..3 {
