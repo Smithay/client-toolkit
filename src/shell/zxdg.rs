@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 
 use wayland_protocols::unstable::xdg_shell::v6::client::{
@@ -16,17 +19,30 @@ impl Zxdg {
     pub(crate) fn create<Impl>(
         surface: &wl_surface::WlSurface,
         shell: &zxdg_shell_v6::ZxdgShellV6,
-        mut implementation: Impl,
+        implementation: Impl,
     ) -> Zxdg
     where
         Impl: FnMut(Event) + Send + 'static,
     {
+        let pending_configure = Rc::new(RefCell::new(None));
+        let pending_configure_2 = pending_configure.clone();
+
+        let implementation = Rc::new(RefCell::new(implementation));
+        let implementation_2 = implementation.clone();
         let xdgs = shell
-            .get_xdg_surface(surface, |xdgs| {
+            .get_xdg_surface(surface, move |xdgs| {
                 xdgs.implement_closure(
-                    |evt, xdgs| match evt {
+                    move |evt, xdgs| match evt {
                         zxdg_surface_v6::Event::Configure { serial } => {
                             xdgs.ack_configure(serial);
+                            if let Some((new_size, states)) =
+                                pending_configure_2.borrow_mut().take()
+                            {
+                                (&mut *implementation_2.borrow_mut())(Event::Configure {
+                                    new_size,
+                                    states,
+                                });
+                            }
                         }
                         _ => unreachable!(),
                     },
@@ -39,7 +55,9 @@ impl Zxdg {
                 toplevel.implement_closure(
                     move |evt, _| {
                         match evt {
-                            zxdg_toplevel_v6::Event::Close => implementation(Event::Close),
+                            zxdg_toplevel_v6::Event::Close => {
+                                (&mut *implementation.borrow_mut())(Event::Close)
+                            }
                             zxdg_toplevel_v6::Event::Configure {
                                 width,
                                 height,
@@ -64,7 +82,7 @@ impl Zxdg {
                                     // bit representation of xdg_toplevel_v6 and zxdg_toplevel_v6 matches
                                     .flat_map(xdg_toplevel::State::from_raw)
                                     .collect::<Vec<_>>();
-                                implementation(Event::Configure { new_size, states });
+                                *pending_configure.borrow_mut() = Some((new_size, states));
                             }
                             _ => unreachable!(),
                         }

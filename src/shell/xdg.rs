@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 
 use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base};
@@ -13,17 +16,30 @@ impl Xdg {
     pub(crate) fn create<Impl>(
         surface: &wl_surface::WlSurface,
         shell: &xdg_wm_base::XdgWmBase,
-        mut implementation: Impl,
+        implementation: Impl,
     ) -> Xdg
     where
-        Impl: FnMut(Event) + Send + 'static,
+        Impl: FnMut(Event) + 'static,
     {
+        let pending_configure = Rc::new(RefCell::new(None));
+        let pending_configure_2 = pending_configure.clone();
+
+        let implementation = Rc::new(RefCell::new(implementation));
+        let implementation_2 = implementation.clone();
         let xdgs = shell
-            .get_xdg_surface(surface, |xdgs| {
+            .get_xdg_surface(surface, move |xdgs| {
                 xdgs.implement_closure(
-                    |evt, xdgs| match evt {
+                    move |evt, xdgs| match evt {
                         xdg_surface::Event::Configure { serial } => {
                             xdgs.ack_configure(serial);
+                            if let Some((new_size, states)) =
+                                pending_configure_2.borrow_mut().take()
+                            {
+                                (&mut *implementation_2.borrow_mut())(Event::Configure {
+                                    new_size,
+                                    states,
+                                });
+                            }
                         }
                         _ => unreachable!(),
                     },
@@ -32,11 +48,13 @@ impl Xdg {
             })
             .unwrap();
         let toplevel = xdgs
-            .get_toplevel(|toplevel| {
+            .get_toplevel(move |toplevel| {
                 toplevel.implement_closure(
                     move |evt, _| {
                         match evt {
-                            xdg_toplevel::Event::Close => implementation(Event::Close),
+                            xdg_toplevel::Event::Close => {
+                                (&mut *implementation.borrow_mut())(Event::Close)
+                            }
                             xdg_toplevel::Event::Configure {
                                 width,
                                 height,
@@ -60,7 +78,7 @@ impl Xdg {
                                     .cloned()
                                     .flat_map(xdg_toplevel::State::from_raw)
                                     .collect::<Vec<_>>();
-                                implementation(Event::Configure { new_size, states });
+                                *pending_configure.borrow_mut() = Some((new_size, states));
                             }
                             _ => unreachable!(),
                         }
