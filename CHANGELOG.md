@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.1 -- 2019-04-07
+
 - Additional theming capability on `ConceptFrame` via the `Theme` trait:
  optional methods `get_<button-name>_button_icon_color` allows the stroke
  color on the buttons to be customized beyond what the secondary color allows.
