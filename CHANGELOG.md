@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.2 -- 2019-06-13
+
+- Update `Nix` to 0.14
+
 ## 0.6.1 -- 2019-04-07
 
 - Additional theming capability on `ConceptFrame` via the `Theme` trait:
