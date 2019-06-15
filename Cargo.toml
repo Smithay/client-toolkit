@@ -1,6 +1,6 @@
 [package]
 name = "smithay-client-toolkit"
-version = "0.4.5"
+version = "0.4.6"
 authors = ["Victor Berger <victor.berger@m4x.org>"]
 documentation = "https://smithay.github.io/client-toolkit"
 repository = "https://github.com/smithay/client-toolkit"
@@ -14,7 +14,7 @@ travis-ci = { repository = "smithay/client-toolkit" }
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.13"
+nix = "0.14.1"
 dlib = "0.4"
 lazy_static = "1"
 memmap = "0.7"
