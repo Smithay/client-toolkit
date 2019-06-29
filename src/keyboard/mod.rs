@@ -754,19 +754,19 @@ where
             };
 
             loop {
-                match receiver.try_recv() {
-                    Ok(()) => {
-                        let mut state = thread_state.lock().unwrap();
-                        sym = state.get_one_sym_raw(key);
-                        utf8 = state.get_utf8_raw(key);
+                // Drain channel
+                loop {
+                    match receiver.try_recv() {
+                        Ok(()) => {
+                            let mut state = thread_state.lock().unwrap();
+                            sym = state.get_one_sym_raw(key);
+                            utf8 = state.get_utf8_raw(key);
+                        }
+                        Err(mpsc::TryRecvError::Empty) => break,
+                        Err(mpsc::TryRecvError::Disconnected) => return,
                     }
-                    Err(mpsc::TryRecvError::Empty) => (),
-                    Err(mpsc::TryRecvError::Disconnected) => return,
                 }
-                // Check if the sender has been dropped after sending message
-                if let Err(mpsc::TryRecvError::Disconnected) = receiver.try_recv() {
-                    return
-                }
+
                 let elapsed_time = time_tracker.elapsed();
                 (&mut *thread_impl.lock().unwrap())(
                     KeyRepeatEvent {
