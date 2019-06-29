@@ -754,15 +754,22 @@ where
             };
 
             loop {
-                match receiver.try_recv() {
-                    Ok(()) => {
-                        let mut state = thread_state.lock().unwrap();
-                        sym = state.get_one_sym_raw(key);
-                        utf8 = state.get_utf8_raw(key);
+                // Drain channel
+                let mut need_update = false;
+                loop {
+                    match receiver.try_recv() {
+                        Ok(()) => need_update = true,
+                        Err(mpsc::TryRecvError::Empty) => break,
+                        Err(mpsc::TryRecvError::Disconnected) => return,
                     }
-                    Err(mpsc::TryRecvError::Empty) => (),
-                    Err(mpsc::TryRecvError::Disconnected) => return,
                 }
+                if need_update {
+                    // Update state
+                    let mut state = thread_state.lock().unwrap();
+                    sym = state.get_one_sym_raw(key);
+                    utf8 = state.get_utf8_raw(key);
+                }
+
                 let elapsed_time = time_tracker.elapsed();
                 (&mut *thread_impl.lock().unwrap())(
                     KeyRepeatEvent {
