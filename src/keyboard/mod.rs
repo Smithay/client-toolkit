@@ -763,6 +763,10 @@ where
                     Err(mpsc::TryRecvError::Empty) => (),
                     Err(mpsc::TryRecvError::Disconnected) => return,
                 }
+                // Check if the sender has been dropped after sending message
+                if let Err(mpsc::TryRecvError::Disconnected) = receiver.try_recv() {
+                    return
+                }
                 let elapsed_time = time_tracker.elapsed();
                 (&mut *thread_impl.lock().unwrap())(
                     KeyRepeatEvent {
