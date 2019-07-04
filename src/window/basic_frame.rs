@@ -11,6 +11,10 @@ use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
 };
 use wayland_client::NewProxy;
+use wayland_protocols::unstable::pointer_constraints::v1::client::{
+    zwp_pointer_constraints_v1,
+    zwp_confined_pointer_v1
+};
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
 use pointer::{AutoPointer, AutoThemer};
@@ -233,7 +237,10 @@ pub struct BasicFrame {
     pools: DoubleMemPool,
     active: bool,
     hidden: bool,
+    grabbed_pointer: bool,
     pointers: Vec<AutoPointer>,
+    confined_pointers: Vec<zwp_confined_pointer_v1::ZwpConfinedPointerV1>,
+    pointer_constraints_manager: Option<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1>,
     themer: AutoThemer,
     surface_version: u32,
     theme: Box<Theme>,
@@ -275,13 +282,48 @@ impl Frame for BasicFrame {
             pools,
             active: false,
             hidden: false,
+            grabbed_pointer: false,
             pointers: Vec::new(),
+            confined_pointers: Vec::new(),
+            pointer_constraints_manager: None,
             themer: AutoThemer::init(None, compositor.clone(), &shm),
             surface_version: compositor.as_ref().version(),
             theme: Box::new(DefaultTheme),
             title: None,
             font_data: None,
         })
+    }
+
+    fn new_pointer_constraints_manager(&mut self, pointer_constraints: &zwp_pointer_constraints_v1::ZwpPointerConstraintsV1){
+        self.pointer_constraints_manager = Some(pointer_constraints.clone());
+    }
+
+    fn grab_pointer(&mut self, surface: &wl_surface::WlSurface, grab: bool) -> Result<(), zwp_pointer_constraints_v1::Error> {
+        if !grab {
+            if self.grabbed_pointer {
+                for pointer_confine in &self.confined_pointers {
+                    pointer_confine.destroy();
+                }
+                self.confined_pointers = Vec::new();
+                self.grabbed_pointer = false;
+                return Ok(());
+            }
+            else {
+                return Ok(());
+            }
+        }
+        if self.grabbed_pointer {
+            return Ok(());
+        }
+        let pointer_constraints = self.pointer_constraints_manager.as_ref().ok_or(zwp_pointer_constraints_v1::Error::AlreadyConstrained)?;//TODO: add new error enum for this case
+        self.confined_pointers = self.pointers.iter()
+            .map(|p| p.get_pointer())
+            .map(|pointer| pointer_constraints
+                 .confine_pointer(surface, pointer, None, zwp_pointer_constraints_v1::Lifetime::Persistent.to_raw(), NewProxy::implement_dummy)
+                 .map_err(|_| zwp_pointer_constraints_v1::Error::AlreadyConstrained))
+            .collect::<Result<Vec<zwp_confined_pointer_v1::ZwpConfinedPointerV1>,_>>()?;
+        self.grabbed_pointer = true;
+        Ok(())
     }
 
     fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
@@ -369,6 +411,7 @@ impl Frame for BasicFrame {
                 seat: seat.clone(),
             }),
         );
+
         self.pointers.push(pointer);
     }
 
@@ -742,6 +785,9 @@ impl Frame for BasicFrame {
 
 impl Drop for BasicFrame {
     fn drop(&mut self) {
+        for confine_ptr in self.confined_pointers.drain(..) {
+            confine_ptr.destroy();
+        }
         for ptr in self.pointers.drain(..) {
             if ptr.as_ref().version() >= 3 {
                 ptr.release();

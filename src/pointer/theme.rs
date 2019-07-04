@@ -165,6 +165,10 @@ impl ThemedPointer {
 
         Ok(())
     }
+    /// Borrow a reference to owned wl_pointer value
+    pub fn get_pointer(&self) -> &wl_pointer::WlPointer {
+        &self.pointer
+    }
 }
 
 impl Clone for ThemedPointer {

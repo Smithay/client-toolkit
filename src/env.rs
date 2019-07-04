@@ -11,6 +11,7 @@ use wayland_client::protocol::{
 use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy};
 use wayland_protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1;
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
+use wayland_protocols::unstable::pointer_constraints::v1::client::zwp_pointer_constraints_v1;
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
 
 /// Possible shell globals
@@ -65,6 +66,8 @@ pub struct Environment {
     pub outputs: ::output::OutputMgr,
     /// The decoration manager, if the server supports server-side decorations
     pub decorations_mgr: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+    /// A manager for pointer constraints
+    pub pointer_constraints: Option<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1>,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
     surfaces: Arc<Mutex<Vec<wl_surface::WlSurface>>>,
 }
@@ -213,6 +216,7 @@ impl Environment {
             None
         };
 
+        let pointer_constraints = manager.instantiate_exact(1, NewProxy::implement_dummy).ok();
         // sync to retrieve the global events
         evq.sync_roundtrip()?;
 
@@ -225,6 +229,7 @@ impl Environment {
             shm_formats,
             data_device_manager,
             decorations_mgr,
+            pointer_constraints,
             outputs,
             surfaces,
         })

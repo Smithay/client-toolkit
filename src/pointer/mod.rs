@@ -114,6 +114,14 @@ impl AutoPointer {
             AutoPointer::UnThemed(_) => Ok(()),
         }
     }
+
+    ///get WlPointer value
+    pub fn get_pointer(&self) -> &wl_pointer::WlPointer {
+        match self {
+            AutoPointer::Themed(themed_pointer) => {themed_pointer.get_pointer()},
+            AutoPointer::UnThemed(pointer) => {&pointer},
+        }
+    }
 }
 
 impl Deref for AutoPointer {

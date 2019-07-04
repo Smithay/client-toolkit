@@ -12,6 +12,10 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
+use wayland_protocols::unstable::pointer_constraints::v1::client::{
+    zwp_pointer_constraints_v1
+};
+
 use {Environment, Shell};
 
 mod basic_frame;
@@ -535,6 +539,15 @@ impl<F: Frame + 'static> Window<F> {
     pub fn unset_fullscreen(&self) {
         self.shell_surface.unset_fullscreen();
     }
+    /// Confine pointer withing client area of surface
+    pub fn grab_pointer(&mut self, grab: bool) -> Result<(), zwp_pointer_constraints_v1::Error> {
+        let mut frame = self.frame.lock().unwrap();
+        frame.grab_pointer(&self.surface,grab)
+    }
+    /// sets pointer constraints manager for later pointer grab
+    pub fn new_pointer_constraints_manager(&mut self, pointer_constraints: &zwp_pointer_constraints_v1::ZwpPointerConstraintsV1){
+        self.frame.lock().unwrap().new_pointer_constraints_manager(pointer_constraints);
+    }
 
     /// Sets the minimum possible size for this window
     ///
@@ -639,6 +652,10 @@ pub trait Frame: Sized + Send {
     fn set_resizable(&mut self, resizable: bool);
     /// Notify that a new wl_seat should be handled
     fn new_seat(&mut self, seat: &wl_seat::WlSeat);
+    /// Confine or unconfine pointer in each attached seat, using provided surface
+    fn grab_pointer(&mut self, surface: &wl_surface::WlSurface, grab: bool) -> Result<(), zwp_pointer_constraints_v1::Error>;
+    /// sets pointer-constraints manager
+    fn new_pointer_constraints_manager(&mut self, pointer_constraints: &zwp_pointer_constraints_v1::ZwpPointerConstraintsV1);
     /// Change the size of the decorations
     ///
     /// Calling this should *not* trigger a redraw
