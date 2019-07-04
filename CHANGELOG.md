@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.3 -- 2019-06-29
+
+- Keyboard: fix extra key repeat when using also releasing a modifier
+
 ## 0.6.2 -- 2019-06-13
 
 - Update `Nix` to 0.14
