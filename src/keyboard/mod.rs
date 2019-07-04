@@ -249,9 +249,9 @@ impl KbState {
     }
 
     unsafe fn init_compose(&mut self) {
-        let locale = env::var_os("LC_ALL")
-            .or_else(|| env::var_os("LC_CTYPE"))
-            .or_else(|| env::var_os("LANG"))
+        let locale = env::var_os("LC_ALL").filter(|v| v.is_empty())
+            .or_else(|| env::var_os("LC_CTYPE")).filter(|v| v.is_empty())
+            .or_else(|| env::var_os("LANG")).filter(|v| v.is_empty())
             .unwrap_or_else(|| "C".into());
         let locale = CString::new(locale.into_vec()).unwrap();
 
