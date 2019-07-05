@@ -781,7 +781,6 @@ impl Frame for ConceptFrame {
         self.confined_pointers = self
             .pointers
             .iter()
-            .map(|p| p.get_pointer())
             .map(|pointer| {
                 pointer_constraints
                     .confine_pointer(
