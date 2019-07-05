@@ -12,8 +12,7 @@ use wayland_client::protocol::{
 };
 use wayland_client::NewProxy;
 use wayland_protocols::unstable::pointer_constraints::v1::client::{
-    zwp_pointer_constraints_v1,
-    zwp_confined_pointer_v1
+    zwp_confined_pointer_v1, zwp_pointer_constraints_v1,
 };
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
@@ -294,11 +293,18 @@ impl Frame for BasicFrame {
         })
     }
 
-    fn new_pointer_constraints_manager(&mut self, pointer_constraints: &zwp_pointer_constraints_v1::ZwpPointerConstraintsV1){
+    fn new_pointer_constraints_manager(
+        &mut self,
+        pointer_constraints: &zwp_pointer_constraints_v1::ZwpPointerConstraintsV1,
+    ) {
         self.pointer_constraints_manager = Some(pointer_constraints.clone());
     }
 
-    fn grab_pointer(&mut self, surface: &wl_surface::WlSurface, grab: bool) -> Result<(), zwp_pointer_constraints_v1::Error> {
+    fn grab_pointer(
+        &mut self,
+        surface: &wl_surface::WlSurface,
+        grab: bool,
+    ) -> Result<(), zwp_pointer_constraints_v1::Error> {
         if !grab {
             if self.grabbed_pointer {
                 for pointer_confine in &self.confined_pointers {
@@ -307,21 +313,33 @@ impl Frame for BasicFrame {
                 self.confined_pointers = Vec::new();
                 self.grabbed_pointer = false;
                 return Ok(());
-            }
-            else {
+            } else {
                 return Ok(());
             }
         }
         if self.grabbed_pointer {
             return Ok(());
         }
-        let pointer_constraints = self.pointer_constraints_manager.as_ref().ok_or(zwp_pointer_constraints_v1::Error::AlreadyConstrained)?;//TODO: add new error enum for this case
-        self.confined_pointers = self.pointers.iter()
+        let pointer_constraints = self
+            .pointer_constraints_manager
+            .as_ref()
+            .ok_or(zwp_pointer_constraints_v1::Error::AlreadyConstrained)?; //TODO: add new error enum for this case
+        self.confined_pointers = self
+            .pointers
+            .iter()
             .map(|p| p.get_pointer())
-            .map(|pointer| pointer_constraints
-                 .confine_pointer(surface, pointer, None, zwp_pointer_constraints_v1::Lifetime::Persistent.to_raw(), NewProxy::implement_dummy)
-                 .map_err(|_| zwp_pointer_constraints_v1::Error::AlreadyConstrained))
-            .collect::<Result<Vec<zwp_confined_pointer_v1::ZwpConfinedPointerV1>,_>>()?;
+            .map(|pointer| {
+                pointer_constraints
+                    .confine_pointer(
+                        surface,
+                        pointer,
+                        None,
+                        zwp_pointer_constraints_v1::Lifetime::Persistent.to_raw(),
+                        NewProxy::implement_dummy,
+                    )
+                    .map_err(|_| zwp_pointer_constraints_v1::Error::AlreadyConstrained)
+            })
+            .collect::<Result<Vec<zwp_confined_pointer_v1::ZwpConfinedPointerV1>, _>>()?;
         self.grabbed_pointer = true;
         Ok(())
     }

@@ -118,8 +118,8 @@ impl AutoPointer {
     ///get WlPointer value
     pub fn get_pointer(&self) -> &wl_pointer::WlPointer {
         match *self {
-            AutoPointer::Themed(ref themed_pointer) => {themed_pointer.get_pointer()},
-            AutoPointer::UnThemed(ref pointer) => {pointer},
+            AutoPointer::Themed(ref themed_pointer) => themed_pointer.get_pointer(),
+            AutoPointer::UnThemed(ref pointer) => pointer,
         }
     }
 }

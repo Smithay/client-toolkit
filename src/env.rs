@@ -9,9 +9,9 @@ use wayland_client::protocol::{
     wl_subcompositor, wl_surface,
 };
 use wayland_client::{EventQueue, GlobalEvent, GlobalManager, NewProxy};
+use wayland_protocols::unstable::pointer_constraints::v1::client::zwp_pointer_constraints_v1;
 use wayland_protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1;
 use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
-use wayland_protocols::unstable::pointer_constraints::v1::client::zwp_pointer_constraints_v1;
 use wayland_protocols::xdg_shell::client::xdg_wm_base;
 
 /// Possible shell globals
