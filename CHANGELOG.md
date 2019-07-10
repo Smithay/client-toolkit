@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- Keyboard input breaking when `LC_ALL`, `LC_CTYPE` or `LANG` are set to an empty string
+
 ## 0.6.3 -- 2019-06-29
 
 - Keyboard: fix extra key repeat when using also releasing a modifier
