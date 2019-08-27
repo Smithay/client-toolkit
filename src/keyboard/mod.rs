@@ -885,18 +885,30 @@ where
             // Get the values to generate a key event
             let sym = state.get_one_sym_raw(key);
             let utf8 = if key_state == wl_keyboard::KeyState::Pressed {
-                if state.compose_feed(sym)
-                    != Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED)
-                {
-                    None
-                } else if let Some(status) = state.compose_status() {
-                    match status {
-                        ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => state.compose_get_utf8(),
-                        ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => state.get_utf8_raw(key),
-                        _ => None,
+                match state.compose_feed(sym) {
+                    Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) => {
+                        if let Some(status) = state.compose_status() {
+                            match status {
+                                ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
+                                    state.compose_get_utf8()
+                                }
+                                ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => {
+                                    state.get_utf8_raw(key)
+                                }
+                                _ => None,
+                            }
+                        } else {
+                            state.get_utf8_raw(key)
+                        }
                     }
-                } else {
-                    state.get_utf8_raw(key)
+                    Some(_) => {
+                        // XKB_COMPOSE_FEED_IGNORED
+                        None
+                    }
+                    None => {
+                        // XKB COMPOSE is not initialized
+                        state.get_utf8_raw(key)
+                    }
                 }
             } else {
                 None

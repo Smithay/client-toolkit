@@ -5,6 +5,7 @@
 #### Bugfixes
 
 - Keyboard input breaking when `LC_ALL`, `LC_CTYPE` or `LANG` are set to an empty string
+- UTF8 intepretation no longer stops working if loading the compose table failed
 
 ## 0.6.3 -- 2019-06-29
 
