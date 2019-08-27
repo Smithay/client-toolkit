@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.4 -- 2019-08-27
+
 #### Bugfixes
 
 - Keyboard input breaking when `LC_ALL`, `LC_CTYPE` or `LANG` are set to an empty string
