@@ -484,12 +484,9 @@ impl Frame for ConceptFrame {
                                 .get_regular_family_fonts("sans")
                                 .unwrap()
                                 .iter()
-                                .filter_map(|p| {
-                                    if p.extension().unwrap() == "ttf" {
-                                        Some(p)
-                                    } else {
-                                        None
-                                    }
+                                .filter_map(|p| match p.extension() {
+                                    Some(e) if e == "ttf" => Some(p),
+                                    _ => None,
                                 })
                                 .nth(0)
                             {
