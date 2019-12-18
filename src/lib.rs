@@ -10,13 +10,6 @@ extern crate bitflags;
 extern crate dlib;
 #[macro_use]
 extern crate lazy_static;
-extern crate andrew;
-extern crate memmap;
-extern crate nix;
-#[doc(hidden)]
-pub extern crate wayland_client;
-#[doc(hidden)]
-pub extern crate wayland_protocols;
 
 /// Re-exports of some crates, for convenience
 pub mod reexports {
@@ -35,4 +28,4 @@ pub mod window;
 
 mod env;
 
-pub use env::{Environment, Shell};
+pub use crate::env::{Environment, Shell};

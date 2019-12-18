@@ -1,6 +1,6 @@
 //! Utility functions for creating dpi aware wayland surfaces.
-use env::Environment;
-use output::OutputMgr;
+use crate::env::Environment;
+use crate::output::OutputMgr;
 use std::sync::Mutex;
 use wayland_client::protocol::{wl_output, wl_surface};
 
@@ -8,13 +8,13 @@ pub(crate) struct SurfaceUserData {
     dpi_factor: i32,
     outputs: Vec<wl_output::WlOutput>,
     output_manager: OutputMgr,
-    dpi_change_cb: Box<FnMut(i32, wl_surface::WlSurface) + Send + 'static>,
+    dpi_change_cb: Box<dyn FnMut(i32, wl_surface::WlSurface) + Send + 'static>,
 }
 
 impl SurfaceUserData {
     fn new(
         output_manager: OutputMgr,
-        dpi_change_cb: Box<FnMut(i32, wl_surface::WlSurface) + Send + 'static>,
+        dpi_change_cb: Box<dyn FnMut(i32, wl_surface::WlSurface) + Send + 'static>,
     ) -> Self {
         SurfaceUserData {
             dpi_factor: 1,

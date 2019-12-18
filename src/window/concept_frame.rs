@@ -14,8 +14,8 @@ use wayland_client::protocol::{
 use wayland_client::NewProxy;
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
-use pointer::{AutoPointer, AutoThemer};
-use utils::DoubleMemPool;
+use crate::pointer::{AutoPointer, AutoThemer};
+use crate::utils::DoubleMemPool;
 
 /*
  * Drawing theme definitions
@@ -146,7 +146,7 @@ struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
     resizable: Arc<Mutex<bool>>,
-    implem: Mutex<Box<FnMut(FrameRequest, u32) + Send>>,
+    implem: Mutex<Box<dyn FnMut(FrameRequest, u32) + Send>>,
     maximized: Arc<Mutex<bool>>,
 }
 
@@ -239,7 +239,7 @@ pub struct ConceptFrame {
     pointers: Vec<AutoPointer>,
     themer: AutoThemer,
     surface_version: u32,
-    theme: Box<Theme>,
+    theme: Box<dyn Theme>,
     title: Option<String>,
     font_data: Option<Vec<u8>>,
 }
@@ -251,7 +251,7 @@ impl Frame for ConceptFrame {
         compositor: &wl_compositor::WlCompositor,
         subcompositor: &wl_subcompositor::WlSubcompositor,
         shm: &wl_shm::WlShm,
-        implementation: Box<FnMut(FrameRequest, u32) + Send>,
+        implementation: Box<dyn FnMut(FrameRequest, u32) + Send>,
     ) -> Result<ConceptFrame, ::std::io::Error> {
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
@@ -806,7 +806,7 @@ fn draw_buttons(
     width: u32,
     maximizable: bool,
     mouses: &[Location],
-    theme: &Theme,
+    theme: &dyn Theme,
 ) {
     // Draw seperator between header and window contents
     let division_line = line::Line::new(

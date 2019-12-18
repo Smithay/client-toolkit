@@ -12,11 +12,11 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
-use {Environment, Shell};
+use crate::{Environment, Shell};
 
 mod basic_frame;
 mod concept_frame;
-use shell;
+use crate::shell;
 
 pub use self::basic_frame::BasicFrame;
 pub use self::concept_frame::ConceptFrame;
@@ -109,8 +109,8 @@ pub enum Event {
 
 struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
-    shell_surface: Arc<Box<shell::ShellSurface>>,
-    user_impl: Box<FnMut(Event) + Send>,
+    shell_surface: Arc<Box<dyn shell::ShellSurface>>,
+    user_impl: Box<dyn FnMut(Event) + Send>,
     min_size: (u32, u32),
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
@@ -138,7 +138,7 @@ pub struct Window<F: Frame> {
     surface: wl_surface::WlSurface,
     decoration: Mutex<Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
     decoration_mgr: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
-    shell_surface: Arc<Box<shell::ShellSurface>>,
+    shell_surface: Arc<Box<dyn shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
 }
 
@@ -618,7 +618,7 @@ pub trait Frame: Sized + Send {
         compositor: &wl_compositor::WlCompositor,
         subcompositor: &wl_subcompositor::WlSubcompositor,
         shm: &wl_shm::WlShm,
-        implementation: Box<FnMut(FrameRequest, u32) + Send>,
+        implementation: Box<dyn FnMut(FrameRequest, u32) + Send>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
     ///

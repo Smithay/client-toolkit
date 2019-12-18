@@ -103,7 +103,7 @@ pub struct MemPool {
     pool: wl_shm_pool::WlShmPool,
     buffer_count: Arc<Mutex<u32>>,
     mmap: MmapMut,
-    implementation: Arc<Mutex<FnMut() + Send>>,
+    implementation: Arc<Mutex<dyn FnMut() + Send>>,
 }
 
 impl MemPool {
