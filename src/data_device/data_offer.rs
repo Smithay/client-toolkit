@@ -1,6 +1,6 @@
 use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
-use wayland_client::NewProxy;
+use wayland_client::Main;
 
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::sync::{Arc, Mutex};
@@ -21,7 +21,7 @@ pub struct DataOffer {
 }
 
 impl DataOffer {
-    pub(crate) fn new(offer: NewProxy<wl_data_offer::WlDataOffer>) -> DataOffer {
+    pub(crate) fn new(offer: Main<wl_data_offer::WlDataOffer>) -> DataOffer {
         let inner = Arc::new(Mutex::new(Inner {
             mime_types: Vec::new(),
             actions: DndAction::None,
@@ -29,27 +29,27 @@ impl DataOffer {
             serial: 0,
         }));
         let inner2 = inner.clone();
-        let offer = offer.implement_closure(
-            move |event, _| {
-                use self::wl_data_offer::Event;
-                let mut inner = inner2.lock().unwrap();
-                match event {
-                    Event::Offer { mime_type } => {
-                        inner.mime_types.push(mime_type);
-                    }
-                    Event::SourceActions { source_actions } => {
-                        inner.actions = DndAction::from_bits_truncate(source_actions);
-                    }
-                    Event::Action { dnd_action } => {
-                        inner.current_action = DndAction::from_bits_truncate(dnd_action);
-                    }
-                    _ => unreachable!(),
+        offer.assign_mono(move |_, event| {
+            use self::wl_data_offer::Event;
+            let mut inner = inner2.lock().unwrap();
+            match event {
+                Event::Offer { mime_type } => {
+                    inner.mime_types.push(mime_type);
                 }
-            },
-            (),
-        );
+                Event::SourceActions { source_actions } => {
+                    inner.actions = DndAction::from_bits_truncate(source_actions);
+                }
+                Event::Action { dnd_action } => {
+                    inner.current_action = DndAction::from_bits_truncate(dnd_action);
+                }
+                _ => unreachable!(),
+            }
+        });
 
-        DataOffer { offer, inner }
+        DataOffer {
+            offer: (*offer).clone().detach(),
+            inner,
+        }
     }
 
     /// Access the list of mime types proposed by this offer

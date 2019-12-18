@@ -3,6 +3,7 @@
 use std::ops::Deref;
 
 use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm};
+use wayland_client::Attached;
 mod theme;
 
 pub use self::theme::{ThemeManager, ThemedPointer};
@@ -30,8 +31,8 @@ impl AutoThemer {
     /// Falls back to `UnThemed` if `libwayland-cursor` is not available.
     pub fn init(
         name: Option<&str>,
-        compositor: wl_compositor::WlCompositor,
-        shm: &wl_shm::WlShm,
+        compositor: Attached<wl_compositor::WlCompositor>,
+        shm: &Attached<wl_shm::WlShm>,
     ) -> AutoThemer {
         match ThemeManager::init(name, compositor, &shm) {
             Ok(mgr) => AutoThemer::Themed(mgr),
@@ -72,15 +73,12 @@ impl AutoThemer {
                 AutoPointer::Themed(pointer)
             }
             AutoThemer::UnThemed => {
-                let pointer = seat
-                    .get_pointer(|pointer| {
-                        pointer.implement_closure(
-                            move |event, seat| implementation(event, AutoPointer::UnThemed(seat)),
-                            user_data,
-                        )
-                    })
-                    .unwrap();
-                AutoPointer::UnThemed(pointer)
+                let pointer = seat.get_pointer();
+                pointer.assign_mono(move |ptr, event| {
+                    implementation(event, AutoPointer::UnThemed((*ptr).clone().detach()))
+                });
+                pointer.as_ref().user_data().set(|| user_data);
+                AutoPointer::UnThemed((*pointer).clone().detach())
             }
         }
     }

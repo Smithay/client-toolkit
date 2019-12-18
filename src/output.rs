@@ -179,32 +179,26 @@ impl OutputMgr {
 
     pub(crate) fn new_output(&self, id: u32, version: u32, registry: &wl_registry::WlRegistry) {
         let inner = self.inner.clone();
-        let output = registry
-            .bind(version, id, |output| {
-                output.implement_closure(
-                    move |event, output| {
-                        let mut inner = inner.lock().unwrap();
-                        if let Event::Done = event {
-                            inner.merge(&output);
-                        } else {
-                            inner.pending.push((output.clone(), event));
-                            if output.as_ref().version() < 2 {
-                                // in case of very old outputs, we can't treat the changes
-                                // atomically as the Done event does not exist
-                                inner.merge(&output);
-                            }
-                        }
-                    },
-                    (),
-                )
-            })
-            .unwrap();
+        let output = registry.bind::<WlOutput>(version, id);
+        output.assign_mono(move |output, event| {
+            let mut inner = inner.lock().unwrap();
+            if let Event::Done = event {
+                inner.merge(&output);
+            } else {
+                inner.pending.push(((*output).clone().detach(), event));
+                if output.as_ref().version() < 2 {
+                    // in case of very old outputs, we can't treat the changes
+                    // atomically as the Done event does not exist
+                    inner.merge(&output);
+                }
+            }
+        });
 
-        self.inner
-            .lock()
-            .unwrap()
-            .outputs
-            .push((id, output, OutputInfo::new()));
+        self.inner.lock().unwrap().outputs.push((
+            id,
+            (*output).clone().detach(),
+            OutputInfo::new(),
+        ));
     }
 
     pub(crate) fn output_removed(&self, id: u32) {

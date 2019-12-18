@@ -18,7 +18,7 @@ use std::time::UNIX_EPOCH;
 use memmap::MmapMut;
 
 use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
-use wayland_client::NewProxy;
+use wayland_client::Main;
 
 /// A Double memory pool, for convenient double-buffering
 ///
@@ -39,7 +39,7 @@ impl DoubleMemPool {
     /// Create a double memory pool
     pub fn new<Impl>(shm: &wl_shm::WlShm, implementation: Impl) -> io::Result<DoubleMemPool>
     where
-        Impl: FnMut() + Send + 'static,
+        Impl: FnMut() + 'static,
     {
         let free = Arc::new(Mutex::new(true));
         let implementation = Arc::new(Mutex::new(implementation));
@@ -100,25 +100,23 @@ impl DoubleMemPool {
 pub struct MemPool {
     file: File,
     len: usize,
-    pool: wl_shm_pool::WlShmPool,
+    pool: Main<wl_shm_pool::WlShmPool>,
     buffer_count: Arc<Mutex<u32>>,
     mmap: MmapMut,
-    implementation: Arc<Mutex<dyn FnMut() + Send>>,
+    implementation: Arc<Mutex<dyn FnMut()>>,
 }
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
     pub fn new<Impl>(shm: &wl_shm::WlShm, implementation: Impl) -> io::Result<MemPool>
     where
-        Impl: FnMut() + Send + 'static,
+        Impl: FnMut() + 'static,
     {
         let mem_fd = create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(mem_fd) };
         mem_file.set_len(128)?;
 
-        let pool = shm
-            .create_pool(mem_fd, 128, NewProxy::implement_dummy)
-            .unwrap();
+        let pool = shm.create_pool(mem_fd, 128);
 
         let mmap = unsafe { MmapMut::map_mut(&mem_file).unwrap() };
 
@@ -176,24 +174,21 @@ impl MemPool {
         *self.buffer_count.lock().unwrap() += 1;
         let my_buffer_count = self.buffer_count.clone();
         let my_implementation = self.implementation.clone();
-        self.pool
-            .create_buffer(offset, width, height, stride, format, |buffer| {
-                buffer.implement_closure(
-                    move |event, buffer: wl_buffer::WlBuffer| match event {
-                        wl_buffer::Event::Release => {
-                            buffer.destroy();
-                            let mut my_buffer_count = my_buffer_count.lock().unwrap();
-                            *my_buffer_count -= 1;
-                            if *my_buffer_count == 0 {
-                                (&mut *my_implementation.lock().unwrap())();
-                            }
-                        }
-                        _ => unreachable!(),
-                    },
-                    (),
-                )
-            })
-            .unwrap()
+        let buffer = self
+            .pool
+            .create_buffer(offset, width, height, stride, format);
+        buffer.assign_mono(move |buffer, event| match event {
+            wl_buffer::Event::Release => {
+                buffer.destroy();
+                let mut my_buffer_count = my_buffer_count.lock().unwrap();
+                *my_buffer_count -= 1;
+                if *my_buffer_count == 0 {
+                    (&mut *my_implementation.lock().unwrap())();
+                }
+            }
+            _ => unreachable!(),
+        });
+        (*buffer).clone().detach()
     }
 
     /// Uses the memmap crate to map the underlying shared memory file

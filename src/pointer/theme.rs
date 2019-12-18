@@ -1,8 +1,8 @@
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
-use wayland_client::cursor::{is_available, load_theme, CursorTheme};
 use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm, wl_surface};
-use wayland_client::NewProxy;
+use wayland_client::Attached;
+use wayland_cursor::{is_available, load_theme, CursorTheme};
 
 /// Wrapper managing a system theme for pointer images
 ///
@@ -15,7 +15,7 @@ use wayland_client::NewProxy;
 /// Note that it is however not `Send` nor `Sync`
 pub struct ThemeManager {
     theme: Arc<Mutex<CursorTheme>>,
-    compositor: wl_compositor::WlCompositor,
+    compositor: Attached<wl_compositor::WlCompositor>,
 }
 
 impl ThemeManager {
@@ -26,7 +26,7 @@ impl ThemeManager {
     /// Fails if `libwayland-cursor` is not available.
     pub fn init(
         name: Option<&str>,
-        compositor: wl_compositor::WlCompositor,
+        compositor: Attached<wl_compositor::WlCompositor>,
         shm: &wl_shm::WlShm,
     ) -> Result<ThemeManager, ()> {
         if !is_available() {
@@ -41,14 +41,12 @@ impl ThemeManager {
 
     /// Wrap a pointer to theme it
     pub fn theme_pointer(&self, pointer: wl_pointer::WlPointer) -> ThemedPointer {
-        let surface = self
-            .compositor
-            .create_surface(NewProxy::implement_dummy)
-            .unwrap();
+        let surface = self.compositor.create_surface();
+        surface.assign_mono(|_, _| {});
         ThemedPointer {
             pointer,
             inner: Arc::new(Mutex::new(PointerInner {
-                surface,
+                surface: (*surface).clone().detach(),
                 theme: self.theme.clone(),
                 last_serial: 0,
             })),
@@ -70,37 +68,30 @@ impl ThemeManager {
         Impl: FnMut(wl_pointer::Event, ThemedPointer) + 'static,
         UD: 'static,
     {
-        let surface = self
-            .compositor
-            .create_surface(NewProxy::implement_dummy)
-            .unwrap();
+        let surface = self.compositor.create_surface();
+        surface.assign_mono(|_, _| {});
 
         let inner = Arc::new(Mutex::new(PointerInner {
-            surface,
+            surface: (*surface).clone().detach(),
             theme: self.theme.clone(),
             last_serial: 0,
         }));
         let inner2 = inner.clone();
 
-        let pointer = seat
-            .get_pointer(|pointer| {
-                pointer.implement_closure(
-                    move |event, ptr| {
-                        implementation(
-                            event,
-                            ThemedPointer {
-                                pointer: ptr,
-                                inner: inner.clone(),
-                            },
-                        )
-                    },
-                    user_data,
-                )
-            })
-            .unwrap();
+        let pointer = seat.get_pointer();
+        pointer.assign_mono(move |ptr, event| {
+            implementation(
+                event,
+                ThemedPointer {
+                    pointer: (*ptr).clone().detach(),
+                    inner: inner.clone(),
+                },
+            )
+        });
+        pointer.as_ref().user_data().set(|| user_data);
 
         ThemedPointer {
-            pointer,
+            pointer: (*pointer).clone().detach(),
             inner: inner2,
         }
     }

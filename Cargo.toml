@@ -15,15 +15,16 @@ travis-ci = { repository = "smithay/client-toolkit" }
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.14.1"
+nix = "0.16"
 dlib = "0.4"
-lazy_static = "1"
+lazy_static = "1.0"
 memmap = "0.7"
 andrew = "0.2.0"
-wayland-client = { version = "0.23", features = ["cursor"] }
-wayland-protocols = { version = "0.23", features = ["client", "unstable_protocols"] }
+wayland-client = "0.24"
+wayland-protocols = { version = "0.24", features = ["client", "unstable_protocols"] }
+wayland-cursor = "0.24"
 
 [dev-dependencies]
-image = "0.21"
-wayland-client = { version = "0.23", features = ["dlopen"] }
+image = "0.22"
+wayland-client = { version = "0.24", features = ["dlopen"] }
 byteorder = "1.0"

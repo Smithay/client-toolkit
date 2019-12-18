@@ -26,71 +26,49 @@ impl Xdg {
 
         let implementation = Rc::new(RefCell::new(implementation));
         let implementation_2 = implementation.clone();
-        let xdgs = shell
-            .get_xdg_surface(surface, move |xdgs| {
-                xdgs.implement_closure(
-                    move |evt, xdgs| match evt {
-                        xdg_surface::Event::Configure { serial } => {
-                            xdgs.ack_configure(serial);
-                            if let Some((new_size, states)) =
-                                pending_configure_2.borrow_mut().take()
-                            {
-                                (&mut *implementation_2.borrow_mut())(Event::Configure {
-                                    new_size,
-                                    states,
-                                });
-                            }
-                        }
-                        _ => unreachable!(),
-                    },
-                    (),
-                )
-            })
-            .unwrap();
-        let toplevel = xdgs
-            .get_toplevel(move |toplevel| {
-                toplevel.implement_closure(
-                    move |evt, _| {
-                        match evt {
-                            xdg_toplevel::Event::Close => {
-                                (&mut *implementation.borrow_mut())(Event::Close)
-                            }
-                            xdg_toplevel::Event::Configure {
-                                width,
-                                height,
-                                states,
-                            } => {
-                                use std::cmp::max;
-                                let new_size = if width == 0 || height == 0 {
-                                    // if either w or h is zero, then we get to choose our size
-                                    None
-                                } else {
-                                    Some((max(width, 1) as u32, max(height, 1) as u32))
-                                };
-                                let view: &[u32] = unsafe {
-                                    ::std::slice::from_raw_parts(
-                                        states.as_ptr() as *const _,
-                                        states.len() / 4,
-                                    )
-                                };
-                                let states = view
-                                    .iter()
-                                    .cloned()
-                                    .flat_map(xdg_toplevel::State::from_raw)
-                                    .collect::<Vec<_>>();
-                                *pending_configure.borrow_mut() = Some((new_size, states));
-                            }
-                            _ => unreachable!(),
-                        }
-                    },
-                    (),
-                )
-            })
-            .unwrap();
+        let xdgs = shell.get_xdg_surface(surface);
+        xdgs.assign_mono(move |xdgs, evt| match evt {
+            xdg_surface::Event::Configure { serial } => {
+                xdgs.ack_configure(serial);
+                if let Some((new_size, states)) = pending_configure_2.borrow_mut().take() {
+                    (&mut *implementation_2.borrow_mut())(Event::Configure { new_size, states });
+                }
+            }
+            _ => unreachable!(),
+        });
+        let toplevel = xdgs.get_toplevel();
+        toplevel.assign_mono(move |_, evt| {
+            match evt {
+                xdg_toplevel::Event::Close => (&mut *implementation.borrow_mut())(Event::Close),
+                xdg_toplevel::Event::Configure {
+                    width,
+                    height,
+                    states,
+                } => {
+                    use std::cmp::max;
+                    let new_size = if width == 0 || height == 0 {
+                        // if either w or h is zero, then we get to choose our size
+                        None
+                    } else {
+                        Some((max(width, 1) as u32, max(height, 1) as u32))
+                    };
+                    let view: &[u32] = unsafe {
+                        ::std::slice::from_raw_parts(states.as_ptr() as *const _, states.len() / 4)
+                    };
+                    let states = view
+                        .iter()
+                        .cloned()
+                        .flat_map(xdg_toplevel::State::from_raw)
+                        .collect::<Vec<_>>();
+                    *pending_configure.borrow_mut() = Some((new_size, states));
+                }
+                _ => unreachable!(),
+            }
+        });
         surface.commit();
         Xdg {
-            surface: xdgs,
-            toplevel,
+            surface: (*xdgs).clone().detach(),
+            toplevel: (*toplevel).clone().detach(),
         }
     }
 }

@@ -1,7 +1,7 @@
-use wayland_client::protocol::{
-    wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat, wl_surface,
+use wayland_client::{
+    protocol::{wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat, wl_surface},
+    Main,
 };
-use wayland_client::NewProxy;
 
 use std::sync::{Arc, Mutex};
 
@@ -14,7 +14,7 @@ struct Inner {
 }
 
 impl Inner {
-    fn new_offer(&mut self, offer: NewProxy<wl_data_offer::WlDataOffer>) {
+    fn new_offer(&mut self, offer: Main<wl_data_offer::WlDataOffer>) {
         self.known_offers.push(DataOffer::new(offer));
     }
 
@@ -59,7 +59,7 @@ impl Inner {
 /// data through drag'n'drop or copy/paste actions. It is associated
 /// with a seat upon creation.
 pub struct DataDevice {
-    device: wl_data_device::WlDataDevice,
+    device: Main<wl_data_device::WlDataDevice>,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -170,17 +170,11 @@ impl DataDevice {
         }));
 
         let inner2 = inner.clone();
-        let device = manager
-            .get_data_device(seat, move |device| {
-                device.implement_closure(
-                    move |evt, _| {
-                        let mut inner = inner2.lock().unwrap();
-                        data_device_implem(evt, &mut *inner, &mut implem);
-                    },
-                    (),
-                )
-            })
-            .expect("Invalid data device or seat.");
+        let device = manager.get_data_device(seat);
+        device.assign_mono(move |_, evt| {
+            let mut inner = inner2.lock().unwrap();
+            data_device_implem(evt, &mut *inner, &mut implem);
+        });
 
         DataDevice { device, inner }
     }

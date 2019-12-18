@@ -15,33 +15,29 @@ impl Wl {
         mut implementation: Impl,
     ) -> Wl
     where
-        Impl: FnMut(Event) + Send + 'static,
+        Impl: FnMut(Event) + 'static,
     {
-        let shell_surface = shell
-            .get_shell_surface(surface, |shell_surface| {
-                shell_surface.implement_closure(
-                    move |event, shell_surface| match event {
-                        wl_shell_surface::Event::Ping { serial } => {
-                            shell_surface.pong(serial);
-                        }
-                        wl_shell_surface::Event::Configure { width, height, .. } => {
-                            use std::cmp::max;
-                            implementation(Event::Configure {
-                                new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
-                                states: Vec::new(),
-                            });
-                        }
-                        wl_shell_surface::Event::PopupDone => {
-                            unreachable!();
-                        }
-                        _ => unreachable!(),
-                    },
-                    (),
-                )
-            })
-            .unwrap();
+        let shell_surface = shell.get_shell_surface(surface);
+        shell_surface.assign_mono(move |shell_surface, event| match event {
+            wl_shell_surface::Event::Ping { serial } => {
+                shell_surface.pong(serial);
+            }
+            wl_shell_surface::Event::Configure { width, height, .. } => {
+                use std::cmp::max;
+                implementation(Event::Configure {
+                    new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
+                    states: Vec::new(),
+                });
+            }
+            wl_shell_surface::Event::PopupDone => {
+                unreachable!();
+            }
+            _ => unreachable!(),
+        });
         shell_surface.set_toplevel();
-        Wl { shell_surface }
+        Wl {
+            shell_surface: (*shell_surface).clone().detach(),
+        }
     }
 }
 
