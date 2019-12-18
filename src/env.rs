@@ -1,8 +1,8 @@
 use std::io;
 use std::sync::{Arc, Mutex};
 
-use shell::{create_shell_surface, Event, ShellSurface};
-use surface::{create_surface, SurfaceUserData};
+use crate::shell::{create_shell_surface, Event, ShellSurface};
+use crate::surface::{create_surface, SurfaceUserData};
 
 use wayland_client::protocol::{
     wl_compositor, wl_data_device_manager, wl_display, wl_registry, wl_shell, wl_shm,
@@ -62,7 +62,7 @@ pub struct Environment {
     /// copy/paste
     pub data_device_manager: wl_data_device_manager::WlDataDeviceManager,
     /// A manager for handling the advertised outputs
-    pub outputs: ::output::OutputMgr,
+    pub outputs: crate::output::OutputMgr,
     /// The decoration manager, if the server supports server-side decorations
     pub decorations_mgr: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
     shm_formats: Arc<Mutex<Vec<wl_shm::Format>>>,
@@ -96,7 +96,7 @@ impl Environment {
     where
         Impl: FnMut(GlobalEvent, wl_registry::WlRegistry) + 'static,
     {
-        let outputs = ::output::OutputMgr::new();
+        let outputs = crate::output::OutputMgr::new();
         let outputs2 = outputs.clone();
 
         let surfaces: Arc<Mutex<Vec<wl_surface::WlSurface>>> = Arc::new(Mutex::new(Vec::new()));
@@ -256,7 +256,7 @@ impl Environment {
         &self,
         surface: &wl_surface::WlSurface,
         shell_impl: Impl,
-    ) -> Box<ShellSurface>
+    ) -> Box<dyn ShellSurface>
     where
         Impl: FnMut(Event) + Send + 'static,
     {

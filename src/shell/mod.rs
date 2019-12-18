@@ -12,7 +12,7 @@ use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
 
-use Shell;
+use crate::Shell;
 
 mod wl;
 mod xdg;
@@ -51,7 +51,7 @@ pub(crate) fn create_shell_surface<Impl>(
     shell: &Shell,
     surface: &wl_surface::WlSurface,
     implem: Impl,
-) -> Box<ShellSurface>
+) -> Box<dyn ShellSurface>
 where
     Impl: FnMut(Event) + Send + 'static,
 {
