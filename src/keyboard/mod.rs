@@ -570,17 +570,15 @@ where
         delay: 300,
     });
 
-    seat.get_keyboard(|kbd| {
-        kbd.implement(
-            KbdHandler {
-                state,
-                repeat,
-                implementation,
-            },
-            (),
-        )
-    })
-    .unwrap()
+    let kbd = seat.get_keyboard();
+    let mut handler = KbdHandler {
+        state,
+        repeat,
+        implementation,
+    };
+
+    kbd.assign_mono(move |kbd, evt| handler.event((*kbd).clone().detach(), evt));
+    (*kbd).clone().detach()
 }
 
 /// Implement a keyboard to automatically detect the keymap and send KeyRepeatEvents
@@ -806,11 +804,47 @@ where
     }
 }
 
-impl<Impl, RepeatImpl> wl_keyboard::EventHandler for KbdHandler<Impl, RepeatImpl>
+impl<Impl, RepeatImpl> KbdHandler<Impl, RepeatImpl>
 where
     for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + 'static,
     RepeatImpl: FnMut(KeyRepeatEvent, wl_keyboard::WlKeyboard) + Send + 'static,
 {
+    fn event(&mut self, kbd: wl_keyboard::WlKeyboard, event: wl_keyboard::Event) {
+        use wl_keyboard::Event;
+
+        match event {
+            Event::Keymap { format, fd, size } => self.keymap(kbd, format, fd, size),
+            Event::Enter {
+                serial,
+                surface,
+                keys,
+            } => self.enter(kbd, serial, surface, keys),
+            Event::Leave { serial, surface } => self.leave(kbd, serial, surface),
+            Event::Key {
+                serial,
+                time,
+                key,
+                state,
+            } => self.key(kbd, serial, time, key, state),
+            Event::Modifiers {
+                serial,
+                mods_depressed,
+                mods_latched,
+                mods_locked,
+                group,
+            } => self.modifiers(
+                kbd,
+                serial,
+                mods_depressed,
+                mods_latched,
+                mods_locked,
+                group,
+            ),
+            Event::RepeatInfo { rate, delay } => self.repeat_info(kbd, rate, delay),
+            _ => {}
+        }
+    }
+
     fn keymap(
         &mut self,
         _: wl_keyboard::WlKeyboard,

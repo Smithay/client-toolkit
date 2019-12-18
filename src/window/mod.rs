@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use wayland_client::protocol::{
     wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
 };
+use wayland_client::Attached;
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
@@ -14,11 +15,9 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
 
 use crate::{Environment, Shell};
 
-mod basic_frame;
 mod concept_frame;
 use crate::shell;
 
-pub use self::basic_frame::BasicFrame;
 pub use self::concept_frame::ConceptFrame;
 
 // Defines the minimum window size. Minimum width is set to 2 pixels to circumvent
@@ -40,7 +39,7 @@ pub enum ButtonState {
 /// A type implementing this trait can be used to define custom
 /// themes to adjust the decorations provided by a type implementing
 /// the 'Frame' trait
-pub trait Theme: Send + 'static {
+pub trait Theme: 'static {
     /// Gets the primary color of the scheme, active when window is
     fn get_primary_color(&self, active: bool) -> [u8; 4];
     /// Gets the secondary color of the scheme, active when window is
@@ -110,7 +109,7 @@ pub enum Event {
 struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
-    user_impl: Box<dyn FnMut(Event) + Send>,
+    user_impl: Box<dyn FnMut(Event)>,
     min_size: (u32, u32),
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
@@ -137,7 +136,7 @@ pub struct Window<F: Frame> {
     frame: Arc<Mutex<F>>,
     surface: wl_surface::WlSurface,
     decoration: Mutex<Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
-    decoration_mgr: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+    decoration_mgr: Option<Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
 }
@@ -152,7 +151,7 @@ impl<F: Frame + 'static> Window<F> {
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut(Event) + Send + 'static,
+        Impl: FnMut(Event) + 'static,
     {
         Self::init_with_decorations(
             surface,
@@ -173,14 +172,14 @@ impl<F: Frame + 'static> Window<F> {
     pub fn init<Impl>(
         surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
-        compositor: &wl_compositor::WlCompositor,
-        subcompositor: &wl_subcompositor::WlSubcompositor,
-        shm: &wl_shm::WlShm,
+        compositor: &Attached<wl_compositor::WlCompositor>,
+        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
+        shm: &Attached<wl_shm::WlShm>,
         shell: &Shell,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut(Event) + Send + 'static,
+        Impl: FnMut(Event) + 'static,
     {
         Self::init_with_decorations(
             surface,
@@ -202,15 +201,15 @@ impl<F: Frame + 'static> Window<F> {
     pub fn init_with_decorations<Impl>(
         surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
-        compositor: &wl_compositor::WlCompositor,
-        subcompositor: &wl_subcompositor::WlSubcompositor,
-        shm: &wl_shm::WlShm,
+        compositor: &Attached<wl_compositor::WlCompositor>,
+        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
+        shm: &Attached<wl_shm::WlShm>,
         shell: &Shell,
-        decoration_mgr: Option<&zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+        decoration_mgr: Option<&Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut(Event) + Send + 'static,
+        Impl: FnMut(Event) + 'static,
     {
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
@@ -344,35 +343,28 @@ impl<F: Frame + 'static> Window<F> {
         *decoration = match (self.shell_surface.get_xdg(), &self.decoration_mgr) {
             (Some(toplevel), &Some(ref mgr)) => {
                 use self::zxdg_toplevel_decoration_v1::{Event, Mode};
-                mgr.get_toplevel_decoration(toplevel, |newdec| {
-                    newdec.implement_closure(
-                        move |event, _| {
-                            if let Event::Configure { mode } = event {
-                                match mode {
-                                    Mode::ServerSide => {
-                                        decoration_frame.lock().unwrap().set_hidden(true);
-                                    }
-                                    Mode::ClientSide => {
-                                        let want_decorate = decoration_inner
-                                            .lock()
-                                            .unwrap()
-                                            .as_ref()
-                                            .map(|inner| inner.decorated)
-                                            .unwrap_or(false);
-                                        decoration_frame.lock().unwrap().set_hidden(!want_decorate);
-                                    }
-                                    _ => unreachable!(),
-                                }
+                let decoration = mgr.get_toplevel_decoration(toplevel);
+                decoration.assign_mono(move |_, event| {
+                    if let Event::Configure { mode } = event {
+                        match mode {
+                            Mode::ServerSide => {
+                                decoration_frame.lock().unwrap().set_hidden(true);
                             }
-                        },
-                        (),
-                    )
-                })
-                .ok()
-                .map(|decoration| {
-                    decoration.set_mode(Mode::ServerSide);
-                    decoration
-                })
+                            Mode::ClientSide => {
+                                let want_decorate = decoration_inner
+                                    .lock()
+                                    .unwrap()
+                                    .as_ref()
+                                    .map(|inner| inner.decorated)
+                                    .unwrap_or(false);
+                                decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                });
+                decoration.set_mode(Mode::ServerSide);
+                Some((*decoration).clone().detach())
             }
             _ => None,
         };
@@ -609,16 +601,16 @@ pub enum FrameRequest {
 /// A type implementing this trait can be used to define custom
 /// decorations additionnaly to the ones provided by this crate
 /// and be used with `Window`.
-pub trait Frame: Sized + Send {
+pub trait Frame: Sized {
     /// Type of errors that may occur when attempting to create a frame
     type Error;
     /// Initialize the Frame
     fn init(
         base_surface: &wl_surface::WlSurface,
-        compositor: &wl_compositor::WlCompositor,
-        subcompositor: &wl_subcompositor::WlSubcompositor,
-        shm: &wl_shm::WlShm,
-        implementation: Box<dyn FnMut(FrameRequest, u32) + Send>,
+        compositor: &Attached<wl_compositor::WlCompositor>,
+        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
+        shm: &Attached<wl_shm::WlShm>,
+        implementation: Box<dyn FnMut(FrameRequest, u32)>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
     ///

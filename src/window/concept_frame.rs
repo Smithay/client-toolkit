@@ -11,7 +11,7 @@ use andrew::{Canvas, Endian};
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
 };
-use wayland_client::NewProxy;
+use wayland_client::Attached;
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
 use crate::pointer::{AutoPointer, AutoThemer};
@@ -109,18 +109,16 @@ struct Part {
 impl Part {
     fn new(
         parent: &wl_surface::WlSurface,
-        compositor: &wl_compositor::WlCompositor,
-        subcompositor: &wl_subcompositor::WlSubcompositor,
+        compositor: &Attached<wl_compositor::WlCompositor>,
+        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
     ) -> Part {
-        let surface = compositor
-            .create_surface(NewProxy::implement_dummy)
-            .unwrap();
-        let subsurface = subcompositor
-            .get_subsurface(&surface, parent, NewProxy::implement_dummy)
-            .unwrap();
+        let surface = compositor.create_surface();
+        surface.assign_mono(|_, _| {});
+        let subsurface = subcompositor.get_subsurface(&surface, parent);
+        subsurface.assign_mono(|_, _| {});
         Part {
-            surface,
-            subsurface,
+            surface: (*surface).clone().detach(),
+            subsurface: (*subsurface).clone().detach(),
         }
     }
 }
@@ -146,7 +144,7 @@ struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
     resizable: Arc<Mutex<bool>>,
-    implem: Mutex<Box<dyn FnMut(FrameRequest, u32) + Send>>,
+    implem: Mutex<Box<dyn FnMut(FrameRequest, u32)>>,
     maximized: Arc<Mutex<bool>>,
 }
 
@@ -248,10 +246,10 @@ impl Frame for ConceptFrame {
     type Error = ::std::io::Error;
     fn init(
         base_surface: &wl_surface::WlSurface,
-        compositor: &wl_compositor::WlCompositor,
-        subcompositor: &wl_subcompositor::WlSubcompositor,
-        shm: &wl_shm::WlShm,
-        implementation: Box<dyn FnMut(FrameRequest, u32) + Send>,
+        compositor: &Attached<wl_compositor::WlCompositor>,
+        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
+        shm: &Attached<wl_shm::WlShm>,
+        implementation: Box<dyn FnMut(FrameRequest, u32)>,
     ) -> Result<ConceptFrame, ::std::io::Error> {
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
@@ -293,7 +291,7 @@ impl Frame for ConceptFrame {
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
             move |event, pointer: AutoPointer| {
-                let data: &Mutex<PointerUserData> = pointer.as_ref().user_data().unwrap();
+                let data: &Mutex<PointerUserData> = pointer.as_ref().user_data().get().unwrap();
                 let data = &mut *data.lock().unwrap();
                 let (width, _) = *(inner.size.lock().unwrap());
                 let resizable = *(inner.resizable.lock().unwrap());
@@ -465,7 +463,7 @@ impl Frame for ConceptFrame {
                             .flat_map(|p| {
                                 if p.as_ref().is_alive() {
                                     let data: &Mutex<PointerUserData> =
-                                        p.as_ref().user_data().unwrap();
+                                        p.as_ref().user_data().get().unwrap();
                                     Some(data.lock().unwrap().location)
                                 } else {
                                     None

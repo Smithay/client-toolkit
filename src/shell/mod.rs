@@ -53,7 +53,7 @@ pub(crate) fn create_shell_surface<Impl>(
     implem: Impl,
 ) -> Box<dyn ShellSurface>
 where
-    Impl: FnMut(Event) + Send + 'static,
+    Impl: FnMut(Event) + 'static,
 {
     match *shell {
         Shell::Wl(ref shell) => Box::new(wl::Wl::create(surface, shell, implem)) as Box<_>,

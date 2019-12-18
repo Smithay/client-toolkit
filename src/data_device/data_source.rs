@@ -118,20 +118,16 @@ impl DataSource {
     where
         Impl: FnMut(DataSourceEvent) + 'static,
     {
-        let source = mgr
-            .create_data_source(|source| {
-                source.implement_closure(
-                    move |evt, source| data_source_impl(evt, &source, &mut implem),
-                    (),
-                )
-            })
-            .expect("Provided a dead data device manager to create a data source.");
+        let source = mgr.create_data_source();
+        source.assign_mono(move |source, evt| data_source_impl(evt, &source, &mut implem));
 
         for &mime in mime_types {
             source.offer(mime.into());
         }
 
-        DataSource { source }
+        DataSource {
+            source: (*source).clone().detach(),
+        }
     }
 }
 

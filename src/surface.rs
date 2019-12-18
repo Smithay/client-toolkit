@@ -64,41 +64,40 @@ pub(crate) fn create_surface<F>(
 where
     F: FnMut(i32, wl_surface::WlSurface) + Send + 'static,
 {
-    environment
-        .compositor
-        .create_surface(move |surface| {
-            surface.implement_closure(
-                move |event, surface| {
-                    let mut user_data = surface
-                        .as_ref()
-                        .user_data::<Mutex<SurfaceUserData>>()
-                        .unwrap()
-                        .lock()
-                        .unwrap();
-                    match event {
-                        wl_surface::Event::Enter { output } => {
-                            user_data.enter(output, surface.clone());
-                        }
-                        wl_surface::Event::Leave { output } => {
-                            user_data.leave(&output, surface.clone());
-                        }
-                        _ => unreachable!(),
-                    };
-                },
-                Mutex::new(SurfaceUserData::new(
-                    environment.outputs.clone(),
-                    dpi_change,
-                )),
-            )
-        })
-        .unwrap()
+    let surface = environment.compositor.create_surface();
+    surface.assign_mono(move |surface, event| {
+        let mut user_data = surface
+            .as_ref()
+            .user_data()
+            .get::<Mutex<SurfaceUserData>>()
+            .unwrap()
+            .lock()
+            .unwrap();
+        match event {
+            wl_surface::Event::Enter { output } => {
+                user_data.enter(output, (*surface).clone().detach());
+            }
+            wl_surface::Event::Leave { output } => {
+                user_data.leave(&output, (*surface).clone().detach());
+            }
+            _ => unreachable!(),
+        };
+    });
+    surface.as_ref().user_data().set_threadsafe(|| {
+        Mutex::new(SurfaceUserData::new(
+            environment.outputs.clone(),
+            dpi_change,
+        ))
+    });
+    (*surface).clone().detach()
 }
 
 /// Returns the current dpi factor of a surface.
 pub fn get_dpi_factor(surface: &wl_surface::WlSurface) -> i32 {
     surface
         .as_ref()
-        .user_data::<Mutex<SurfaceUserData>>()
+        .user_data()
+        .get::<Mutex<SurfaceUserData>>()
         .expect("Surface was not created with create_surface.")
         .lock()
         .unwrap()
@@ -109,7 +108,8 @@ pub fn get_dpi_factor(surface: &wl_surface::WlSurface) -> i32 {
 pub fn get_outputs(surface: &wl_surface::WlSurface) -> Vec<wl_output::WlOutput> {
     surface
         .as_ref()
-        .user_data::<Mutex<SurfaceUserData>>()
+        .user_data()
+        .get::<Mutex<SurfaceUserData>>()
         .expect("Surface was not created with create_surface.")
         .lock()
         .unwrap()
