@@ -2,6 +2,16 @@
 //!
 //! Provides various utilities and abstractions for comunicating with various
 //! Wayland compositors.
+//!
+//! ## `Environment`
+//!
+//! The crate is structured around the [`Environment`](environment/struct.Environment.html) type,
+//! which binds the wayland globals for you using a set of modular handlers. This type is initialized
+//! using the [`environment!`](macro.environment.html) if you want full control, or by using the
+//! [`default_environment!](macro.default_environment.html) to automatically bring in all SCTK modules.
+//!
+//! The various modules work by adding methods to the [`Environment`](environment/struct.Environment.html)
+//! type, giving you more capabilities as more modules are activated.
 #![warn(missing_docs)]
 
 /*
@@ -22,19 +32,17 @@ pub mod reexports {
 pub mod environment;
 pub mod output;
 
+mod surface;
+
+pub use surface::{get_surface_outputs, get_surface_scale_factor};
+
 /*
 pub mod data_device;
 pub mod keyboard;
-pub mod output;
 pub mod pointer;
 pub mod shell;
-pub mod surface;
 pub mod utils;
 pub mod window;
-
-mod env;
-
-pub use crate::env::{Environment, Shell};
 */
 
 #[macro_export]
