@@ -9,7 +9,7 @@
 //! The second is the [`with_output_info`](fn.with_output_info.html) with allows you to
 //! access the information associated to this output, as an [`OutputInfo`](struct.OutputInfo.html).
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, Weak};
 
 use wayland_client::protocol::wl_output::{self, Event, WlOutput};
 use wayland_client::protocol::wl_registry;
@@ -93,8 +93,15 @@ impl OutputInfo {
 }
 
 enum OutputData {
-    Ready(OutputInfo),
-    Pending(u32, Vec<Event>),
+    Ready {
+        info: OutputInfo,
+        callbacks: Vec<Weak<dyn Fn(&OutputInfo) + Send + Sync>>,
+    },
+    Pending {
+        id: u32,
+        events: Vec<Event>,
+        callbacks: Vec<Weak<dyn Fn(&OutputInfo) + Send + Sync>>,
+    },
 }
 
 /// A handler for `wl_output`
@@ -124,15 +131,20 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
         if version > 1 {
             // wl_output.done event was only added at version 2
             // In case of an old version 1, we just behave as if it was send at the start
-            output
-                .as_ref()
-                .user_data()
-                .set_threadsafe(|| Mutex::new(OutputData::Pending(id, vec![])));
+            output.as_ref().user_data().set_threadsafe(|| {
+                Mutex::new(OutputData::Pending {
+                    id,
+                    events: vec![],
+                    callbacks: vec![],
+                })
+            });
         } else {
-            output
-                .as_ref()
-                .user_data()
-                .set_threadsafe(|| Mutex::new(OutputData::Ready(OutputInfo::new(id))));
+            output.as_ref().user_data().set_threadsafe(|| {
+                Mutex::new(OutputData::Ready {
+                    info: OutputInfo::new(id),
+                    callbacks: vec![],
+                })
+            });
         }
         output.assign_mono(process_output_event);
         self.outputs.push((id, (*output).clone()));
@@ -160,8 +172,17 @@ fn process_output_event(output: Main<WlOutput>, event: Event) {
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
     if let Event::Done = event {
-        let (id, pending_events) = if let OutputData::Pending(id, ref mut v) = *udata {
-            (id, std::mem::replace(v, vec![]))
+        let (id, pending_events, mut callbacks) = if let OutputData::Pending {
+            id,
+            events: ref mut v,
+            callbacks: ref mut cb,
+        } = *udata
+        {
+            (
+                id,
+                std::mem::replace(v, vec![]),
+                std::mem::replace(cb, vec![]),
+            )
         } else {
             // a Done event on an output that is already ready => nothing to do
             return;
@@ -170,11 +191,20 @@ fn process_output_event(output: Main<WlOutput>, event: Event) {
         for evt in pending_events {
             merge_event(&mut info, evt);
         }
-        *udata = OutputData::Ready(info);
+        notify(&mut info, &mut callbacks);
+        *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
-            OutputData::Pending(_, ref mut v) => v.push(event),
-            OutputData::Ready(ref mut info) => merge_event(info, event),
+            OutputData::Pending {
+                events: ref mut v, ..
+            } => v.push(event),
+            OutputData::Ready {
+                ref mut info,
+                ref mut callbacks,
+            } => {
+                merge_event(info, event);
+                notify(info, callbacks);
+            }
         }
     }
 }
@@ -186,16 +216,25 @@ fn make_obsolete(output: &WlOutput) {
         .get::<Mutex<OutputData>>()
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
-    let id = match *udata {
-        OutputData::Ready(ref mut info) => {
+    let (id, mut callbacks) = match *udata {
+        OutputData::Ready {
+            ref mut info,
+            ref mut callbacks,
+        } => {
             info.obsolete = true;
+            notify(info, callbacks);
             return;
         }
-        OutputData::Pending(id, _) => id,
+        OutputData::Pending {
+            id,
+            callbacks: ref mut cb,
+            ..
+        } => (id, std::mem::replace(cb, vec![])),
     };
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
-    *udata = OutputData::Ready(info);
+    notify(&mut info, &mut callbacks);
+    *udata = OutputData::Ready { info, callbacks };
 }
 
 fn merge_event(info: &mut OutputInfo, event: Event) {
@@ -252,27 +291,78 @@ fn merge_event(info: &mut OutputInfo, event: Event) {
     }
 }
 
+fn notify(info: &OutputInfo, callbacks: &mut Vec<Weak<dyn Fn(&OutputInfo) + Send + Sync>>) {
+    callbacks.retain(|weak| {
+        if let Some(arc) = Weak::upgrade(weak) {
+            (*arc)(info);
+            true
+        } else {
+            false
+        }
+    });
+}
+
 /// Access the info associated with this output
 ///
 /// The provided closure is given the [`OutputInfo`](struct.OutputInfo.html) as argument,
 /// and its return value is returned from this function.
 ///
-/// If the provided `WlOutput` has not yet been initialized, `None` is returned.
+/// If the provided `WlOutput` has not yet been initialized or is not managed by SCTK, `None` is returned.
 ///
 /// If the output has been removed by the compositor, the `obsolete` field of the `OutputInfo`
 /// will be set to `true`. This handler will not automatically detroy the output by calling its
 /// `release` method, to avoid interfering with your logic.
 pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(output: &WlOutput, f: F) -> Option<T> {
-    let udata_mutex = output
-        .as_ref()
-        .user_data()
-        .get::<Mutex<OutputData>>()
-        .expect("SCTK: wl_output has invalid UserData");
-    let udata = udata_mutex.lock().unwrap();
-    match *udata {
-        OutputData::Ready(ref info) => Some(f(info)),
-        OutputData::Pending(_, _) => None,
+    if let Some(ref udata_mutex) = output.as_ref().user_data().get::<Mutex<OutputData>>() {
+        let udata = udata_mutex.lock().unwrap();
+        match *udata {
+            OutputData::Ready { ref info, .. } => Some(f(info)),
+            OutputData::Pending { .. } => None,
+        }
+    } else {
+        None
     }
+}
+
+/// Add a listener to this output
+///
+/// The provided closure will be called whenever a property of the output changes,
+/// including when it is removed by the compositor (in this case it'll be marked as
+/// obsolete).
+///
+/// The returned [`OutputListener`](struct.OutputListener) keeps your callback alive,
+/// dropping it will disable the callback and free the closure.
+pub fn add_output_listener<F: Fn(&OutputInfo) + Send + Sync + 'static>(
+    output: &WlOutput,
+    f: F,
+) -> OutputListener {
+    let arc = Arc::new(f) as Arc<dyn Fn(&OutputInfo) + Send + Sync>;
+
+    if let Some(udata_mutex) = output.as_ref().user_data().get::<Mutex<OutputData>>() {
+        let mut udata = udata_mutex.lock().unwrap();
+
+        match *udata {
+            OutputData::Pending {
+                ref mut callbacks, ..
+            } => {
+                callbacks.push(Arc::downgrade(&arc));
+            }
+            OutputData::Ready {
+                ref mut callbacks, ..
+            } => {
+                callbacks.push(Arc::downgrade(&arc));
+            }
+        }
+    }
+
+    OutputListener { _cb: arc }
+}
+
+/// A handle to an output listener callback
+///
+/// Dropping it disables the associated callback and frees the closure.
+pub struct OutputListener {
+    _cb: Arc<dyn Fn(&OutputInfo) + Send + Sync + 'static>,
 }
 
 impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::Environment<E> {
