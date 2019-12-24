@@ -70,7 +70,7 @@ pub trait MultiGlobalHandler<I: Interface> {
 /// previously been declared in the `environment!` macro can be access from this type via the
 /// `get_global`, `required_global` and `get_all_globals` methods.
 ///
-/// This `Environment` can be cloned and sent accross threads.
+/// This `Environment` is a handle that can be cloned.
 pub struct Environment<E> {
     /// The underlying `GlobalManager`, if you need to do manual interaction with the
     /// registry. See `wayland-client` documentation for details.
