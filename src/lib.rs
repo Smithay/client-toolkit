@@ -20,6 +20,7 @@ pub mod reexports {
 }
 
 pub mod environment;
+pub mod output;
 
 /*
 pub mod data_device;
@@ -46,6 +47,7 @@ pub use crate::env::{Environment, Shell};
 ///
 /// - `wl_compositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_data_device_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+/// - `wl_output` with the [`OutputManager`](output/struct.OutputHandler.html)
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 macro_rules! default_environment {
     ($env_name:ident, $display:expr, $queue:expr, singles = [$(($sname:ident, $sty:ty, $shandler:expr)),* $(,)?], multis = [$(($mname:ident, $mty:ty, $mhandler:expr)),* $(,)?]) => {
@@ -57,6 +59,7 @@ macro_rules! default_environment {
                 $(($sname, $sty, $shandler)),*
             ],
             multis = [
+                (sctk_outputs, $crate::reexports::client::protocol::wl_output::WlOutput, $crate::output::OutputHandler::new())
                 $(($mname, $mty, $handler)),*
             ]
         )

@@ -1,9 +1,19 @@
-//! Types related to `wl_output` handling
+//! Types and functions related to graphical outputs
+//!
+//! This modules provides two main elements. The first is the
+//! [`OutputHandler`](struct.OutputHandler.html) type, which is a
+//! [`MultiGlobalHandler`](../environment/trait.MultiGlobalHandler.html) for
+//! use with the [`environment!`](../macro.environment.html) macro. It is automatically
+//! included if you use the [`default_environment!`](../macro.default_environment.html).
+//!
+//! The second is the [`with_output_info`](fn.with_output_info.html) with allows you to
+//! access the information associated to this output, as an [`OutputInfo`](struct.OutputInfo.html).
 
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use wayland_client::protocol::wl_output::{self, Event, WlOutput};
 use wayland_client::protocol::wl_registry;
+use wayland_client::{Attached, Main};
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 
@@ -25,6 +35,8 @@ pub struct Mode {
 #[derive(Clone, Debug)]
 /// Compiled information about an output
 pub struct OutputInfo {
+    /// The ID of this output as a global
+    pub id: u32,
     /// The model name of this output as advertised by the server
     pub model: String,
     /// The make name of this output as advertised by the server
@@ -55,11 +67,18 @@ pub struct OutputInfo {
     pub scale_factor: i32,
     /// Possible modes for an output
     pub modes: Vec<Mode>,
+    /// Has this output been unadvertized by the registry
+    ///
+    /// If this is the case, it has become inert, you might want to
+    /// call its `release()` method if you don't plan to use it any
+    /// longer.
+    pub obsolete: bool,
 }
 
 impl OutputInfo {
-    fn new() -> OutputInfo {
+    fn new(id: u32) -> OutputInfo {
         OutputInfo {
+            id,
             model: String::new(),
             make: String::new(),
             location: (0, 0),
@@ -68,195 +87,200 @@ impl OutputInfo {
             transform: Transform::Normal,
             scale_factor: 1,
             modes: Vec::new(),
+            obsolete: false,
         }
     }
 }
 
-struct Inner {
-    outputs: Vec<(u32, WlOutput, OutputInfo)>,
-    pending: Vec<(WlOutput, Event)>,
+enum OutputData {
+    Ready(OutputInfo),
+    Pending(u32, Vec<Event>),
 }
 
-impl Inner {
-    fn merge(&mut self, output: &WlOutput) {
-        let info = match self
-            .outputs
-            .iter_mut()
-            .find(|&&mut (_, ref o, _)| o.as_ref().equals(output.as_ref()))
-        {
-            Some(&mut (_, _, ref mut info)) => info,
-            // trying to merge a non-existing output ?
-            // well, might be some very bad luck of an
-            // output being concurrently destroyed at the bad time ?
-            None => {
-                // clean stale state
-                self.pending.retain(|&(ref o, _)| o.as_ref().is_alive());
-                return;
-            }
-        };
-        // slow, but could be improved with Vec::drain_filter
-        // see https://github.com/rust-lang/rust/issues/43244
-        // this vec should be pretty small at all times anyway
-        while let Some(idx) = self
-            .pending
-            .iter()
-            .position(|&(ref o, _)| o.as_ref().equals(output.as_ref()))
-        {
-            let (_, event) = self.pending.swap_remove(idx);
-            match event {
-                Event::Geometry {
-                    x,
-                    y,
-                    physical_width,
-                    physical_height,
-                    subpixel,
-                    model,
-                    make,
-                    transform,
-                } => {
-                    info.location = (x, y);
-                    info.physical_size = (physical_width, physical_height);
-                    info.subpixel = subpixel;
-                    info.transform = transform;
-                    info.model = model;
-                    info.make = make;
-                }
-                Event::Scale { factor } => {
-                    info.scale_factor = factor;
-                }
-                Event::Done => {
-                    // should not happen
-                    unreachable!();
-                }
-                Event::Mode {
-                    width,
-                    height,
-                    refresh,
-                    flags,
-                } => {
-                    let mut found = false;
-                    if let Some(mode) = info
-                        .modes
-                        .iter_mut()
-                        .find(|m| m.dimensions == (width, height) && m.refresh_rate == refresh)
-                    {
-                        // this mode already exists, update it
-                        mode.is_preferred = flags.contains(wl_output::Mode::Preferred);
-                        mode.is_current = flags.contains(wl_output::Mode::Current);
-                        found = true;
-                    }
-                    if !found {
-                        // otherwise, add it
-                        info.modes.push(Mode {
-                            dimensions: (width, height),
-                            refresh_rate: refresh,
-                            is_preferred: flags.contains(wl_output::Mode::Preferred),
-                            is_current: flags.contains(wl_output::Mode::Current),
-                        })
-                    }
-                }
-                _ => unreachable!(),
-            }
-        }
+/// A handler for `wl_output`
+///
+/// This handler can be used for managing `wl_output` in the
+/// [`environment!`](../macro.environment.html) macro, and is automatically
+/// included in the [`default_environment!`](../macro.default_environment.html).
+///
+/// It aggregates the output information and makes it available via the
+/// [`with_output_info`](fn.with_output_info.html) function.
+pub struct OutputHandler {
+    outputs: Vec<(u32, Attached<WlOutput>)>,
+}
+
+impl OutputHandler {
+    /// Create a new instance of this handler
+    pub fn new() -> OutputHandler {
+        OutputHandler { outputs: vec![] }
     }
 }
 
-#[derive(Clone)]
-/// An utility tracking the available outputs and their capabilities
-pub struct OutputMgr {
-    inner: Arc<Mutex<Inner>>,
-}
-
-impl OutputMgr {
-    pub(crate) fn new() -> OutputMgr {
-        OutputMgr {
-            inner: Arc::new(Mutex::new(Inner {
-                outputs: Vec::new(),
-                pending: Vec::new(),
-            })),
-        }
-    }
-
-    pub(crate) fn new_output(&self, id: u32, version: u32, registry: &wl_registry::WlRegistry) {
-        let inner = self.inner.clone();
+impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
+    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+        // We currently support wl_output up to version 3
+        let version = std::cmp::min(version, 3);
         let output = registry.bind::<WlOutput>(version, id);
-        output.assign_mono(move |output, event| {
-            let mut inner = inner.lock().unwrap();
-            if let Event::Done = event {
-                inner.merge(&output);
+        if version > 1 {
+            // wl_output.done event was only added at version 2
+            // In case of an old version 1, we just behave as if it was send at the start
+            output
+                .as_ref()
+                .user_data()
+                .set_threadsafe(|| Mutex::new(OutputData::Pending(id, vec![])));
+        } else {
+            output
+                .as_ref()
+                .user_data()
+                .set_threadsafe(|| Mutex::new(OutputData::Ready(OutputInfo::new(id))));
+        }
+        output.assign_mono(process_output_event);
+        self.outputs.push((id, (*output).clone()));
+    }
+    fn removed(&mut self, id: u32) {
+        self.outputs.retain(|(i, o)| {
+            if *i != id {
+                true
             } else {
-                inner.pending.push(((*output).clone().detach(), event));
-                if output.as_ref().version() < 2 {
-                    // in case of very old outputs, we can't treat the changes
-                    // atomically as the Done event does not exist
-                    inner.merge(&output);
-                }
+                make_obsolete(o);
+                false
             }
         });
-
-        self.inner.lock().unwrap().outputs.push((
-            id,
-            (*output).clone().detach(),
-            OutputInfo::new(),
-        ));
     }
+    fn get_all(&self) -> Vec<Attached<WlOutput>> {
+        self.outputs.iter().map(|(_, o)| o.clone()).collect()
+    }
+}
 
-    pub(crate) fn output_removed(&self, id: u32) {
-        let mut inner = self.inner.lock().unwrap();
-        if let Some(idx) = inner.outputs.iter().position(|&(i, _, _)| i == id) {
-            let (_, output, _) = inner.outputs.swap_remove(idx);
-            // cleanup all remaining pending if any
-            inner
-                .pending
-                .retain(|&(ref o, _)| !o.as_ref().equals(&output.as_ref()));
-            if output.as_ref().version() >= 3 {
-                output.release();
+fn process_output_event(output: Main<WlOutput>, event: Event) {
+    let udata_mutex = output
+        .as_ref()
+        .user_data()
+        .get::<Mutex<OutputData>>()
+        .expect("SCTK: wl_output has invalid UserData");
+    let mut udata = udata_mutex.lock().unwrap();
+    if let Event::Done = event {
+        let (id, pending_events) = if let OutputData::Pending(id, ref mut v) = *udata {
+            (id, std::mem::replace(v, vec![]))
+        } else {
+            // a Done event on an output that is already ready => nothing to do
+            return;
+        };
+        let mut info = OutputInfo::new(id);
+        for evt in pending_events {
+            merge_event(&mut info, evt);
+        }
+        *udata = OutputData::Ready(info);
+    } else {
+        match *udata {
+            OutputData::Pending(_, ref mut v) => v.push(event),
+            OutputData::Ready(ref mut info) => merge_event(info, event),
+        }
+    }
+}
+
+fn make_obsolete(output: &WlOutput) {
+    let udata_mutex = output
+        .as_ref()
+        .user_data()
+        .get::<Mutex<OutputData>>()
+        .expect("SCTK: wl_output has invalid UserData");
+    let mut udata = udata_mutex.lock().unwrap();
+    let id = match *udata {
+        OutputData::Ready(ref mut info) => {
+            info.obsolete = true;
+            return;
+        }
+        OutputData::Pending(id, _) => id,
+    };
+    let mut info = OutputInfo::new(id);
+    info.obsolete = true;
+    *udata = OutputData::Ready(info);
+}
+
+fn merge_event(info: &mut OutputInfo, event: Event) {
+    match event {
+        Event::Geometry {
+            x,
+            y,
+            physical_width,
+            physical_height,
+            subpixel,
+            model,
+            make,
+            transform,
+        } => {
+            info.location = (x, y);
+            info.physical_size = (physical_width, physical_height);
+            info.subpixel = subpixel;
+            info.transform = transform;
+            info.model = model;
+            info.make = make;
+        }
+        Event::Scale { factor } => {
+            info.scale_factor = factor;
+        }
+        Event::Mode {
+            width,
+            height,
+            refresh,
+            flags,
+        } => {
+            let mut found = false;
+            if let Some(mode) = info
+                .modes
+                .iter_mut()
+                .find(|m| m.dimensions == (width, height) && m.refresh_rate == refresh)
+            {
+                // this mode already exists, update it
+                mode.is_preferred = flags.contains(wl_output::Mode::Preferred);
+                mode.is_current = flags.contains(wl_output::Mode::Current);
+                found = true;
+            }
+            if !found {
+                // otherwise, add it
+                info.modes.push(Mode {
+                    dimensions: (width, height),
+                    refresh_rate: refresh,
+                    is_preferred: flags.contains(wl_output::Mode::Preferred),
+                    is_current: flags.contains(wl_output::Mode::Current),
+                })
             }
         }
+        // ignore all other events
+        _ => (),
     }
+}
 
-    /// Access the information of a specific output from its global id
-    ///
-    /// If the requested output is not found (likely because it has been destroyed)
-    /// the closure is not called and `None` is returned.
-    pub fn find_id<F, T>(&self, id: u32, f: F) -> Option<T>
-    where
-        F: FnOnce(&wl_output::WlOutput, &OutputInfo) -> T,
-    {
-        let inner = self.inner.lock().unwrap();
-        if let Some(&(_, ref proxy, ref info)) = inner.outputs.iter().find(|&&(i, _, _)| i == id) {
-            Some(f(proxy, info))
-        } else {
-            None
-        }
+/// Access the info associated with this output
+///
+/// The provided closure is given the [`OutputInfo`](struct.OutputInfo.html) as argument,
+/// and its return value is returned from this function.
+///
+/// If the provided `WlOutput` has not yet been initialized, `None` is returned.
+///
+/// If the output has been removed by the compositor, the `obsolete` field of the `OutputInfo`
+/// will be set to `true`. This handler will not automatically detroy the output by calling its
+/// `release` method, to avoid interfering with your logic.
+pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(output: &WlOutput, f: F) -> Option<T> {
+    let udata_mutex = output
+        .as_ref()
+        .user_data()
+        .get::<Mutex<OutputData>>()
+        .expect("SCTK: wl_output has invalid UserData");
+    let udata = udata_mutex.lock().unwrap();
+    match *udata {
+        OutputData::Ready(ref info) => Some(f(info)),
+        OutputData::Pending(_, _) => None,
     }
+}
 
-    /// Access the information of a specific output
-    ///
-    /// If the requested output is not found (likely because it has been destroyed)
-    /// the closure is not called and `None` is returned.
-    pub fn with_info<F, T>(&self, output: &WlOutput, f: F) -> Option<T>
-    where
-        F: FnOnce(u32, &OutputInfo) -> T,
-    {
-        let inner = self.inner.lock().unwrap();
-        if let Some(&(id, _, ref info)) = inner
-            .outputs
-            .iter()
-            .find(|&&(_, ref o, _)| o.as_ref().equals(output.as_ref()))
-        {
-            Some(f(id, info))
-        } else {
-            None
-        }
-    }
-
-    /// Access all output information
-    pub fn with_all<F, T>(&self, f: F) -> T
-    where
-        F: FnOnce(&[(u32, WlOutput, OutputInfo)]) -> T,
-    {
-        let inner = self.inner.lock().unwrap();
-        f(&inner.outputs)
+impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::Environment<E> {
+    /// Shorthand method to retrieve the list of outputs
+    pub fn get_all_outputs(&self) -> Vec<WlOutput> {
+        self.get_all_globals::<WlOutput>()
+            .into_iter()
+            .map(|o| o.detach())
+            .collect()
     }
 }
