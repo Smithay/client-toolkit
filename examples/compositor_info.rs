@@ -1,6 +1,7 @@
 extern crate smithay_client_toolkit as sctk;
 
 use sctk::reexports::client::Display;
+use sctk::shell::Shell;
 
 // This is a small program that queries the compositor for
 // various information and prints them on the console before exiting.
@@ -28,17 +29,18 @@ fn main() -> Result<(), ()> {
     );
 
     println!("== Smithay's compositor info tool ==\n");
-    /*
-        // print the best supported shell
-        println!(
-            "-> Most recent shell supported by the compositor is {}.\n",
-            match env.shell {
-                Shell::Wl(_) => "the legacy wl_shell",
-                Shell::Zxdg(_) => "the old unstable xdg_shell (zxdg_shell_v6)",
-                Shell::Xdg(_) => "the current xdg_shell",
-            }
-        );
-    */
+
+    // print the best supported shell
+    println!(
+        "-> Most recent shell supported by the compositor is {}.\n",
+        match env.get_shell() {
+            Some(Shell::Wl(_)) => "the legacy wl_shell",
+            Some(Shell::Zxdg(_)) => "the old unstable xdg_shell (zxdg_shell_v6)",
+            Some(Shell::Xdg(_)) => "the current xdg_shell",
+            None => "nothing",
+        }
+    );
+
     let outputs = env.get_all_outputs();
     println!("-> Compositor advertised {} outputs:", outputs.len());
     for output in outputs {
