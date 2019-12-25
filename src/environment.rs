@@ -25,13 +25,14 @@
 //! as [`SimpleGlobal<I>`](struct.SimpleGlobal.html). It can manage "single" globals that do not generate
 //! events, and thus require no filter.
 //!
-//! ## the `environment!` macro
+//! ## the environment macros
 //!
-//! This macro is the core of this module, and is used to create the initial
-//! [`Environment<_>`](struct.Environment.html) instance. See its documentation for details about how to
-//! use it: [`environment!`](../macro.environment.html).
+//! Two macros are at the core of this module, used to create the initial
+//! [`Environment<_>`](struct.Environment.html) instance. See their documentation for details about how to
+//! use them: [`declare_environment!`](../macro.declare_environment.html) and
+//! [`init_environment!`](../macro.init_environment.html).
 
-use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, rc::Rc};
 
 use wayland_client::{protocol::wl_registry, Attached, GlobalManager, Interface, Proxy};
 
@@ -75,12 +76,12 @@ pub struct Environment<E> {
     /// The underlying `GlobalManager`, if you need to do manual interaction with the
     /// registry. See `wayland-client` documentation for details.
     pub manager: GlobalManager,
-    inner: Arc<Mutex<E>>,
+    inner: Rc<RefCell<E>>,
 }
 
 impl<E> Environment<E> {
     #[doc(hidden)]
-    pub fn wrap(manager: GlobalManager, inner: Arc<Mutex<E>>) -> Environment<E> {
+    pub fn wrap(manager: GlobalManager, inner: Rc<RefCell<E>>) -> Environment<E> {
         Environment { manager, inner }
     }
 
@@ -95,7 +96,7 @@ impl<E> Environment<E> {
     where
         E: GlobalHandler<I>,
     {
-        self.inner.lock().unwrap().get()
+        self.inner.borrow().get()
     }
 
     /// Access a "single" global or panic
@@ -106,7 +107,7 @@ impl<E> Environment<E> {
     where
         E: GlobalHandler<I>,
     {
-        match self.inner.lock().unwrap().get() {
+        match self.inner.borrow().get() {
             Some(g) => g,
             None => panic!("[SCTK] A missing global was required: {}", I::NAME),
         }
@@ -122,7 +123,20 @@ impl<E> Environment<E> {
     where
         E: MultiGlobalHandler<I>,
     {
-        self.inner.lock().unwrap().get_all()
+        self.inner.borrow().get_all()
+    }
+
+    /// Access the extra values you stored into your environment type
+    ///
+    /// This gives your access, via a closure, to the values you stored
+    /// into your environment via the `extras=[...]` field of your
+    /// [`declare_environment!`](../macro.declare_environment.html) or
+    /// [`declare_default_environment!`](../macro.declare_default_environment.html).
+    ///
+    /// This method returns the return value of your closure.
+    pub fn with_extras<T, F: FnOnce(&mut E) -> T>(&self, f: F) -> T {
+        let mut inner = self.inner.borrow_mut();
+        f(&mut *inner)
     }
 }
 
@@ -172,112 +186,194 @@ impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> GlobalHandler<I> f
 
 /// Macro for creating an environment
 ///
+/// It needs to be used in conjunction with the [`init_environment!`](macro.init_environment.html) macro.
+/// This macro declares a type, and the other initializes it at runtime.
+///
 /// The macro is invoked as such:
 ///
-/// ```ignore
-/// let env = environment!(MyEnv,
-///     &my_wl_display,
-///     &mut event_queue,
+/// ```no_run
+/// # extern crate smithay_client_toolkit as sctk;
+/// # use sctk::reexports::client::protocol::{wl_compositor::WlCompositor, wl_shm::WlShm, wl_output::WlOutput};
+/// # use sctk::declare_environment;
+/// # struct FieldType;
+/// declare_environment!(MyEnv,
 ///     singles = [
-///         (compositor, WlCompositor, SimpleGlobal::new()),
-///         (shm, WlShm, my_shm_handler),
+///         (compositor, WlCompositor),
+///         (shm, WlShm),
 ///     ],
 ///     multis = [
-///         (outputs, WlOutput, my_output_manager),
+///         (outputs, WlOutput),
+///     ],
+///     extras = [
+///         (field_name, FieldType),
 ///     ]
 /// );
 /// ```
 ///
-/// This will generate a struct type named `MyEnv`, which is able to manager the `WlCompositor`, `WlShm` and
+/// This will generate a struct type named `MyEnv`, which is able to manage the `WlCompositor`, `WlShm` and
 /// `WlOutput` globals and ignores the rest. For each global, you need to provide a tuple
-/// `($name, $type, $handler)` where:
+/// `($name, $type)` where:
 ///
 /// - `$name` is a unique identifier for this global which will be used internally by the generated code
 /// - `$type` is the type (implementing the `Interface` trait from `wayland-client`) representing the global
-/// - `$handler` is an instance of a handler type for this global implementing
-///   [`GlobalHandler<$type>`](environment/trait.GlobalHandler.html) or
-///   [`MultiGlobalHandler<$type>`](environment/trait.MultiGlobalHandler.html) as appropriate.
+///
+/// You can additionnaly insert other values into the environment, by using `extras=[]`. These values can be
+/// accessed as field of the struct provided via the `with_extras` method of
+/// [`Environment<_>`](environment/struct.Environment.html). The syntax is a tulpe `($name, $type)`:
+///
+/// - `$name` is the name that will be given to the struct field
+/// - `$type` is the type of this field
+#[macro_export]
+macro_rules! declare_environment {
+    ($env_name:ident,
+        singles = [$(($sname:ident, $sty:ty)),* $(,)?],
+        multis = [$(($mname:ident, $mty:ty)),* $(,)?],
+        extras = [$(($ename:ident, $ety:ty)),* $(,)?]
+    ) => {
+        pub struct $env_name {
+            $(
+                $sname: Box<$crate::environment::GlobalHandler<$sty>>,
+            )*
+            $(
+                $mname: Box<$crate::environment::MultiGlobalHandler<$mty>>,
+            )*
+            $(
+                $ename: $ety,
+            )*
+        }
+
+        impl $env_name {
+            pub(crate) fn __process_event(
+                &mut self,
+                event: $crate::reexports::client::GlobalEvent,
+                registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>
+            ) {
+                match event {
+                    $crate::reexports::client::GlobalEvent::New { id, interface, version } => match &interface[..] {
+                        $(
+                            <$sty as $crate::reexports::client::Interface>::NAME => self.$sname.created(registry, id, version),
+                        )*
+                        $(
+                            <$mty as $crate::reexports::client::Interface>::NAME => self.$mname.created(registry, id, version),
+                        )*
+                        _ => { /* ignore unkown globals */ }
+                    },
+                    $crate::reexports::client::GlobalEvent::Removed { id, interface } => match &interface[..] {
+                        $(
+                            <$mty as $crate::reexports::client::Interface>::NAME => self.$mname.removed(id),
+                        )*
+                        _ => { /* ignore unknown globals */ }
+                    }
+                }
+            }
+        }
+
+        $(
+            impl $crate::environment::GlobalHandler<$sty> for $env_name {
+                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32) {
+                    self.$sname.created(registry, id, version)
+                }
+                fn get(&self) -> Option<$crate::reexports::client::Attached<$sty>> {
+                    self.$sname.get()
+                }
+            }
+        )*
+
+        $(
+            impl $crate::environment::MultiGlobalHandler<$mty> for $env_name {
+                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32) {
+                    self.$mname.created(registry, id, version)
+                }
+                fn removed(&mut self, id: u32) {
+                    self.$mname.removed(id)
+                }
+                fn get_all(&self) -> Vec<$crate::reexports::client::Attached<$mty>> {
+                    self.$mname.get_all()
+                }
+            }
+        )*
+    };
+}
+
+#[macro_export]
+/// Initialize an Environment
+///
+/// This is the sister macro of [`declare_environment!`](macro.declare_environment.html), which is
+/// used to initialize the environment at runtime. It is invoked similarly, but you then provide the
+/// values, rather than the types:
+///
+/// ```no_run
+/// # extern crate smithay_client_toolkit as sctk;
+/// # use sctk::reexports::client::protocol::{wl_compositor::WlCompositor, wl_shm::WlShm, wl_output::WlOutput};
+/// # use sctk::{declare_environment, init_environment};
+/// # struct FieldType;
+/// # declare_environment!(MyEnv,
+/// #     singles = [
+/// #         (compositor, WlCompositor),
+/// #         (shm, WlShm),
+/// #     ],
+/// #     multis = [
+/// #         (outputs, WlOutput),
+/// #     ],
+/// #     extras = [
+/// #         (field_name, FieldType),
+/// #     ]
+/// # );
+/// # let compositor_handler = sctk::environment::SimpleGlobal::new();
+/// # let shm_handler = sctk::environment::SimpleGlobal::new();
+/// # let outputs_handler = sctk::output::OutputHandler::new();
+/// # let field_value = FieldType;
+/// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
+/// # let mut queue = display.create_event_queue();
+/// let env = init_environment!(MyEnv, &display, &mut queue,
+///     singles = [
+///         (compositor, compositor_handler),
+///         (shm, shm_handler),
+///     ],
+///     multis = [
+///         (outputs, outputs_handler),
+///     ],
+///     extras = [
+///         (field_name, field_value),
+///     ]
+/// );
+/// ```
 ///
 /// This macro evaluates to an instance of [`Environment<_>`](environment/struct.Environment.html), from which
 /// you'll be able to access the globals in the rest of your app. See its documentation for details.
-#[macro_export]
-macro_rules! environment {
-    ($env_name:ident, $display:expr, $queue:expr, singles = [$(($sname:ident, $sty:ty, $shandler:expr)),* $(,)?], multis = [$(($mname:ident, $mty:ty, $mhandler:expr)),* $(,)?]) => {
+macro_rules! init_environment {
+    ($env_name:ident, $display:expr, $queue:expr,
+        singles = [$(($sname:ident, $shandler:expr)),* $(,)?],
+        multis = [$(($mname:ident, $mhandler:expr)),* $(,)?],
+        extras = [$(($ename:ident, $eval:expr)),* $(,)?]
+    ) => {
         {
-            use std::sync::{Arc, Mutex};
+            use std::{cell::RefCell, rc::Rc};
             use $crate::environment::{Environment, GlobalHandler, MultiGlobalHandler};
             use $crate::reexports::client::{Attached, EventQueue, Interface, GlobalEvent, GlobalManager, Proxy};
             use $crate::reexports::client::protocol::{wl_registry, wl_display};
-            // struct definition & traits
-            pub struct $env_name {
-                $(
-                    $sname: Box<GlobalHandler<$sty>>,
-                )*
-                $(
-                    $mname: Box<MultiGlobalHandler<$mty>>,
-                )*
-            }
 
-            $(
-                impl $crate::environment::GlobalHandler<$sty> for $env_name {
-                    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
-                        self.$sname.created(registry, id, version)
-                    }
-                    fn get(&self) -> Option<Attached<$sty>> {
-                        self.$sname.get()
-                    }
-                }
-            )*
-
-            $(
-                impl $crate::environment::MultiGlobalHandler<$mty> for $env_name {
-                    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
-                        self.$mname.created(registry, id, version)
-                    }
-                    fn removed(&mut self, id: u32) {
-                        self.$mname.removed(id)
-                    }
-                    fn get_all(&self) -> Vec<Attached<$mty>> {
-                        self.$mname.get_all()
-                    }
-                }
-            )*
-
-            // actual instanciation
             let display: &Proxy<wl_display::WlDisplay> = $display;
             let queue: &mut EventQueue = $queue;
 
             let attached_display = display.clone().attach(queue.get_token());
 
-            let inner = Arc::new(Mutex::new($env_name {
+            let inner = Rc::new(RefCell::new($env_name {
                 $(
-                    $sname: Box::new($shandler) as Box<GlobalHandler<$sty>>,
+                    $sname: Box::new($shandler) as Box<_>,
                 )*
                 $(
-                    $mname: Box::new($mhandler) as Box<MultiGlobalHandler<$mty>>,
+                    $mname: Box::new($mhandler) as Box<_>,
+                )*
+                $(
+                    $ename: { $eval }
                 )*
             }));
 
             let my_inner = inner.clone();
             let my_cb = move |event, registry| {
-                let mut inner = my_inner.lock().unwrap();
-                match event {
-                    GlobalEvent::New { id, interface, version } => match &interface[..] {
-                        $(
-                            <$sty as Interface>::NAME => inner.$sname.created(registry, id, version),
-                        )*
-                        $(
-                            <$mty as Interface>::NAME => inner.$mname.created(registry, id, version),
-                        )*
-                        _ => { /* ignore unkown globals */ }
-                    },
-                    GlobalEvent::Removed { id, interface } => match &interface[..] {
-                        $(
-                            <$mty as Interface>::NAME => inner.$mname.removed(id),
-                        )*
-                        _ => { /* ignore unknown globals */ }
-                    }
-                }
+                let mut inner = my_inner.borrow_mut();
+                inner.__process_event(event, registry);
             };
 
             let manager = GlobalManager::new_with_cb(&attached_display, my_cb);
