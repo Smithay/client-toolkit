@@ -55,7 +55,7 @@ pub mod window;
 ///
 /// - `wl_compositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_data_device_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
-/// - `wl_output` with the [`OutputManager`](output/struct.OutputHandler.html)
+/// - `wl_output` with the [`OutputHandler`](output/struct.OutputHandler.html)
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 macro_rules! default_environment {
     ($env_name:ident, $display:expr, $queue:expr, singles = [$(($sname:ident, $sty:ty, $shandler:expr)),* $(,)?], multis = [$(($mname:ident, $mty:ty, $mhandler:expr)),* $(,)?]) => {
