@@ -6,7 +6,7 @@ use sctk::shell::Shell;
 // This is a small program that queries the compositor for
 // various information and prints them on the console before exiting.
 
-sctk::declare_default_environment!(CompInfo, singles = [], multis = [], extras = []);
+sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
 
 fn main() -> Result<(), ()> {
     let display = match Display::connect_to_env() {
@@ -19,14 +19,7 @@ fn main() -> Result<(), ()> {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(
-        CompInfo,
-        &display,
-        &mut queue,
-        singles = [],
-        multis = [],
-        extras = []
-    );
+    let env = sctk::init_default_environment!(CompInfo, &display, &mut queue, fields = []);
 
     println!("== Smithay's compositor info tool ==\n");
 

@@ -6,9 +6,9 @@
 //! ## `Environment`
 //!
 //! The crate is structured around the [`Environment`](environment/struct.Environment.html) type,
-//! which binds the wayland globals for you using a set of modular handlers. This type is initialized
-//! using the [`init_environment!`](macro.init_environment.html) if you want full control, or by using the
-//! [`init_default_environment!`](macro.init_default_environment.html) macro to automatically bring in all
+//! which binds the wayland globals for you using a set of modular handlers. This type is used in conjunction
+//! with the [`environment!`](macro.environment.html) if you want full control, or by using the
+//! [`default_environment!`](macro.default_environment.html) macro to automatically bring in all
 //! SCTK modules.
 //!
 //! The various modules work by adding methods to the [`Environment`](environment/struct.Environment.html)
@@ -49,9 +49,9 @@ pub mod window;
 #[macro_export]
 /// Declare a batteries-included SCTK environment
 ///
-/// Similar to the [`declare_environment!`](macro.declare_environment.html) macro, but includes
-/// all the handlers provided by SCTK, for use with the rest of the library. Its sister macro
-/// is [`init_default_environment!`](macro.init_default_environment.html).
+/// Similar to the [`environment!`](macro.environment.html) macro, but creates the typr for you and
+/// includes all the handlers provided by SCTK, for use with the rest of the library. Its sister macro
+/// [`init_default_environment!`](macro.init_default_environment.html) need to be used to initialize it.
 ///
 /// This includes handlers for the following globals:
 ///
@@ -63,53 +63,83 @@ pub mod window;
 /// If you don't need to add anything more, its use is as simple as:
 ///
 /// ```no_run
-/// # use smithay_client_toolkit::declare_default_environment;
-/// declare_default_environment!(MyEnv, singles=[], multis=[], extras=[]);
+/// # use smithay_client_toolkit::default_environment;
+/// default_environment!(MyEnv, fields=[], singles=[], multis=[]);
 /// ```
 ///
-/// otherwise, its use is similar to [`declare_environment!`](macro.declare_environment.html).
-macro_rules! declare_default_environment {
+/// otherwise, you can use the `fields` argument to add additional fields to the generated struct, and
+/// the `singles` and `multis` arguments to route additional globals like with the
+/// [`environment!`](macro.environment.html) macro.
+///
+/// ```no_run
+/// # use smithay_client_toolkit::default_environment;
+/// default_environment!(MyEnv,
+///     fields=[
+///         somefield: u32,
+///         otherfield: String,
+///     ],
+///     singles=[
+///         // Add some routing here
+///     ],
+///     multis=[
+///         // add some routing here
+///     ]
+/// );
+/// ```
+macro_rules! default_environment {
     ($env_name:ident,
-        singles = [$(($sname:ident, $sty:ty)),* $(,)?],
-        multis = [$(($mname:ident, $mty:ty)),* $(,)?],
-        extras = [$(($ename:ident, $ety:ty)),* $(,)?]
+        fields = [$($fname:ident : $fty:ty),* $(,)?],
+        singles = [$($sty:ty => $sname: ident),* $(,)?],
+        multis = [$($mty:ty => $mname:ident),* $(,)?]$(,)?
     ) => {
         /*
-         * Shell utilities
+         * Declare the type
          */
+        pub struct $env_name {
+            // SimpleGlobals
+            sctk_compositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_compositor::WlCompositor>,
+            sctk_data_device_manager: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager>,
+            sctk_subcompositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor>,
+            // shell
+            sctk_shell: $crate::shell::ShellHandler,
+            // output
+            sctk_outputs: $crate::output::OutputHandler,
+            // user added
+            $(
+                $fname : $fty,
+            )*
+        }
 
+        /*
+         * Shell utility
+         */
         impl $crate::shell::ShellHandling for $env_name {
             fn get_shell(&self) -> Option<$crate::shell::Shell> {
-                self.sctk_shell_handler.get_shell()
+                self.sctk_shell.get_shell()
             }
         }
+
         /*
          * Final macro delegation
          */
-        $crate::declare_environment!($env_name,
+        $crate::environment!($env_name,
             singles = [
                 // SimpleGlobals
-                (sctk_compositor, $crate::reexports::client::protocol::wl_compositor::WlCompositor),
-                (sctk_data_device_manager, $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager),
-                (sctk_subcompositor, $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor),
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor => sctk_compositor,
+                $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager,
+                $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor => sctk_subcompositor,
                 // shell globals
-                (sctk_wl_shell, $crate::reexports::client::protocol::wl_shell::WlShell),
-                (sctk_xdg_shell, $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase),
-                (sctk_zxdg_shell, $crate::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::ZxdgShellV6),
+                $crate::reexports::client::protocol::wl_shell::WlShell => sctk_shell,
+                $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase => sctk_shell,
+                $crate::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::ZxdgShellV6 => sctk_shell,
                 // user added
-                $(($sname, $sty)),*
+                $($sty => $sname),*
             ],
             multis = [
                 // output globals
-                (sctk_outputs, $crate::reexports::client::protocol::wl_output::WlOutput)
+                $crate::reexports::client::protocol::wl_output::WlOutput => sctk_outputs,
                 // user added
-                $(($mname, $mty)),*
-            ],
-            extras = [
-                // shell extras
-                (sctk_shell_handler, $crate::shell::ShellHandler),
-                // user added
-                $(($ename, $ety)),*
+                $($mty => $mname),*
             ]
         );
     };
@@ -118,61 +148,35 @@ macro_rules! declare_default_environment {
 #[macro_export]
 /// Initialize a batteries-included SCTK environment
 ///
-/// Sister macro of [`declare_default_environment!`](macro.declare_default_environment.html). If you
-/// don't need to add any handlers to the default one, its use is simply
+/// Sister macro of [`default_environment!`](macro.default_environment.html). You need
+/// to use it to initialize the environment:
 ///
 /// ```no_run
-/// # use smithay_client_toolkit::{declare_default_environment, init_default_environment};
-/// # declare_default_environment!(MyEnv, singles=[], multis=[], extras=[]);
+/// # use smithay_client_toolkit::{default_environment, init_default_environment};
+/// # default_environment!(MyEnv, fields=[somefield: u32, otherfield: String,], singles=[], multis=[],);
 /// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
 /// # let mut queue = display.create_event_queue();
-/// let env = init_default_environment!(MyEnv, &display, &mut queue, singles=[], multis=[], extras=[]);
+/// let env = init_default_environment!(MyEnv, &display, &mut queue,
+///     fields=[
+///         /* initializers for your extra fields if any */
+///         somefield: 42,
+///         otherfield: String::from("Hello World"),
+///     ]
+/// );
 /// ```
-///
-/// otherwise, its use is similar to [`init_environment!`](macro.init_environment.html)
 macro_rules! init_default_environment {
     ($env_name:ident, $display:expr, $queue:expr,
-        singles = [$(($sname:ident, $shandler:expr)),* $(,)?],
-        multis = [$(($mname:ident, $mhandler:expr)),* $(,)?],
-        extras = [$(($ename:ident, $eval:expr)),* $(,)?]
+        fields = [$($fname:ident : $fval:expr),* $(,)?]$(,)?
     ) => {
-        {
-            use $crate::reexports::client::protocol;
-            use $crate::reexports::protocols;
-            /*
-             * Shell utilities
-             */
-            let shell_handler = $crate::shell::ShellHandler::new();
-
-            /*
-             * Final macro delegation
-             */
-            $crate::init_environment!($env_name, $display, $queue,
-                singles = [
-                    // SimpleGlobals
-                    (sctk_compositor, $crate::environment::SimpleGlobal::new()),
-                    (sctk_data_device_manager, $crate::environment::SimpleGlobal::new()),
-                    (sctk_subcompositor, $crate::environment::SimpleGlobal::new()),
-                    // shell globals
-                    (sctk_wl_shell, shell_handler.clone()),
-                    (sctk_xdg_shell, shell_handler.clone()),
-                    (sctk_zxdg_shell, shell_handler.clone()),
-                    // user added
-                    $(($sname, $shandler)),*
-                ],
-                multis = [
-                    // output globals
-                    (sctk_outputs, $crate::output::OutputHandler::new())
-                    // user added
-                    $(($mname, $handler)),*
-                ],
-                extras = [
-                    // shell extras
-                    (sctk_shell_handler, shell_handler),
-                    // user added
-                    $(($ename, $eval)),*
-                ]
-            )
-        }
+        $crate::environment::Environment::init($display, $queue, $env_name {
+            sctk_compositor: $crate::environment::SimpleGlobal::new(),
+            sctk_data_device_manager: $crate::environment::SimpleGlobal::new(),
+            sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
+            sctk_shell: $crate::shell::ShellHandler::new(),
+            sctk_outputs: $crate::output::OutputHandler::new(),
+            $(
+                $fname: $fval,
+            )*
+        })
     };
 }

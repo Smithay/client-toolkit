@@ -7,7 +7,7 @@
 //! This abstraction only manages the protocol part of shell surfaces. If you're
 //! looking for a more battery-included abstraction for creating windows,
 //! consider the `Window` type.
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
 
 use wayland_client::{
     protocol::{wl_output, wl_registry, wl_seat, wl_shell, wl_surface},
@@ -138,79 +138,62 @@ struct ShellInner {
 
 /// A handler for shells
 ///
-/// For use with the [`declare_environment!`](../macro.declare_environment.html) macro. It is already
-/// automatically included if you use the
-/// [`declare_default_environment!`](../macro.declare_default_environment.hmtl).
+/// For use with the [`environment!`](../macro.environment.html) macro. It is already
+/// automatically included if you use the [`default_environment!`](../macro.default_environment.hmtl).
 ///
-/// To use it, you need to instantiate it, and then clone it and provide it as a handler for the shells
-/// you want to support (`xdg_wm_base`, `zxdg_shell_v6` and/or `wl_shell`). You then need to store an other
-/// copy of the handler in the extra values of your environment, and implement the
-/// [`SHellHandling`](trait.ShellHandling.html) by delegating it.
+/// To use it, you need to set it as a handler for the shells you want to support (`xdg_wm_base`,
+/// `zxdg_shell_v6` and/or `wl_shell`). You can then implement the
+/// [`ShellHandling`](trait.ShellHandling.html) by delegating it, to get the shell-related methods on
+/// [`Environment`](../environment/struct.environment.html)
 ///
 /// ```no_run
 /// # extern crate smithay_client_toolkit as sctk;
-/// # use sctk::{declare_environment, init_environment};
+/// # use sctk::environment;
+/// # use sctk::environment::Environment;
 /// # use sctk::shell::*;
 /// # use sctk::reexports::client::protocol::wl_shell;
 /// # use sctk::reexports::protocols::xdg_shell::client::xdg_wm_base;
 /// # use sctk::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 /// # let display = sctk::reexports::client::Display::connect_to_env().unwrap();
 /// # let mut queue = display.create_event_queue();
-/// declare_environment!(MyEnv,
+/// struct MyEnv {
+///     my_shell: ShellHandler
+/// }
+///
+/// environment!(MyEnv,
 ///     singles=[
-///         (wl_shell, wl_shell::WlShell),
-///         (xdg_shell, xdg_wm_base::XdgWmBase),
-///         (zxdg_shell, zxdg_shell_v6::ZxdgShellV6)
+///         wl_shell::WlShell => my_shell,
+///         xdg_wm_base::XdgWmBase => my_shell,
+///         zxdg_shell_v6::ZxdgShellV6 => my_shell
 ///     ],
 ///     multis=[],
-///     extras=[
-///         (shell_handler, ShellHandler)
-///     ]
-/// );
-///
-/// let shell_handler = ShellHandler::new();
-///
-/// let env = init_environment!(MyEnv, &display, &mut queue,
-///     singles=[
-///         (wl_shell, shell_handler.clone()),
-///         (xdg_shell, shell_handler.clone()),
-///         (zxdg_shell, shell_handler.clone())
-///     ],
-///     multis=[],
-///     extras=[
-///         (shell_handler, shell_handler)
-///     ]
 /// );
 ///
 /// impl ShellHandling for MyEnv {
 ///     fn get_shell(&self) -> Option<Shell> {
 ///         // delegate the impl to the stored handler
-///         self.shell_handler.get_shell()
+///         self.my_shell.get_shell()
 ///     }
 /// }
+///
+/// let env = Environment::init(&display, &mut queue, MyEnv {
+///     my_shell: ShellHandler::new()
+/// });
 /// ```
 pub struct ShellHandler {
-    inner: Rc<RefCell<ShellInner>>,
+    inner: RefCell<ShellInner>,
 }
 
 impl ShellHandler {
     /// Create a new handler
     pub fn new() -> ShellHandler {
         ShellHandler {
-            inner: Rc::new(RefCell::new(ShellInner {
+            inner: RefCell::new(ShellInner {
                 registry: None,
                 wl_shell: Lazy::Unknown,
                 xdg_shell: Lazy::Unknown,
                 zxdg_shell: Lazy::Unknown,
-            })),
-        }
-    }
-}
-
-impl Clone for ShellHandler {
-    fn clone(&self) -> ShellHandler {
-        ShellHandler {
-            inner: self.inner.clone(),
+            }),
         }
     }
 }
@@ -343,7 +326,7 @@ impl<E: ShellHandling> Environment<E> {
     ///
     /// Returs `None` if not shell was advertized.
     pub fn get_shell(&self) -> Option<Shell> {
-        self.with_extras(|extras| extras.get_shell())
+        self.with_inner(|extras| extras.get_shell())
     }
     /// Create a new shell surface for this surface
     ///
