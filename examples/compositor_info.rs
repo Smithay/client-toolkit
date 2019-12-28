@@ -25,7 +25,7 @@ fn main() -> Result<(), ()> {
 
     // print the best supported shell
     println!(
-        "-> Most recent shell supported by the compositor is {}.\n",
+        "-> Most recent shell supported by the compositor is {}.",
         match env.get_shell() {
             Some(Shell::Wl(_)) => "the legacy wl_shell",
             Some(Shell::Zxdg(_)) => "the old unstable xdg_shell (zxdg_shell_v6)",
@@ -33,7 +33,9 @@ fn main() -> Result<(), ()> {
             None => "nothing",
         }
     );
+    println!();
 
+    // print the outputs
     let outputs = env.get_all_outputs();
     println!("-> Compositor advertised {} outputs:", outputs.len());
     for output in outputs {
@@ -56,6 +58,27 @@ fn main() -> Result<(), ()> {
             }
         });
     }
+    println!();
+
+    // print the seats
+    let seats = env.get_all_seats();
+    println!("-> Compositor advertised {} seats:", seats.len());
+    for seat in seats {
+        sctk::seat::with_seat_data(&seat, |data| {
+            print!("  -> {} with capabilities: ", data.name);
+            if data.has_pointer {
+                print!("pointer ");
+            }
+            if data.has_keyboard {
+                print!("keyboard ");
+            }
+            if data.has_touch {
+                print!("touch ");
+            }
+            println!();
+        });
+    }
+
     /*
         if env.decorations_mgr.is_some() {
             println!("-> Compositor supports server-side decorations.")

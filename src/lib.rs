@@ -32,6 +32,7 @@ pub mod reexports {
 
 pub mod environment;
 pub mod output;
+pub mod seat;
 pub mod shell;
 
 mod surface;
@@ -58,7 +59,9 @@ pub mod window;
 /// - `wl_compositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_data_device_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_output` with the [`OutputHandler`](output/struct.OutputHandler.html)
+/// - `wl_seat` with the [`SeatHandler`](seat/struct.SeatHandler.html)
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+/// - `xdg_shell` and `wl_shell` with the [`ShellHandler`](shell/struct.ShellHandler.html)
 ///
 /// If you don't need to add anything more, its use is as simple as:
 ///
@@ -104,18 +107,25 @@ macro_rules! default_environment {
             sctk_shell: $crate::shell::ShellHandler,
             // output
             sctk_outputs: $crate::output::OutputHandler,
+            // seat
+            sctk_seats: $crate::seat::SeatHandler,
             // user added
             $(
                 $fname : $fty,
             )*
         }
 
-        /*
-         * Shell utility
-         */
+        // Shell utility
         impl $crate::shell::ShellHandling for $env_name {
             fn get_shell(&self) -> Option<$crate::shell::Shell> {
                 self.sctk_shell.get_shell()
+            }
+        }
+
+        // Seat utility
+        impl $crate::seat::SeatHandling for $env_name {
+            fn listen<F: Fn($crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>, &$crate::seat::SeatData) + Send + Sync + 'static>(&mut self, f: F) -> $crate::seat::SeatListener {
+                self.sctk_seats.listen(f)
             }
         }
 
@@ -138,6 +148,8 @@ macro_rules! default_environment {
             multis = [
                 // output globals
                 $crate::reexports::client::protocol::wl_output::WlOutput => sctk_outputs,
+                // seat globals
+                $crate::reexports::client::protocol::wl_seat::WlSeat => sctk_seats,
                 // user added
                 $($mty => $mname),*
             ]
@@ -174,6 +186,7 @@ macro_rules! init_default_environment {
             sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
             sctk_shell: $crate::shell::ShellHandler::new(),
             sctk_outputs: $crate::output::OutputHandler::new(),
+            sctk_seats: $crate::seat::SeatHandler::new(),
             $(
                 $fname: $fval,
             )*
