@@ -269,7 +269,7 @@ impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
             inner.registry = Some(registry);
         }
         if let Lazy::Unknown = inner.zxdg_shell {
-            inner.xdg_shell = Lazy::Seen { id, version };
+            inner.zxdg_shell = Lazy::Seen { id, version };
         } else {
             eprintln!("SCTK: compositor advertized zxdg_shell_v6 multiple times, ignoring.")
         }
