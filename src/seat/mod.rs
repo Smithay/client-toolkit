@@ -1,6 +1,18 @@
 //! Types for automatically handling seats
 //!
+//! This modules provides a `SeatHandler` for use with the
+//! [`environment!`](../macro.environment.html) macro. It is automatically inserted
+//! in the [`default_environment!`](../macro.default_environment.html).
 //!
+//! This handler tracks the capability of the seats declared by the compositor,
+//! and gives you the possibility to register callbacks that will be invoked whenever
+//! a new seat is created of the state of a seat changes, via the
+//! [`Environment::listen_for_seats`](../environment/struct.Environment.html) method.
+//!
+//! **Note:** if you don't use the [`default_environment!`](../macro.default_environment.html),
+//! you'll need to implement the [`SeatHandling`](trait.SeatHandling.hmtl) on your
+//! environment struct to access the added methods on
+//! [`Environment`](../environment/struct.Environment.html).
 
 use std::cell::RefCell;
 use std::rc::Rc;
