@@ -1,4 +1,5 @@
 //! Utilities for keymap interpretation of keyboard input
+//!
 //! This module provides an implementation for `wl_keyboard`
 //! objects using `libxkbcommon` to interpret the keyboard input
 //! given the user keymap.
@@ -25,7 +26,10 @@ use std::time::{Duration, Instant};
 use memmap::MmapOptions;
 
 pub use wayland_client::protocol::wl_keyboard::KeyState;
-use wayland_client::protocol::{wl_keyboard, wl_seat, wl_surface};
+use wayland_client::{
+    protocol::{wl_keyboard, wl_seat, wl_surface},
+    Attached,
+};
 
 use self::ffi::xkb_state_component;
 use self::ffi::XKBCOMMON_HANDLE as XKBH;
@@ -248,6 +252,36 @@ impl KbState {
         Ok(me)
     }
 
+    fn from_rmlvo(rmlvo: RMLVO) -> Result<KbState, Error> {
+        fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
+            s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
+                .map_err(|_| Error::BadNames)
+        }
+
+        let mut state = KbState::new()?;
+
+        let rules = to_cstring(rmlvo.rules)?;
+        let model = to_cstring(rmlvo.model)?;
+        let layout = to_cstring(rmlvo.layout)?;
+        let variant = to_cstring(rmlvo.variant)?;
+        let options = to_cstring(rmlvo.options)?;
+
+        let xkb_names = ffi::xkb_rule_names {
+            rules: rules.map_or(ptr::null(), |s| s.as_ptr()),
+            model: model.map_or(ptr::null(), |s| s.as_ptr()),
+            layout: layout.map_or(ptr::null(), |s| s.as_ptr()),
+            variant: variant.map_or(ptr::null(), |s| s.as_ptr()),
+            options: options.map_or(ptr::null(), |s| s.as_ptr()),
+        };
+
+        unsafe {
+            state.init_with_rmlvo(xkb_names)?;
+        }
+
+        state.locked = true;
+        Ok(state)
+    }
+
     unsafe fn init_compose(&mut self) {
         let locale = env::var_os("LC_ALL")
             .and_then(|v| if v.is_empty() { None } else { Some(v) })
@@ -462,27 +496,27 @@ pub struct KeyRepeatEvent {
     pub utf8: Option<String>,
 }
 
-/// Implement a keyboard to automatically detect the keymap
+/// Implement a keyboard for keymap translation
 ///
 /// This requires you to provide an implementation to receive the events after they
 /// have been interpreted with the keymap.
 ///
-/// The keymap information will be loaded from the events sent by the compositor,
-/// as such you need to call this method as soon as you have created the keyboard
-/// to make sure this event does not get lost.
+/// The keymap will be loaded from the provided RMLVO rules, or from the compositor
+/// provided keymap if `None`.
 ///
-/// Returns an error if xkbcommon could not be initialized.
-pub fn map_keyboard_auto<Impl>(
-    seat: &wl_seat::WlSeat,
+/// Returns an error if xkbcommon could not be initialized or the RMLVO specification
+/// contained invalid values.
+pub fn map_keyboard<Impl>(
+    seat: &Attached<wl_seat::WlSeat>,
+    rmlvo: Option<RMLVO>,
     implementation: Impl,
 ) -> Result<wl_keyboard::WlKeyboard, Error>
 where
     for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + 'static,
 {
-    let state = match KbState::new() {
-        Ok(s) => s,
-        Err(e) => return Err(e),
-    };
+    let state = rmlvo
+        .map(KbState::from_rmlvo)
+        .unwrap_or_else(KbState::new)?;
     Ok(implement_kbd(
         seat,
         state,
@@ -491,67 +525,8 @@ where
     ))
 }
 
-/// Implement a keyboard for a predefined keymap
-///
-/// This requires you to provide an implementation to receive the events after they
-/// have been interpreted with the keymap.
-///
-/// The keymap will be loaded from the provided RMLVO rules. Any keymap provided
-/// by the compositor will be ignored.
-///
-/// Returns an error if xkbcommon could not be initialized or the RMLVO specification
-/// contained invalid values.
-pub fn map_keyboard_rmlvo<Impl>(
-    seat: &wl_seat::WlSeat,
-    rmlvo: RMLVO,
-    implementation: Impl,
-) -> Result<wl_keyboard::WlKeyboard, Error>
-where
-    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + 'static,
-{
-    fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
-        s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
-            .map_err(|_| Error::BadNames)
-    }
-
-    fn init_state(rmlvo: RMLVO) -> Result<KbState, Error> {
-        let mut state = KbState::new()?;
-
-        let rules = to_cstring(rmlvo.rules)?;
-        let model = to_cstring(rmlvo.model)?;
-        let layout = to_cstring(rmlvo.layout)?;
-        let variant = to_cstring(rmlvo.variant)?;
-        let options = to_cstring(rmlvo.options)?;
-
-        let xkb_names = ffi::xkb_rule_names {
-            rules: rules.map_or(ptr::null(), |s| s.as_ptr()),
-            model: model.map_or(ptr::null(), |s| s.as_ptr()),
-            layout: layout.map_or(ptr::null(), |s| s.as_ptr()),
-            variant: variant.map_or(ptr::null(), |s| s.as_ptr()),
-            options: options.map_or(ptr::null(), |s| s.as_ptr()),
-        };
-
-        unsafe {
-            state.init_with_rmlvo(xkb_names)?;
-        }
-
-        state.locked = true;
-        Ok(state)
-    }
-
-    match init_state(rmlvo) {
-        Ok(state) => Ok(implement_kbd(
-            seat,
-            state,
-            implementation,
-            None::<(_, fn(_, _))>,
-        )),
-        Err(error) => Err(error),
-    }
-}
-
 fn implement_kbd<Impl, RepeatImpl>(
-    seat: &wl_seat::WlSeat,
+    seat: &Attached<wl_seat::WlSeat>,
     state: KbState,
     implementation: Impl,
     repeat: Option<(KeyRepeatKind, RepeatImpl)>,
@@ -590,13 +565,13 @@ where
 /// implementation can be called at anytime, independent of the dispatching of wayland events.
 /// The dispatching of KeyRepeatEvents is handled with the spawning of threads.
 ///
-/// The keymap information will be loaded from the events sent by the compositor,
-/// as such you need to call this method as soon as you have created the keyboard
-/// to make sure this event does not get lost.
+/// The keymap will be loaded from the provided RMLVO rules, or from the compositor
+/// provided keymap if `None`.
 ///
 /// Returns an error if xkbcommon could not be initialized.
-pub fn map_keyboard_auto_with_repeat<Impl, RepeatImpl>(
-    seat: &wl_seat::WlSeat,
+pub fn map_keyboard_repeat<Impl, RepeatImpl>(
+    seat: &Attached<wl_seat::WlSeat>,
+    rmlvo: Option<RMLVO>,
     key_repeat_kind: KeyRepeatKind,
     implementation: Impl,
     repeat_implementation: RepeatImpl,
@@ -605,82 +580,15 @@ where
     for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + 'static,
     RepeatImpl: FnMut(KeyRepeatEvent, wl_keyboard::WlKeyboard) + Send + 'static,
 {
-    let state = match KbState::new() {
-        Ok(s) => s,
-        Err(e) => return Err(e),
-    };
+    let state = rmlvo
+        .map(KbState::from_rmlvo)
+        .unwrap_or_else(KbState::new)?;
     Ok(implement_kbd(
         seat,
         state,
         implementation,
         Some((key_repeat_kind, repeat_implementation)),
     ))
-}
-
-/// Implement a keyboard for a predefined keymap and send KeyRepeatEvents at set
-/// intervals
-///
-/// This requires you to provide an implementation to receive the events after they
-/// have been interpreted with the keymap. You must also provide an implementation to be called
-/// when KeyRepeatEvents are sent at intervals set by the KeyRepeatKind argument, this
-/// implementation can be called at anytime, independent of the dispatching of wayland events.
-/// The dispatching of KeyRepeatEvents is handled with the spawning of threads.
-///
-/// The keymap will be loaded from the provided RMLVO rules. Any keymap provided
-/// by the compositor will be ignored.
-///
-/// Returns an error if xkbcommon could not be initialized or the RMLVO specification
-/// contained invalid values.
-pub fn map_keyboard_rmlvo_with_repeat<Impl, RepeatImpl>(
-    seat: &wl_seat::WlSeat,
-    rmlvo: RMLVO,
-    key_repeat_kind: KeyRepeatKind,
-    implementation: Impl,
-    repeat_implementation: RepeatImpl,
-) -> Result<wl_keyboard::WlKeyboard, Error>
-where
-    for<'a> Impl: FnMut(Event<'a>, wl_keyboard::WlKeyboard) + 'static,
-    RepeatImpl: FnMut(KeyRepeatEvent, wl_keyboard::WlKeyboard) + Send + 'static,
-{
-    fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
-        s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
-            .map_err(|_| Error::BadNames)
-    }
-
-    fn init_state(rmlvo: RMLVO) -> Result<KbState, Error> {
-        let mut state = KbState::new()?;
-
-        let rules = to_cstring(rmlvo.rules)?;
-        let model = to_cstring(rmlvo.model)?;
-        let layout = to_cstring(rmlvo.layout)?;
-        let variant = to_cstring(rmlvo.variant)?;
-        let options = to_cstring(rmlvo.options)?;
-
-        let xkb_names = ffi::xkb_rule_names {
-            rules: rules.map_or(ptr::null(), |s| s.as_ptr()),
-            model: model.map_or(ptr::null(), |s| s.as_ptr()),
-            layout: layout.map_or(ptr::null(), |s| s.as_ptr()),
-            variant: variant.map_or(ptr::null(), |s| s.as_ptr()),
-            options: options.map_or(ptr::null(), |s| s.as_ptr()),
-        };
-
-        unsafe {
-            state.init_with_rmlvo(xkb_names)?;
-        }
-
-        state.locked = true;
-        Ok(state)
-    }
-
-    match init_state(rmlvo) {
-        Ok(state) => Ok(implement_kbd(
-            seat,
-            state,
-            implementation,
-            Some((key_repeat_kind, repeat_implementation)),
-        )),
-        Err(error) => Err(error),
-    }
 }
 
 struct KbdHandler<Impl, RepeatImpl> {

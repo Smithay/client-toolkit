@@ -22,6 +22,8 @@ use wayland_client::{
     Attached, Main,
 };
 
+pub mod keyboard;
+
 type SeatCallback = dyn Fn(Attached<wl_seat::WlSeat>, &SeatData) + Send + Sync + 'static;
 
 /// The metadata associated with a seat
