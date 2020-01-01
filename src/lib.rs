@@ -15,14 +15,8 @@
 //! type, giving you more capabilities as more modules are activated.
 #![warn(missing_docs)]
 
-/*
-#[macro_use]
-extern crate bitflags;
 #[macro_use]
 extern crate dlib;
-#[macro_use]
-extern crate lazy_static;
-*/
 
 /// Re-exports of some crates, for convenience
 pub mod reexports {

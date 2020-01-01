@@ -144,7 +144,7 @@ pub enum xkb_compose_feed_result {
     XKB_COMPOSE_FEED_ACCEPTED
 }
 
-bitflags!(
+bitflags::bitflags!(
     pub struct xkb_state_component: u32 {
         /** Depressed modifiers, i.e. a key is physically holding them. */
         const XKB_STATE_MODS_DEPRESSED = (1 << 0);
@@ -254,7 +254,7 @@ functions:
     fn xkb_compose_state_get_one_sym(*mut xkb_compose_state) -> xkb_keysym_t,
 );
 
-lazy_static!(
+lazy_static::lazy_static!(
     pub static ref XKBCOMMON_OPTION: Option<XkbCommon> = {
         XkbCommon::open("libxkbcommon.so.0")
             .or_else(|_| XkbCommon::open("libxkbcommon.so"))
