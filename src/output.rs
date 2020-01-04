@@ -146,7 +146,7 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
                 })
             });
         }
-        output.assign_mono(process_output_event);
+        output.quick_assign(|output, event, _| process_output_event(output, event));
         self.outputs.push((id, (*output).clone()));
     }
     fn removed(&mut self, id: u32) {

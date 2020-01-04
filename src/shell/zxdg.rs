@@ -30,7 +30,7 @@ impl Zxdg {
         let implementation = Rc::new(RefCell::new(implementation));
         let implementation_2 = implementation.clone();
         let xdgs = shell.get_xdg_surface(surface);
-        xdgs.assign_mono(move |xdgs, evt| match evt {
+        xdgs.quick_assign(move |xdgs, evt, _| match evt {
             zxdg_surface_v6::Event::Configure { serial } => {
                 xdgs.ack_configure(serial);
                 if let Some((new_size, states)) = pending_configure_2.borrow_mut().take() {
@@ -40,7 +40,7 @@ impl Zxdg {
             _ => unreachable!(),
         });
         let toplevel = xdgs.get_toplevel();
-        toplevel.assign_mono(move |_, evt| {
+        toplevel.quick_assign(move |_, evt, _| {
             match evt {
                 zxdg_toplevel_v6::Event::Close => (&mut *implementation.borrow_mut())(Event::Close),
                 zxdg_toplevel_v6::Event::Configure {

@@ -155,14 +155,15 @@ macro_rules! default_environment {
 /// Initialize a batteries-included SCTK environment
 ///
 /// Sister macro of [`default_environment!`](macro.default_environment.html). You need
-/// to use it to initialize the environment:
+/// to use it to initialize the environment instead of
+/// [`Envrionment::init`](environment/struct.Environment.html). It has the same semantics.
 ///
 /// ```no_run
 /// # use smithay_client_toolkit::{default_environment, init_default_environment};
 /// # default_environment!(MyEnv, fields=[somefield: u32, otherfield: String,], singles=[], multis=[],);
 /// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
 /// # let mut queue = display.create_event_queue();
-/// let env = init_default_environment!(MyEnv, &display, &mut queue,
+/// let env = init_default_environment!(MyEnv, &display,
 ///     fields=[
 ///         /* initializers for your extra fields if any */
 ///         somefield: 42,
@@ -171,10 +172,10 @@ macro_rules! default_environment {
 /// );
 /// ```
 macro_rules! init_default_environment {
-    ($env_name:ident, $display:expr, $queue:expr,
+    ($env_name:ident, $display:expr,
         fields = [$($fname:ident : $fval:expr),* $(,)?]$(,)?
     ) => {
-        $crate::environment::Environment::init($display, $queue, $env_name {
+        $crate::environment::Environment::init($display, $env_name {
             sctk_compositor: $crate::environment::SimpleGlobal::new(),
             sctk_data_device_manager: $crate::environment::SimpleGlobal::new(),
             sctk_subcompositor: $crate::environment::SimpleGlobal::new(),

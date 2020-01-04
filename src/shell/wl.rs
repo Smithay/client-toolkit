@@ -18,7 +18,7 @@ impl Wl {
         Impl: FnMut(Event) + 'static,
     {
         let shell_surface = shell.get_shell_surface(surface);
-        shell_surface.assign_mono(move |shell_surface, event| match event {
+        shell_surface.quick_assign(move |shell_surface, event, _| match event {
             wl_shell_surface::Event::Ping { serial } => {
                 shell_surface.pong(serial);
             }

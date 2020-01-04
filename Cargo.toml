@@ -20,11 +20,11 @@ dlib = "0.4"
 lazy_static = "1.0"
 memmap = "0.7"
 andrew = "0.2.0"
-wayland-client = "0.24"
-wayland-protocols = { version = "0.24", features = ["client", "unstable_protocols"] }
-wayland-cursor = "0.24"
+wayland-client = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" , features = ["client", "unstable_protocols"] }
+wayland-cursor = { git = "https://github.com/Smithay/wayland-rs" }
 
 [dev-dependencies]
 image = "0.22"
-wayland-client = { version = "0.24", features = ["dlopen"] }
+wayland-client = { git = "https://github.com/Smithay/wayland-rs", features = ["dlopen"] }
 byteorder = "1.0"
