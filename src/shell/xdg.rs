@@ -27,7 +27,7 @@ impl Xdg {
         let implementation = Rc::new(RefCell::new(implementation));
         let implementation_2 = implementation.clone();
         let xdgs = shell.get_xdg_surface(surface);
-        xdgs.assign_mono(move |xdgs, evt| match evt {
+        xdgs.quick_assign(move |xdgs, evt, _| match evt {
             xdg_surface::Event::Configure { serial } => {
                 xdgs.ack_configure(serial);
                 if let Some((new_size, states)) = pending_configure_2.borrow_mut().take() {
@@ -37,7 +37,7 @@ impl Xdg {
             _ => unreachable!(),
         });
         let toplevel = xdgs.get_toplevel();
-        toplevel.assign_mono(move |_, evt| {
+        toplevel.quick_assign(move |_, evt, _| {
             match evt {
                 xdg_toplevel::Event::Close => (&mut *implementation.borrow_mut())(Event::Close),
                 xdg_toplevel::Event::Configure {

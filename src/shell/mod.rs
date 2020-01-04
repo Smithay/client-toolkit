@@ -250,7 +250,7 @@ impl GlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
                 // we currently support xdg_shell up to version 2
                 let version = std::cmp::min(2, version);
                 let shell = registry.bind::<xdg_wm_base::XdgWmBase>(version, id);
-                shell.assign_mono(|shell, event| {
+                shell.quick_assign(|shell, event, _| {
                     if let xdg_wm_base::Event::Ping { serial } = event {
                         shell.pong(serial);
                     }
@@ -284,7 +284,7 @@ impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
                 let registry = inner.registry.as_ref().unwrap();
                 // only version 1 of zxdg_shell_v6 is supported
                 let shell = registry.bind::<zxdg_shell_v6::ZxdgShellV6>(1, id);
-                shell.assign_mono(|shell, event| {
+                shell.quick_assign(|shell, event, _| {
                     if let zxdg_shell_v6::Event::Ping { serial } = event {
                         shell.pong(serial);
                     }

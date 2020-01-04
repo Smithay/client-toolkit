@@ -96,7 +96,7 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
             .user_data()
             .set_threadsafe(|| Mutex::new(SeatData::new()));
         let cb_listeners = self.listeners.clone();
-        seat.assign_mono(move |seat, event| process_seat_event(seat, event, &cb_listeners));
+        seat.quick_assign(move |seat, event, _| process_seat_event(seat, event, &cb_listeners));
         self.seats.push((id, (*seat).clone()));
     }
     fn removed(&mut self, id: u32) {

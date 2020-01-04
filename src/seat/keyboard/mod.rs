@@ -552,7 +552,7 @@ where
         implementation,
     };
 
-    kbd.assign_mono(move |kbd, evt| handler.event((*kbd).clone().detach(), evt));
+    kbd.quick_assign(move |kbd, evt, _| handler.event((*kbd).clone().detach(), evt));
     (*kbd).clone().detach()
 }
 

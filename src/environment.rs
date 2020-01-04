@@ -36,7 +36,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use wayland_client::{
     protocol::{wl_display, wl_registry},
-    Attached, EventQueue, GlobalEvent, GlobalManager, Interface, Proxy,
+    Attached, GlobalEvent, GlobalManager, Interface, Proxy,
 };
 
 /*
@@ -85,19 +85,16 @@ pub struct Environment<E> {
 impl<E: InnerEnv + 'static> Environment<E> {
     /// Initialize the `Environment`
     ///
-    /// This requires access to the wayland display as well as an event queue that will be used to drive
-    /// the main SCTK logic. You also need to provide an instance of the inner environment type declared
+    /// This requires access to a `wl_display` attached to an event queue (on which the main SCTK logic
+    /// will be attached). You also need to provide an instance of the inner environment type declared
     /// using the [`environment!`](../macro.environment.html) macro.
     ///
     /// If you instead used the [`default_environment!`](../macro.default_environment.html), then you need
     /// to initialize your `Environment` using the
     /// [`init_default_environment!`](../macro.init_default_environment.html) macro.
-    pub fn init(
-        display: &Proxy<wl_display::WlDisplay>,
-        queue: &mut EventQueue,
-        env: E,
-    ) -> Environment<E> {
-        let attached_display = display.clone().attach(queue.get_token());
+    ///
+    /// You will need to do two roundtrips of the event queue afterward to filly initialize the environment.
+    pub fn init(display: &Attached<wl_display::WlDisplay>, env: E) -> Environment<E> {
         let inner = Rc::new(RefCell::new(env));
 
         let my_inner = inner.clone();
@@ -106,30 +103,7 @@ impl<E: InnerEnv + 'static> Environment<E> {
             inner.process_event(event, registry);
         };
 
-        let manager = GlobalManager::new_with_cb(&attached_display, my_cb);
-
-        // a roundtrip to receive the global list
-        queue
-            .sync_roundtrip(|evt, obj| {
-                panic!(
-                    "SCTK: orphan event: {}@{} -> {:?}",
-                    evt.interface,
-                    obj.as_ref().id(),
-                    evt.name
-                )
-            })
-            .expect("SCTK: Initial roundtrip failed.");
-        // a second to let the handlers init their globals
-        queue
-            .sync_roundtrip(|evt, obj| {
-                panic!(
-                    "SCTK: orphan event: {}@{} -> {:?}",
-                    evt.interface,
-                    obj.as_ref().id(),
-                    evt.name
-                )
-            })
-            .expect("SCTK: initial roundtrip failed.");
+        let manager = GlobalManager::new_with_cb(&display, my_cb);
 
         Environment { manager, inner }
     }

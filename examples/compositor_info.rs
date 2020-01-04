@@ -19,7 +19,19 @@ fn main() -> Result<(), ()> {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(CompInfo, &display, &mut queue, fields = []);
+    let env = sctk::init_default_environment!(
+        CompInfo,
+        &(*display).clone().attach(queue.get_token()),
+        fields = []
+    );
+
+    // two roundtrips to init the environment
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
 
     println!("== Smithay's compositor info tool ==\n");
 

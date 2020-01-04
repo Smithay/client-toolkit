@@ -97,7 +97,7 @@ fn setup_surface<F>(
 where
     F: FnMut(i32, wl_surface::WlSurface) + Send + 'static,
 {
-    surface.assign_mono(move |surface, event| {
+    surface.quick_assign(move |surface, event, _| {
         let mut user_data = surface
             .as_ref()
             .user_data()
