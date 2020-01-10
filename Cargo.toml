@@ -23,6 +23,7 @@ andrew = "0.2.0"
 wayland-client = { git = "https://github.com/Smithay/wayland-rs" }
 wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" , features = ["client", "unstable_protocols"] }
 wayland-cursor = { git = "https://github.com/Smithay/wayland-rs" }
+calloop = { git = "https://github.com/Smithay/calloop" }
 
 [dev-dependencies]
 image = "0.22"

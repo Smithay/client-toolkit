@@ -6,7 +6,7 @@ KEYSYMDEFS="${X11_INCLUDEDIR}/keysymdef.h
             ${X11_INCLUDEDIR}/Sunkeysym.h
             ${X11_INCLUDEDIR}/DECkeysym.h
             ${X11_INCLUDEDIR}/HPkeysym.h"
-TARGET_FILE=src/keyboard/keysyms.rs
+TARGET_FILE=src/seat/keyboard/keysyms.rs
 
 echo "//" > $TARGET_FILE
 echo "// This file was auto-generated using the update-keysyms.sh script." >> $TARGET_FILE

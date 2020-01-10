@@ -13,6 +13,16 @@
 //!
 //! The various modules work by adding methods to the [`Environment`](environment/struct.Environment.html)
 //! type, giving you more capabilities as more modules are activated.
+//!
+//! ## Event Loops
+//!
+//! SCTK integrates with `calloop` to provide an event loop abstraction. Indeed most Wayland
+//! apps will need to handle more event sources than the single Wayland connection. These are
+//! necessary to handle things like keyboard repetition, copy-paste, or animated cursors.
+//!
+//! [`WaylandSource`](struct.WaylandSource.html) is an adapter to insert a Wayland `EventQueue` into
+//! a calloop event loop. And some of the modules of SCTK will provide you with other event sources
+//! that you need to insert into calloop for them to work correctly.
 #![warn(missing_docs)]
 
 #[macro_use]
@@ -20,6 +30,7 @@ extern crate dlib;
 
 /// Re-exports of some crates, for convenience
 pub mod reexports {
+    pub use calloop;
     pub use wayland_client as client;
     pub use wayland_protocols as protocols;
 }
@@ -29,8 +40,10 @@ pub mod output;
 pub mod seat;
 pub mod shell;
 
+mod event_loop;
 mod surface;
 
+pub use event_loop::WaylandSource;
 pub use surface::{get_surface_outputs, get_surface_scale_factor};
 
 /*
