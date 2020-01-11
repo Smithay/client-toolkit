@@ -12,11 +12,7 @@
 //! calloop event loop. Not doing so will prevent key repetition to work
 //! (but the rest of the functionnality will not be affected).
 
-use std::cell::RefCell;
-use std::os::unix::io::RawFd;
-use std::rc::Rc;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{cell::RefCell, os::unix::io::RawFd, rc::Rc, sync::Arc, time::Duration};
 
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::{

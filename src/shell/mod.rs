@@ -14,9 +14,11 @@ use wayland_client::{
     Attached, Interface,
 };
 
-use wayland_protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
-use wayland_protocols::xdg_shell::client::{xdg_toplevel, xdg_wm_base};
+use wayland_protocols::{
+    unstable::xdg_shell::v6::client::zxdg_shell_v6,
+    xdg_shell::client::{xdg_toplevel, xdg_wm_base},
+};
 
 use crate::environment::{Environment, GlobalHandler};
 

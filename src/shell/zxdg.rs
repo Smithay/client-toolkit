@@ -1,12 +1,11 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
 
-use wayland_protocols::unstable::xdg_shell::v6::client::{
-    zxdg_shell_v6, zxdg_surface_v6, zxdg_toplevel_v6,
+use wayland_protocols::{
+    unstable::xdg_shell::v6::client::{zxdg_shell_v6, zxdg_surface_v6, zxdg_toplevel_v6},
+    xdg_shell::client::xdg_toplevel,
 };
-use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
 use super::{Event, ShellSurface};
 
