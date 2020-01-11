@@ -39,6 +39,7 @@ pub mod environment;
 pub mod output;
 pub mod seat;
 pub mod shell;
+pub mod utils;
 
 mod event_loop;
 mod surface;
@@ -48,9 +49,7 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 
 /*
 pub mod data_device;
-pub mod keyboard;
 pub mod pointer;
-pub mod utils;
 pub mod window;
 */
 
