@@ -14,9 +14,11 @@
 //! environment struct to access the added methods on
 //! [`Environment`](../environment/struct.Environment.html).
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex, Weak};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex, Weak},
+};
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
     Attached, Main,

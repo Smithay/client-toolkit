@@ -11,9 +11,13 @@
 
 use std::sync::{Arc, Mutex, Weak};
 
-use wayland_client::protocol::wl_output::{self, Event, WlOutput};
-use wayland_client::protocol::wl_registry;
-use wayland_client::{Attached, Main};
+use wayland_client::{
+    protocol::{
+        wl_output::{self, Event, WlOutput},
+        wl_registry,
+    },
+    Attached, Main,
+};
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 
