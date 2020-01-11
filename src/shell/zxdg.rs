@@ -1,6 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use wayland_client::protocol::{wl_output, wl_seat, wl_surface};
+use wayland_client::{
+    protocol::{wl_output, wl_seat, wl_surface},
+    DispatchData,
+};
 
 use wayland_protocols::{
     unstable::xdg_shell::v6::client::{zxdg_shell_v6, zxdg_surface_v6, zxdg_toplevel_v6},
@@ -21,7 +24,7 @@ impl Zxdg {
         implementation: Impl,
     ) -> Zxdg
     where
-        Impl: FnMut(Event) + 'static,
+        Impl: FnMut(Event, DispatchData) + 'static,
     {
         let pending_configure = Rc::new(RefCell::new(None));
         let pending_configure_2 = pending_configure.clone();
@@ -29,19 +32,24 @@ impl Zxdg {
         let implementation = Rc::new(RefCell::new(implementation));
         let implementation_2 = implementation.clone();
         let xdgs = shell.get_xdg_surface(surface);
-        xdgs.quick_assign(move |xdgs, evt, _| match evt {
+        xdgs.quick_assign(move |xdgs, evt, ddata| match evt {
             zxdg_surface_v6::Event::Configure { serial } => {
                 xdgs.ack_configure(serial);
                 if let Some((new_size, states)) = pending_configure_2.borrow_mut().take() {
-                    (&mut *implementation_2.borrow_mut())(Event::Configure { new_size, states });
+                    (&mut *implementation_2.borrow_mut())(
+                        Event::Configure { new_size, states },
+                        ddata,
+                    );
                 }
             }
             _ => unreachable!(),
         });
         let toplevel = xdgs.get_toplevel();
-        toplevel.quick_assign(move |_, evt, _| {
+        toplevel.quick_assign(move |_, evt, ddata| {
             match evt {
-                zxdg_toplevel_v6::Event::Close => (&mut *implementation.borrow_mut())(Event::Close),
+                zxdg_toplevel_v6::Event::Close => {
+                    (&mut *implementation.borrow_mut())(Event::Close, ddata)
+                }
                 zxdg_toplevel_v6::Event::Configure {
                     width,
                     height,

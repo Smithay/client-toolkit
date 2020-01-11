@@ -36,7 +36,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use wayland_client::{
     protocol::{wl_display, wl_registry},
-    Attached, GlobalEvent, GlobalManager, Interface, Proxy,
+    Attached, DispatchData, GlobalEvent, GlobalManager, Interface, Proxy,
 };
 
 /*
@@ -46,7 +46,13 @@ use wayland_client::{
 /// Required trait for implementing a handler for "single" globals
 pub trait GlobalHandler<I: Interface> {
     /// This global was created and signaled in the registry with given id and version
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32);
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        ddata: DispatchData,
+    );
     /// Access the global if it was signaled
     fn get(&self) -> Option<Attached<I>>;
 }
@@ -54,9 +60,15 @@ pub trait GlobalHandler<I: Interface> {
 /// Required trait for implementing a handler for "multi" globals
 pub trait MultiGlobalHandler<I: Interface> {
     /// A new instance of this global was created with given id and version
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32);
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        ddata: DispatchData,
+    );
     /// The instance with given id was removed
-    fn removed(&mut self, id: u32);
+    fn removed(&mut self, id: u32, ddata: DispatchData);
     /// Access all the currently existing instances
     fn get_all(&self) -> Vec<Attached<I>>;
 }
@@ -98,9 +110,9 @@ impl<E: InnerEnv + 'static> Environment<E> {
         let inner = Rc::new(RefCell::new(env));
 
         let my_inner = inner.clone();
-        let my_cb = move |event, registry| {
+        let my_cb = move |event, registry, ddata: DispatchData| {
             let mut inner = my_inner.borrow_mut();
-            inner.process_event(event, registry);
+            inner.process_event(event, registry, ddata);
         };
 
         let manager = GlobalManager::new_with_cb(&display, my_cb);
@@ -179,7 +191,12 @@ impl<E> Clone for Environment<E> {
 /// macro, you should not implement it manually unless you seriously want to.
 pub trait InnerEnv {
     /// Process a `GlobalEvent`
-    fn process_event(&mut self, event: GlobalEvent, registry: Attached<wl_registry::WlRegistry>);
+    fn process_event(
+        &mut self,
+        event: GlobalEvent,
+        registry: Attached<wl_registry::WlRegistry>,
+        data: DispatchData,
+    );
 }
 
 /*
@@ -205,7 +222,13 @@ impl<I: Interface> SimpleGlobal<I> {
 }
 
 impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> GlobalHandler<I> for SimpleGlobal<I> {
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
         self.global = Some((*registry.bind::<I>(version, id)).clone())
     }
     fn get(&self) -> Option<Attached<I>> {
@@ -266,21 +289,22 @@ macro_rules! environment {
             fn process_event(
                 &mut self,
                 event: $crate::reexports::client::GlobalEvent,
-                registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>
+                registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>,
+                ddata: $crate::reexports::client::DispatchData,
             ) {
                 match event {
                     $crate::reexports::client::GlobalEvent::New { id, interface, version } => match &interface[..] {
                         $(
-                            <$sty as $crate::reexports::client::Interface>::NAME => $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version),
+                            <$sty as $crate::reexports::client::Interface>::NAME => $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata),
                         )*
                         $(
-                            <$mty as $crate::reexports::client::Interface>::NAME => $crate::environment::MultiGlobalHandler::<$mty>::created(&mut self.$mname, registry, id, version),
+                            <$mty as $crate::reexports::client::Interface>::NAME => $crate::environment::MultiGlobalHandler::<$mty>::created(&mut self.$mname, registry, id, version, ddata),
                         )*
                         _ => { /* ignore unkown globals */ }
                     },
                     $crate::reexports::client::GlobalEvent::Removed { id, interface } => match &interface[..] {
                         $(
-                            <$mty as $crate::reexports::client::Interface>::NAME => $crate::environment::MultiGlobalHandler::<$mty>::removed(&mut self.$mname, id),
+                            <$mty as $crate::reexports::client::Interface>::NAME => $crate::environment::MultiGlobalHandler::<$mty>::removed(&mut self.$mname, id, ddata),
                         )*
                         _ => { /* ignore unknown globals */ }
                     }
@@ -290,8 +314,8 @@ macro_rules! environment {
 
         $(
             impl $crate::environment::GlobalHandler<$sty> for $env_name {
-                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32) {
-                    $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version)
+                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: DispatchData) {
+                    $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata)
                 }
                 fn get(&self) -> Option<$crate::reexports::client::Attached<$sty>> {
                     $crate::environment::GlobalHandler::<$sty>::get(&self.$sname)
@@ -301,11 +325,11 @@ macro_rules! environment {
 
         $(
             impl $crate::environment::MultiGlobalHandler<$mty> for $env_name {
-                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32) {
-                    $crate::environment::MultiGlobalHandler::<$mty>::created(&mut self.$mname, registry, id, version)
+                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: DispatchData) {
+                    $crate::environment::MultiGlobalHandler::<$mty>::created(&mut self.$mname, registry, id, version, ddata)
                 }
                 fn removed(&mut self, id: u32) {
-                    $crate::environment::MultiGlobalHandler::<$mty>::removed(&mut self.$mname, id)
+                    $crate::environment::MultiGlobalHandler::<$mty>::removed(&mut self.$mname, id, ddata)
                 }
                 fn get_all(&self) -> Vec<$crate::reexports::client::Attached<$mty>> {
                     $crate::environment::MultiGlobalHandler::<$mty>::get_all(&self.$mname)

@@ -11,7 +11,7 @@ use std::cell::RefCell;
 
 use wayland_client::{
     protocol::{wl_output, wl_registry, wl_seat, wl_shell, wl_surface},
-    Attached, Interface,
+    Attached, DispatchData, Interface,
 };
 
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
@@ -70,18 +70,18 @@ pub enum Shell {
     Wl(Attached<wl_shell::WlShell>),
 }
 
-pub(crate) fn create_shell_surface<Impl>(
+pub(crate) fn create_shell_surface<F>(
     shell: &Shell,
     surface: &wl_surface::WlSurface,
-    implem: Impl,
+    callback: F,
 ) -> Box<dyn ShellSurface>
 where
-    Impl: FnMut(Event) + 'static,
+    F: FnMut(Event, DispatchData) + 'static,
 {
     match *shell {
-        Shell::Wl(ref shell) => Box::new(wl::Wl::create(surface, shell, implem)) as Box<_>,
-        Shell::Xdg(ref shell) => Box::new(xdg::Xdg::create(surface, shell, implem)) as Box<_>,
-        Shell::Zxdg(ref shell) => Box::new(zxdg::Zxdg::create(surface, shell, implem)) as Box<_>,
+        Shell::Wl(ref shell) => Box::new(wl::Wl::create(surface, shell, callback)) as Box<_>,
+        Shell::Xdg(ref shell) => Box::new(xdg::Xdg::create(surface, shell, callback)) as Box<_>,
+        Shell::Zxdg(ref shell) => Box::new(zxdg::Zxdg::create(surface, shell, callback)) as Box<_>,
     }
 }
 
@@ -201,7 +201,13 @@ impl ShellHandler {
 }
 
 impl GlobalHandler<wl_shell::WlShell> for ShellHandler {
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
         let mut inner = self.inner.borrow_mut();
         if inner.registry.is_none() {
             inner.registry = Some(registry);
@@ -230,7 +236,13 @@ impl GlobalHandler<wl_shell::WlShell> for ShellHandler {
 }
 
 impl GlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
         let mut inner = self.inner.borrow_mut();
         if inner.registry.is_none() {
             inner.registry = Some(registry);
@@ -265,7 +277,13 @@ impl GlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
 }
 
 impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
         let mut inner = self.inner.borrow_mut();
         if inner.registry.is_none() {
             inner.registry = Some(registry);
@@ -346,7 +364,7 @@ impl<E: ShellHandling> Environment<E> {
         f: F,
     ) -> Box<dyn ShellSurface>
     where
-        F: FnMut(Event) + 'static,
+        F: FnMut(Event, DispatchData) + 'static,
     {
         let shell = self
             .get_shell()

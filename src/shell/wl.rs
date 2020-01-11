@@ -1,4 +1,7 @@
-use wayland_client::protocol::{wl_output, wl_seat, wl_shell, wl_shell_surface, wl_surface};
+use wayland_client::{
+    protocol::{wl_output, wl_seat, wl_shell, wl_shell_surface, wl_surface},
+    DispatchData,
+};
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
@@ -15,19 +18,22 @@ impl Wl {
         mut implementation: Impl,
     ) -> Wl
     where
-        Impl: FnMut(Event) + 'static,
+        Impl: FnMut(Event, DispatchData) + 'static,
     {
         let shell_surface = shell.get_shell_surface(surface);
-        shell_surface.quick_assign(move |shell_surface, event, _| match event {
+        shell_surface.quick_assign(move |shell_surface, event, ddata| match event {
             wl_shell_surface::Event::Ping { serial } => {
                 shell_surface.pong(serial);
             }
             wl_shell_surface::Event::Configure { width, height, .. } => {
                 use std::cmp::max;
-                implementation(Event::Configure {
-                    new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
-                    states: Vec::new(),
-                });
+                implementation(
+                    Event::Configure {
+                        new_size: Some((max(width, 1) as u32, max(height, 1) as u32)),
+                        states: Vec::new(),
+                    },
+                    ddata,
+                );
             }
             wl_shell_surface::Event::PopupDone => {
                 unreachable!();

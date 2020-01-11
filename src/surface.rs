@@ -31,7 +31,7 @@ impl SurfaceUserData {
             let my_cb = change_cb.clone();
             let my_surface = surface.clone();
             let my_dpi = self.dpi_factor.clone();
-            add_output_listener(&output, move |info| {
+            add_output_listener(&output, move |info, _| {
                 if info.obsolete {
                     // an output that no longer exists is marked by a dpi factor of -1
                     my_arc.store(-1, Ordering::Release);
@@ -48,7 +48,7 @@ impl SurfaceUserData {
                 }
             })
         } else {
-            add_output_listener(&output, move |info| {
+            add_output_listener(&output, move |info, _| {
                 if info.obsolete {
                     // an output that no longer exists is marked by a dpi factor of -1
                     my_arc.store(-1, Ordering::Release);
