@@ -99,12 +99,12 @@ impl OutputInfo {
 enum OutputData {
     Ready {
         info: OutputInfo,
-        callbacks: Vec<Weak<dyn Fn(&OutputInfo, DispatchData) + Send + Sync>>,
+        callbacks: Vec<Weak<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync>>,
     },
     Pending {
         id: u32,
         events: Vec<Event>,
-        callbacks: Vec<Weak<dyn Fn(&OutputInfo, DispatchData) + Send + Sync>>,
+        callbacks: Vec<Weak<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync>>,
     },
 }
 
@@ -201,7 +201,7 @@ fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchDat
         for evt in pending_events {
             merge_event(&mut info, evt);
         }
-        notify(&mut info, ddata, &mut callbacks);
+        notify(&output, &mut info, ddata, &mut callbacks);
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
@@ -213,7 +213,7 @@ fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchDat
                 ref mut callbacks,
             } => {
                 merge_event(info, event);
-                notify(info, ddata, callbacks);
+                notify(&output, info, ddata, callbacks);
             }
         }
     }
@@ -232,7 +232,7 @@ fn make_obsolete(output: &WlOutput, ddata: DispatchData) {
             ref mut callbacks,
         } => {
             info.obsolete = true;
-            notify(info, ddata, callbacks);
+            notify(output, info, ddata, callbacks);
             return;
         }
         OutputData::Pending {
@@ -243,7 +243,7 @@ fn make_obsolete(output: &WlOutput, ddata: DispatchData) {
     };
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
-    notify(&mut info, ddata, &mut callbacks);
+    notify(output, &info, ddata, &mut callbacks);
     *udata = OutputData::Ready { info, callbacks };
 }
 
@@ -302,13 +302,14 @@ fn merge_event(info: &mut OutputInfo, event: Event) {
 }
 
 fn notify(
+    output: &WlOutput,
     info: &OutputInfo,
     mut ddata: DispatchData,
-    callbacks: &mut Vec<Weak<dyn Fn(&OutputInfo, DispatchData) + Send + Sync>>,
+    callbacks: &mut Vec<Weak<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync>>,
 ) {
     callbacks.retain(|weak| {
         if let Some(arc) = Weak::upgrade(weak) {
-            (*arc)(info, ddata.reborrow());
+            (*arc)(output.clone(), info, ddata.reborrow());
             true
         } else {
             false
@@ -346,7 +347,7 @@ pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(output: &WlOutput, f: F)
 ///
 /// The returned [`OutputListener`](struct.OutputListener) keeps your callback alive,
 /// dropping it will disable the callback and free the closure.
-pub fn add_output_listener<F: Fn(&OutputInfo, DispatchData) + Send + Sync + 'static>(
+pub fn add_output_listener<F: Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync + 'static>(
     output: &WlOutput,
     f: F,
 ) -> OutputListener {
@@ -376,7 +377,7 @@ pub fn add_output_listener<F: Fn(&OutputInfo, DispatchData) + Send + Sync + 'sta
 ///
 /// Dropping it disables the associated callback and frees the closure.
 pub struct OutputListener {
-    _cb: Arc<dyn Fn(&OutputInfo, DispatchData) + Send + Sync + 'static>,
+    _cb: Arc<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync + 'static>,
 }
 
 impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::Environment<E> {
