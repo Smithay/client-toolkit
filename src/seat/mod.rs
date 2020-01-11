@@ -21,12 +21,13 @@ use std::{
 };
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
-    Attached, Main,
+    Attached, DispatchData, Main,
 };
 
 pub mod keyboard;
 
-type SeatCallback = dyn Fn(Attached<wl_seat::WlSeat>, &SeatData) + Send + Sync + 'static;
+type SeatCallback =
+    dyn Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static;
 
 /// The metadata associated with a seat
 pub struct SeatData {
@@ -90,7 +91,13 @@ pub struct SeatListener {
 }
 
 impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
         // Seat is supported up to version 6
         let version = std::cmp::min(version, 6);
         let seat = registry.bind::<wl_seat::WlSeat>(version, id);
@@ -98,10 +105,12 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
             .user_data()
             .set_threadsafe(|| Mutex::new(SeatData::new()));
         let cb_listeners = self.listeners.clone();
-        seat.quick_assign(move |seat, event, _| process_seat_event(seat, event, &cb_listeners));
+        seat.quick_assign(move |seat, event, ddata| {
+            process_seat_event(seat, event, &cb_listeners, ddata)
+        });
         self.seats.push((id, (*seat).clone()));
     }
-    fn removed(&mut self, id: u32) {
+    fn removed(&mut self, id: u32, mut ddata: DispatchData) {
         let mut listeners = self.listeners.borrow_mut();
         self.seats.retain(|&(i, ref seat)| {
             if i != id {
@@ -114,7 +123,7 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
                 // notify the listeners that the seat is dead
                 listeners.retain(|lst| {
                     if let Some(cb) = Weak::upgrade(lst) {
-                        cb((*seat).clone(), &*guard);
+                        cb((*seat).clone(), &*guard, ddata.reborrow());
                         true
                     } else {
                         false
@@ -133,6 +142,7 @@ fn process_seat_event(
     seat: Main<wl_seat::WlSeat>,
     event: wl_seat::Event,
     listeners: &RefCell<Vec<Weak<SeatCallback>>>,
+    mut ddata: DispatchData,
 ) {
     let data = seat.as_ref().user_data().get::<Mutex<SeatData>>().unwrap();
     let mut guard = data.lock().unwrap();
@@ -150,7 +160,7 @@ fn process_seat_event(
     if !guard.name.is_empty() && (guard.has_pointer || guard.has_keyboard || guard.has_touch) {
         listeners.borrow_mut().retain(|lst| {
             if let Some(cb) = Weak::upgrade(lst) {
-                cb((*seat).clone(), &*guard);
+                cb((*seat).clone(), &*guard, ddata.reborrow());
                 true
             } else {
                 false
@@ -186,14 +196,14 @@ pub fn with_seat_data<T, F: FnOnce(&SeatData) -> T>(seat: &wl_seat::WlSeat, f: F
 /// method on your [`Environment`](../environment/struct.Environment.html).
 pub trait SeatHandling {
     /// Insert a listener for seat events
-    fn listen<F: Fn(Attached<wl_seat::WlSeat>, &SeatData) + Send + Sync + 'static>(
+    fn listen<F: Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static>(
         &mut self,
         f: F,
     ) -> SeatListener;
 }
 
 impl SeatHandling for SeatHandler {
-    fn listen<F: Fn(Attached<wl_seat::WlSeat>, &SeatData) + Send + Sync + 'static>(
+    fn listen<F: Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static>(
         &mut self,
         f: F,
     ) -> SeatListener {
@@ -211,7 +221,9 @@ impl<E: SeatHandling> crate::environment::Environment<E> {
     ///
     /// The returned [`SeatListener`](../seat/struct.SeatListener.hmtl) keeps your callback alive,
     /// dropping it will disable it.
-    pub fn listen_for_seats<F: Fn(Attached<wl_seat::WlSeat>, &SeatData) + Send + Sync + 'static>(
+    pub fn listen_for_seats<
+        F: Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static,
+    >(
         &self,
         f: F,
     ) -> SeatListener {

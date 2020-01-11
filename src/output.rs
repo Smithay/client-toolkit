@@ -16,7 +16,7 @@ use wayland_client::{
         wl_output::{self, Event, WlOutput},
         wl_registry,
     },
-    Attached, Main,
+    Attached, DispatchData, Main,
 };
 
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
@@ -99,12 +99,12 @@ impl OutputInfo {
 enum OutputData {
     Ready {
         info: OutputInfo,
-        callbacks: Vec<Weak<dyn Fn(&OutputInfo) + Send + Sync>>,
+        callbacks: Vec<Weak<dyn Fn(&OutputInfo, DispatchData) + Send + Sync>>,
     },
     Pending {
         id: u32,
         events: Vec<Event>,
-        callbacks: Vec<Weak<dyn Fn(&OutputInfo) + Send + Sync>>,
+        callbacks: Vec<Weak<dyn Fn(&OutputInfo, DispatchData) + Send + Sync>>,
     },
 }
 
@@ -128,7 +128,13 @@ impl OutputHandler {
 }
 
 impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
-    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32) {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
         // We currently support wl_output up to version 3
         let version = std::cmp::min(version, 3);
         let output = registry.bind::<WlOutput>(version, id);
@@ -150,15 +156,15 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
                 })
             });
         }
-        output.quick_assign(|output, event, _| process_output_event(output, event));
+        output.quick_assign(|output, event, ddata| process_output_event(output, event, ddata));
         self.outputs.push((id, (*output).clone()));
     }
-    fn removed(&mut self, id: u32) {
+    fn removed(&mut self, id: u32, mut ddata: DispatchData) {
         self.outputs.retain(|(i, o)| {
             if *i != id {
                 true
             } else {
-                make_obsolete(o);
+                make_obsolete(o, ddata.reborrow());
                 false
             }
         });
@@ -168,7 +174,7 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
     }
 }
 
-fn process_output_event(output: Main<WlOutput>, event: Event) {
+fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchData) {
     let udata_mutex = output
         .as_ref()
         .user_data()
@@ -195,7 +201,7 @@ fn process_output_event(output: Main<WlOutput>, event: Event) {
         for evt in pending_events {
             merge_event(&mut info, evt);
         }
-        notify(&mut info, &mut callbacks);
+        notify(&mut info, ddata, &mut callbacks);
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
@@ -207,13 +213,13 @@ fn process_output_event(output: Main<WlOutput>, event: Event) {
                 ref mut callbacks,
             } => {
                 merge_event(info, event);
-                notify(info, callbacks);
+                notify(info, ddata, callbacks);
             }
         }
     }
 }
 
-fn make_obsolete(output: &WlOutput) {
+fn make_obsolete(output: &WlOutput, ddata: DispatchData) {
     let udata_mutex = output
         .as_ref()
         .user_data()
@@ -226,7 +232,7 @@ fn make_obsolete(output: &WlOutput) {
             ref mut callbacks,
         } => {
             info.obsolete = true;
-            notify(info, callbacks);
+            notify(info, ddata, callbacks);
             return;
         }
         OutputData::Pending {
@@ -237,7 +243,7 @@ fn make_obsolete(output: &WlOutput) {
     };
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
-    notify(&mut info, &mut callbacks);
+    notify(&mut info, ddata, &mut callbacks);
     *udata = OutputData::Ready { info, callbacks };
 }
 
@@ -295,10 +301,14 @@ fn merge_event(info: &mut OutputInfo, event: Event) {
     }
 }
 
-fn notify(info: &OutputInfo, callbacks: &mut Vec<Weak<dyn Fn(&OutputInfo) + Send + Sync>>) {
+fn notify(
+    info: &OutputInfo,
+    mut ddata: DispatchData,
+    callbacks: &mut Vec<Weak<dyn Fn(&OutputInfo, DispatchData) + Send + Sync>>,
+) {
     callbacks.retain(|weak| {
         if let Some(arc) = Weak::upgrade(weak) {
-            (*arc)(info);
+            (*arc)(info, ddata.reborrow());
             true
         } else {
             false
@@ -336,11 +346,11 @@ pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(output: &WlOutput, f: F)
 ///
 /// The returned [`OutputListener`](struct.OutputListener) keeps your callback alive,
 /// dropping it will disable the callback and free the closure.
-pub fn add_output_listener<F: Fn(&OutputInfo) + Send + Sync + 'static>(
+pub fn add_output_listener<F: Fn(&OutputInfo, DispatchData) + Send + Sync + 'static>(
     output: &WlOutput,
     f: F,
 ) -> OutputListener {
-    let arc = Arc::new(f) as Arc<dyn Fn(&OutputInfo) + Send + Sync>;
+    let arc = Arc::new(f) as Arc<_>;
 
     if let Some(udata_mutex) = output.as_ref().user_data().get::<Mutex<OutputData>>() {
         let mut udata = udata_mutex.lock().unwrap();
@@ -366,7 +376,7 @@ pub fn add_output_listener<F: Fn(&OutputInfo) + Send + Sync + 'static>(
 ///
 /// Dropping it disables the associated callback and frees the closure.
 pub struct OutputListener {
-    _cb: Arc<dyn Fn(&OutputInfo) + Send + Sync + 'static>,
+    _cb: Arc<dyn Fn(&OutputInfo, DispatchData) + Send + Sync + 'static>,
 }
 
 impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::Environment<E> {
