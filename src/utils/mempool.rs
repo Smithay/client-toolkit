@@ -1,24 +1,29 @@
-use nix;
-use nix::errno::Errno;
-use nix::fcntl;
+use std::{
+    cell::RefCell,
+    ffi::CStr,
+    fs::File,
+    io,
+    os::unix::io::{FromRawFd, RawFd},
+    rc::Rc,
+    time::SystemTime,
+    time::UNIX_EPOCH,
+};
+
 #[cfg(target_os = "linux")]
 use nix::sys::memfd;
-use nix::sys::mman;
-use nix::sys::stat;
-use nix::unistd;
-use std::ffi::CStr;
-use std::fs::File;
-use std::io;
-use std::os::unix::io::FromRawFd;
-use std::os::unix::io::RawFd;
-use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
+use nix::{
+    errno::Errno,
+    fcntl,
+    sys::{mman, stat},
+    unistd,
+};
 
 use memmap::MmapMut;
 
-use wayland_client::protocol::{wl_buffer, wl_shm, wl_shm_pool};
-use wayland_client::Main;
+use wayland_client::{
+    protocol::{wl_buffer, wl_shm, wl_shm_pool},
+    Attached, Main,
+};
 
 /// A Double memory pool, for convenient double-buffering
 ///
@@ -32,33 +37,46 @@ use wayland_client::Main;
 pub struct DoubleMemPool {
     pool1: MemPool,
     pool2: MemPool,
-    free: Arc<Mutex<bool>>,
+    free: Rc<RefCell<bool>>,
 }
 
 impl DoubleMemPool {
     /// Create a double memory pool
-    pub fn new<Impl>(shm: &wl_shm::WlShm, implementation: Impl) -> io::Result<DoubleMemPool>
+    pub fn new<F>(shm: &Attached<wl_shm::WlShm>, callback: F) -> io::Result<DoubleMemPool>
     where
-        Impl: FnMut() + 'static,
+        F: FnMut(wayland_client::DispatchData) + 'static,
     {
-        let free = Arc::new(Mutex::new(true));
-        let implementation = Arc::new(Mutex::new(implementation));
+        let free = Rc::new(RefCell::new(true));
+        let callback = Rc::new(RefCell::new(callback));
         let my_free = free.clone();
-        let my_implementation = implementation.clone();
-        let pool1 = MemPool::new(shm, move || {
-            let mut my_free = my_free.lock().unwrap();
-            if !*my_free {
-                (&mut *my_implementation.lock().unwrap())();
-                *my_free = true
+        let my_callback = callback.clone();
+        let pool1 = MemPool::new(shm, move |ddata| {
+            let signal = {
+                let mut my_free = my_free.borrow_mut();
+                if !*my_free {
+                    *my_free = true;
+                    true
+                } else {
+                    false
+                }
+            };
+            if signal {
+                (&mut *my_callback.borrow_mut())(ddata);
             }
         })?;
         let my_free = free.clone();
-        let my_implementation = implementation.clone();
-        let pool2 = MemPool::new(shm, move || {
-            let mut my_free = my_free.lock().unwrap();
-            if !*my_free {
-                (&mut *my_implementation.lock().unwrap())();
-                *my_free = true
+        let pool2 = MemPool::new(shm, move |ddata| {
+            let signal = {
+                let mut my_free = my_free.borrow_mut();
+                if !*my_free {
+                    *my_free = true;
+                    true
+                } else {
+                    false
+                }
+            };
+            if signal {
+                (&mut *callback.borrow_mut())(ddata);
             }
         })?;
         Ok(DoubleMemPool { pool1, pool2, free })
@@ -74,7 +92,7 @@ impl DoubleMemPool {
         } else if !self.pool2.is_used() {
             Some(&mut self.pool2)
         } else {
-            *self.free.lock().unwrap() = false;
+            *self.free.borrow_mut() = false;
             None
         }
     }
@@ -85,9 +103,9 @@ impl DoubleMemPool {
 /// This wrapper handles for you the creation of the shared memory file and its synchronization
 /// with the protocol.
 ///
-/// Mempool internally tracks the lifetime of all buffers created from it and to ensure that
-/// this buffer count is correct all buffers must be attached to a surface. Once a buffer is attached to
-/// a surface it must be immediately committed to that surface before another buffer is attached.
+/// Mempool internally tracks the release of the buffers by the compositor. As such, creating a buffer
+/// that is not commited to a surface (and then never released by the server) would cause the Mempool
+/// to be stuck believing it is still in use.
 ///
 /// Mempool will also handle the destruction of buffers and as such the `destroy()` method should not
 /// be used on buffers created from Mempool.
@@ -95,22 +113,22 @@ impl DoubleMemPool {
 /// Overwriting the contents of the memory pool before it is completely freed may cause graphical
 /// glitches due to the possible corruption of data while the compositor is reading it.
 ///
-/// Mempool requires an implementation that will be called when the pool becomes free, this
+/// Mempool requires a callback that will be called when the pool becomes free, this
 /// happens when all the pools buffers are released by the server.
 pub struct MemPool {
     file: File,
     len: usize,
     pool: Main<wl_shm_pool::WlShmPool>,
-    buffer_count: Arc<Mutex<u32>>,
+    buffer_count: Rc<RefCell<u32>>,
     mmap: MmapMut,
-    implementation: Arc<Mutex<dyn FnMut()>>,
+    callback: Rc<RefCell<dyn FnMut(wayland_client::DispatchData)>>,
 }
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
-    pub fn new<Impl>(shm: &wl_shm::WlShm, implementation: Impl) -> io::Result<MemPool>
+    pub fn new<F>(shm: &Attached<wl_shm::WlShm>, callback: F) -> io::Result<MemPool>
     where
-        Impl: FnMut() + 'static,
+        F: FnMut(wayland_client::DispatchData) + 'static,
     {
         let mem_fd = create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(mem_fd) };
@@ -124,9 +142,9 @@ impl MemPool {
             file: mem_file,
             len: 128,
             pool,
-            buffer_count: Arc::new(Mutex::new(0)),
+            buffer_count: Rc::new(RefCell::new(0)),
             mmap,
-            implementation: Arc::new(Mutex::new(implementation)),
+            callback: Rc::new(RefCell::new(callback)),
         })
     }
 
@@ -171,19 +189,24 @@ impl MemPool {
         stride: i32,
         format: wl_shm::Format,
     ) -> wl_buffer::WlBuffer {
-        *self.buffer_count.lock().unwrap() += 1;
+        *self.buffer_count.borrow_mut() += 1;
         let my_buffer_count = self.buffer_count.clone();
-        let my_implementation = self.implementation.clone();
+        let my_callback = self.callback.clone();
         let buffer = self
             .pool
             .create_buffer(offset, width, height, stride, format);
-        buffer.assign_mono(move |buffer, event| match event {
+        buffer.quick_assign(move |buffer, event, dispatch_data| match event {
             wl_buffer::Event::Release => {
                 buffer.destroy();
-                let mut my_buffer_count = my_buffer_count.lock().unwrap();
-                *my_buffer_count -= 1;
-                if *my_buffer_count == 0 {
-                    (&mut *my_implementation.lock().unwrap())();
+                let new_count = {
+                    // borrow the buffer_count for as short as possible, in case
+                    // the user wants to create a new buffer from the callback
+                    let mut my_buffer_count = my_buffer_count.borrow_mut();
+                    *my_buffer_count -= 1;
+                    *my_buffer_count
+                };
+                if new_count == 0 {
+                    (&mut *my_callback.borrow_mut())(dispatch_data);
                 }
             }
             _ => unreachable!(),
@@ -196,10 +219,9 @@ impl MemPool {
         &mut self.mmap
     }
 
-    /// Returns true if the pool contains buffers that are currently in use by the server otherwise it returns
-    /// false
+    /// Returns true if the pool contains buffers that are currently in use by the server
     pub fn is_used(&self) -> bool {
-        *self.buffer_count.lock().unwrap() != 0
+        *self.buffer_count.borrow() != 0
     }
 }
 
