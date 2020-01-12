@@ -130,7 +130,13 @@ macro_rules! default_environment {
 
         // Seat utility
         impl $crate::seat::SeatHandling for $env_name {
-            fn listen<F: Fn($crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>, &$crate::seat::SeatData) + Send + Sync + 'static>(&mut self, f: F) -> $crate::seat::SeatListener {
+            fn listen<F>(&mut self, f: F) -> $crate::seat::SeatListener
+            where F: Fn(
+                $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>,
+                &$crate::seat::SeatData,
+                $crate::reexports::client::DispatchData
+            ) + Send + Sync + 'static
+            {
                 self.sctk_seats.listen(f)
             }
         }

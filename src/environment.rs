@@ -314,7 +314,7 @@ macro_rules! environment {
 
         $(
             impl $crate::environment::GlobalHandler<$sty> for $env_name {
-                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: DispatchData) {
+                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: $crate::reexports::client::DispatchData) {
                     $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata)
                 }
                 fn get(&self) -> Option<$crate::reexports::client::Attached<$sty>> {
@@ -325,10 +325,10 @@ macro_rules! environment {
 
         $(
             impl $crate::environment::MultiGlobalHandler<$mty> for $env_name {
-                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: DispatchData) {
+                fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: $crate::reexports::client::DispatchData) {
                     $crate::environment::MultiGlobalHandler::<$mty>::created(&mut self.$mname, registry, id, version, ddata)
                 }
-                fn removed(&mut self, id: u32) {
+                fn removed(&mut self, id: u32, ddata: $crate::reexports::client::DispatchData) {
                     $crate::environment::MultiGlobalHandler::<$mty>::removed(&mut self.$mname, id, ddata)
                 }
                 fn get_all(&self) -> Vec<$crate::reexports::client::Attached<$mty>> {
