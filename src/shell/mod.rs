@@ -70,6 +70,16 @@ pub enum Shell {
     Wl(Attached<wl_shell::WlShell>),
 }
 
+impl Shell {
+    pub fn needs_configure(&self) -> bool {
+        match self {
+            Shell::Wl(_) => false,
+            Shell::Xdg(_) => true,
+            Shell::Zxdg(_) => true,
+        }
+    }
+}
+
 pub(crate) fn create_shell_surface<F>(
     shell: &Shell,
     surface: &wl_surface::WlSurface,

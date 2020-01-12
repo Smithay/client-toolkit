@@ -9,10 +9,11 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
-use sctk::reexports::client::{Display, NewProxy};
-use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{ConceptFrame, Event as WEvent, State, Window};
-use sctk::Environment;
+use sctk::reexports::client::Display;
+use sctk::shm::MemPool;
+use sctk::window::{ConceptFrame, Event as WEvent, State};
+
+sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
 
 fn main() {
     // First of all, retrieve the path from the program arguments:
@@ -39,23 +40,31 @@ fn main() {
     /*
      * Initalize the wayland connection
      */
-    let (display, mut event_queue) =
-        Display::connect_to_env().expect("Failed to connect to the wayland server.");
+    let display = match Display::connect_to_env() {
+        Ok(d) => d,
+        Err(e) => {
+            panic!("Unable to connect to a Wayland compositor: {}", e);
+        }
+    };
 
-    // All request methods of wayland objects return a result, as wayland-client
-    // returns an error if you try to send a message on an object that has already
-    // been destroyed by a previous message.
-    //
-    // The Environment takes a proxy to the display and a mutable borrow of the wayland event
-    // queue. It uses the event queue internally to exchange messages with the server
-    // to process the registry event.
-    // Like all manipulation of the event loop, it can fail (if the connection is
-    // unexpectedly lost), and thus returns a result. This failing would prevent
-    // us to continue though, so we unwrap().
-    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
+    let mut queue = display.create_event_queue();
+
+    let env = sctk::init_default_environment!(
+        CompInfo,
+        &(*display).clone().attach(queue.token()),
+        fields = []
+    );
+
+    // two roundtrips to init the environment
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
 
     // Use the compositor global to create a new surface
-    let surface = env.create_surface(|dpi, _surface| {
+    let surface = env.create_surface_with_scale_callback(|dpi, _surface, _dispatch_data| {
         println!("dpi changed to {}", dpi);
     });
 
@@ -77,28 +86,28 @@ fn main() {
     // Now we actually create the window. The type parameter `ConceptFrame` here
     // specifies the type we want to use to draw the borders. To create your own
     // decorations you just need an object to implement the `Frame` trait.
-    let mut window = Window::<ConceptFrame>::init_from_env(
-        &env,               // the environment containing the wayland globals
-        surface,            // the wl_surface that serves as the basis of this window
-        image.dimensions(), // the initial internal dimensions of the window
-        move |evt| {
-            // This is the closure that process the Window events.
-            // There are 3 possible events:
-            // - Close: the user requested the window to be closed, we'll then quit
-            // - Configure: the server suggested a new state for the window (possibly
-            //   a new size if a resize is in progress). We'll likely need to redraw
-            //   our contents
-            // - Refresh: the frame itself needs to be redrawn. SCTK does not do this
-            //   automatically because it has a cost and should only be done in periods
-            //   of the event loop where the client actually wants to draw
-            // Here we actually only keep the last event receive according to a priority
-            // order of Close > Configure > Refresh.
-            // Indeed, if we received a Close, there is not point drawing anything more as
-            // we will exit. A new Configure overrides a previous one, and if we received
-            // a Configure we will refresh the frame anyway.
-            let mut next_action = waction.lock().unwrap();
-            // Check if we need to replace the old event by the new one
-            let replace = match (&evt, &*next_action) {
+    let mut window = env
+        .create_window::<ConceptFrame, _>(
+            surface,            // the wl_surface that serves as the basis of this window
+            image.dimensions(), // the initial internal dimensions of the window
+            move |evt, _| {
+                // This is the closure that process the Window events.
+                // There are 3 possible events:
+                // - Close: the user requested the window to be closed, we'll then quit
+                // - Configure: the server suggested a new state for the window (possibly
+                //   a new size if a resize is in progress). We'll likely need to redraw
+                //   our contents
+                // - Refresh: the frame itself needs to be redrawn. SCTK does not do this
+                //   automatically because it has a cost and should only be done in periods
+                //   of the event loop where the client actually wants to draw
+                // Here we actually only keep the last event receive according to a priority
+                // order of Close > Configure > Refresh.
+                // Indeed, if we received a Close, there is not point drawing anything more as
+                // we will exit. A new Configure overrides a previous one, and if we received
+                // a Configure we will refresh the frame anyway.
+                let mut next_action = waction.lock().unwrap();
+                // Check if we need to replace the old event by the new one
+                let replace = match (&evt, &*next_action) {
                 // replace if there is no old event
                 (_, &None)
                 // or the old event is refresh
@@ -110,15 +119,15 @@ fn main() {
                 // keep the old event otherwise
                 _ => false,
             };
-            if replace {
-                *next_action = Some(evt);
-            }
-        },
-        // creating the window may fail if the code drawing the frame
-        // fails to initialize itself. For ConceptFrame this should not happen
-        // unless the system is utterly broken, though.
-    )
-    .expect("Failed to create a window !");
+                if replace {
+                    *next_action = Some(evt);
+                }
+            },
+            // creating the window may fail if the code drawing the frame
+            // fails to initialize itself. For ConceptFrame this should not happen
+            // unless the system is utterly broken, though.
+        )
+        .expect("Failed to create a window !");
 
     // Setting the windows title allows the compositor to know what your
     // window should be called and the title will be display on the header bar
@@ -132,10 +141,7 @@ fn main() {
     // represent a single user. Most systems have only one seat, multi-seat configurations
     // are quite exotic.
     // Thus, we just automatically bind the first seat we find.
-    let seat = env
-        .manager
-        .instantiate_range(1, 6, NewProxy::implement_dummy)
-        .unwrap();
+    let seat = env.manager.instantiate_range(1, 6).unwrap();
     // And advertise it to the Window so it knows of it and can process the
     // required pointer events.
     window.new_seat(&seat);
@@ -143,12 +149,9 @@ fn main() {
     /*
      * Initialization of the memory pool
      */
-
-    // DoubleMemPool::new() requires access to the wl_shm global, which represents
-    // the capability of the server to use shared memory (SHM). All wayland servers
-    // are required to support it.
-    let mut pools =
-        DoubleMemPool::new(&env.shm, || {}).expect("Failed to create the memory pools.");
+    let mut pools = env
+        .create_double_pool(|_| {})
+        .expect("Failed to create the memory pools.");
 
     /*
      * Event Loop preparation and running
@@ -171,7 +174,7 @@ fn main() {
     //
     // But if we have fallbacked to wl_shell, we need to draw right away because we'll
     // never receive a configure event if we don't draw something...
-    if !env.shell.needs_configure() {
+    if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {
             redraw(
@@ -253,7 +256,7 @@ fn main() {
         // from it. It then processes all events by calling the implementation of
         // the target object for each, and only return once all pending messages
         // have been processed.
-        event_queue.dispatch().unwrap();
+        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
     }
 }
 
@@ -311,10 +314,10 @@ fn redraw(
             // transparent background!
             for pixel in image.pixels() {
                 // retrieve the pixel values
-                let r = pixel.data[0] as u32;
-                let g = pixel.data[1] as u32;
-                let b = pixel.data[2] as u32;
-                let a = pixel.data[3] as u32;
+                let r = pixel.0[0] as u32;
+                let g = pixel.0[1] as u32;
+                let b = pixel.0[2] as u32;
+                let a = pixel.0[3] as u32;
                 // blend them
                 let r = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * r) / 0xFF);
                 let g = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * g) / 0xFF);

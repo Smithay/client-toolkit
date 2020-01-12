@@ -39,7 +39,8 @@ pub mod environment;
 pub mod output;
 pub mod seat;
 pub mod shell;
-pub mod utils;
+pub mod shm;
+pub mod window;
 
 mod event_loop;
 mod surface;
@@ -108,6 +109,9 @@ macro_rules! default_environment {
             sctk_compositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_compositor::WlCompositor>,
             sctk_data_device_manager: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager>,
             sctk_subcompositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor>,
+            sctk_decoration_mgr: $crate::environment::SimpleGlobal<$crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+            // shm
+            sctk_shm: $crate::shm::ShmHandler,
             // shell
             sctk_shell: $crate::shell::ShellHandler,
             // output
@@ -149,6 +153,9 @@ macro_rules! default_environment {
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor => sctk_compositor,
                 $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager,
                 $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor => sctk_subcompositor,
+                $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1 => sctk_decoration_mgr,
+                // shm
+                $crate::reexports::client::protocol::wl_shm::WlShm => sctk_shm,
                 // shell globals
                 $crate::reexports::client::protocol::wl_shell::WlShell => sctk_shell,
                 $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase => sctk_shell,
@@ -196,6 +203,8 @@ macro_rules! init_default_environment {
             sctk_compositor: $crate::environment::SimpleGlobal::new(),
             sctk_data_device_manager: $crate::environment::SimpleGlobal::new(),
             sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
+            sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
+            sctk_shm: $crate::shm::ShmHandler::new(),
             sctk_shell: $crate::shell::ShellHandler::new(),
             sctk_outputs: $crate::output::OutputHandler::new(),
             sctk_seats: $crate::seat::SeatHandler::new(),

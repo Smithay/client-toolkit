@@ -8,10 +8,9 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_pointer, wl_shm, wl_surface};
-use sctk::reexports::client::{Display, NewProxy};
-use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{ConceptFrame, Event as WEvent, Window};
-use sctk::Environment;
+use sctk::reexports::client::Display;
+use sctk::shm::MemPool;
+use sctk::window::{ConceptFrame, Event as WEvent};
 
 #[derive(Debug)]
 enum NextAction {
@@ -57,18 +56,44 @@ impl WindowConfig {
     }
 }
 
+sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
+
 fn main() {
-    let window_config = Arc::new(Mutex::new(WindowConfig::new()));
-    let (display, mut event_queue) = Display::connect_to_env().unwrap();
-    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
+    /*
+     * Initial setup
+     */
+    let display = match Display::connect_to_env() {
+        Ok(d) => d,
+        Err(e) => {
+            panic!("Unable to connect to a Wayland compositor: {}", e);
+        }
+    };
+
+    let mut queue = display.create_event_queue();
+
+    let env = sctk::init_default_environment!(
+        CompInfo,
+        &(*display).clone().attach(queue.token()),
+        fields = []
+    );
+
+    // two roundtrips to init the environment
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
 
     /*
      * Init wayland objects
      */
 
+    let window_config = Arc::new(Mutex::new(WindowConfig::new()));
+
     let surface = {
         let window_config = window_config.clone();
-        env.create_surface(move |dpi, surface| {
+        env.create_surface_with_scale_callback(move |dpi, surface, _| {
             surface.set_buffer_scale(dpi);
             let mut guard = window_config.lock().unwrap();
             guard.dpi_scale = dpi;
@@ -79,7 +104,7 @@ fn main() {
     let mut window = {
         let window_config = window_config.clone();
         let dimensions = window_config.lock().unwrap().dimensions();
-        Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |event| {
+        env.create_window::<ConceptFrame, _>(surface, dimensions, move |event, _| {
             let mut guard = window_config.lock().unwrap();
             if let WEvent::Configure { new_size, .. } = event {
                 if let Some((width, height)) = new_size {
@@ -97,55 +122,49 @@ fn main() {
         .expect("Failed to create a window !")
     };
 
-    let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
+    let mut pools = env
+        .create_double_pool(|_| {})
+        .expect("Failed to create a memory pool !");
 
     /*
      * Pointer initialization
      */
 
     // initialize a seat to retrieve keyboard events
-    let seat = env
-        .manager
-        .instantiate_range(1, 6, NewProxy::implement_dummy)
-        .unwrap();
+    let seat = env.manager.instantiate_range(1, 6).unwrap();
 
     window.new_seat(&seat);
 
     let main_surface = window.surface().clone();
-    seat.get_pointer(move |ptr| {
-        ptr.implement_closure(
-            move |evt, _| match evt {
-                wl_pointer::Event::Enter {
-                    surface,
-                    surface_x,
-                    surface_y,
-                    ..
-                } => {
-                    if main_surface == surface {
-                        println!("Pointer entered at ({}, {})", surface_x, surface_y);
-                    }
-                }
-                wl_pointer::Event::Leave { surface, .. } => {
-                    if main_surface == surface {
-                        println!("Pointer left");
-                    }
-                }
-                wl_pointer::Event::Button { button, state, .. } => {
-                    println!("Button {:?} was {:?}", button, state);
-                }
-                wl_pointer::Event::Motion {
-                    surface_x,
-                    surface_y,
-                    ..
-                } => println!("Pointer motion to ({}, {})", surface_x, surface_y),
-                _ => {}
-            },
-            (),
-        )
-    })
-    .unwrap();
+    let pointer = seat.get_pointer();
+    pointer.quick_assign(move |_, evt, _| match evt {
+        wl_pointer::Event::Enter {
+            surface,
+            surface_x,
+            surface_y,
+            ..
+        } => {
+            if main_surface == surface {
+                println!("Pointer entered at ({}, {})", surface_x, surface_y);
+            }
+        }
+        wl_pointer::Event::Leave { surface, .. } => {
+            if main_surface == surface {
+                println!("Pointer left");
+            }
+        }
+        wl_pointer::Event::Button { button, state, .. } => {
+            println!("Button {:?} was {:?}", button, state);
+        }
+        wl_pointer::Event::Motion {
+            surface_x,
+            surface_y,
+            ..
+        } => println!("Pointer motion to ({}, {})", surface_x, surface_y),
+        _ => {}
+    });
 
-    if !env.shell.needs_configure() {
+    if !env.get_shell().unwrap().needs_configure() {
         window_config
             .lock()
             .unwrap()
@@ -175,7 +194,7 @@ fn main() {
             None => {}
         }
 
-        event_queue.dispatch().unwrap();
+        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
     }
 }
 

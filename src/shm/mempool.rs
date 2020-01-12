@@ -42,7 +42,7 @@ pub struct DoubleMemPool {
 
 impl DoubleMemPool {
     /// Create a double memory pool
-    pub fn new<F>(shm: &Attached<wl_shm::WlShm>, callback: F) -> io::Result<DoubleMemPool>
+    pub fn new<F>(shm: Attached<wl_shm::WlShm>, callback: F) -> io::Result<DoubleMemPool>
     where
         F: FnMut(wayland_client::DispatchData) + 'static,
     {
@@ -50,7 +50,7 @@ impl DoubleMemPool {
         let callback = Rc::new(RefCell::new(callback));
         let my_free = free.clone();
         let my_callback = callback.clone();
-        let pool1 = MemPool::new(shm, move |ddata| {
+        let pool1 = MemPool::new(shm.clone(), move |ddata| {
             let signal = {
                 let mut my_free = my_free.borrow_mut();
                 if !*my_free {
@@ -126,7 +126,7 @@ pub struct MemPool {
 
 impl MemPool {
     /// Create a new memory pool associated with given shm
-    pub fn new<F>(shm: &Attached<wl_shm::WlShm>, callback: F) -> io::Result<MemPool>
+    pub fn new<F>(shm: Attached<wl_shm::WlShm>, callback: F) -> io::Result<MemPool>
     where
         F: FnMut(wayland_client::DispatchData) + 'static,
     {
@@ -298,5 +298,24 @@ fn create_shm_fd() -> io::Result<RawFd> {
             Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
             Err(err) => unreachable!(err),
         }
+    }
+}
+
+impl<E> crate::environment::Environment<E>
+where
+    E: crate::environment::GlobalHandler<wl_shm::WlShm>,
+{
+    pub fn create_simple_pool<F>(&self, callback: F) -> io::Result<MemPool>
+    where
+        F: FnMut(wayland_client::DispatchData) + 'static,
+    {
+        MemPool::new(self.require_global::<wl_shm::WlShm>(), callback)
+    }
+
+    pub fn create_double_pool<F>(&self, callback: F) -> io::Result<DoubleMemPool>
+    where
+        F: FnMut(wayland_client::DispatchData) + 'static,
+    {
+        DoubleMemPool::new(self.require_global::<wl_shm::WlShm>(), callback)
     }
 }
