@@ -11,11 +11,11 @@ use andrew::{Canvas, Endian};
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
 };
-use wayland_client::Attached;
+use wayland_client::{Attached, DispatchData};
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
-use crate::pointer::{AutoPointer, AutoThemer};
-use crate::utils::DoubleMemPool;
+use crate::seat::pointer::{AutoPointer, AutoThemer};
+use crate::shm::DoubleMemPool;
 
 /*
  * Drawing theme definitions
@@ -112,12 +112,13 @@ impl Part {
         compositor: &Attached<wl_compositor::WlCompositor>,
         subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
     ) -> Part {
-        let surface = compositor.create_surface();
-        surface.assign_mono(|_, _| {});
+        let surface = crate::surface::setup_surface(
+            compositor.create_surface(),
+            None::<fn(_, _, DispatchData)>,
+        );
         let subsurface = subcompositor.get_subsurface(&surface, parent);
-        subsurface.assign_mono(|_, _| {});
         Part {
-            surface: (*surface).clone().detach(),
+            surface,
             subsurface: (*subsurface).clone().detach(),
         }
     }
@@ -144,7 +145,7 @@ struct Inner {
     parts: [Part; 5],
     size: Mutex<(u32, u32)>,
     resizable: Arc<Mutex<bool>>,
-    implem: Mutex<Box<dyn FnMut(FrameRequest, u32)>>,
+    implem: Mutex<Box<dyn FnMut(FrameRequest, u32, DispatchData)>>,
     maximized: Arc<Mutex<bool>>,
 }
 
@@ -249,7 +250,7 @@ impl Frame for ConceptFrame {
         compositor: &Attached<wl_compositor::WlCompositor>,
         subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
         shm: &Attached<wl_shm::WlShm>,
-        implementation: Box<dyn FnMut(FrameRequest, u32)>,
+        implementation: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     ) -> Result<ConceptFrame, ::std::io::Error> {
         let parts = [
             Part::new(base_surface, compositor, subcompositor),
@@ -268,8 +269,8 @@ impl Frame for ConceptFrame {
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
         // None was previously returned from `pool()` and the draw was postponed
-        let pools = DoubleMemPool::new(&shm, move || {
-            (&mut *my_inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
+        let pools = DoubleMemPool::new(shm.clone(), move |ddata| {
+            (&mut *my_inner.implem.lock().unwrap())(FrameRequest::Refresh, 0, ddata);
         })?;
         Ok(ConceptFrame {
             inner,
@@ -277,7 +278,7 @@ impl Frame for ConceptFrame {
             active: false,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(None, compositor.clone(), &shm),
+            themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
             surface_version: compositor.as_ref().version(),
             theme: Box::new(DefaultTheme),
             title: None,
@@ -290,7 +291,7 @@ impl Frame for ConceptFrame {
         let inner = self.inner.clone();
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
-            move |event, pointer: AutoPointer| {
+            move |event, pointer: AutoPointer, ddata: DispatchData| {
                 let data: &Mutex<PointerUserData> = pointer.as_ref().user_data().get().unwrap();
                 let data = &mut *data.lock().unwrap();
                 let (width, _) = *(inner.size.lock().unwrap());
@@ -316,7 +317,7 @@ impl Frame for ConceptFrame {
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
                         change_pointer(&pointer, data.location, Some(serial));
-                        (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
+                        (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0, ddata);
                     }
                     Event::Motion {
                         surface_x,
@@ -329,7 +330,11 @@ impl Frame for ConceptFrame {
                             match (newpos, data.location) {
                                 (Location::Button(_), _) | (_, Location::Button(_)) => {
                                     // pointer movement involves a button, request refresh
-                                    (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
+                                    (&mut *inner.implem.lock().unwrap())(
+                                        FrameRequest::Refresh,
+                                        0,
+                                        ddata,
+                                    );
                                 }
                                 _ => (),
                             }
@@ -356,19 +361,21 @@ impl Frame for ConceptFrame {
                                 resizable,
                             );
                             if let Some(req) = req {
-                                (&mut *inner.implem.lock().unwrap())(req, serial);
+                                (&mut *inner.implem.lock().unwrap())(req, serial, ddata);
                             }
                         }
                     }
                     _ => {}
                 }
             },
+        );
+        pointer.as_ref().user_data().set_threadsafe(|| {
             Mutex::new(PointerUserData {
                 location: Location::None,
                 position: (0.0, 0.0),
                 seat: seat.clone(),
-            }),
-        );
+            })
+        });
         self.pointers.push(pointer);
     }
 

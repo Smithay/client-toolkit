@@ -21,7 +21,7 @@ fn main() -> Result<(), ()> {
 
     let env = sctk::init_default_environment!(
         CompInfo,
-        &(*display).clone().attach(queue.get_token()),
+        &(*display).clone().attach(queue.token()),
         fields = []
     );
 

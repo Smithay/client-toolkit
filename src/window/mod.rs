@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use wayland_client::protocol::{
     wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
 };
-use wayland_client::Attached;
+use wayland_client::{Attached, DispatchData};
 
 use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
@@ -13,10 +13,11 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
-use crate::{Environment, Shell};
-
 mod concept_frame;
-use crate::shell;
+use crate::{
+    environment::{Environment, GlobalHandler},
+    shell,
+};
 
 pub use self::concept_frame::ConceptFrame;
 
@@ -109,7 +110,7 @@ pub enum Event {
 struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
-    user_impl: Box<dyn FnMut(Event)>,
+    user_impl: Box<dyn FnMut(Event, DispatchData)>,
     min_size: (u32, u32),
     max_size: Option<(u32, u32)>,
     current_size: (u32, u32),
@@ -143,83 +144,32 @@ pub struct Window<F: Frame> {
 
 impl<F: Frame + 'static> Window<F> {
     /// Create a new window wrapping a given wayland surface as its main content and
-    /// following the compositor's preference regarding server-side decorations.
-    pub fn init_from_env<Impl>(
-        env: &Environment,
-        surface: wl_surface::WlSurface,
-        initial_dims: (u32, u32),
-        implementation: Impl,
-    ) -> Result<Window<F>, F::Error>
-    where
-        Impl: FnMut(Event) + 'static,
-    {
-        Self::init_with_decorations(
-            surface,
-            initial_dims,
-            &env.compositor,
-            &env.subcompositor,
-            &env.shm,
-            &env.shell,
-            env.decorations_mgr.as_ref(),
-            implementation,
-        )
-    }
-
-    /// Create a new window wrapping a given wayland surface as its main content
-    ///
-    /// It can fail if the initialization of the frame fails (for example if the
-    /// frame class fails to initialize its SHM).
-    pub fn init<Impl>(
-        surface: wl_surface::WlSurface,
-        initial_dims: (u32, u32),
-        compositor: &Attached<wl_compositor::WlCompositor>,
-        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
-        shm: &Attached<wl_shm::WlShm>,
-        shell: &Shell,
-        implementation: Impl,
-    ) -> Result<Window<F>, F::Error>
-    where
-        Impl: FnMut(Event) + 'static,
-    {
-        Self::init_with_decorations(
-            surface,
-            initial_dims,
-            compositor,
-            subcompositor,
-            shm,
-            shell,
-            None,
-            implementation,
-        )
-    }
-
-    /// Create a new window wrapping a given wayland surface as its main content and
     /// following the compositor's preference regarding server-side decorations
     ///
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
-    pub fn init_with_decorations<Impl>(
+    fn init_with_decorations<Impl>(
         surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
-        compositor: &Attached<wl_compositor::WlCompositor>,
-        subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
-        shm: &Attached<wl_shm::WlShm>,
-        shell: &Shell,
-        decoration_mgr: Option<&Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
+        compositor: Attached<wl_compositor::WlCompositor>,
+        subcompositor: Attached<wl_subcompositor::WlSubcompositor>,
+        shm: Attached<wl_shm::WlShm>,
+        shell: shell::Shell,
+        decoration_mgr: Option<Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
-        Impl: FnMut(Event) + 'static,
+        Impl: FnMut(Event, DispatchData) + 'static,
     {
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
         let shell_inner = inner.clone();
         let mut frame = F::init(
             &surface,
-            compositor,
-            subcompositor,
-            shm,
-            Box::new(move |req, serial| {
+            &compositor,
+            &subcompositor,
+            &shm,
+            Box::new(move |req, serial, ddata: DispatchData| {
                 if let Some(ref mut inner) = *shell_inner.lock().unwrap() {
                     match req {
                         FrameRequest::Minimize => inner.shell_surface.set_minimized(),
@@ -229,60 +179,64 @@ impl<F: Frame + 'static> Window<F> {
                         FrameRequest::Resize(seat, edges) => {
                             inner.shell_surface.resize(&seat, serial, edges)
                         }
-                        FrameRequest::Close => (inner.user_impl)(Event::Close),
-                        FrameRequest::Refresh => (inner.user_impl)(Event::Refresh),
+                        FrameRequest::Close => (inner.user_impl)(Event::Close, ddata),
+                        FrameRequest::Refresh => (inner.user_impl)(Event::Refresh, ddata),
                     }
                 }
             }) as Box<_>,
         )?;
         frame.resize(initial_dims);
         let frame = Arc::new(Mutex::new(frame));
-        let shell_surface = Arc::new(shell::create_shell_surface(shell, &surface, move |event| {
-            if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
-                match event {
-                    shell::Event::Configure {
-                        states,
-                        mut new_size,
-                    } => {
-                        let mut frame = inner.frame.lock().unwrap();
-                        // clamp size
-                        new_size = new_size.map(|(w, h)| {
-                            use std::cmp::{max, min};
-                            let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
-                            let (minw, minh) = inner.min_size;
-                            w = max(w, minw as i32);
-                            h = max(h, minh as i32);
-                            if let Some((maxw, maxh)) = inner.max_size {
-                                w = min(w, maxw as i32);
-                                h = min(h, maxh as i32);
+        let shell_surface = Arc::new(shell::create_shell_surface(
+            &shell,
+            &surface,
+            move |event, mut ddata: DispatchData| {
+                if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
+                    match event {
+                        shell::Event::Configure {
+                            states,
+                            mut new_size,
+                        } => {
+                            let mut frame = inner.frame.lock().unwrap();
+                            // clamp size
+                            new_size = new_size.map(|(w, h)| {
+                                use std::cmp::{max, min};
+                                let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
+                                let (minw, minh) = inner.min_size;
+                                w = max(w, minw as i32);
+                                h = max(h, minh as i32);
+                                if let Some((maxw, maxh)) = inner.max_size {
+                                    w = min(w, maxw as i32);
+                                    h = min(h, maxh as i32);
+                                }
+                                (max(w, 1) as u32, max(h, 1) as u32)
+                            });
+                            // compute frame changes
+                            let mut need_refresh = false;
+                            need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
+                            if need_refresh {
+                                // the maximization state changed
+                                if states.contains(&State::Maximized) {
+                                    // we are getting maximized, store the size for restoration
+                                    inner.old_size = Some(inner.current_size);
+                                } else if new_size.is_none() {
+                                    // we are getting de-maximized, restore the size
+                                    new_size = inner.old_size.take();
+                                }
                             }
-                            (max(w, 1) as u32, max(h, 1) as u32)
-                        });
-                        // compute frame changes
-                        let mut need_refresh = false;
-                        need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
-                        if need_refresh {
-                            // the maximization state changed
-                            if states.contains(&State::Maximized) {
-                                // we are getting maximized, store the size for restoration
-                                inner.old_size = Some(inner.current_size);
-                            } else if new_size.is_none() {
-                                // we are getting de-maximized, restore the size
-                                new_size = inner.old_size.take();
+                            need_refresh |= frame.set_active(states.contains(&State::Activated));
+                            if need_refresh {
+                                (inner.user_impl)(Event::Refresh, ddata.reborrow());
                             }
+                            (inner.user_impl)(Event::Configure { states, new_size }, ddata);
                         }
-                        need_refresh |= frame.set_active(states.contains(&State::Activated));
-                        if need_refresh {
-                            (inner.user_impl)(Event::Refresh);
+                        shell::Event::Close => {
+                            (inner.user_impl)(Event::Close, ddata);
                         }
-                        (inner.user_impl)(Event::Configure { states, new_size });
-                    }
-                    shell::Event::Close => {
-                        (inner.user_impl)(Event::Close);
                     }
                 }
-            }
-        }));
+            },
+        ));
 
         // setup size and geometry
         {
@@ -310,7 +264,7 @@ impl<F: Frame + 'static> Window<F> {
             frame,
             shell_surface,
             decoration: Mutex::new(None),
-            decoration_mgr: decoration_mgr.cloned(),
+            decoration_mgr,
             surface,
             inner,
         };
@@ -344,7 +298,7 @@ impl<F: Frame + 'static> Window<F> {
             (Some(toplevel), &Some(ref mgr)) => {
                 use self::zxdg_toplevel_decoration_v1::{Event, Mode};
                 let decoration = mgr.get_toplevel_decoration(toplevel);
-                decoration.assign_mono(move |_, event| {
+                decoration.quick_assign(move |_, event, _| {
                     if let Event::Configure { mode } = event {
                         match mode {
                             Mode::ServerSide => {
@@ -610,7 +564,7 @@ pub trait Frame: Sized {
         compositor: &Attached<wl_compositor::WlCompositor>,
         subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
         shm: &Attached<wl_shm::WlShm>,
-        implementation: Box<dyn FnMut(FrameRequest, u32)>,
+        callback: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     ) -> Result<Self, Self::Error>;
     /// Set whether the decorations should be drawn as active or not
     ///
@@ -653,4 +607,35 @@ pub trait Frame: Sized {
 
     /// Sets the frames title
     fn set_title(&mut self, title: String);
+}
+
+impl<E> Environment<E>
+where
+    E: GlobalHandler<wl_compositor::WlCompositor>
+        + GlobalHandler<wl_subcompositor::WlSubcompositor>
+        + GlobalHandler<wl_shm::WlShm>
+        + crate::shell::ShellHandling
+        + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+{
+    pub fn create_window<F: Frame + 'static, CB>(
+        &self,
+        surface: wl_surface::WlSurface,
+        initial_dims: (u32, u32),
+        callback: CB,
+    ) -> Result<Window<F>, F::Error>
+    where
+        CB: FnMut(Event, DispatchData) + 'static,
+    {
+        Window::<F>::init_with_decorations(
+            surface,
+            initial_dims,
+            self.require_global::<wl_compositor::WlCompositor>(),
+            self.require_global::<wl_subcompositor::WlSubcompositor>(),
+            self.require_global::<wl_shm::WlShm>(),
+            self.get_shell()
+                .expect("[SCTK] Cannot create a window if the compositor advertized no shell."),
+            self.get_global::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>(),
+            callback,
+        )
+    }
 }

@@ -1,3 +1,4 @@
+/*
 extern crate byteorder;
 extern crate smithay_client_toolkit as sctk;
 
@@ -178,3 +179,4 @@ fn redraw(
     surface.commit();
     Ok(())
 }
+*/

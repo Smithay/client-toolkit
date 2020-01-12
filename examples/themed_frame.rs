@@ -8,15 +8,38 @@ use std::sync::{Arc, Mutex};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
-use sctk::reexports::client::{Display, NewProxy};
-use sctk::utils::{DoubleMemPool, MemPool};
-use sctk::window::{ButtonState, ConceptFrame, Event as WEvent, Theme, Window};
-use sctk::Environment;
+use sctk::reexports::client::Display;
+use sctk::shm::MemPool;
+use sctk::window::{ButtonState, ConceptFrame, Event as WEvent, Theme};
+
+sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
 
 fn main() {
-    let (display, mut event_queue) = Display::connect_to_env().unwrap();
-    let env = Environment::from_display(&*display, &mut event_queue).unwrap();
+    /*
+     * Initial setup
+     */
+    let display = match Display::connect_to_env() {
+        Ok(d) => d,
+        Err(e) => {
+            panic!("Unable to connect to a Wayland compositor: {}", e);
+        }
+    };
 
+    let mut queue = display.create_event_queue();
+
+    let env = sctk::init_default_environment!(
+        CompInfo,
+        &(*display).clone().attach(queue.token()),
+        fields = []
+    );
+
+    // two roundtrips to init the environment
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
+    queue
+        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+        .unwrap();
     /*
      * Create a buffer with window contents
      */
@@ -27,29 +50,27 @@ fn main() {
      * Init wayland objects
      */
 
-    let surface = env
-        .compositor
-        .create_surface(NewProxy::implement_dummy)
-        .unwrap();
+    let surface = env.create_surface();
 
     let next_action = Arc::new(Mutex::new(None::<WEvent>));
 
     let waction = next_action.clone();
-    let mut window = Window::<ConceptFrame>::init_from_env(&env, surface, dimensions, move |evt| {
-        let mut next_action = waction.lock().unwrap();
-        // Keep last event in priority order : Close > Configure > Refresh
-        let replace = match (&evt, &*next_action) {
-            (_, &None)
-            | (_, &Some(WEvent::Refresh))
-            | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-            | (&WEvent::Close, _) => true,
-            _ => false,
-        };
-        if replace {
-            *next_action = Some(evt);
-        }
-    })
-    .expect("Failed to create a window !");
+    let mut window = env
+        .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, _| {
+            let mut next_action = waction.lock().unwrap();
+            // Keep last event in priority order : Close > Configure > Refresh
+            let replace = match (&evt, &*next_action) {
+                (_, &None)
+                | (_, &Some(WEvent::Refresh))
+                | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+                | (&WEvent::Close, _) => true,
+                _ => false,
+            };
+            if replace {
+                *next_action = Some(evt);
+            }
+        })
+        .expect("Failed to create a window !");
 
     let scaled_bg = [0xFF, 0x22, 0x22, 0x22];
     let vscaled_bg = [0xFF, 0x33, 0x33, 0x33];
@@ -70,21 +91,20 @@ fn main() {
         minimize_button: [0xFF, 0x00, 0x00, 0x88],
     });
 
-    let mut pools = DoubleMemPool::new(&env.shm, || {}).expect("Failed to create a memory pool !");
+    let mut pools = env
+        .create_double_pool(|_| {})
+        .expect("Failed to create a memory pool !");
 
     /*
      * Keyboard initialization
      */
 
     // initialize a seat to retrieve keyboard events
-    let seat = env
-        .manager
-        .instantiate_range(1, 6, NewProxy::implement_dummy)
-        .unwrap();
+    let seat = env.manager.instantiate_range(1, 6).unwrap();
 
     window.new_seat(&seat);
 
-    if !env.shell.needs_configure() {
+    if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {
             redraw(pool, window.surface(), dimensions).expect("Failed to draw")
@@ -113,7 +133,7 @@ fn main() {
             None => {}
         }
 
-        event_queue.dispatch().unwrap();
+        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
     }
 }
 
