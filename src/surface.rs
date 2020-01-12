@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::{cell::RefCell, rc::Rc, sync::Mutex};
 
 use wayland_client::{
     protocol::{wl_compositor, wl_output, wl_surface},
@@ -10,31 +10,32 @@ use crate::output::{add_output_listener, with_output_info, OutputListener};
 pub(crate) struct SurfaceUserData {
     scale_factor: i32,
     outputs: Vec<(wl_output::WlOutput, i32, OutputListener)>,
-    scale_change_cb:
-        Option<Box<dyn FnMut(i32, wl_surface::WlSurface, DispatchData) + Send + 'static>>,
 }
 
 impl SurfaceUserData {
-    fn new(
-        scale_change_cb: Option<
-            Box<dyn FnMut(i32, wl_surface::WlSurface, DispatchData) + Send + 'static>,
-        >,
-    ) -> Self {
+    fn new() -> Self {
         SurfaceUserData {
             scale_factor: 1,
             outputs: Vec::new(),
-            scale_change_cb,
         }
     }
 
-    pub(crate) fn enter(
+    pub(crate) fn enter<F>(
         &mut self,
         output: wl_output::WlOutput,
         surface: wl_surface::WlSurface,
         ddata: DispatchData,
-    ) {
+        callback: &Option<Rc<RefCell<F>>>,
+    ) where
+        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
+    {
         let output_scale = with_output_info(&output, |info| info.scale_factor).unwrap_or(1);
         let my_surface = surface.clone();
+        // Use a UserData to safely share the callback with the other thread
+        let my_callback = wayland_client::UserData::new();
+        if let Some(ref cb) = callback {
+            my_callback.set(|| cb.clone());
+        }
         let listener = add_output_listener(&output, move |output, info, ddata| {
             let mut user_data = my_surface
                 .as_ref()
@@ -56,24 +57,35 @@ impl SurfaceUserData {
                 }
             }
             // recompute the scale factor with the new info
-            user_data.recompute_scale_factor(&my_surface, ddata);
+            let callback = my_callback.get::<Rc<RefCell<F>>>().cloned();
+            user_data.recompute_scale_factor(&my_surface, ddata, &callback);
         });
         self.outputs.push((output, output_scale, listener));
-        self.recompute_scale_factor(&surface, ddata);
+        self.recompute_scale_factor(&surface, ddata, callback);
     }
 
-    pub(crate) fn leave(
+    pub(crate) fn leave<F>(
         &mut self,
         output: &wl_output::WlOutput,
         surface: wl_surface::WlSurface,
         ddata: DispatchData,
-    ) {
+        callback: &Option<Rc<RefCell<F>>>,
+    ) where
+        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
+    {
         self.outputs
             .retain(|(ref output2, _, _)| !output.as_ref().equals(output2.as_ref()));
-        self.recompute_scale_factor(&surface, ddata);
+        self.recompute_scale_factor(&surface, ddata, callback);
     }
 
-    fn recompute_scale_factor(&mut self, surface: &wl_surface::WlSurface, ddata: DispatchData) {
+    fn recompute_scale_factor<F>(
+        &mut self,
+        surface: &wl_surface::WlSurface,
+        ddata: DispatchData,
+        callback: &Option<Rc<RefCell<F>>>,
+    ) where
+        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
+    {
         let mut new_scale_factor = 1;
         self.outputs.retain(|&(_, output_scale, _)| {
             if output_scale > 0 {
@@ -86,20 +98,21 @@ impl SurfaceUserData {
         });
         if self.scale_factor != new_scale_factor {
             self.scale_factor = new_scale_factor;
-            if let Some(ref mut cb) = self.scale_change_cb {
-                cb(new_scale_factor, surface.clone(), ddata);
+            if let Some(ref cb) = callback {
+                (&mut *cb.borrow_mut())(new_scale_factor, surface.clone(), ddata);
             }
         }
     }
 }
 
-fn setup_surface<F>(
+pub(crate) fn setup_surface<F>(
     surface: Main<wl_surface::WlSurface>,
-    scale_change: Option<F>,
+    callback: Option<F>,
 ) -> wl_surface::WlSurface
 where
-    F: FnMut(i32, wl_surface::WlSurface, DispatchData) + Send + 'static,
+    F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
 {
+    let callback = callback.map(|c| Rc::new(RefCell::new(c)));
     surface.quick_assign(move |surface, event, ddata| {
         let mut user_data = surface
             .as_ref()
@@ -110,19 +123,18 @@ where
             .unwrap();
         match event {
             wl_surface::Event::Enter { output } => {
-                user_data.enter(output, (*surface).clone().detach(), ddata);
+                user_data.enter(output, (*surface).clone().detach(), ddata, &callback);
             }
             wl_surface::Event::Leave { output } => {
-                user_data.leave(&output, (*surface).clone().detach(), ddata);
+                user_data.leave(&output, (*surface).clone().detach(), ddata, &callback);
             }
             _ => unreachable!(),
         };
     });
-    surface.as_ref().user_data().set_threadsafe(|| {
-        Mutex::new(SurfaceUserData::new(
-            scale_change.map(|c| Box::new(c) as Box<_>),
-        ))
-    });
+    surface
+        .as_ref()
+        .user_data()
+        .set_threadsafe(|| Mutex::new(SurfaceUserData::new()));
     (*surface).clone().detach()
 }
 
@@ -146,7 +158,7 @@ impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>
     /// notified whenever the scale factor of this surface change, if you don't want to have to
     /// periodically check it.
     pub fn create_surface_with_scale_callback<
-        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + Send + 'static,
+        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
     >(
         &self,
         f: F,

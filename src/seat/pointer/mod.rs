@@ -2,8 +2,10 @@
 
 use std::ops::Deref;
 
-use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm};
-use wayland_client::Attached;
+use wayland_client::{
+    protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm},
+    Attached, DispatchData,
+};
 mod theme;
 
 pub use self::theme::{ThemeManager, ThemedPointer};
@@ -32,9 +34,9 @@ impl AutoThemer {
     pub fn init(
         name: Option<&str>,
         compositor: Attached<wl_compositor::WlCompositor>,
-        shm: &Attached<wl_shm::WlShm>,
+        shm: Attached<wl_shm::WlShm>,
     ) -> AutoThemer {
-        match ThemeManager::init(name, compositor, &shm) {
+        match ThemeManager::init(name, compositor, shm) {
             Ok(mgr) => AutoThemer::Themed(mgr),
             Err(()) => AutoThemer::UnThemed,
         }
@@ -53,31 +55,26 @@ impl AutoThemer {
     /// You need to provide an implementation as if implementing a `wl_pointer`, but
     /// it will receive as `meta` argument an `AutoPointer` wrapping your pointer,
     /// rather than a `WlPointer`.
-    pub fn theme_pointer_with_impl<Impl, UD>(
+    pub fn theme_pointer_with_impl<Impl>(
         &self,
         seat: &wl_seat::WlSeat,
-        mut implementation: Impl,
-        user_data: UD,
+        mut callback: Impl,
     ) -> AutoPointer
     where
-        Impl: FnMut(wl_pointer::Event, AutoPointer) + 'static,
-        UD: 'static,
+        Impl: FnMut(wl_pointer::Event, AutoPointer, DispatchData) + 'static,
     {
         match *self {
             AutoThemer::Themed(ref mgr) => {
-                let pointer = mgr.theme_pointer_with_impl(
-                    seat,
-                    move |event, seat| implementation(event, AutoPointer::Themed(seat)),
-                    user_data,
-                );
+                let pointer = mgr.theme_pointer_with_impl(seat, move |event, seat, ddata| {
+                    callback(event, AutoPointer::Themed(seat), ddata)
+                });
                 AutoPointer::Themed(pointer)
             }
             AutoThemer::UnThemed => {
                 let pointer = seat.get_pointer();
-                pointer.assign_mono(move |ptr, event| {
-                    implementation(event, AutoPointer::UnThemed((*ptr).clone().detach()))
+                pointer.quick_assign(move |ptr, event, data| {
+                    callback(event, AutoPointer::UnThemed((*ptr).clone().detach()), data)
                 });
-                pointer.as_ref().user_data().set(|| user_data);
                 AutoPointer::UnThemed((*pointer).clone().detach())
             }
         }
