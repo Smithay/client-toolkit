@@ -25,6 +25,7 @@ use wayland_client::{
 };
 
 pub mod keyboard;
+pub mod pointer;
 
 type SeatCallback =
     dyn Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static;

@@ -49,7 +49,6 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 
 /*
 pub mod data_device;
-pub mod pointer;
 pub mod window;
 */
 
