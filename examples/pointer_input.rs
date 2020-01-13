@@ -3,7 +3,6 @@ extern crate smithay_client_toolkit as sctk;
 
 use std::cmp::min;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
@@ -89,38 +88,36 @@ fn main() {
      * Init wayland objects
      */
 
-    let window_config = Arc::new(Mutex::new(WindowConfig::new()));
+    let mut window_config = WindowConfig::new();
 
-    let surface = {
-        let window_config = window_config.clone();
-        env.create_surface_with_scale_callback(move |dpi, surface, _| {
-            surface.set_buffer_scale(dpi);
-            let mut guard = window_config.lock().unwrap();
-            guard.dpi_scale = dpi;
-            guard.handle_action(NextAction::Redraw);
-        })
-    };
+    let surface = env.create_surface_with_scale_callback(move |dpi, surface, mut dispatch_data| {
+        let config = dispatch_data.get::<WindowConfig>().unwrap();
+        surface.set_buffer_scale(dpi);
+        config.dpi_scale = dpi;
+        config.handle_action(NextAction::Redraw);
+    });
 
-    let mut window = {
-        let window_config = window_config.clone();
-        let dimensions = window_config.lock().unwrap().dimensions();
-        env.create_window::<ConceptFrame, _>(surface, dimensions, move |event, _| {
-            let mut guard = window_config.lock().unwrap();
-            if let WEvent::Configure { new_size, .. } = event {
-                if let Some((width, height)) = new_size {
-                    guard.width = width;
-                    guard.height = height;
+    let mut window = env
+        .create_window::<ConceptFrame, _>(
+            surface,
+            window_config.dimensions(),
+            move |event, mut dispatch_data| {
+                let mut config = dispatch_data.get::<WindowConfig>().unwrap();
+                if let WEvent::Configure { new_size, .. } = event {
+                    if let Some((width, height)) = new_size {
+                        config.width = width;
+                        config.height = height;
+                    }
                 }
-            }
-            let next_action = match event {
-                WEvent::Refresh => NextAction::Refresh,
-                WEvent::Configure { .. } => NextAction::Redraw,
-                WEvent::Close => NextAction::Exit,
-            };
-            guard.handle_action(next_action);
-        })
-        .expect("Failed to create a window !")
-    };
+                let next_action = match event {
+                    WEvent::Refresh => NextAction::Refresh,
+                    WEvent::Configure { .. } => NextAction::Redraw,
+                    WEvent::Close => NextAction::Exit,
+                };
+                config.handle_action(next_action);
+            },
+        )
+        .expect("Failed to create a window !");
 
     let mut pools = env
         .create_double_pool(|_| {})
@@ -165,14 +162,11 @@ fn main() {
     });
 
     if !env.get_shell().unwrap().needs_configure() {
-        window_config
-            .lock()
-            .unwrap()
-            .handle_action(NextAction::Redraw);
+        window_config.handle_action(NextAction::Redraw);
     }
 
     loop {
-        let next_action = window_config.lock().unwrap().next_action.take();
+        let next_action = window_config.next_action.take();
         println!("{:?}", next_action);
         match next_action {
             Some(NextAction::Exit) => break,
@@ -183,18 +177,14 @@ fn main() {
             Some(NextAction::Redraw) => {
                 window.refresh();
                 if let Some(pool) = pools.pool() {
-                    redraw(
-                        pool,
-                        window.surface(),
-                        window_config.lock().unwrap().dimensions(),
-                    )
-                    .expect("Failed to draw")
+                    redraw(pool, window.surface(), window_config.dimensions())
+                        .expect("Failed to draw")
                 }
             }
             None => {}
         }
 
-        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
+        queue.dispatch(&mut window_config, |_, _, _| {}).unwrap();
     }
 }
 
