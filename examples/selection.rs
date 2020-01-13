@@ -180,3 +180,4 @@ fn redraw(
     Ok(())
 }
 */
+fn main() {}
