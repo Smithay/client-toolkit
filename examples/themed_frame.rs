@@ -95,11 +95,6 @@ fn main() {
      * Keyboard initialization
      */
 
-    // initialize a seat to retrieve keyboard events
-    let seat = env.manager.instantiate_range(1, 6).unwrap();
-
-    window.new_seat(&seat);
-
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {

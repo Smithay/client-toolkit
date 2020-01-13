@@ -127,38 +127,36 @@ fn main() {
      * Pointer initialization
      */
 
-    // initialize a seat to retrieve keyboard events
-    let seat = env.manager.instantiate_range(1, 6).unwrap();
-
-    window.new_seat(&seat);
-
     let main_surface = window.surface().clone();
-    let pointer = seat.get_pointer();
-    pointer.quick_assign(move |_, evt, _| match evt {
-        wl_pointer::Event::Enter {
-            surface,
-            surface_x,
-            surface_y,
-            ..
-        } => {
-            if main_surface == surface {
-                println!("Pointer entered at ({}, {})", surface_x, surface_y);
+
+    let mut seats = Vec::<(String, Option<wl_pointer::WlPointer>)>::new();
+    let _seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
+        // find the seat in the vec of seats, or insert it if it is unknown
+        let idx = seats.iter().position(|(name, _)| name == &seat_data.name);
+        let idx = idx.unwrap_or_else(|| {
+            seats.push((seat_data.name.clone(), None));
+            seats.len() - 1
+        });
+
+        let (_, ref mut opt_ptr) = &mut seats[idx];
+        // we should map a keyboard if the seat has the capability & is not defunct
+        if seat_data.has_keyboard && !seat_data.defunct {
+            if opt_ptr.is_none() {
+                // we should initalize a keyboard
+                let seat_name = seat_data.name.clone();
+                let pointer = seat.get_pointer();
+                let surface = main_surface.clone();
+                pointer.quick_assign(move |_, event, _| {
+                    print_pointer_event(event, &seat_name, &surface)
+                });
+                *opt_ptr = Some((**pointer).clone());
+            }
+        } else {
+            if let Some(ptr) = opt_ptr.take() {
+                // the pointer has been removed, cleanup
+                ptr.release();
             }
         }
-        wl_pointer::Event::Leave { surface, .. } => {
-            if main_surface == surface {
-                println!("Pointer left");
-            }
-        }
-        wl_pointer::Event::Button { button, state, .. } => {
-            println!("Button {:?} was {:?}", button, state);
-        }
-        wl_pointer::Event::Motion {
-            surface_x,
-            surface_y,
-            ..
-        } => println!("Pointer motion to ({}, {})", surface_x, surface_y),
-        _ => {}
     });
 
     if !env.get_shell().unwrap().needs_configure() {
@@ -221,4 +219,46 @@ fn redraw(
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     Ok(())
+}
+
+fn print_pointer_event(
+    event: wl_pointer::Event,
+    seat_name: &str,
+    main_surface: &wl_surface::WlSurface,
+) {
+    match event {
+        wl_pointer::Event::Enter {
+            surface,
+            surface_x,
+            surface_y,
+            ..
+        } => {
+            if main_surface == &surface {
+                println!(
+                    "Pointer of seat '{}' entered at ({}, {})",
+                    seat_name, surface_x, surface_y
+                );
+            }
+        }
+        wl_pointer::Event::Leave { surface, .. } => {
+            if main_surface == &surface {
+                println!("Pointer of seat '{}' left", seat_name);
+            }
+        }
+        wl_pointer::Event::Button { button, state, .. } => {
+            println!(
+                "Button {:?} of seat '{}' was {:?}",
+                button, seat_name, state
+            );
+        }
+        wl_pointer::Event::Motion {
+            surface_x,
+            surface_y,
+            ..
+        } => println!(
+            "Pointer motion to ({}, {}) on seat '{}'",
+            surface_x, surface_y, seat_name
+        ),
+        _ => {}
+    }
 }
