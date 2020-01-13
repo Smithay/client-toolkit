@@ -3,7 +3,6 @@ extern crate smithay_client_toolkit as sctk;
 
 use std::cmp::min;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
@@ -52,12 +51,9 @@ fn main() {
 
     let surface = env.create_surface();
 
-    let next_action = Arc::new(Mutex::new(None::<WEvent>));
-
-    let waction = next_action.clone();
     let mut window = env
-        .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, _| {
-            let mut next_action = waction.lock().unwrap();
+        .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, mut dispatch_data| {
+            let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
             // Keep last event in priority order : Close > Configure > Refresh
             let replace = match (&evt, &*next_action) {
                 (_, &None)
@@ -112,8 +108,10 @@ fn main() {
         window.refresh();
     }
 
+    let mut next_action = None;
+
     loop {
-        match next_action.lock().unwrap().take() {
+        match next_action.take() {
             Some(WEvent::Close) => break,
             Some(WEvent::Refresh) => {
                 window.refresh();
@@ -133,7 +131,7 @@ fn main() {
             None => {}
         }
 
-        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
+        queue.dispatch(&mut next_action, |_, _, _| {}).unwrap();
     }
 }
 
