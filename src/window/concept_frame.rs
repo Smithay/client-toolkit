@@ -379,6 +379,23 @@ impl Frame for ConceptFrame {
         self.pointers.push(pointer);
     }
 
+    fn remove_seat(&mut self, seat: &wl_seat::WlSeat) {
+        self.pointers.retain(|pointer| {
+            let user_data = pointer
+                .as_ref()
+                .user_data()
+                .get::<Mutex<PointerUserData>>()
+                .unwrap();
+            let guard = user_data.lock().unwrap();
+            if &guard.seat == seat {
+                pointer.release();
+                false
+            } else {
+                true
+            }
+        });
+    }
+
     fn set_active(&mut self, active: bool) -> bool {
         if self.active != active {
             self.active = active;

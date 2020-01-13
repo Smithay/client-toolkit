@@ -140,6 +140,7 @@ pub struct Window<F: Frame> {
     decoration_mgr: Option<Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
+    _seat_listener: crate::seat::SeatListener,
 }
 
 impl<F: Frame + 'static> Window<F> {
@@ -148,19 +149,30 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
-    fn init_with_decorations<Impl>(
+    fn init_with_decorations<Impl, E>(
+        env: &crate::environment::Environment<E>,
         surface: wl_surface::WlSurface,
         initial_dims: (u32, u32),
-        compositor: Attached<wl_compositor::WlCompositor>,
-        subcompositor: Attached<wl_subcompositor::WlSubcompositor>,
-        shm: Attached<wl_shm::WlShm>,
-        shell: shell::Shell,
-        decoration_mgr: Option<Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
     where
         Impl: FnMut(Event, DispatchData) + 'static,
+        E: GlobalHandler<wl_compositor::WlCompositor>
+            + GlobalHandler<wl_subcompositor::WlSubcompositor>
+            + GlobalHandler<wl_shm::WlShm>
+            + crate::shell::ShellHandling
+            + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>
+            + crate::seat::SeatHandling,
     {
+        let compositor = env.require_global::<wl_compositor::WlCompositor>();
+        let subcompositor = env.require_global::<wl_subcompositor::WlSubcompositor>();
+        let shm = env.require_global::<wl_shm::WlShm>();
+        let shell = env
+            .get_shell()
+            .expect("[SCTK] Cannot create a window if the compositor advertized no shell.");
+        let decoration_mgr =
+            env.get_global::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>();
+
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
         let shell_inner = inner.clone();
@@ -249,6 +261,20 @@ impl<F: Frame + 'static> Window<F> {
             shell_surface.set_geometry(x, y, w, h);
         }
 
+        // setup seat_listener
+        let seat_frame = frame.clone();
+        let mut seats = Vec::<wl_seat::WlSeat>::new();
+        let seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
+            let is_known = seats.contains(&seat);
+            if !is_known && seat_data.has_pointer && !seat_data.defunct {
+                seat_frame.lock().unwrap().new_seat(&seat);
+                seats.push((*seat).clone());
+            } else if is_known && ((!seat_data.has_pointer) || seat_data.defunct) {
+                seat_frame.lock().unwrap().remove_seat(&seat);
+                seats.retain(|s| s != &*seat);
+            }
+        });
+
         *(inner.lock().unwrap()) = Some(WindowInner {
             frame: frame.clone(),
             shell_surface: shell_surface.clone(),
@@ -267,6 +293,7 @@ impl<F: Frame + 'static> Window<F> {
             decoration_mgr,
             surface,
             inner,
+            _seat_listener: seat_listener,
         };
 
         // init decoration if applicable
@@ -322,14 +349,6 @@ impl<F: Frame + 'static> Window<F> {
             }
             _ => None,
         };
-    }
-
-    /// Notify this window that a new seat is accessible
-    ///
-    /// This allows the decoration manager to get an handle to the pointer
-    /// to manage pointer events and change the pointer image appropriately.
-    pub fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
-        self.frame.lock().unwrap().new_seat(seat);
     }
 
     /// Access the surface wrapped in this Window
@@ -585,6 +604,9 @@ pub trait Frame: Sized {
     fn set_resizable(&mut self, resizable: bool);
     /// Notify that a new wl_seat should be handled
     fn new_seat(&mut self, seat: &wl_seat::WlSeat);
+    /// Notify that this seat has lost the pointer capability or
+    /// has been lost
+    fn remove_seat(&mut self, seat: &wl_seat::WlSeat);
     /// Change the size of the decorations
     ///
     /// Calling this should *not* trigger a redraw
@@ -615,8 +637,17 @@ where
         + GlobalHandler<wl_subcompositor::WlSubcompositor>
         + GlobalHandler<wl_shm::WlShm>
         + crate::shell::ShellHandling
-        + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+        + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>
+        + crate::seat::SeatHandling,
 {
+    /// Create a new window wrapping given surface
+    ///
+    /// This window handles decorations for you, this includes
+    /// drawing them if the compositor doe snot support them, resizing interactions
+    /// and moving the window. It also provides close/maximize/minimize buttons.
+    ///
+    /// Many interactions still require your input, and are given to you via the
+    /// callback you need to provide.
     pub fn create_window<F: Frame + 'static, CB>(
         &self,
         surface: wl_surface::WlSurface,
@@ -626,16 +657,6 @@ where
     where
         CB: FnMut(Event, DispatchData) + 'static,
     {
-        Window::<F>::init_with_decorations(
-            surface,
-            initial_dims,
-            self.require_global::<wl_compositor::WlCompositor>(),
-            self.require_global::<wl_subcompositor::WlSubcompositor>(),
-            self.require_global::<wl_shm::WlShm>(),
-            self.get_shell()
-                .expect("[SCTK] Cannot create a window if the compositor advertized no shell."),
-            self.get_global::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>(),
-            callback,
-        )
+        Window::<F>::init_with_decorations(self, surface, initial_dims, callback)
     }
 }

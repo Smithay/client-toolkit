@@ -4,7 +4,6 @@ extern crate smithay_client_toolkit as sctk;
 
 use std::env;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
@@ -72,17 +71,15 @@ fn main() {
      * Init the window
      */
 
-    // First of all, this Arc<Mutex<Option<WEvent>>> will store
+    // First of all, this Option<WEvent> will store
     // any event from the window that we'll need to process. We
     // store them and will process them later in the event loop
     // rather that process them directly because in a batch of
     // generated events, often only the last one needs to actually
     // be processed, and some events may render other obsoletes.
     // See the closure a few lines below for details
-    let next_action = Arc::new(Mutex::new(None::<WEvent>));
+    let mut next_action = None::<WEvent>;
 
-    // We clone the arc to pass one end to the closure
-    let waction = next_action.clone();
     // Now we actually create the window. The type parameter `ConceptFrame` here
     // specifies the type we want to use to draw the borders. To create your own
     // decorations you just need an object to implement the `Frame` trait.
@@ -90,7 +87,7 @@ fn main() {
         .create_window::<ConceptFrame, _>(
             surface,            // the wl_surface that serves as the basis of this window
             image.dimensions(), // the initial internal dimensions of the window
-            move |evt, _| {
+            move |evt, mut dispatch_data| {
                 // This is the closure that process the Window events.
                 // There are 3 possible events:
                 // - Close: the user requested the window to be closed, we'll then quit
@@ -105,7 +102,9 @@ fn main() {
                 // Indeed, if we received a Close, there is not point drawing anything more as
                 // we will exit. A new Configure overrides a previous one, and if we received
                 // a Configure we will refresh the frame anyway.
-                let mut next_action = waction.lock().unwrap();
+
+                // We access the next_action Option via the dispatch_data provided by wayland-rs.
+                let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
                 // Check if we need to replace the old event by the new one
                 let replace = match (&evt, &*next_action) {
                 // replace if there is no old event
@@ -133,18 +132,6 @@ fn main() {
     // window should be called and the title will be display on the header bar
     // of the windows decorations
     window.set_title("Image Viewer".to_string());
-
-    // The window needs access to pointer inputs to handle the user interaction
-    // with it: resizing/moving the window, or clicking its button.
-    // user interaction in wayland is done via the wl_seat object, which represent
-    // a set of pointer,keyboard,touchscreen (some may be absent) that logically
-    // represent a single user. Most systems have only one seat, multi-seat configurations
-    // are quite exotic.
-    // Thus, we just automatically bind the first seat we find.
-    let seat = env.manager.instantiate_range(1, 6).unwrap();
-    // And advertise it to the Window so it knows of it and can process the
-    // required pointer events.
-    window.new_seat(&seat);
 
     /*
      * Initialization of the memory pool
@@ -192,7 +179,7 @@ fn main() {
     loop {
         // First, check if any pending action was received by the
         // Window implementation:
-        match next_action.lock().unwrap().take() {
+        match next_action.take() {
             // We received a Close event, just break from the loop
             // and let the app quit
             Some(WEvent::Close) => break,
@@ -256,7 +243,7 @@ fn main() {
         // from it. It then processes all events by calling the implementation of
         // the target object for each, and only return once all pending messages
         // have been processed.
-        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
+        queue.dispatch(&mut next_action, |_, _, _| {}).unwrap();
     }
 }
 
