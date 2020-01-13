@@ -16,8 +16,8 @@
 
 use std::{
     cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex, Weak},
+    rc::{Rc, Weak},
+    sync::Mutex,
 };
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
@@ -27,8 +27,7 @@ use wayland_client::{
 pub mod keyboard;
 pub mod pointer;
 
-type SeatCallback =
-    dyn Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static;
+type SeatCallback = dyn FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static;
 
 /// The metadata associated with a seat
 pub struct SeatData {
@@ -71,7 +70,7 @@ impl SeatData {
 /// to be notified whenever a seat is created, destroyed, or its capabilities change.
 pub struct SeatHandler {
     seats: Vec<(u32, Attached<wl_seat::WlSeat>)>,
-    listeners: Rc<RefCell<Vec<Weak<SeatCallback>>>>,
+    listeners: Rc<RefCell<Vec<Weak<RefCell<SeatCallback>>>>>,
 }
 
 impl SeatHandler {
@@ -88,7 +87,7 @@ impl SeatHandler {
 ///
 /// Dropping it disables the associated callback and frees the closure.
 pub struct SeatListener {
-    _cb: Arc<SeatCallback>,
+    _cb: Rc<RefCell<SeatCallback>>,
 }
 
 impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
@@ -124,7 +123,7 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
                 // notify the listeners that the seat is dead
                 listeners.retain(|lst| {
                     if let Some(cb) = Weak::upgrade(lst) {
-                        cb((*seat).clone(), &*guard, ddata.reborrow());
+                        (&mut *cb.borrow_mut())((*seat).clone(), &*guard, ddata.reborrow());
                         true
                     } else {
                         false
@@ -142,7 +141,7 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
 fn process_seat_event(
     seat: Main<wl_seat::WlSeat>,
     event: wl_seat::Event,
-    listeners: &RefCell<Vec<Weak<SeatCallback>>>,
+    listeners: &RefCell<Vec<Weak<RefCell<SeatCallback>>>>,
     mut ddata: DispatchData,
 ) {
     let data = seat.as_ref().user_data().get::<Mutex<SeatData>>().unwrap();
@@ -161,7 +160,7 @@ fn process_seat_event(
     if !guard.name.is_empty() && (guard.has_pointer || guard.has_keyboard || guard.has_touch) {
         listeners.borrow_mut().retain(|lst| {
             if let Some(cb) = Weak::upgrade(lst) {
-                cb((*seat).clone(), &*guard, ddata.reborrow());
+                (&mut *cb.borrow_mut())((*seat).clone(), &*guard, ddata.reborrow());
                 true
             } else {
                 false
@@ -197,20 +196,20 @@ pub fn with_seat_data<T, F: FnOnce(&SeatData) -> T>(seat: &wl_seat::WlSeat, f: F
 /// method on your [`Environment`](../environment/struct.Environment.html).
 pub trait SeatHandling {
     /// Insert a listener for seat events
-    fn listen<F: Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static>(
+    fn listen<F: FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static>(
         &mut self,
         f: F,
     ) -> SeatListener;
 }
 
 impl SeatHandling for SeatHandler {
-    fn listen<F: Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static>(
+    fn listen<F: FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static>(
         &mut self,
         f: F,
     ) -> SeatListener {
-        let arc = Arc::new(f) as Arc<_>;
-        self.listeners.borrow_mut().push(Arc::downgrade(&arc));
-        SeatListener { _cb: arc }
+        let rc = Rc::new(RefCell::new(f)) as Rc<_>;
+        self.listeners.borrow_mut().push(Rc::downgrade(&rc));
+        SeatListener { _cb: rc }
     }
 }
 
@@ -223,7 +222,7 @@ impl<E: SeatHandling> crate::environment::Environment<E> {
     /// The returned [`SeatListener`](../seat/struct.SeatListener.hmtl) keeps your callback alive,
     /// dropping it will disable it.
     pub fn listen_for_seats<
-        F: Fn(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + Send + Sync + 'static,
+        F: FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static,
     >(
         &self,
         f: F,

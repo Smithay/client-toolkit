@@ -3,12 +3,12 @@ extern crate smithay_client_toolkit as sctk;
 
 use std::cmp::min;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-use std::sync::{Arc, Mutex};
 
 use byteorder::{NativeEndian, WriteBytesExt};
 
+use sctk::reexports::calloop;
 use sctk::reexports::client::{
-    protocol::{wl_shm, wl_surface},
+    protocol::{wl_keyboard, wl_shm, wl_surface},
     Display,
 };
 use sctk::seat::keyboard::{map_keyboard, Event as KbEvent, RepeatKind};
@@ -45,6 +45,13 @@ fn main() {
         .unwrap();
 
     /*
+     * Prepare a calloop event loop to handle key repetion
+     */
+    // Here `Option<WEvent>` is the type of a global value that will be shared by
+    // all callbacks invoked by the event loop.
+    let mut event_loop = calloop::EventLoop::<Option<WEvent>>::new().unwrap();
+
+    /*
      * Create a buffer with window contents
      */
 
@@ -56,12 +63,9 @@ fn main() {
 
     let surface = env.create_surface();
 
-    let next_action = Arc::new(Mutex::new(None::<WEvent>));
-
-    let waction = next_action.clone();
     let mut window = env
-        .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, _| {
-            let mut next_action = waction.lock().unwrap();
+        .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, mut dispatch_data| {
+            let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
             // Keep last event in priority order : Close > Configure > Refresh
             let replace = match (&evt, &*next_action) {
                 (_, &None)
@@ -87,44 +91,46 @@ fn main() {
      */
 
     // initialize a seat to retrieve keyboard events
-    let seat = env.manager.instantiate_range(1, 6).unwrap();
+    let mut seats = Vec::<(
+        String,
+        Option<(wl_keyboard::WlKeyboard, calloop::Source<_>)>,
+    )>::new();
+    let loop_handle = event_loop.handle();
+    let _seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
+        // find the seat in the vec of seats, or insert it if it is unknown
+        let idx = seats.iter().position(|(name, _)| name == &seat_data.name);
+        let idx = idx.unwrap_or_else(|| {
+            seats.push((seat_data.name.clone(), None));
+            seats.len() - 1
+        });
 
-    window.new_seat(&seat);
-
-    map_keyboard(
-        &seat,
-        None,
-        RepeatKind::System,
-        move |event: KbEvent, _, _| match event {
-            KbEvent::Enter { keysyms, .. } => {
-                println!("Gained focus while {} keys pressed.", keysyms.len(),);
-            }
-            KbEvent::Leave { .. } => {
-                println!("Lost focus.");
-            }
-            KbEvent::Key {
-                keysym,
-                state,
-                utf8,
-                ..
-            } => {
-                println!("Key {:?}: {:x}.", state, keysym);
-                if let Some(txt) = utf8 {
-                    println!(" -> Received text \"{}\".", txt);
+        let (_, ref mut opt_kbd) = &mut seats[idx];
+        // we should map a keyboard if the seat has the capability & is not defunct
+        if seat_data.has_keyboard && !seat_data.defunct {
+            if opt_kbd.is_none() {
+                // we should initalize a keyboard
+                let seat_name = seat_data.name.clone();
+                match map_keyboard(&seat, None, RepeatKind::System, move |event, _, _| {
+                    print_keyboard_event(event, &seat_name)
+                }) {
+                    Ok((kbd, repeat_source)) => {
+                        let source = loop_handle.insert_source(repeat_source, |_, _| {}).unwrap();
+                        *opt_kbd = Some((kbd, source));
+                    }
+                    Err(e) => eprintln!(
+                        "Failed to map keyboard on seat {} : {:?}.",
+                        seat_data.name, e
+                    ),
                 }
             }
-            KbEvent::Modifiers { modifiers } => {
-                println!("Modifiers changed {:?}", modifiers);
+        } else {
+            if let Some((kbd, source)) = opt_kbd.take() {
+                // the keyboard has been removed, cleanup
+                kbd.release();
+                source.remove();
             }
-            KbEvent::Repeat { keysym, utf8, .. } => {
-                println!("Key repetition {:x}", keysym);
-                if let Some(txt) = utf8 {
-                    println!(" -> Received text \"{}\".", txt);
-                }
-            }
-        },
-    )
-    .expect("Failed to map keyboard");
+        }
+    });
 
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
@@ -134,8 +140,19 @@ fn main() {
         window.refresh();
     }
 
+    let mut next_action = None;
+
+    let _source_queue = event_loop
+        .handle()
+        .insert_source(sctk::WaylandSource::new(queue), |ret, _| {
+            if let Err(e) = ret {
+                panic!("Wayland connection lost: {:?}", e);
+            }
+        })
+        .unwrap();
+
     loop {
-        match next_action.lock().unwrap().take() {
+        match next_action.take() {
             Some(WEvent::Close) => break,
             Some(WEvent::Refresh) => {
                 window.refresh();
@@ -155,7 +172,45 @@ fn main() {
             None => {}
         }
 
-        queue.dispatch(&mut (), |_, _, _| {}).unwrap();
+        event_loop.dispatch(None, &mut next_action).unwrap();
+    }
+}
+
+fn print_keyboard_event(event: KbEvent, seat_name: &str) {
+    match event {
+        KbEvent::Enter { keysyms, .. } => {
+            println!(
+                "Gained focus on seat '{}' while {} keys pressed.",
+                seat_name,
+                keysyms.len(),
+            );
+        }
+        KbEvent::Leave { .. } => {
+            println!("Lost focus on seat '{}'.", seat_name);
+        }
+        KbEvent::Key {
+            keysym,
+            state,
+            utf8,
+            ..
+        } => {
+            println!("Key {:?}: {:x} on seat '{}'.", state, keysym, seat_name);
+            if let Some(txt) = utf8 {
+                println!(" -> Received text \"{}\".", txt);
+            }
+        }
+        KbEvent::Modifiers { modifiers } => {
+            println!(
+                "Modifiers changed to {:?} on seat '{}'.",
+                modifiers, seat_name
+            );
+        }
+        KbEvent::Repeat { keysym, utf8, .. } => {
+            println!("Key repetition {:x} on seat '{}'.", keysym, seat_name);
+            if let Some(txt) = utf8 {
+                println!(" -> Received text \"{}\".", txt);
+            }
+        }
     }
 }
 
