@@ -35,6 +35,7 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
 }
 
+pub mod data_device;
 pub mod environment;
 pub mod output;
 pub mod seat;
@@ -47,11 +48,6 @@ mod surface;
 
 pub use event_loop::WaylandSource;
 pub use surface::{get_surface_outputs, get_surface_scale_factor};
-
-/*
-pub mod data_device;
-pub mod window;
-*/
 
 #[macro_export]
 /// Declare a batteries-included SCTK environment
@@ -107,7 +103,6 @@ macro_rules! default_environment {
         pub struct $env_name {
             // SimpleGlobals
             sctk_compositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_compositor::WlCompositor>,
-            sctk_data_device_manager: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager>,
             sctk_subcompositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor>,
             sctk_decoration_mgr: $crate::environment::SimpleGlobal<$crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
             // shm
@@ -118,6 +113,8 @@ macro_rules! default_environment {
             sctk_outputs: $crate::output::OutputHandler,
             // seat
             sctk_seats: $crate::seat::SeatHandler,
+            // data device
+            sctk_data_device_manager: $crate::data_device::DataDeviceHandler,
             // user added
             $(
                 $fname : $fty,
@@ -144,6 +141,27 @@ macro_rules! default_environment {
             }
         }
 
+        // Data Device Utility
+        impl $crate::data_device::DataDeviceHandling for $env_name {
+            fn set_callback<F>(&mut self, callback: F) -> Result<(), ()>
+            where F: FnMut(
+                $crate::reexports::client::protocol::wl_seat::WlSeat,
+                $crate::data_device::DndEvent,
+                $crate::reexports::client::DispatchData
+            ) + 'static
+            {
+                self.sctk_data_device_manager.set_callback(callback)
+            }
+
+            fn with_device<F: FnOnce(&$crate::data_device::DataDevice)>(
+                &self,
+                seat: &$crate::reexports::client::protocol::wl_seat::WlSeat,
+                f: F
+            ) -> Result<(), ()> {
+                self.sctk_data_device_manager.with_device(seat, f)
+            }
+        }
+
         /*
          * Final macro delegation
          */
@@ -151,7 +169,6 @@ macro_rules! default_environment {
             singles = [
                 // SimpleGlobals
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor => sctk_compositor,
-                $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager,
                 $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor => sctk_subcompositor,
                 $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1 => sctk_decoration_mgr,
                 // shm
@@ -160,6 +177,8 @@ macro_rules! default_environment {
                 $crate::reexports::client::protocol::wl_shell::WlShell => sctk_shell,
                 $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase => sctk_shell,
                 $crate::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::ZxdgShellV6 => sctk_shell,
+                // data device
+                $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager
                 // user added
                 $($sty => $sname),*
             ],
@@ -199,18 +218,22 @@ macro_rules! init_default_environment {
     ($env_name:ident, $display:expr,
         fields = [$($fname:ident : $fval:expr),* $(,)?]$(,)?
     ) => {
-        $crate::environment::Environment::init($display, $env_name {
-            sctk_compositor: $crate::environment::SimpleGlobal::new(),
-            sctk_data_device_manager: $crate::environment::SimpleGlobal::new(),
-            sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
-            sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
-            sctk_shm: $crate::shm::ShmHandler::new(),
-            sctk_shell: $crate::shell::ShellHandler::new(),
-            sctk_outputs: $crate::output::OutputHandler::new(),
-            sctk_seats: $crate::seat::SeatHandler::new(),
-            $(
-                $fname: $fval,
-            )*
-        })
+        {
+            let mut sctk_seats = $crate::seat::SeatHandler::new();
+            let sctk_data_device_manager = $crate::data_device::DataDeviceHandler::init(&mut sctk_seats);
+            $crate::environment::Environment::init($display, $env_name {
+                sctk_compositor: $crate::environment::SimpleGlobal::new(),
+                sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
+                sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
+                sctk_shm: $crate::shm::ShmHandler::new(),
+                sctk_shell: $crate::shell::ShellHandler::new(),
+                sctk_outputs: $crate::output::OutputHandler::new(),
+                sctk_seats,
+                sctk_data_device_manager,
+                $(
+                    $fname: $fval,
+                )*
+            })
+        }
     };
 }
