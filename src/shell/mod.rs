@@ -71,6 +71,8 @@ pub enum Shell {
 }
 
 impl Shell {
+    /// Check if the shell in use needs you to wait for a `configure` event
+    /// before you are allowed to draw.
     pub fn needs_configure(&self) -> bool {
         match self {
             Shell::Wl(_) => false,
