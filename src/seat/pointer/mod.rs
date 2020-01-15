@@ -57,7 +57,7 @@ impl AutoThemer {
     /// rather than a `WlPointer`.
     pub fn theme_pointer_with_impl<Impl>(
         &self,
-        seat: &wl_seat::WlSeat,
+        seat: &Attached<wl_seat::WlSeat>,
         mut callback: Impl,
     ) -> AutoPointer
     where

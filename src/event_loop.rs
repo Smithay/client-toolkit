@@ -70,7 +70,18 @@ where
         // more can be read:
         let mut dispatched = 0;
         loop {
-            // 1. dispatch any pending event in the queue
+            // 1. read events from the socket if any are available
+            if let Some(guard) = queue.prepare_read() {
+                // might be None if some other thread read events before us, concurently
+                if let Err(e) = guard.read_events() {
+                    if e.kind() != io::ErrorKind::WouldBlock {
+                        // in case of error, forward it and fast-exit
+                        (self.callback)(Err(e), data);
+                        return;
+                    }
+                }
+            }
+            // 2. dispatch any pending event in the queue
             let ret = queue.dispatch_pending(data, |evt, object, _| {
                 panic!(
                     "[SCTK] Orphan event reached the event queue: {}@{} -> {}",
@@ -80,6 +91,12 @@ where
                 );
             });
             match ret {
+                Ok(0) => {
+                    // no events were dispatched even after reading the socket,
+                    // nothing more to do, stop here
+                    (self.callback)(Ok(dispatched), data);
+                    break;
+                }
                 Ok(n) => {
                     dispatched += n;
                 }
@@ -89,33 +106,17 @@ where
                     return;
                 }
             }
-            // 2. flush the socket to sent requests generated in response of the dispatched events
-            if let Err(e) = queue.flush() {
-                if e.kind() != io::ErrorKind::WouldBlock {
-                    // in case of error, forward it and fast-exit
-                    (self.callback)(Err(e), data);
-                    return;
-                }
-                // WouldBlock error means the compositor could not process all our messages
-                // quickly. Either it is slowed down or we are a spammer.
-                // Should not really happen, if it does we do nothing and will flush again later
+        }
+        // 3. Once dispatching is finished, flush the responses to the compositor
+        if let Err(e) = queue.flush() {
+            if e.kind() != io::ErrorKind::WouldBlock {
+                // in case of error, forward it and fast-exit
+                (self.callback)(Err(e), data);
+                return;
             }
-            // 3. read events from the socket
-            if let Some(guard) = queue.prepare_read() {
-                // might be None if some other thread read events before us, concurently
-                if let Err(e) = guard.read_events() {
-                    if e.kind() != io::ErrorKind::WouldBlock {
-                        // in case of error, forward it and fast-exit
-                        (self.callback)(Err(e), data);
-                        return;
-                    } else {
-                        // There was nothing to read and all our events are
-                        // dispatched, let's stop here
-                        (self.callback)(Ok(dispatched), data);
-                        break;
-                    }
-                }
-            }
+            // WouldBlock error means the compositor could not process all our messages
+            // quickly. Either it is slowed down or we are a spammer.
+            // Should not really happen, if it does we do nothing and will flush again later
         }
     }
 }

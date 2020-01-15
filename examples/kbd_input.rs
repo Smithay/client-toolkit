@@ -90,11 +90,43 @@ fn main() {
      * Keyboard initialization
      */
 
-    // initialize a seat to retrieve keyboard events
     let mut seats = Vec::<(
         String,
         Option<(wl_keyboard::WlKeyboard, calloop::Source<_>)>,
     )>::new();
+
+    // first process already existing seats
+    for seat in env.get_all_seats() {
+        if let Some((has_kbd, name)) = sctk::seat::with_seat_data(&seat, |seat_data| {
+            (
+                seat_data.has_keyboard && !seat_data.defunct,
+                seat_data.name.clone(),
+            )
+        }) {
+            if has_kbd {
+                let seat_name = name.clone();
+                match map_keyboard(&seat, None, RepeatKind::System, move |event, _, _| {
+                    print_keyboard_event(event, &seat_name)
+                }) {
+                    Ok((kbd, repeat_source)) => {
+                        let source = event_loop
+                            .handle()
+                            .insert_source(repeat_source, |_, _| {})
+                            .unwrap();
+                        seats.push((name, Some((kbd, source))));
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to map keyboard on seat {} : {:?}.", name, e);
+                        seats.push((name, None));
+                    }
+                }
+            } else {
+                seats.push((name, None));
+            }
+        }
+    }
+
+    // then setup a listener for changes
     let loop_handle = event_loop.handle();
     let _seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
         // find the seat in the vec of seats, or insert it if it is unknown
@@ -171,6 +203,9 @@ fn main() {
             }
             None => {}
         }
+
+        // always flush the connection before going to sleep waiting for events
+        display.flush().unwrap();
 
         event_loop.dispatch(None, &mut next_action).unwrap();
     }

@@ -15,7 +15,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
 
 mod concept_frame;
 use crate::{
-    environment::{Environment, GlobalHandler},
+    environment::{Environment, GlobalHandler, MultiGlobalHandler},
     shell,
 };
 
@@ -161,6 +161,7 @@ impl<F: Frame + 'static> Window<F> {
             + GlobalHandler<wl_subcompositor::WlSubcompositor>
             + GlobalHandler<wl_shm::WlShm>
             + crate::shell::ShellHandling
+            + MultiGlobalHandler<wl_seat::WlSeat>
             + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>
             + crate::seat::SeatHandling,
     {
@@ -261,9 +262,19 @@ impl<F: Frame + 'static> Window<F> {
             shell_surface.set_geometry(x, y, w, h);
         }
 
+        // initial seat setup
+        let mut seats = Vec::<wl_seat::WlSeat>::new();
+        for seat in env.get_all_seats() {
+            crate::seat::with_seat_data(&seat, |seat_data| {
+                if seat_data.has_pointer && !seat_data.defunct {
+                    seats.push((*seat).clone());
+                    frame.lock().unwrap().new_seat(&seat);
+                }
+            });
+        }
+
         // setup seat_listener
         let seat_frame = frame.clone();
-        let mut seats = Vec::<wl_seat::WlSeat>::new();
         let seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
             let is_known = seats.contains(&seat);
             if !is_known && seat_data.has_pointer && !seat_data.defunct {
@@ -603,7 +614,9 @@ pub trait Frame: Sized {
     /// and reacted to
     fn set_resizable(&mut self, resizable: bool);
     /// Notify that a new wl_seat should be handled
-    fn new_seat(&mut self, seat: &wl_seat::WlSeat);
+    ///
+    /// This seat is guaranteed to have pointer capability
+    fn new_seat(&mut self, seat: &Attached<wl_seat::WlSeat>);
     /// Notify that this seat has lost the pointer capability or
     /// has been lost
     fn remove_seat(&mut self, seat: &wl_seat::WlSeat);
@@ -637,6 +650,7 @@ where
         + GlobalHandler<wl_subcompositor::WlSubcompositor>
         + GlobalHandler<wl_shm::WlShm>
         + crate::shell::ShellHandling
+        + MultiGlobalHandler<wl_seat::WlSeat>
         + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>
         + crate::seat::SeatHandling,
 {

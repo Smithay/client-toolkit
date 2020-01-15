@@ -30,6 +30,7 @@ pub mod pointer;
 type SeatCallback = dyn FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static;
 
 /// The metadata associated with a seat
+#[derive(Clone, Debug)]
 pub struct SeatData {
     /// The name of this seat
     ///
@@ -219,6 +220,10 @@ impl<E: SeatHandling> crate::environment::Environment<E> {
     /// The provided closure will be invoked whenever a `wl_seat` is made available,
     /// removed, or see its capabilities changed.
     ///
+    /// Note that if seats already exist when this callback is setup, it'll not be invoked on them.
+    /// For you to be notified of them as well, you need to first process them manually by calling
+    /// `.get_all_seats()`.
+    ///
     /// The returned [`SeatListener`](../seat/struct.SeatListener.hmtl) keeps your callback alive,
     /// dropping it will disable it.
     pub fn listen_for_seats<
@@ -235,10 +240,9 @@ impl<E: crate::environment::MultiGlobalHandler<wl_seat::WlSeat>>
     crate::environment::Environment<E>
 {
     /// Shorthand method to retrieve the list of seats
-    pub fn get_all_seats(&self) -> Vec<wl_seat::WlSeat> {
+    pub fn get_all_seats(&self) -> Vec<Attached<wl_seat::WlSeat>> {
         self.get_all_globals::<wl_seat::WlSeat>()
             .into_iter()
-            .map(|o| o.detach())
             .collect()
     }
 }

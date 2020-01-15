@@ -43,6 +43,7 @@ impl crate::environment::GlobalHandler<wl_shm::WlShm> for ShmHandler {
             }
             _ => unreachable!(),
         });
+        self.shm = Some((*shm).clone());
     }
     fn get(&self) -> Option<Attached<wl_shm::WlShm>> {
         self.shm.clone()

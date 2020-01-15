@@ -82,7 +82,7 @@ impl ThemeManager {
     /// rather than a `WlPointer`.
     pub fn theme_pointer_with_impl<F>(
         &self,
-        seat: &wl_seat::WlSeat,
+        seat: &Attached<wl_seat::WlSeat>,
         mut callback: F,
     ) -> ThemedPointer
     where
