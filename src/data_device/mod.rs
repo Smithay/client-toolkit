@@ -197,7 +197,7 @@ impl crate::environment::GlobalHandler<wl_data_device_manager::WlDataDeviceManag
 ///
 /// You need to implement this trait for you environment struct, by
 /// delegating it to its `DataDeviceHandler` field in order to get the
-/// associated methods on your [`Envrionment`](../environment/struct.environment.html).
+/// associated methods on your [`Environment`](../environment/struct.environment.html).
 pub trait DataDeviceHandling {
     /// Set the global drag'n'drop callback
     ///

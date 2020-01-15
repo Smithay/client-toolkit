@@ -121,6 +121,13 @@ macro_rules! default_environment {
             )*
         }
 
+        // SHM utility
+        impl $crate::shm::ShmHandling for $env_name {
+            fn shm_formats(&self) -> Vec<$crate::reexports::client::protocol::wl_shm::Format> {
+                self.sctk_shm.shm_formats()
+            }
+        }
+
         // Shell utility
         impl $crate::shell::ShellHandling for $env_name {
             fn get_shell(&self) -> Option<$crate::shell::Shell> {

@@ -305,6 +305,11 @@ impl<E> crate::environment::Environment<E>
 where
     E: crate::environment::GlobalHandler<wl_shm::WlShm>,
 {
+    /// Create a simple memory pool
+    ///
+    /// This memory pool track the usage of the buffers created from it,
+    /// and invokes your callback when the compositor has finished using
+    /// all of them.
     pub fn create_simple_pool<F>(&self, callback: F) -> io::Result<MemPool>
     where
         F: FnMut(wayland_client::DispatchData) + 'static,
@@ -312,6 +317,13 @@ where
         MemPool::new(self.require_global::<wl_shm::WlShm>(), callback)
     }
 
+    /// Create a double memory pool
+    ///
+    /// This can be used for double-buffered drawing. The memory pool
+    /// is backed by two different SHM segments, which are used in alternance.
+    ///
+    /// The provided callback is triggered when one of the pools becomes unused again
+    /// after you tried to draw while both where in use.
     pub fn create_double_pool<F>(&self, callback: F) -> io::Result<DoubleMemPool>
     where
         F: FnMut(wayland_client::DispatchData) + 'static,
