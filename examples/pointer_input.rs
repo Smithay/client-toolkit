@@ -23,6 +23,7 @@ struct WindowConfig {
     height: u32,
     dpi_scale: i32,
     next_action: Option<NextAction>,
+    has_drawn_once: bool,
 }
 
 impl WindowConfig {
@@ -32,6 +33,7 @@ impl WindowConfig {
             height: 240,
             dpi_scale: 1,
             next_action: None,
+            has_drawn_once: false,
         }
     }
 
@@ -103,18 +105,29 @@ fn main() {
             window_config.dimensions(),
             move |event, mut dispatch_data| {
                 let mut config = dispatch_data.get::<WindowConfig>().unwrap();
-                if let WEvent::Configure { new_size, .. } = event {
-                    if let Some((width, height)) = new_size {
-                        config.width = width;
-                        config.height = height;
+                match event {
+                    WEvent::Refresh => config.handle_action(NextAction::Refresh),
+                    WEvent::Configure {
+                        new_size: Some((w, h)),
+                        ..
+                    } => {
+                        if config.dimensions() != (w, h) || !config.has_drawn_once {
+                            config.width = w;
+                            config.height = h;
+                            config.handle_action(NextAction::Redraw);
+                        } else {
+                            config.handle_action(NextAction::Refresh);
+                        }
                     }
+                    WEvent::Configure { new_size: None, .. } => {
+                        if config.has_drawn_once {
+                            config.handle_action(NextAction::Refresh)
+                        } else {
+                            config.handle_action(NextAction::Redraw)
+                        }
+                    }
+                    WEvent::Close => config.handle_action(NextAction::Exit),
                 }
-                let next_action = match event {
-                    WEvent::Refresh => NextAction::Refresh,
-                    WEvent::Configure { .. } => NextAction::Redraw,
-                    WEvent::Close => NextAction::Exit,
-                };
-                config.handle_action(next_action);
             },
         )
         .expect("Failed to create a window !");
@@ -126,10 +139,31 @@ fn main() {
     /*
      * Pointer initialization
      */
-
-    let main_surface = window.surface().clone();
-
     let mut seats = Vec::<(String, Option<wl_pointer::WlPointer>)>::new();
+
+    // first process already existing seats
+    for seat in env.get_all_seats() {
+        if let Some((has_ptr, name)) = sctk::seat::with_seat_data(&seat, |seat_data| {
+            (
+                seat_data.has_pointer && !seat_data.defunct,
+                seat_data.name.clone(),
+            )
+        }) {
+            if has_ptr {
+                let seat_name = name.clone();
+                let pointer = seat.get_pointer();
+                let surface = window.surface().clone();
+                pointer.quick_assign(move |_, event, _| {
+                    print_pointer_event(event, &seat_name, &surface)
+                });
+            } else {
+                seats.push((name, None));
+            }
+        }
+    }
+
+    // then setup a listener for changes
+    let main_surface = window.surface().clone();
     let _seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
         // find the seat in the vec of seats, or insert it if it is unknown
         let idx = seats.iter().position(|(name, _)| name == &seat_data.name);
@@ -173,6 +207,9 @@ fn main() {
                 window.surface().commit();
             }
             Some(NextAction::Redraw) => {
+                window_config.has_drawn_once = true;
+                let (w, h) = window_config.dimensions();
+                window.resize(w, h);
                 window.refresh();
                 if let Some(pool) = pools.pool() {
                     redraw(pool, window.surface(), window_config.dimensions())
