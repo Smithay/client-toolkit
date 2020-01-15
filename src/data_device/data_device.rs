@@ -1,6 +1,6 @@
 use wayland_client::{
     protocol::{wl_data_device, wl_data_device_manager, wl_data_offer, wl_seat, wl_surface},
-    Main,
+    DispatchData, Main,
 };
 
 use std::sync::{Arc, Mutex};
@@ -59,7 +59,7 @@ impl Inner {
 /// data through drag'n'drop or copy/paste actions. It is associated
 /// with a seat upon creation.
 pub struct DataDevice {
-    device: Main<wl_data_device::WlDataDevice>,
+    device: wl_data_device::WlDataDevice,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -107,9 +107,13 @@ pub enum DndEvent<'a> {
     },
 }
 
-fn data_device_implem<Impl>(event: wl_data_device::Event, inner: &mut Inner, implem: &mut Impl)
-where
-    for<'a> Impl: FnMut(DndEvent<'a>),
+fn data_device_implem<F>(
+    event: wl_data_device::Event,
+    inner: &mut Inner,
+    implem: &mut F,
+    ddata: DispatchData,
+) where
+    for<'a> F: FnMut(DndEvent<'a>, DispatchData),
 {
     use self::wl_data_device::Event;
 
@@ -123,27 +127,36 @@ where
             id,
         } => {
             inner.set_dnd(id);
-            implem(DndEvent::Enter {
-                serial,
-                surface,
-                x,
-                y,
-                offer: inner.current_dnd.as_ref(),
-            });
+            implem(
+                DndEvent::Enter {
+                    serial,
+                    surface,
+                    x,
+                    y,
+                    offer: inner.current_dnd.as_ref(),
+                },
+                ddata,
+            );
         }
         Event::Motion { time, x, y } => {
-            implem(DndEvent::Motion {
-                x,
-                y,
-                time,
-                offer: inner.current_dnd.as_ref(),
-            });
+            implem(
+                DndEvent::Motion {
+                    x,
+                    y,
+                    time,
+                    offer: inner.current_dnd.as_ref(),
+                },
+                ddata,
+            );
         }
-        Event::Leave => implem(DndEvent::Leave),
+        Event::Leave => implem(DndEvent::Leave, ddata),
         Event::Drop => {
-            implem(DndEvent::Drop {
-                offer: inner.current_dnd.as_ref(),
-            });
+            implem(
+                DndEvent::Drop {
+                    offer: inner.current_dnd.as_ref(),
+                },
+                ddata,
+            );
         }
         Event::Selection { id } => inner.set_selection(id),
         _ => unreachable!(),
@@ -155,13 +168,13 @@ impl DataDevice {
     ///
     /// You need to provide an implementation that will handle drag'n'drop
     /// events.
-    pub fn init_for_seat<Impl>(
+    pub fn init_for_seat<F>(
         manager: &wl_data_device_manager::WlDataDeviceManager,
         seat: &wl_seat::WlSeat,
-        mut implem: Impl,
+        mut callback: F,
     ) -> DataDevice
     where
-        for<'a> Impl: FnMut(DndEvent<'a>) + 'static,
+        for<'a> F: FnMut(DndEvent<'a>, DispatchData) + 'static,
     {
         let inner = Arc::new(Mutex::new(Inner {
             selection: None,
@@ -171,12 +184,15 @@ impl DataDevice {
 
         let inner2 = inner.clone();
         let device = manager.get_data_device(seat);
-        device.assign_mono(move |_, evt| {
+        device.quick_assign(move |_, evt, ddata| {
             let mut inner = inner2.lock().unwrap();
-            data_device_implem(evt, &mut *inner, &mut implem);
+            data_device_implem(evt, &mut *inner, &mut callback, ddata);
         });
 
-        DataDevice { device, inner }
+        DataDevice {
+            device: (**device).clone(),
+            inner,
+        }
     }
 
     /// Start a drag'n'drop offer

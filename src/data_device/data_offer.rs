@@ -1,10 +1,12 @@
+use std::{
+    fs, io,
+    os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
+    sync::{Arc, Mutex},
+};
+
 use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
 use wayland_client::Main;
-
-use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-use std::sync::{Arc, Mutex};
-use std::{fs, io};
 
 struct Inner {
     mime_types: Vec<String>,
@@ -29,7 +31,7 @@ impl DataOffer {
             serial: 0,
         }));
         let inner2 = inner.clone();
-        offer.assign_mono(move |_, event| {
+        offer.quick_assign(move |_, event, _| {
             use self::wl_data_offer::Event;
             let mut inner = inner2.lock().unwrap();
             match event {
@@ -133,31 +135,46 @@ impl Drop for DataOffer {
 
 /// A file descriptor that can only be written to
 pub struct ReadPipe {
-    file: fs::File,
+    file: calloop::generic::SourceFd<fs::File>,
+}
+
+/// A type alias for the calloop source associated with a ReadPipe
+pub type ReadPipeSource = calloop::generic::Generic<calloop::generic::SourceFd<ReadPipe>>;
+
+impl ReadPipe {
+    /// Make this ReadPipe into a calloop-compatible event source
+    ///
+    /// It'll be an instance of the `calloop::generic::Generic` source
+    /// wrapping the `ReadPipe`.
+    pub fn into_source(self) -> ReadPipeSource {
+        let mut source = calloop::generic::Generic::from_fd_source(self);
+        source.set_interest(calloop::mio::Interest::READABLE);
+        source
+    }
 }
 
 impl io::Read for ReadPipe {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.file.read(buf)
+        self.file.0.read(buf)
     }
 }
 
 impl FromRawFd for ReadPipe {
     unsafe fn from_raw_fd(fd: RawFd) -> ReadPipe {
         ReadPipe {
-            file: FromRawFd::from_raw_fd(fd),
+            file: calloop::generic::SourceFd(FromRawFd::from_raw_fd(fd)),
         }
     }
 }
 
 impl AsRawFd for ReadPipe {
     fn as_raw_fd(&self) -> RawFd {
-        self.file.as_raw_fd()
+        self.file.0.as_raw_fd()
     }
 }
 
 impl IntoRawFd for ReadPipe {
     fn into_raw_fd(self) -> RawFd {
-        self.file.into_raw_fd()
+        self.file.0.into_raw_fd()
     }
 }

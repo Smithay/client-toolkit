@@ -71,7 +71,7 @@ fn main() {
     let scaled_bg = [0xFF, 0x22, 0x22, 0x22];
     let vscaled_bg = [0xFF, 0x33, 0x33, 0x33];
 
-    window.set_title("Kbd Input".to_string());
+    window.set_title("Themed frame".to_string());
     window.set_theme(WaylandTheme {
         primary_active: scaled_bg,
         primary_inactive: vscaled_bg,

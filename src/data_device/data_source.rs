@@ -1,4 +1,7 @@
-use wayland_client::protocol::{wl_data_device_manager, wl_data_source};
+use wayland_client::{
+    protocol::{wl_data_device_manager, wl_data_source},
+    Attached, DispatchData,
+};
 
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::{fs, io};
@@ -78,8 +81,9 @@ fn data_source_impl<Impl>(
     evt: wl_data_source::Event,
     source: &wl_data_source::WlDataSource,
     implem: &mut Impl,
+    ddata: DispatchData,
 ) where
-    Impl: FnMut(DataSourceEvent),
+    Impl: FnMut(DataSourceEvent, DispatchData),
 {
     use self::wl_data_source::Event;
     let event = match evt {
@@ -102,7 +106,7 @@ fn data_source_impl<Impl>(
         }
         _ => unreachable!(),
     };
-    implem(event);
+    implem(event, ddata);
 }
 
 impl DataSource {
@@ -110,18 +114,22 @@ impl DataSource {
     ///
     /// You'll then need to provide it to a data device to send it
     /// either via selection (aka copy/paste) or via a drag and drop.
-    pub fn new<Impl>(
-        mgr: &wl_data_device_manager::WlDataDeviceManager,
-        mime_types: &[&str],
-        mut implem: Impl,
+    pub fn new<F, S, It>(
+        mgr: &Attached<wl_data_device_manager::WlDataDeviceManager>,
+        mime_types: It,
+        mut callback: F,
     ) -> DataSource
     where
-        Impl: FnMut(DataSourceEvent) + 'static,
+        F: FnMut(DataSourceEvent, DispatchData) + 'static,
+        S: Into<String>,
+        It: IntoIterator<Item = S>,
     {
         let source = mgr.create_data_source();
-        source.assign_mono(move |source, evt| data_source_impl(evt, &source, &mut implem));
+        source.quick_assign(move |source, evt, dispatch_data| {
+            data_source_impl(evt, &source, &mut callback, dispatch_data)
+        });
 
-        for &mime in mime_types {
+        for mime in mime_types {
             source.offer(mime.into());
         }
 
