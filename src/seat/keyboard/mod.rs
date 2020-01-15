@@ -212,7 +212,17 @@ impl KbdHandler {
             .add_timeout(Duration::from_millis(self.repeat.delay as u64), ());
     }
 
-    fn stop_repeat(&self) {
+    fn stop_repeat(&self, key: u32) {
+        // only cancel if the released key is the currently repeating key
+        let mut guard = self.current_repeat.borrow_mut();
+        let stop = (*guard).as_ref().map(|d| d.keycode == key).unwrap_or(false);
+        if stop {
+            self.timer_handle.cancel_all_timeouts();
+            *guard = None;
+        }
+    }
+
+    fn stop_all_repeat(&self) {
         self.timer_handle.cancel_all_timeouts();
         *self.current_repeat.borrow_mut() = None;
     }
@@ -321,7 +331,7 @@ impl KbdHandler {
         surface: wl_surface::WlSurface,
         dispatch_data: wayland_client::DispatchData,
     ) {
-        self.stop_repeat();
+        self.stop_all_repeat();
         (&mut *self.callback.borrow_mut())(Event::Leave { serial, surface }, object, dispatch_data);
     }
 
@@ -371,37 +381,25 @@ impl KbdHandler {
             (sym, utf8, repeats)
         };
 
-        if key_state == wl_keyboard::KeyState::Pressed {
-            (&mut *self.callback.borrow_mut())(
-                Event::Key {
-                    serial,
-                    time,
-                    rawkey: key,
-                    keysym: sym,
-                    state: key_state,
-                    utf8: utf8.clone(),
-                },
-                object.clone(),
-                dispatch_data,
-            );
-            if repeats {
-                self.start_repeat(key, object, time);
+        if repeats {
+            if key_state == wl_keyboard::KeyState::Pressed {
+                self.start_repeat(key, object.clone(), time);
+            } else {
+                self.stop_repeat(key);
             }
-        } else {
-            self.stop_repeat();
-            (&mut *self.callback.borrow_mut())(
-                Event::Key {
-                    serial,
-                    time,
-                    rawkey: key,
-                    keysym: sym,
-                    state: key_state,
-                    utf8: utf8.clone(),
-                },
-                object,
-                dispatch_data,
-            );
         }
+        (&mut *self.callback.borrow_mut())(
+            Event::Key {
+                serial,
+                time,
+                rawkey: key,
+                keysym: sym,
+                state: key_state,
+                utf8: utf8.clone(),
+            },
+            object,
+            dispatch_data,
+        );
     }
 
     fn modifiers(

@@ -286,7 +286,7 @@ impl Frame for ConceptFrame {
         })
     }
 
-    fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
+    fn new_seat(&mut self, seat: &Attached<wl_seat::WlSeat>) {
         use self::wl_pointer::Event;
         let inner = self.inner.clone();
         let pointer = self.themer.theme_pointer_with_impl(
@@ -373,7 +373,7 @@ impl Frame for ConceptFrame {
             Mutex::new(PointerUserData {
                 location: Location::None,
                 position: (0.0, 0.0),
-                seat: seat.clone(),
+                seat: (**seat).clone(),
             })
         });
         self.pointers.push(pointer);
