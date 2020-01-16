@@ -153,12 +153,12 @@ where
     let repeat = match repeatkind {
         RepeatKind::System => RepeatDetails {
             locked: false,
-            rate: 100,
+            gap: 100,
             delay: 300,
         },
         RepeatKind::Fixed { rate, delay } => RepeatDetails {
             locked: true,
-            rate,
+            gap: 1000 / rate,
             delay,
         },
     };
@@ -184,7 +184,7 @@ where
 
 struct RepeatDetails {
     locked: bool,
-    rate: u32,
+    gap: u32,
     delay: u32,
 }
 
@@ -205,7 +205,7 @@ impl KbdHandler {
         *self.current_repeat.borrow_mut() = Some(RepeatData {
             keyboard,
             keycode: key,
-            rate: self.repeat.rate,
+            gap: self.repeat.gap,
             time: time + self.repeat.delay,
         });
         self.timer_handle
@@ -427,7 +427,7 @@ impl KbdHandler {
 
     fn repeat_info(&mut self, _: wl_keyboard::WlKeyboard, rate: i32, delay: i32) {
         if !self.repeat.locked {
-            self.repeat.rate = rate as u32;
+            self.repeat.gap = 1000 / (rate as u32);
             self.repeat.delay = delay as u32;
         }
     }
@@ -440,8 +440,8 @@ impl KbdHandler {
 struct RepeatData {
     keyboard: wl_keyboard::WlKeyboard,
     keycode: u32,
-    // repeat rate, in ms
-    rate: u32,
+    // repeat gap, in ms
+    gap: u32,
     // time of the last event, in ms
     time: u32,
 }
@@ -492,7 +492,7 @@ impl calloop::EventSource for RepeatSource {
                     let mut state = state.borrow_mut();
                     let keysym = state.get_one_sym_raw(data.keycode);
                     let utf8 = state.get_utf8_raw(data.keycode);
-                    let new_time = data.rate + data.time;
+                    let new_time = data.gap + data.time;
                     // notify the callback
                     (&mut *callback.borrow_mut())(
                         Event::Repeat {
@@ -507,7 +507,7 @@ impl calloop::EventSource for RepeatSource {
                     // update the time of last event
                     data.time = new_time;
                     // schedule the next timeout
-                    timer_handle.add_timeout(Duration::from_millis(data.rate as u64), ());
+                    timer_handle.add_timeout(Duration::from_millis(data.gap as u64), ());
                 }
             },
             waker,
