@@ -212,8 +212,9 @@ macro_rules! default_environment {
 /// # use smithay_client_toolkit::{default_environment, init_default_environment};
 /// # default_environment!(MyEnv, fields=[somefield: u32, otherfield: String,], singles=[], multis=[],);
 /// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
-/// # let mut queue = display.create_event_queue();
-/// let env = init_default_environment!(MyEnv, &display,
+/// # let queue = display.create_event_queue();
+/// # let attached_display = (*display).clone().attach(queue.token());
+/// let env = init_default_environment!(MyEnv, &attached_display,
 ///     fields=[
 ///         /* initializers for your extra fields if any */
 ///         somefield: 42,
