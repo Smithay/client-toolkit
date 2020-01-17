@@ -9,6 +9,27 @@ use wayland_client::{
 };
 use wayland_cursor::{is_available, load_theme, Cursor, CursorTheme};
 
+/// The specification of a cursor theme to be used by the ThemeManager
+pub enum ThemeSpec<'a> {
+    /// Use this specific theme with given base size
+    Precise {
+        /// Name of the cursor theme to use
+        name: &'a str,
+        /// Base size of the cursor images
+        ///
+        /// This is the size that will be used on monitors with a scale
+        /// factor of 1. Cursor images sizes will be multiples of this
+        /// base size on HiDPI outputs.
+        size: u32,
+    },
+    /// Use the system provided theme
+    ///
+    /// In this case SCTK will read the `XCURSOR_THEME` and
+    /// `XCURSOR_SIZE` environment variables to figure out the
+    /// theme to use.
+    System,
+}
+
 /// Wrapper managing a system theme for pointer images
 ///
 /// You can use it to initialize new pointers in order
@@ -30,7 +51,7 @@ impl ThemeManager {
     ///
     /// Fails if `libwayland-cursor` is not available.
     pub fn init(
-        name: Option<&str>,
+        theme: ThemeSpec,
         compositor: Attached<wl_compositor::WlCompositor>,
         shm: Attached<wl_shm::WlShm>,
     ) -> Result<ThemeManager, ()> {
@@ -40,10 +61,7 @@ impl ThemeManager {
 
         Ok(ThemeManager {
             compositor,
-            themes: Rc::new(RefCell::new(ScaledThemeList::new(
-                name.map(Into::into),
-                shm,
-            ))),
+            themes: Rc::new(RefCell::new(ScaledThemeList::new(theme, shm))),
         })
     }
 
@@ -136,14 +154,27 @@ impl ThemeManager {
 struct ScaledThemeList {
     shm: Attached<wl_shm::WlShm>,
     name: Option<String>,
+    size: u32,
     themes: Vec<(u32, CursorTheme)>,
 }
 
 impl ScaledThemeList {
-    fn new(name: Option<String>, shm: Attached<wl_shm::WlShm>) -> ScaledThemeList {
+    fn new(theme: ThemeSpec, shm: Attached<wl_shm::WlShm>) -> ScaledThemeList {
+        let (name, size) = match theme {
+            ThemeSpec::Precise { name, size } => (Some(name.into()), size),
+            ThemeSpec::System => {
+                let name = std::env::var("XCURSOR_THEME").ok();
+                let size = std::env::var("XCURSOR_SIZE")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(24);
+                (name, size)
+            }
+        };
         ScaledThemeList {
             shm,
             name,
+            size,
             themes: vec![],
         }
     }
@@ -154,7 +185,11 @@ impl ScaledThemeList {
         if let Some(idx) = opt_index {
             self.themes[idx].1.get_cursor(name)
         } else {
-            let new_theme = load_theme(self.name.as_ref().map(|s| &s[..]), 16 * scale, &self.shm);
+            let new_theme = load_theme(
+                self.name.as_ref().map(|s| &s[..]),
+                self.size * scale,
+                &self.shm,
+            );
             self.themes.push((scale, new_theme));
             self.themes.last().unwrap().1.get_cursor(name)
         }

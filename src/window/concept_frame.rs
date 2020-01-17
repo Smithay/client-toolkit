@@ -14,7 +14,7 @@ use wayland_client::protocol::{
 use wayland_client::{Attached, DispatchData};
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
-use crate::seat::pointer::{AutoPointer, AutoThemer};
+use crate::seat::pointer::{AutoPointer, AutoThemer, ThemeSpec};
 use crate::shm::DoubleMemPool;
 
 /*
@@ -278,7 +278,7 @@ impl Frame for ConceptFrame {
             active: false,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(None, compositor.clone(), shm.clone()),
+            themer: AutoThemer::init(ThemeSpec::System, compositor.clone(), shm.clone()),
             surface_version: compositor.as_ref().version(),
             theme: Box::new(DefaultTheme),
             title: None,

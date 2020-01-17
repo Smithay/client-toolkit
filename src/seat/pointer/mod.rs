@@ -8,7 +8,7 @@ use wayland_client::{
 };
 mod theme;
 
-pub use self::theme::{ThemeManager, ThemedPointer};
+pub use self::theme::{ThemeManager, ThemeSpec, ThemedPointer};
 
 /// Wrapper to gracefully handle a missing `libwayland-cursor`
 ///
@@ -32,11 +32,11 @@ impl AutoThemer {
     ///
     /// Falls back to `UnThemed` if `libwayland-cursor` is not available.
     pub fn init(
-        name: Option<&str>,
+        theme: ThemeSpec,
         compositor: Attached<wl_compositor::WlCompositor>,
         shm: Attached<wl_shm::WlShm>,
     ) -> AutoThemer {
-        match ThemeManager::init(name, compositor, shm) {
+        match ThemeManager::init(theme, compositor, shm) {
             Ok(mgr) => AutoThemer::Themed(mgr),
             Err(()) => AutoThemer::UnThemed,
         }
