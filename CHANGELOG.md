@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+#### Breaking changes
+
+- Upgrade to `wayland-client` 0.25. This changes the prototype of most callbacks by
+  adding the `DispatchData` mechanism for state sharing
+- Re-structure the lib API around the new `Environment` type as an entry point (breaks a lot of things).
+  This makes teh crate follow a monolithic-modular structure centerted on this type.
+- `keyboard` is now a submodule of `seat`
+- `keyboard` key repetition is now handled as a calloop event source
+- `pointer` is now a submodule of `seat`
+- The initialization of `pointer` theming utilities now require a `ThemeSpec` argument
+  instead of just a theme name, allowing control over the size of the cursors as well
+- Pointer theming utilities can no longer be shared accross threads, as it was racy.
+- `Window` now tracks new seats automatically (the `new_seat` method is removed)
+- `Window` can no longer be shared accross threads, as it was racy.
+
+#### Additions
+
+- The `pointer` theming will now read the `XCURSOR_THEME` and `XCURSOR_SIZE` environment
+  variables to figure the default theme
+- `pointer` theming utilities now handle HiDPI monitors
+- SCTK now uses the `log` crate to log its warning and error messages
+- Data offers `ReadPipe`scan be inserted in a calloop event loop as an event source
+- The `WaylandSource` wrapper allows a `wayland-client` `EventQueue` to be inserted into
+  a calloop event source.
+
 ## 0.6.4 -- 2019-08-27
 
 #### Bugfixes
