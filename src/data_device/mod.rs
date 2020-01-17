@@ -62,7 +62,6 @@ impl DDInner {
     //
     // should do nothing if the seat is already known
     fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
-        println!("NEWSEAT");
         match self {
             DDInner::Ready {
                 mgr,
@@ -114,10 +113,8 @@ impl DDInner {
     }
 
     fn with_device<F: FnOnce(&DataDevice)>(&self, seat: &wl_seat::WlSeat, f: F) -> Result<(), ()> {
-        println!("CHECKING DEVICES");
         match self {
             DDInner::Pending { .. } => {
-                println!("NOTREADY");
                 Err(())
             }
             DDInner::Ready { devices, .. } => {
@@ -127,7 +124,6 @@ impl DDInner {
                         return Ok(());
                     }
                 }
-                println!("NOTFOUND");
                 Err(())
             }
         }
@@ -158,7 +154,6 @@ impl DataDeviceHandler {
 
         let seat_inner = inner.clone();
         let listener = seat_handler.listen(move |seat, seat_data, _| {
-            println!("LISTEN NEW SEAT");
             if seat_data.defunct {
                 seat_inner.borrow_mut().remove_seat(&seat);
             } else {
