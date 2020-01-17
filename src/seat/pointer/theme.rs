@@ -89,8 +89,6 @@ impl ThemeManager {
         F: FnMut(wl_pointer::Event, ThemedPointer, DispatchData) + 'static,
     {
         let surface = self.compositor.create_surface();
-        surface.quick_assign(|_, _, _| {});
-
         let inner = Rc::new(RefCell::new(PointerInner {
             surface: (*surface).clone().detach(),
             themes: self.themes.clone(),
@@ -98,23 +96,39 @@ impl ThemeManager {
             current_cursor: "left_ptr".into(),
             scale_factor: 1,
         }));
-        let inner2 = inner.clone();
 
+        let inner2 = inner.clone();
         let pointer = seat.get_pointer();
         pointer.quick_assign(move |ptr, event, ddata| {
             callback(
                 event,
                 ThemedPointer {
                     pointer: (*ptr).clone().detach(),
-                    inner: inner.clone(),
+                    inner: inner2.clone(),
                 },
                 ddata,
             )
         });
 
+        let winner = Rc::downgrade(&inner);
+        let my_pointer = pointer.clone();
+        crate::surface::setup_surface(
+            surface,
+            Some(move |scale_factor, _, _: DispatchData| {
+                if let Some(inner) = Weak::upgrade(&winner) {
+                    let mut inner = inner.borrow_mut();
+                    inner.scale_factor = scale_factor;
+                    // we can't handle errors here, so ignore it
+                    // worst that can happen is cursor drawn with the wrong
+                    // scale factor
+                    let _ = inner.update_cursor(&my_pointer);
+                }
+            }),
+        );
+
         ThemedPointer {
             pointer: (*pointer).clone().detach(),
-            inner: inner2,
+            inner,
         }
     }
 }
