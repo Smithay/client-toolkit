@@ -20,6 +20,7 @@ dlib = "0.4"
 lazy_static = "1.0"
 memmap = "0.7"
 andrew = "0.2.0"
+log = "0.4"
 wayland-client = { git = "https://github.com/Smithay/wayland-rs" }
 wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" , features = ["client", "unstable_protocols"] }
 wayland-cursor = { git = "https://github.com/Smithay/wayland-rs" }

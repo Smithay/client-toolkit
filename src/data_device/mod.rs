@@ -33,7 +33,7 @@ impl DDInner {
         let seats = if let DDInner::Pending { seats } = self {
             ::std::mem::replace(seats, Vec::new())
         } else {
-            eprintln!("[SCTK] Ignoring second wl_data_device_manager.");
+            log::warn!("Ignoring second wl_data_device_manager.");
             return;
         };
 
@@ -114,9 +114,7 @@ impl DDInner {
 
     fn with_device<F: FnOnce(&DataDevice)>(&self, seat: &wl_seat::WlSeat, f: F) -> Result<(), ()> {
         match self {
-            DDInner::Pending { .. } => {
-                Err(())
-            }
+            DDInner::Pending { .. } => Err(()),
             DDInner::Ready { devices, .. } => {
                 for (s, device) in devices {
                     if s == seat {

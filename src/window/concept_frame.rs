@@ -516,7 +516,9 @@ impl Frame for ConceptFrame {
                                 if let Ok(mut file) = ::std::fs::File::open(font) {
                                     match file.read_to_end(&mut font_data) {
                                         Ok(_) => self.font_data = Some(font_data),
-                                        Err(err) => eprintln!("Could not read font file: {}", err),
+                                        Err(err) => {
+                                            log::error!("Could not read font file: {}", err)
+                                        }
                                     }
                                 }
                             }
@@ -560,10 +562,7 @@ impl Frame for ConceptFrame {
                     }
                 }
                 if let Err(err) = mmap.flush() {
-                    eprintln!(
-                        "[SCTK] Basic frame: failed to flush frame memory map: {}",
-                        err
-                    );
+                    log::error!("Failed to flush frame memory map: {}", err);
                 }
             }
 
@@ -779,7 +778,7 @@ fn change_pointer(pointer: &AutoPointer, location: Location, serial: Option<u32>
         _ => "left_ptr",
     };
     if pointer.set_cursor(name, serial).is_err() {
-        eprintln!("[SCTK] Basic frame: failed to set cursor");
+        log::error!("Failed to set cursor");
     }
 }
 

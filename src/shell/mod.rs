@@ -228,7 +228,7 @@ impl GlobalHandler<wl_shell::WlShell> for ShellHandler {
         if let Lazy::Unknown = inner.wl_shell {
             inner.wl_shell = Lazy::Seen { id, version };
         } else {
-            eprintln!("SCTK: compositor advertized wl_shell multiple times, ignoring.")
+            log::warn!("Compositor advertized wl_shell multiple times, ignoring.")
         }
     }
     fn get(&self) -> Option<Attached<wl_shell::WlShell>> {
@@ -263,7 +263,7 @@ impl GlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
         if let Lazy::Unknown = inner.xdg_shell {
             inner.xdg_shell = Lazy::Seen { id, version };
         } else {
-            eprintln!("SCTK: compositor advertized xdg_wm_base multiple times, ignoring.")
+            log::warn!("Compositor advertized xdg_wm_base multiple times, ignoring.")
         }
     }
     fn get(&self) -> Option<Attached<xdg_wm_base::XdgWmBase>> {
@@ -304,7 +304,7 @@ impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
         if let Lazy::Unknown = inner.zxdg_shell {
             inner.zxdg_shell = Lazy::Seen { id, version };
         } else {
-            eprintln!("SCTK: compositor advertized zxdg_shell_v6 multiple times, ignoring.")
+            log::warn!("Compositor advertized zxdg_shell_v6 multiple times, ignoring.")
         }
     }
     fn get(&self) -> Option<Attached<zxdg_shell_v6::ZxdgShellV6>> {

@@ -101,7 +101,7 @@ impl DataOffer {
         self.offer.receive(mime_type, writefd);
 
         if let Err(err) = close(writefd) {
-            eprintln!("[SCTK] Data offer: failed to close write pipe: {}", err);
+            log::warn!("Failed to close write pipe: {}", err);
         }
 
         Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
