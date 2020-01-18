@@ -57,7 +57,7 @@ impl WindowConfig {
     }
 }
 
-sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
+sctk::default_environment!(PtrInputExample);
 
 fn main() {
     /*
@@ -73,7 +73,7 @@ fn main() {
     let mut queue = display.create_event_queue();
 
     let env = sctk::init_default_environment!(
-        CompInfo,
+        PtrInputExample,
         &(*display).clone().attach(queue.token()),
         fields = []
     );

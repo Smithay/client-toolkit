@@ -59,22 +59,25 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// This includes handlers for the following globals:
 ///
 /// - `wl_compositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
-/// - `wl_data_device_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+/// - `wl_data_device_manager` as a [`DataDeviceHandler`](data_device/struct.DataDeviceHandler.html)
 /// - `wl_output` with the [`OutputHandler`](output/struct.OutputHandler.html)
 /// - `wl_seat` with the [`SeatHandler`](seat/struct.SeatHandler.html)
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+/// - `wl_shm` as a [`ShmHandler`](shm/struct.ShmHandler.html)
 /// - `xdg_shell` and `wl_shell` with the [`ShellHandler`](shell/struct.ShellHandler.html)
+/// - `xdg_decoration_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 ///
 /// If you don't need to add anything more, its use is as simple as:
 ///
 /// ```no_run
 /// # use smithay_client_toolkit::default_environment;
-/// default_environment!(MyEnv, fields=[], singles=[], multis=[]);
+/// default_environment!(MyEnv);
 /// ```
 ///
 /// otherwise, you can use the `fields` argument to add additional fields to the generated struct, and
 /// the `singles` and `multis` arguments to route additional globals like with the
-/// [`environment!`](macro.environment.html) macro.
+/// [`environment!`](macro.environment.html) macro. These three fields are optional, but they must
+/// appear in this order.
 ///
 /// ```no_run
 /// # use smithay_client_toolkit::default_environment;
@@ -92,10 +95,11 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// );
 /// ```
 macro_rules! default_environment {
-    ($env_name:ident,
-        fields = [$($fname:ident : $fty:ty),* $(,)?],
-        singles = [$($sty:ty => $sname: ident),* $(,)?],
-        multis = [$($mty:ty => $mname:ident),* $(,)?]$(,)?
+    ($env_name:ident
+        $(,fields = [$($fname:ident : $fty:ty),* $(,)?])?
+        $(,singles = [$($sty:ty => $sname: ident),* $(,)?])?
+        $(,multis = [$($mty:ty => $mname:ident),* $(,)?])?
+        $(,)?
     ) => {
         /*
          * Declare the type
@@ -116,9 +120,9 @@ macro_rules! default_environment {
             // data device
             sctk_data_device_manager: $crate::data_device::DataDeviceHandler,
             // user added
-            $(
+            $($(
                 $fname : $fty,
-            )*
+            )*)?
         }
 
         // SHM utility
@@ -187,7 +191,7 @@ macro_rules! default_environment {
                 // data device
                 $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager
                 // user added
-                $($sty => $sname),*
+                $($($sty => $sname),*)?
             ],
             multis = [
                 // output globals
@@ -195,7 +199,7 @@ macro_rules! default_environment {
                 // seat globals
                 $crate::reexports::client::protocol::wl_seat::WlSeat => sctk_seats,
                 // user added
-                $($mty => $mname),*
+                $($($mty => $mname),*)?
             ]
         );
     };
@@ -223,8 +227,9 @@ macro_rules! default_environment {
 /// );
 /// ```
 macro_rules! init_default_environment {
-    ($env_name:ident, $display:expr,
-        fields = [$($fname:ident : $fval:expr),* $(,)?]$(,)?
+    ($env_name:ident, $display:expr
+        $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
+        $(,)?
     ) => {
         {
             let mut sctk_seats = $crate::seat::SeatHandler::new();
@@ -238,9 +243,9 @@ macro_rules! init_default_environment {
                 sctk_outputs: $crate::output::OutputHandler::new(),
                 sctk_seats,
                 sctk_data_device_manager,
-                $(
+                $($(
                     $fname: $fval,
-                )*
+                )*)?
             })
         }
     };

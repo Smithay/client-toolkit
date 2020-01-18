@@ -15,7 +15,7 @@ use sctk::seat::keyboard::{map_keyboard, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent};
 
-sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
+sctk::default_environment!(KbdInputExample);
 
 fn main() {
     /*
@@ -31,7 +31,7 @@ fn main() {
     let mut queue = display.create_event_queue();
 
     let env = sctk::init_default_environment!(
-        CompInfo,
+        KbdInputExample,
         &(*display).clone().attach(queue.token()),
         fields = []
     );

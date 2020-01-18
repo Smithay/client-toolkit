@@ -6,7 +6,7 @@ use sctk::shell::Shell;
 // This is a small program that queries the compositor for
 // various information and prints them on the console before exiting.
 
-sctk::default_environment!(CompInfo, fields = [], singles = [], multis = []);
+sctk::default_environment!(CompInfo);
 
 fn main() -> Result<(), ()> {
     let display = match Display::connect_to_env() {

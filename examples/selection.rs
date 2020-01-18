@@ -21,12 +21,12 @@ use sctk::reexports::{
     },
 };
 
-sctk::default_environment!(Env, fields = [], singles = [], multis = []);
+sctk::default_environment!(SelectionExample);
 
 // Here the type parameter is a global value that will be shared by
 // all callbacks invoked by the event loop.
 type DData = (
-    Environment<Env>,
+    Environment<SelectionExample>,
     Option<WEvent>,
     Option<Source<ReadPipeSource>>,
 );
@@ -45,7 +45,7 @@ fn main() {
     let mut queue = display.create_event_queue();
 
     let env = sctk::init_default_environment!(
-        Env,
+        SelectionExample,
         &(*display).clone().attach(queue.token()),
         fields = []
     );
