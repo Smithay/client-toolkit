@@ -240,15 +240,36 @@ macro_rules! default_environment {
 /// If a preset was used for [`default_environment!`](macro.default_environment.html), it
 /// must be provided here as well.
 ///
+/// The macro will automatically setup a Wayland connection and evaluate to a `Result`
+/// containing either `Ok((env, display, queue))`, providing you the initialized `Environment`
+/// as well as the wayland `Display` and `EventQueue` associated to it, or to an error
+/// if the connection failed.
+///
 /// ```no_run
 /// # use smithay_client_toolkit::{default_environment, init_default_environment};
-/// # default_environment!(MyEnv, fields=[somefield: u32, otherfield: String,], singles=[], multis=[],);
-/// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
-/// # let queue = display.create_event_queue();
-/// let env = init_default_environment!(MyEnv,
+/// # default_environment!(MyEnv, desktop, fields=[somefield: u32, otherfield: String]);
+/// let (env, display, queue) = init_default_environment!(MyEnv,
 ///     desktop,           // the optional preset
-///     &display,          // the WlDisplay for initialization
-///     &mut queue,        // the event queue that should be used for initialization
+///     /* initializers for your extra fields if any, can be ommited if no fields are added */
+///     fields=[
+///         somefield: 42,
+///         otherfield: String::from("Hello World"),
+///     ]
+/// ).expect("Unable to connect to the wayland compositor");
+/// ```
+///
+/// If you instead want the macro to use some pre-existing display and event queue, you can
+/// add the `with` argument providing them. In that case the macro will simply evaluate to
+/// an `Environment` value, not a result.
+///
+/// ```no_run
+/// # use smithay_client_toolkit::{default_environment, init_default_environment};
+/// # default_environment!(MyEnv, desktop, fields=[somefield: u32, otherfield: String]);
+/// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
+/// # let mut queue = display.create_event_queue();
+/// let env = init_default_environment!(MyEnv,
+///     desktop,                      // the optional preset
+///     with=(&display, &mut queue),  // the display and event queue to use
 ///     /* initializers for your extra fields if any, can be ommited if no fields are added */
 ///     fields=[
 ///         somefield: 42,
@@ -257,11 +278,13 @@ macro_rules! default_environment {
 /// );
 /// ```
 macro_rules! init_default_environment {
-    ($env_name:ident, desktop, $display:expr, $queue:expr
+    ($env_name:ident, desktop
+        $(, with=($display:expr, $queue:expr))?
         $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
         $(,)?
     ) => {
-        $crate::init_default_environment!($env_name, $display, $queue,
+        $crate::init_default_environment!($env_name,
+            $(with=($display, $queue),)?
             fields = [
                 sctk_shell: $crate::shell::ShellHandler::new(),
                 sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
@@ -271,7 +294,7 @@ macro_rules! init_default_environment {
             ]
         )
     };
-    ($env_name:ident, $display:expr, $queue:expr
+    ($env_name:ident, with=($display:expr, $queue:expr)
         $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
         $(,)?
     ) => {
@@ -302,5 +325,19 @@ macro_rules! init_default_environment {
 
             env
         }
+    };
+    ($env_name:ident
+        $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
+        $(,)?
+    ) => {
+        $crate::reexports::client::Display::connect_to_env().map(|display| {
+            let mut queue = display.create_event_queue();
+            let env = $crate::init_default_environment!(
+                $env_name,
+                with=(&display, &mut queue),
+                fields=[$($($fname: $fval),*)?],
+            );
+            (env, display, queue)
+        })
     };
 }

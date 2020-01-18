@@ -7,10 +7,7 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::calloop;
-use sctk::reexports::client::{
-    protocol::{wl_keyboard, wl_shm, wl_surface},
-    Display,
-};
+use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent};
@@ -21,24 +18,8 @@ fn main() {
     /*
      * Initial setup
      */
-    let display = match Display::connect_to_env() {
-        Ok(d) => d,
-        Err(e) => {
-            panic!("Unable to connect to a Wayland compositor: {}", e);
-        }
-    };
-
-    let mut queue = display.create_event_queue();
-
-    let env = sctk::init_default_environment!(KbdInputExample, desktop, &display, &mut queue);
-
-    // two roundtrips to init the environment
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
+    let (env, display, queue) = sctk::init_default_environment!(KbdInputExample, desktop)
+        .expect("Unable to connect to a Wayland compositor");
 
     /*
      * Prepare a calloop event loop to handle key repetion

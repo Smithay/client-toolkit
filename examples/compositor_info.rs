@@ -1,6 +1,5 @@
 extern crate smithay_client_toolkit as sctk;
 
-use sctk::reexports::client::Display;
 use sctk::shell::Shell;
 
 // This is a small program that queries the compositor for
@@ -9,25 +8,8 @@ use sctk::shell::Shell;
 sctk::default_environment!(CompInfo, desktop);
 
 fn main() -> Result<(), ()> {
-    let display = match Display::connect_to_env() {
-        Ok(d) => d,
-        Err(e) => {
-            println!("Unable to connect to a Wayland compositor: {}", e);
-            return Err(());
-        }
-    };
-
-    let mut queue = display.create_event_queue();
-
-    let env = sctk::init_default_environment!(CompInfo, desktop, &display, &mut queue);
-
-    // two roundtrips to init the environment
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
+    let (env, _display, _queue) = sctk::init_default_environment!(CompInfo, desktop)
+        .expect("Unable to connect to a Wayland compositor");
 
     println!("== Smithay's compositor info tool ==\n");
 

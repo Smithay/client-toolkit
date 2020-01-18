@@ -7,7 +7,6 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_pointer, wl_shm, wl_surface};
-use sctk::reexports::client::Display;
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent};
 
@@ -63,24 +62,8 @@ fn main() {
     /*
      * Initial setup
      */
-    let display = match Display::connect_to_env() {
-        Ok(d) => d,
-        Err(e) => {
-            panic!("Unable to connect to a Wayland compositor: {}", e);
-        }
-    };
-
-    let mut queue = display.create_event_queue();
-
-    let env = sctk::init_default_environment!(PtrInputExample, desktop, &display, &mut queue);
-
-    // two roundtrips to init the environment
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
+    let (env, _display, mut queue) = sctk::init_default_environment!(PtrInputExample, desktop)
+        .expect("Unable to connect to a Wayland compositor");
 
     /*
      * Init wayland objects

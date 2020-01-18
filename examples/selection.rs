@@ -17,7 +17,7 @@ use sctk::reexports::{
     calloop::{LoopHandle, Source},
     client::{
         protocol::{wl_keyboard, wl_seat, wl_shm, wl_surface},
-        DispatchData, Display,
+        DispatchData,
     },
 };
 
@@ -35,24 +35,8 @@ fn main() {
     /*
      * Initial setup
      */
-    let display = match Display::connect_to_env() {
-        Ok(d) => d,
-        Err(e) => {
-            panic!("Unable to connect to a Wayland compositor: {}", e);
-        }
-    };
-
-    let mut queue = display.create_event_queue();
-
-    let env = sctk::init_default_environment!(SelectionExample, desktop, &display, &mut queue);
-
-    // two roundtrips to init the environment
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
-    queue
-        .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-        .unwrap();
+    let (env, display, queue) = sctk::init_default_environment!(SelectionExample, desktop)
+        .expect("Unable to connect to a Wayland compositor");
 
     /*
      * Prepare a calloop event loop to handle clipboard reading
