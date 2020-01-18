@@ -52,9 +52,10 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 #[macro_export]
 /// Declare a batteries-included SCTK environment
 ///
-/// Similar to the [`environment!`](macro.environment.html) macro, but creates the typr for you and
-/// includes all the handlers provided by SCTK, for use with the rest of the library. Its sister macro
-/// [`init_default_environment!`](macro.init_default_environment.html) need to be used to initialize it.
+/// Similar to the [`environment!`](macro.environment.html) macro, but creates the type for you and
+/// includes all the handlers provided by SCTK, for use with the rest of the library. Its sister
+/// macro [`init_default_environment!`](macro.init_default_environment.html) needs to be used to
+/// initialize it.
 ///
 /// This includes handlers for the following globals:
 ///
@@ -65,7 +66,7 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_shm` as a [`ShmHandler`](shm/struct.ShmHandler.html)
 ///
-/// If you don't need to add anything more, its use is as simple as:
+/// If you don't need to add anything more, using it is as simple as:
 ///
 /// ```no_run
 /// # use smithay_client_toolkit::default_environment;
@@ -74,7 +75,8 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 ///
 /// The macro also provides some presets including more globals depending on your use-case:
 ///
-/// - the `desktop` preset, invoked as `default_environment!(MyEnv, desktop);` aditionnaly includes:
+/// - the `desktop` preset, invoked as `default_environment!(MyEnv, desktop);` additionally
+/// includes:
 ///   - `xdg_shell` and `wl_shell` with the [`ShellHandler`](shell/struct.ShellHandler.html)
 ///   - `xdg_decoration_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 ///
