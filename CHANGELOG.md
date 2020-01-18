@@ -7,15 +7,15 @@
 - Upgrade to `wayland-client` 0.25. This changes the prototype of most callbacks by
   adding the `DispatchData` mechanism for state sharing
 - Re-structure the lib API around the new `Environment` type as an entry point (breaks a lot of things).
-  This makes teh crate follow a monolithic-modular structure centerted on this type.
+  This makes the crate follow a monolithic-modular structure centered on this type.
 - `keyboard` is now a submodule of `seat`
 - `keyboard` key repetition is now handled as a calloop event source
 - `pointer` is now a submodule of `seat`
 - The initialization of `pointer` theming utilities now require a `ThemeSpec` argument
   instead of just a theme name, allowing control over the size of the cursors as well
-- Pointer theming utilities can no longer be shared accross threads, as it was racy.
+- Pointer theming utilities can no longer be shared across threads, as it was racy.
 - `Window` now tracks new seats automatically (the `new_seat` method is removed)
-- `Window` can no longer be shared accross threads, as it was racy.
+- `Window` can no longer be shared across threads, as it was racy.
 
 #### Additions
 
@@ -32,7 +32,7 @@
 #### Bugfixes
 
 - Keyboard input breaking when `LC_ALL`, `LC_CTYPE` or `LANG` are set to an empty string
-- UTF8 intepretation no longer stops working if loading the compose table failed
+- UTF8 interpretation no longer stops working if loading the compose table failed
 
 ## 0.6.3 -- 2019-06-29
 
