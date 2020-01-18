@@ -21,7 +21,7 @@ use sctk::reexports::{
     },
 };
 
-sctk::default_environment!(SelectionExample);
+sctk::default_environment!(SelectionExample, desktop);
 
 // Here the type parameter is a global value that will be shared by
 // all callbacks invoked by the event loop.
@@ -44,11 +44,7 @@ fn main() {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(
-        SelectionExample,
-        &(*display).clone().attach(queue.token()),
-        fields = []
-    );
+    let env = sctk::init_default_environment!(SelectionExample, desktop, &display, &mut queue);
 
     // two roundtrips to init the environment
     queue

@@ -64,8 +64,6 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// - `wl_seat` with the [`SeatHandler`](seat/struct.SeatHandler.html)
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_shm` as a [`ShmHandler`](shm/struct.ShmHandler.html)
-/// - `xdg_shell` and `wl_shell` with the [`ShellHandler`](shell/struct.ShellHandler.html)
-/// - `xdg_decoration_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 ///
 /// If you don't need to add anything more, its use is as simple as:
 ///
@@ -74,14 +72,21 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// default_environment!(MyEnv);
 /// ```
 ///
-/// otherwise, you can use the `fields` argument to add additional fields to the generated struct, and
+/// The macro also provides some presets including more globals depending on your use-case:
+///
+/// - the `desktop` preset, invoked as `default_environment!(MyEnv, desktop);` aditionnaly includes:
+///   - `xdg_shell` and `wl_shell` with the [`ShellHandler`](shell/struct.ShellHandler.html)
+///   - `xdg_decoration_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+///
+/// You can also add the `fields` argument to add additional fields to the generated struct, and
 /// the `singles` and `multis` arguments to route additional globals like with the
 /// [`environment!`](macro.environment.html) macro. These three fields are optional, but they must
-/// appear in this order.
+/// appear in this order, and after the optional preset
 ///
 /// ```no_run
 /// # use smithay_client_toolkit::default_environment;
 /// default_environment!(MyEnv,
+///     desktop, // the chosen preset, can be ommited
 ///     fields=[
 ///         somefield: u32,
 ///         otherfield: String,
@@ -95,9 +100,44 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// );
 /// ```
 macro_rules! default_environment {
-    ($env_name:ident
+    ($env_name:ident, desktop
         $(,fields = [$($fname:ident : $fty:ty),* $(,)?])?
         $(,singles = [$($sty:ty => $sname: ident),* $(,)?])?
+        $(,multis = [$($mty:ty => $mname:ident),* $(,)?])?
+        $(,)?
+    ) => {
+        $crate::default_environment!($env_name,
+            fields=[
+                // shell
+                sctk_shell: $crate::shell::ShellHandler,
+                // decoration
+                sctk_decoration_mgr: $crate::environment::SimpleGlobal<$crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+                // others
+                $($($fname : $fty,)*)?
+            ],
+            singles = [
+                // shell globals
+                $crate::reexports::client::protocol::wl_shell::WlShell => sctk_shell,
+                $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase => sctk_shell,
+                $crate::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::ZxdgShellV6 => sctk_shell,
+                // decoration
+                $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1 => sctk_decoration_mgr,
+                // others
+                $($($sty => $sname,)*)?
+            ],
+            multis = [ $($($mty => $mname,)*)?  ],
+        );
+
+        // Shell utility
+        impl $crate::shell::ShellHandling for $env_name {
+            fn get_shell(&self) -> Option<$crate::shell::Shell> {
+                self.sctk_shell.get_shell()
+            }
+        }
+    };
+    ($env_name:ident
+        $(,fields = [$($fname:ident : $fty:ty),* $(,)?])?
+        $(,singles = [$($sty:ty => $sname:ident),* $(,)?])?
         $(,multis = [$($mty:ty => $mname:ident),* $(,)?])?
         $(,)?
     ) => {
@@ -108,11 +148,8 @@ macro_rules! default_environment {
             // SimpleGlobals
             sctk_compositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_compositor::WlCompositor>,
             sctk_subcompositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor>,
-            sctk_decoration_mgr: $crate::environment::SimpleGlobal<$crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
             // shm
             sctk_shm: $crate::shm::ShmHandler,
-            // shell
-            sctk_shell: $crate::shell::ShellHandler,
             // output
             sctk_outputs: $crate::output::OutputHandler,
             // seat
@@ -129,13 +166,6 @@ macro_rules! default_environment {
         impl $crate::shm::ShmHandling for $env_name {
             fn shm_formats(&self) -> Vec<$crate::reexports::client::protocol::wl_shm::Format> {
                 self.sctk_shm.shm_formats()
-            }
-        }
-
-        // Shell utility
-        impl $crate::shell::ShellHandling for $env_name {
-            fn get_shell(&self) -> Option<$crate::shell::Shell> {
-                self.sctk_shell.get_shell()
             }
         }
 
@@ -181,15 +211,10 @@ macro_rules! default_environment {
                 // SimpleGlobals
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor => sctk_compositor,
                 $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor => sctk_subcompositor,
-                $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1 => sctk_decoration_mgr,
                 // shm
                 $crate::reexports::client::protocol::wl_shm::WlShm => sctk_shm,
-                // shell globals
-                $crate::reexports::client::protocol::wl_shell::WlShell => sctk_shell,
-                $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase => sctk_shell,
-                $crate::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::ZxdgShellV6 => sctk_shell,
                 // data device
-                $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager
+                $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager,
                 // user added
                 $($($sty => $sname),*)?
             ],
@@ -212,41 +237,70 @@ macro_rules! default_environment {
 /// to use it to initialize the environment instead of
 /// [`Envrionment::init`](environment/struct.Environment.html). It has the same semantics.
 ///
+/// If a preset was used for [`default_environment!`](macro.default_environment.html), it
+/// must be provided here as well.
+///
 /// ```no_run
 /// # use smithay_client_toolkit::{default_environment, init_default_environment};
 /// # default_environment!(MyEnv, fields=[somefield: u32, otherfield: String,], singles=[], multis=[],);
 /// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
 /// # let queue = display.create_event_queue();
-/// # let attached_display = (*display).clone().attach(queue.token());
-/// let env = init_default_environment!(MyEnv, &attached_display,
+/// let env = init_default_environment!(MyEnv,
+///     desktop,           // the optional preset
+///     &display,          // the WlDisplay for initialization
+///     &mut queue,        // the event queue that should be used for initialization
+///     /* initializers for your extra fields if any, can be ommited if no fields are added */
 ///     fields=[
-///         /* initializers for your extra fields if any */
 ///         somefield: 42,
 ///         otherfield: String::from("Hello World"),
 ///     ]
 /// );
 /// ```
 macro_rules! init_default_environment {
-    ($env_name:ident, $display:expr
+    ($env_name:ident, desktop, $display:expr, $queue:expr
+        $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
+        $(,)?
+    ) => {
+        $crate::init_default_environment!($env_name, $display, $queue,
+            fields = [
+                sctk_shell: $crate::shell::ShellHandler::new(),
+                sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
+                $($(
+                    $fname: $fval,
+                )*)?
+            ]
+        )
+    };
+    ($env_name:ident, $display:expr, $queue:expr
         $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
         $(,)?
     ) => {
         {
             let mut sctk_seats = $crate::seat::SeatHandler::new();
             let sctk_data_device_manager = $crate::data_device::DataDeviceHandler::init(&mut sctk_seats);
-            $crate::environment::Environment::init($display, $env_name {
+
+            let display = $crate::reexports::client::Proxy::clone(&$display);
+            let env = $crate::environment::Environment::init(&display.attach($queue.token()), $env_name {
                 sctk_compositor: $crate::environment::SimpleGlobal::new(),
                 sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
-                sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
                 sctk_shm: $crate::shm::ShmHandler::new(),
-                sctk_shell: $crate::shell::ShellHandler::new(),
                 sctk_outputs: $crate::output::OutputHandler::new(),
                 sctk_seats,
                 sctk_data_device_manager,
                 $($(
                     $fname: $fval,
                 )*)?
-            })
+            });
+
+            // two roundtrips to init the environment
+            $queue
+                .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+                .unwrap();
+            $queue
+                .sync_roundtrip(&mut (), |_, _, _| unreachable!())
+                .unwrap();
+
+            env
         }
     };
 }

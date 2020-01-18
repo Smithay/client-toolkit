@@ -12,7 +12,7 @@ use sctk::reexports::client::Display;
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent, State};
 
-sctk::default_environment!(ImViewerExample);
+sctk::default_environment!(ImViewerExample, desktop);
 
 fn main() {
     // First of all, retrieve the path from the program arguments:
@@ -48,11 +48,7 @@ fn main() {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(
-        ImViewerExample,
-        &(*display).clone().attach(queue.token()),
-        fields = []
-    );
+    let env = sctk::init_default_environment!(ImViewerExample, desktop, &display, &mut queue);
 
     // two roundtrips to init the environment
     queue

@@ -11,7 +11,7 @@ use sctk::reexports::client::Display;
 use sctk::shm::MemPool;
 use sctk::window::{ButtonState, ConceptFrame, Event as WEvent, Theme};
 
-sctk::default_environment!(ThemedFrameExample);
+sctk::default_environment!(ThemedFrameExample, desktop);
 
 fn main() {
     /*
@@ -26,11 +26,7 @@ fn main() {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(
-        ThemedFrameExample,
-        &(*display).clone().attach(queue.token()),
-        fields = []
-    );
+    let env = sctk::init_default_environment!(ThemedFrameExample, desktop, &display, &mut queue);
 
     // two roundtrips to init the environment
     queue

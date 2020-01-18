@@ -57,7 +57,7 @@ impl WindowConfig {
     }
 }
 
-sctk::default_environment!(PtrInputExample);
+sctk::default_environment!(PtrInputExample, desktop);
 
 fn main() {
     /*
@@ -72,11 +72,7 @@ fn main() {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(
-        PtrInputExample,
-        &(*display).clone().attach(queue.token()),
-        fields = []
-    );
+    let env = sctk::init_default_environment!(PtrInputExample, desktop, &display, &mut queue);
 
     // two roundtrips to init the environment
     queue

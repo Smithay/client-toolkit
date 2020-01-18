@@ -6,7 +6,7 @@ use sctk::shell::Shell;
 // This is a small program that queries the compositor for
 // various information and prints them on the console before exiting.
 
-sctk::default_environment!(CompInfo);
+sctk::default_environment!(CompInfo, desktop);
 
 fn main() -> Result<(), ()> {
     let display = match Display::connect_to_env() {
@@ -19,11 +19,7 @@ fn main() -> Result<(), ()> {
 
     let mut queue = display.create_event_queue();
 
-    let env = sctk::init_default_environment!(
-        CompInfo,
-        &(*display).clone().attach(queue.token()),
-        fields = []
-    );
+    let env = sctk::init_default_environment!(CompInfo, desktop, &display, &mut queue);
 
     // two roundtrips to init the environment
     queue
