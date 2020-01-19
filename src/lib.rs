@@ -270,8 +270,8 @@ macro_rules! default_environment {
 /// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
 /// # let mut queue = display.create_event_queue();
 /// let env = init_default_environment!(MyEnv,
-///     desktop,                      // the optional preset
-///     with=(&display, &mut queue),  // the display and event queue to use
+///     desktop,                 // the optional preset
+///     with=(display, queue),   // the display and event queue to use
 ///     /* initializers for your extra fields if any, can be ommited if no fields are added */
 ///     fields=[
 ///         somefield: 42,
@@ -336,7 +336,7 @@ macro_rules! init_default_environment {
             let mut queue = display.create_event_queue();
             let env = $crate::init_default_environment!(
                 $env_name,
-                with=(&display, &mut queue),
+                with=(display, queue),
                 fields=[$($($fname: $fval),*)?],
             );
             (env, display, queue)
