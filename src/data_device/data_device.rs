@@ -190,7 +190,7 @@ impl DataDevice {
         });
 
         DataDevice {
-            device: (**device).clone(),
+            device: device.detach(),
             inner,
         }
     }

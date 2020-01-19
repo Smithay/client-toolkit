@@ -134,7 +134,7 @@ impl DataSource {
         }
 
         DataSource {
-            source: (*source).clone().detach(),
+            source: source.detach(),
         }
     }
 }

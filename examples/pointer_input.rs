@@ -162,7 +162,7 @@ fn main() {
                 pointer.quick_assign(move |_, event, _| {
                     print_pointer_event(event, &seat_name, &surface)
                 });
-                *opt_ptr = Some((**pointer).clone());
+                *opt_ptr = Some(pointer.detach());
             }
         } else {
             if let Some(ptr) = opt_ptr.take() {

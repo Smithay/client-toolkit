@@ -49,7 +49,7 @@ impl DataOffer {
         });
 
         DataOffer {
-            offer: (*offer).clone().detach(),
+            offer: offer.detach(),
             inner,
         }
     }

@@ -172,10 +172,10 @@ where
     };
 
     keyboard.quick_assign(move |keyboard, event, data| {
-        kbd_handler.event((**keyboard).clone(), event, data)
+        kbd_handler.event(keyboard.detach(), event, data)
     });
 
-    Ok(((**keyboard).clone(), source))
+    Ok((keyboard.detach(), source))
 }
 
 /*

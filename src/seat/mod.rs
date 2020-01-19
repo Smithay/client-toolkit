@@ -124,7 +124,7 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
                 // notify the listeners that the seat is dead
                 listeners.retain(|lst| {
                     if let Some(cb) = Weak::upgrade(lst) {
-                        (&mut *cb.borrow_mut())((*seat).clone(), &*guard, ddata.reborrow());
+                        (&mut *cb.borrow_mut())(seat.clone(), &*guard, ddata.reborrow());
                         true
                     } else {
                         false

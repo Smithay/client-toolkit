@@ -123,10 +123,10 @@ where
             .unwrap();
         match event {
             wl_surface::Event::Enter { output } => {
-                user_data.enter(output, (*surface).clone().detach(), ddata, &callback);
+                user_data.enter(output, surface.detach(), ddata, &callback);
             }
             wl_surface::Event::Leave { output } => {
-                user_data.leave(&output, (*surface).clone().detach(), ddata, &callback);
+                user_data.leave(&output, surface.detach(), ddata, &callback);
             }
             _ => unreachable!(),
         };
@@ -135,7 +135,7 @@ where
         .as_ref()
         .user_data()
         .set_threadsafe(|| Mutex::new(SurfaceUserData::new()));
-    (*surface).clone().detach()
+    surface.detach()
 }
 
 impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>

@@ -267,7 +267,7 @@ impl<F: Frame + 'static> Window<F> {
         for seat in env.get_all_seats() {
             crate::seat::with_seat_data(&seat, |seat_data| {
                 if seat_data.has_pointer && !seat_data.defunct {
-                    seats.push((*seat).clone());
+                    seats.push(seat.detach());
                     frame.lock().unwrap().new_seat(&seat);
                 }
             });
@@ -279,7 +279,7 @@ impl<F: Frame + 'static> Window<F> {
             let is_known = seats.contains(&seat);
             if !is_known && seat_data.has_pointer && !seat_data.defunct {
                 seat_frame.lock().unwrap().new_seat(&seat);
-                seats.push((*seat).clone());
+                seats.push(seat.detach());
             } else if is_known && ((!seat_data.has_pointer) || seat_data.defunct) {
                 seat_frame.lock().unwrap().remove_seat(&seat);
                 seats.retain(|s| s != &*seat);
@@ -356,7 +356,7 @@ impl<F: Frame + 'static> Window<F> {
                     }
                 });
                 decoration.set_mode(Mode::ServerSide);
-                Some((*decoration).clone().detach())
+                Some(decoration.detach())
             }
             _ => None,
         };

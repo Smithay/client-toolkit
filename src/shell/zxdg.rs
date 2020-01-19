@@ -78,8 +78,8 @@ impl Zxdg {
         });
         surface.commit();
         Zxdg {
-            surface: (*xdgs).clone().detach(),
-            toplevel: (*toplevel).clone().detach(),
+            surface: xdgs.detach(),
+            toplevel: toplevel.detach(),
         }
     }
 }

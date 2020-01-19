@@ -119,7 +119,7 @@ impl Part {
         let subsurface = subcompositor.get_subsurface(&surface, parent);
         Part {
             surface,
-            subsurface: (*subsurface).clone().detach(),
+            subsurface: subsurface.detach(),
         }
     }
 }
@@ -373,7 +373,7 @@ impl Frame for ConceptFrame {
             Mutex::new(PointerUserData {
                 location: Location::None,
                 position: (0.0, 0.0),
-                seat: (**seat).clone(),
+                seat: seat.detach(),
             })
         });
         self.pointers.push(pointer);

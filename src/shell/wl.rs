@@ -42,7 +42,7 @@ impl Wl {
         });
         shell_surface.set_toplevel();
         Wl {
-            shell_surface: (*shell_surface).clone().detach(),
+            shell_surface: shell_surface.detach(),
         }
     }
 }

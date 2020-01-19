@@ -74,8 +74,8 @@ impl Xdg {
         });
         surface.commit();
         Xdg {
-            surface: (*xdgs).clone().detach(),
-            toplevel: (*toplevel).clone().detach(),
+            surface: xdgs.detach(),
+            toplevel: toplevel.detach(),
         }
     }
 }

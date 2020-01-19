@@ -69,7 +69,7 @@ impl ThemeManager {
     pub fn theme_pointer(&self, pointer: wl_pointer::WlPointer) -> ThemedPointer {
         let surface = self.compositor.create_surface();
         let inner = Rc::new(RefCell::new(PointerInner {
-            surface: (**surface).clone(),
+            surface: surface.detach(),
             themes: self.themes.clone(),
             last_serial: 0,
             current_cursor: "left_ptr".into(),
@@ -108,7 +108,7 @@ impl ThemeManager {
     {
         let surface = self.compositor.create_surface();
         let inner = Rc::new(RefCell::new(PointerInner {
-            surface: (*surface).clone().detach(),
+            surface: surface.detach(),
             themes: self.themes.clone(),
             last_serial: 0,
             current_cursor: "left_ptr".into(),
@@ -121,7 +121,7 @@ impl ThemeManager {
             callback(
                 event,
                 ThemedPointer {
-                    pointer: (*ptr).clone().detach(),
+                    pointer: ptr.detach(),
                     inner: inner2.clone(),
                 },
                 ddata,
@@ -145,7 +145,7 @@ impl ThemeManager {
         );
 
         ThemedPointer {
-            pointer: (*pointer).clone().detach(),
+            pointer: pointer.detach(),
             inner,
         }
     }

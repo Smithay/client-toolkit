@@ -170,7 +170,7 @@ struct ShellInner {
 /// # use sctk::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6;
 /// # let display = sctk::reexports::client::Display::connect_to_env().unwrap();
 /// # let mut queue = display.create_event_queue();
-/// # let attached_display = (*display).clone().attach(queue.token());
+/// # let attached_display = display.attach(queue.token());
 /// struct MyEnv {
 ///     my_shell: ShellHandler
 /// }

@@ -73,9 +73,9 @@ impl AutoThemer {
             AutoThemer::UnThemed => {
                 let pointer = seat.get_pointer();
                 pointer.quick_assign(move |ptr, event, data| {
-                    callback(event, AutoPointer::UnThemed((*ptr).clone().detach()), data)
+                    callback(event, AutoPointer::UnThemed(ptr.detach()), data)
                 });
-                AutoPointer::UnThemed((*pointer).clone().detach())
+                AutoPointer::UnThemed(pointer.detach())
             }
         }
     }
