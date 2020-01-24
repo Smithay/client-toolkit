@@ -1,6 +1,7 @@
+use std::cell::RefCell;
 use std::cmp::max;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 
 use andrew::line;
 use andrew::shapes::rectangle;
@@ -143,10 +144,10 @@ struct PointerUserData {
 
 struct Inner {
     parts: [Part; 5],
-    size: Mutex<(u32, u32)>,
-    resizable: Arc<Mutex<bool>>,
-    implem: Mutex<Box<dyn FnMut(FrameRequest, u32, DispatchData)>>,
-    maximized: Arc<Mutex<bool>>,
+    size: (u32, u32),
+    resizable: bool,
+    implem: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
+    maximized: bool,
 }
 
 impl Inner {
@@ -231,7 +232,7 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 /// buttons inspired by breeze, material hover shade and
 /// a white header background
 pub struct ConceptFrame {
-    inner: Arc<Inner>,
+    inner: Rc<RefCell<Inner>>,
     pools: DoubleMemPool,
     active: bool,
     hidden: bool,
@@ -259,18 +260,18 @@ impl Frame for ConceptFrame {
             Part::new(base_surface, compositor, subcompositor),
             Part::new(base_surface, compositor, subcompositor),
         ];
-        let inner = Arc::new(Inner {
+        let inner = Rc::new(RefCell::new(Inner {
             parts,
-            size: Mutex::new((1, 1)),
-            resizable: Arc::new(Mutex::new(true)),
-            implem: Mutex::new(implementation),
-            maximized: Arc::new(Mutex::new(false)),
-        });
+            size: (1, 1),
+            resizable: true,
+            implem: implementation,
+            maximized: false,
+        }));
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
         // None was previously returned from `pool()` and the draw was postponed
         let pools = DoubleMemPool::new(shm.clone(), move |ddata| {
-            (&mut *my_inner.implem.lock().unwrap())(FrameRequest::Refresh, 0, ddata);
+            (&mut my_inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
         })?;
         Ok(ConceptFrame {
             inner,
@@ -292,10 +293,9 @@ impl Frame for ConceptFrame {
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
             move |event, pointer: AutoPointer, ddata: DispatchData| {
-                let data: &Mutex<PointerUserData> = pointer.as_ref().user_data().get().unwrap();
-                let data = &mut *data.lock().unwrap();
-                let (width, _) = *(inner.size.lock().unwrap());
-                let resizable = *(inner.resizable.lock().unwrap());
+                let data: &RefCell<PointerUserData> = pointer.as_ref().user_data().get().unwrap();
+                let mut data = data.borrow_mut();
+                let mut inner = inner.borrow_mut();
                 match event {
                     Event::Enter {
                         serial,
@@ -305,19 +305,19 @@ impl Frame for ConceptFrame {
                     } => {
                         data.location = precise_location(
                             inner.find_surface(&surface),
-                            width,
+                            inner.size.0,
                             surface_x,
                             surface_y,
                         );
                         data.position = (surface_x, surface_y);
-                        if resizable {
+                        if inner.resizable {
                             change_pointer(&pointer, data.location, Some(serial))
                         }
                     }
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
                         change_pointer(&pointer, data.location, Some(serial));
-                        (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0, ddata);
+                        (&mut inner.implem)(FrameRequest::Refresh, 0, ddata);
                     }
                     Event::Motion {
                         surface_x,
@@ -325,23 +325,20 @@ impl Frame for ConceptFrame {
                         ..
                     } => {
                         data.position = (surface_x, surface_y);
-                        let newpos = precise_location(data.location, width, surface_x, surface_y);
+                        let newpos =
+                            precise_location(data.location, inner.size.0, surface_x, surface_y);
                         if newpos != data.location {
                             match (newpos, data.location) {
                                 (Location::Button(_), _) | (_, Location::Button(_)) => {
                                     // pointer movement involves a button, request refresh
-                                    (&mut *inner.implem.lock().unwrap())(
-                                        FrameRequest::Refresh,
-                                        0,
-                                        ddata,
-                                    );
+                                    (&mut inner.implem)(FrameRequest::Refresh, 0, ddata);
                                 }
                                 _ => (),
                             }
                             // we changed of part of the decoration, pointer image
                             // may need to be changed
                             data.location = newpos;
-                            if resizable {
+                            if inner.resizable {
                                 change_pointer(&pointer, data.location, None)
                             }
                         }
@@ -357,11 +354,11 @@ impl Frame for ConceptFrame {
                             let req = request_for_location(
                                 data.location,
                                 &data.seat,
-                                *(inner.maximized.lock().unwrap()),
-                                resizable,
+                                inner.maximized,
+                                inner.resizable,
                             );
                             if let Some(req) = req {
-                                (&mut *inner.implem.lock().unwrap())(req, serial, ddata);
+                                (&mut inner.implem)(req, serial, ddata);
                             }
                         }
                     }
@@ -369,8 +366,8 @@ impl Frame for ConceptFrame {
                 }
             },
         );
-        pointer.as_ref().user_data().set_threadsafe(|| {
-            Mutex::new(PointerUserData {
+        pointer.as_ref().user_data().set(|| {
+            RefCell::new(PointerUserData {
                 location: Location::None,
                 position: (0.0, 0.0),
                 seat: seat.detach(),
@@ -384,9 +381,9 @@ impl Frame for ConceptFrame {
             let user_data = pointer
                 .as_ref()
                 .user_data()
-                .get::<Mutex<PointerUserData>>()
+                .get::<RefCell<PointerUserData>>()
                 .unwrap();
-            let guard = user_data.lock().unwrap();
+            let guard = user_data.borrow_mut();
             if &guard.seat == seat {
                 pointer.release();
                 false
@@ -410,9 +407,9 @@ impl Frame for ConceptFrame {
     }
 
     fn set_maximized(&mut self, maximized: bool) -> bool {
-        let mut my_maximized = self.inner.maximized.lock().unwrap();
-        if *my_maximized != maximized {
-            *my_maximized = maximized;
+        let mut inner = self.inner.borrow_mut();
+        if inner.maximized != maximized {
+            inner.maximized = maximized;
             true
         } else {
             false
@@ -420,23 +417,24 @@ impl Frame for ConceptFrame {
     }
 
     fn set_resizable(&mut self, resizable: bool) {
-        *(self.inner.resizable.lock().unwrap()) = resizable;
+        self.inner.borrow_mut().resizable = resizable;
     }
 
     fn resize(&mut self, newsize: (u32, u32)) {
-        *(self.inner.size.lock().unwrap()) = newsize;
+        self.inner.borrow_mut().size = newsize;
     }
 
     fn redraw(&mut self) {
+        let inner = self.inner.borrow_mut();
         if self.hidden {
             // don't draw the borders
-            for p in &self.inner.parts {
+            for p in &inner.parts {
                 p.surface.attach(None, 0, 0);
                 p.surface.commit();
             }
             return;
         }
-        let (width, height) = *(self.inner.size.lock().unwrap());
+        let (width, height) = inner.size;
 
         {
             // grab the current pool
@@ -486,9 +484,9 @@ impl Frame for ConceptFrame {
                             .iter()
                             .flat_map(|p| {
                                 if p.as_ref().is_alive() {
-                                    let data: &Mutex<PointerUserData> =
+                                    let data: &RefCell<PointerUserData> =
                                         p.as_ref().user_data().get().unwrap();
-                                    Some(data.lock().unwrap().location)
+                                    Some(data.borrow().location)
                                 } else {
                                     None
                                 }
@@ -506,10 +504,7 @@ impl Frame for ConceptFrame {
                                 .get_regular_family_fonts("sans")
                                 .unwrap()
                                 .iter()
-                                .filter_map(|p| match p.extension() {
-                                    Some(e) if e == "ttf" => Some(p),
-                                    _ => None,
-                                })
+                                .filter(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
                                 .nth(0)
                             {
                                 let mut font_data = Vec::new();
@@ -575,25 +570,22 @@ impl Frame for ConceptFrame {
                 4 * width as i32,
                 wl_shm::Format::Argb8888,
             );
-            self.inner.parts[HEAD]
+            inner.parts[HEAD]
                 .subsurface
                 .set_position(0, -(HEADER_SIZE as i32));
-            self.inner.parts[HEAD].surface.attach(Some(&buffer), 0, 0);
+            inner.parts[HEAD].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                self.inner.parts[HEAD].surface.damage_buffer(
-                    0,
-                    0,
-                    width as i32,
-                    HEADER_SIZE as i32,
-                );
+                inner.parts[HEAD]
+                    .surface
+                    .damage_buffer(0, 0, width as i32, HEADER_SIZE as i32);
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[HEAD]
+                inner.parts[HEAD]
                     .surface
                     .damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
-            self.inner.parts[HEAD].surface.commit();
+            inner.parts[HEAD].surface.commit();
 
             // -> top-subsurface
             let buffer = pool.buffer(
@@ -603,13 +595,13 @@ impl Frame for ConceptFrame {
                 4 * (width + 2 * BORDER_SIZE) as i32,
                 wl_shm::Format::Argb8888,
             );
-            self.inner.parts[TOP].subsurface.set_position(
+            inner.parts[TOP].subsurface.set_position(
                 -(BORDER_SIZE as i32),
                 -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
             );
-            self.inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
+            inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                self.inner.parts[TOP].surface.damage_buffer(
+                inner.parts[TOP].surface.damage_buffer(
                     0,
                     0,
                     (width + 2 * BORDER_SIZE) as i32,
@@ -618,14 +610,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[TOP].surface.damage(
+                inner.parts[TOP].surface.damage(
                     0,
                     0,
                     (width + 2 * BORDER_SIZE) as i32,
                     BORDER_SIZE as i32,
                 );
             }
-            self.inner.parts[TOP].surface.commit();
+            inner.parts[TOP].surface.commit();
 
             // -> bottom-subsurface
             let buffer = pool.buffer(
@@ -635,12 +627,12 @@ impl Frame for ConceptFrame {
                 4 * (width + 2 * BORDER_SIZE) as i32,
                 wl_shm::Format::Argb8888,
             );
-            self.inner.parts[BOTTOM]
+            inner.parts[BOTTOM]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), height as i32);
-            self.inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
+            inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                self.inner.parts[BOTTOM].surface.damage_buffer(
+                inner.parts[BOTTOM].surface.damage_buffer(
                     0,
                     0,
                     (width + 2 * BORDER_SIZE) as i32,
@@ -649,14 +641,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[BOTTOM].surface.damage(
+                inner.parts[BOTTOM].surface.damage(
                     0,
                     0,
                     (width + 2 * BORDER_SIZE) as i32,
                     BORDER_SIZE as i32,
                 );
             }
-            self.inner.parts[BOTTOM].surface.commit();
+            inner.parts[BOTTOM].surface.commit();
 
             // -> left-subsurface
             let buffer = pool.buffer(
@@ -666,12 +658,12 @@ impl Frame for ConceptFrame {
                 4 * (BORDER_SIZE as i32),
                 wl_shm::Format::Argb8888,
             );
-            self.inner.parts[LEFT]
+            inner.parts[LEFT]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
-            self.inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
+            inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                self.inner.parts[LEFT].surface.damage_buffer(
+                inner.parts[LEFT].surface.damage_buffer(
                     0,
                     0,
                     BORDER_SIZE as i32,
@@ -680,14 +672,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[LEFT].surface.damage(
+                inner.parts[LEFT].surface.damage(
                     0,
                     0,
                     BORDER_SIZE as i32,
                     (height + HEADER_SIZE) as i32,
                 );
             }
-            self.inner.parts[LEFT].surface.commit();
+            inner.parts[LEFT].surface.commit();
 
             // -> right-subsurface
             let buffer = pool.buffer(
@@ -697,12 +689,12 @@ impl Frame for ConceptFrame {
                 4 * (BORDER_SIZE as i32),
                 wl_shm::Format::Argb8888,
             );
-            self.inner.parts[RIGHT]
+            inner.parts[RIGHT]
                 .subsurface
                 .set_position(width as i32, -(HEADER_SIZE as i32));
-            self.inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
+            inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                self.inner.parts[RIGHT].surface.damage_buffer(
+                inner.parts[RIGHT].surface.damage_buffer(
                     0,
                     0,
                     BORDER_SIZE as i32,
@@ -711,14 +703,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                self.inner.parts[RIGHT].surface.damage(
+                inner.parts[RIGHT].surface.damage(
                     0,
                     0,
                     BORDER_SIZE as i32,
                     (height + HEADER_SIZE) as i32,
                 );
             }
-            self.inner.parts[RIGHT].surface.commit();
+            inner.parts[RIGHT].surface.commit();
         }
     }
 
