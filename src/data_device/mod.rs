@@ -9,19 +9,21 @@ use wayland_client::{
 
 pub use wayland_client::protocol::wl_data_device_manager::DndAction;
 
-mod data_device;
-mod data_offer;
-mod data_source;
+mod device;
+mod offer;
+mod source;
 
-pub use self::data_device::{DataDevice, DndEvent};
-pub use self::data_offer::{DataOffer, ReadPipe, ReadPipeSource};
-pub use self::data_source::{DataSource, DataSourceEvent, WritePipe};
+pub use self::device::{DataDevice, DndEvent};
+pub use self::offer::{DataOffer, ReadPipe, ReadPipeSource};
+pub use self::source::{DataSource, DataSourceEvent, WritePipe};
+
+type DDCallback = dyn FnMut(wl_seat::WlSeat, DndEvent, DispatchData);
 
 enum DDInner {
     Ready {
         mgr: Attached<wl_data_device_manager::WlDataDeviceManager>,
         devices: Vec<(wl_seat::WlSeat, DataDevice)>,
-        callback: Rc<RefCell<Box<dyn FnMut(wl_seat::WlSeat, DndEvent, DispatchData)>>>,
+        callback: Rc<RefCell<Box<DDCallback>>>,
     },
     Pending {
         seats: Vec<wl_seat::WlSeat>,

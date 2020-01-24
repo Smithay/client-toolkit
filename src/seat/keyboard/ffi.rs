@@ -1,4 +1,4 @@
-#![allow(dead_code, non_camel_case_types)]
+#![allow(dead_code, non_camel_case_types, clippy::identity_op)]
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
 use std::os::raw::{c_char, c_int, c_void, c_uint};
@@ -30,12 +30,12 @@ pub type xkb_mod_mask_t = u32;
 pub type xkb_led_index_t = u32;
 pub type xkb_led_mask_t = u32;
 
-pub const XKB_KEYCODE_INVALID :u32 = 0xffffffff;
-pub const XKB_LAYOUT_INVALID  :u32 = 0xffffffff;
-pub const XKB_LEVEL_INVALID   :u32 = 0xffffffff;
-pub const XKB_MOD_INVALID     :u32 = 0xffffffff;
-pub const XKB_LED_INVALID     :u32 = 0xffffffff;
-pub const XKB_KEYCODE_MAX     :u32 = 0xffffffff - 1;
+pub const XKB_KEYCODE_INVALID :u32 = 0xffff_ffff;
+pub const XKB_LAYOUT_INVALID  :u32 = 0xffff_ffff;
+pub const XKB_LEVEL_INVALID   :u32 = 0xffff_ffff;
+pub const XKB_MOD_INVALID     :u32 = 0xffff_ffff;
+pub const XKB_LED_INVALID     :u32 = 0xffff_ffff;
+pub const XKB_KEYCODE_MAX     :u32 = 0xffff_fffe;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

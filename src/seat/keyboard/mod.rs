@@ -14,6 +14,8 @@
 
 use std::{cell::RefCell, os::unix::io::RawFd, rc::Rc, sync::Arc, time::Duration};
 
+use byteorder::{ByteOrder, NativeEndian};
+
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
@@ -182,6 +184,8 @@ where
  * Classic handling
  */
 
+type KbdCallback = dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>);
+
 struct RepeatDetails {
     locked: bool,
     gap: u32,
@@ -192,9 +196,7 @@ struct KbdHandler {
     timer_handle: calloop::timer::TimerHandle<()>,
     state: Rc<RefCell<KbState>>,
     current_repeat: Rc<RefCell<Option<RepeatData>>>,
-    callback: Rc<
-        RefCell<dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>)>,
-    >,
+    callback: Rc<RefCell<KbdCallback>>,
     repeat: RepeatDetails,
 }
 
@@ -252,14 +254,13 @@ impl KbdHandler {
                 state,
             } => self.key(kbd, serial, time, key, state, dispatch_data),
             Event::Modifiers {
-                serial,
                 mods_depressed,
                 mods_latched,
                 mods_locked,
                 group,
+                ..
             } => self.modifiers(
                 kbd,
-                serial,
                 mods_depressed,
                 mods_latched,
                 mods_locked,
@@ -309,14 +310,16 @@ impl KbdHandler {
         dispatch_data: wayland_client::DispatchData,
     ) {
         let mut state = self.state.borrow_mut();
-        let rawkeys: &[u32] =
-            unsafe { ::std::slice::from_raw_parts(keys.as_ptr() as *const u32, keys.len() / 4) };
+        let rawkeys = keys
+            .chunks_exact(4)
+            .map(NativeEndian::read_u32)
+            .collect::<Vec<_>>();
         let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
         (&mut *self.callback.borrow_mut())(
             Event::Enter {
                 serial,
                 surface,
-                rawkeys,
+                rawkeys: &rawkeys,
                 keysyms: &keys,
             },
             object,
@@ -395,7 +398,7 @@ impl KbdHandler {
                 rawkey: key,
                 keysym: sym,
                 state: key_state,
-                utf8: utf8.clone(),
+                utf8,
             },
             object,
             dispatch_data,
@@ -405,7 +408,6 @@ impl KbdHandler {
     fn modifiers(
         &mut self,
         object: wl_keyboard::WlKeyboard,
-        _: u32,
         mods_depressed: u32,
         mods_latched: u32,
         mods_locked: u32,
@@ -460,9 +462,7 @@ pub struct RepeatSource {
     timer: calloop::timer::Timer<()>,
     state: Rc<RefCell<KbState>>,
     current_repeat: Rc<RefCell<Option<RepeatData>>>,
-    callback: Rc<
-        RefCell<dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>)>,
-    >,
+    callback: Rc<RefCell<KbdCallback>>,
 }
 
 impl calloop::EventSource for RepeatSource {

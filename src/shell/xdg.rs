@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
+use byteorder::{ByteOrder, NativeEndian};
+
 use wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
     DispatchData,
@@ -59,15 +61,13 @@ impl Xdg {
                     } else {
                         Some((max(width, 1) as u32, max(height, 1) as u32))
                     };
-                    let view: &[u32] = unsafe {
-                        ::std::slice::from_raw_parts(states.as_ptr() as *const _, states.len() / 4)
-                    };
-                    let states = view
-                        .iter()
-                        .cloned()
+                    let translated_states = states
+                        .chunks_exact(4)
+                        .map(NativeEndian::read_u32)
                         .flat_map(xdg_toplevel::State::from_raw)
                         .collect::<Vec<_>>();
-                    *pending_configure.borrow_mut() = Some((new_size, states));
+
+                    *pending_configure.borrow_mut() = Some((new_size, translated_states));
                 }
                 _ => unreachable!(),
             }

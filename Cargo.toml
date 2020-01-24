@@ -25,8 +25,8 @@ wayland-client = { git = "https://github.com/Smithay/wayland-rs" }
 wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" , features = ["client", "unstable_protocols"] }
 wayland-cursor = { git = "https://github.com/Smithay/wayland-rs" }
 calloop = { git = "https://github.com/Smithay/calloop" }
+byteorder = "1.0"
 
 [dev-dependencies]
 image = "0.22"
 wayland-client = { git = "https://github.com/Smithay/wayland-rs", features = ["dlopen"] }
-byteorder = "1.0"

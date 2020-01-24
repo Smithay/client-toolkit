@@ -96,15 +96,17 @@ impl OutputInfo {
     }
 }
 
+type OutputCallback = dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync;
+
 enum OutputData {
     Ready {
         info: OutputInfo,
-        callbacks: Vec<Weak<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync>>,
+        callbacks: Vec<Weak<OutputCallback>>,
     },
     Pending {
         id: u32,
         events: Vec<Event>,
-        callbacks: Vec<Weak<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync>>,
+        callbacks: Vec<Weak<OutputCallback>>,
     },
 }
 
@@ -156,7 +158,7 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
                 })
             });
         }
-        output.quick_assign(|output, event, ddata| process_output_event(output, event, ddata));
+        output.quick_assign(process_output_event);
         self.outputs.push((id, (*output).clone()));
     }
     fn removed(&mut self, id: u32, mut ddata: DispatchData) {
@@ -201,7 +203,7 @@ fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchDat
         for evt in pending_events {
             merge_event(&mut info, evt);
         }
-        notify(&output, &mut info, ddata, &mut callbacks);
+        notify(&output, &info, ddata, &mut callbacks);
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
@@ -305,7 +307,7 @@ fn notify(
     output: &WlOutput,
     info: &OutputInfo,
     mut ddata: DispatchData,
-    callbacks: &mut Vec<Weak<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync>>,
+    callbacks: &mut Vec<Weak<OutputCallback>>,
 ) {
     callbacks.retain(|weak| {
         if let Some(arc) = Weak::upgrade(weak) {

@@ -12,7 +12,7 @@ echo "//" > $TARGET_FILE
 echo "// This file was auto-generated using the update-keysyms.sh script." >> $TARGET_FILE
 echo "//" >> $TARGET_FILE
 echo "" >> $TARGET_FILE
-echo "#![allow(non_upper_case_globals)]" >> $TARGET_FILE
+echo "#![allow(missing_docs, non_upper_case_globals, clippy::all)]" >> $TARGET_FILE
 echo "#![cfg_attr(rustfmt, rustfmt_skip)]" >> $TARGET_FILE
 echo "" >> $TARGET_FILE
 

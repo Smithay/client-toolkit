@@ -24,6 +24,7 @@
 //! a calloop event loop. And some of the modules of SCTK will provide you with other event sources
 //! that you need to insert into calloop for them to work correctly.
 #![warn(missing_docs)]
+#![allow(clippy::new_without_default)]
 
 #[macro_use]
 extern crate dlib;

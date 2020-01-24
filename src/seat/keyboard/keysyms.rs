@@ -2,8 +2,7 @@
 // This file was auto-generated using the update-keysyms.sh script.
 //
 
-#![allow(missing_docs)]
-#![allow(non_upper_case_globals)]
+#![allow(missing_docs, non_upper_case_globals, clippy::all)]
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
 /***********************************************************
