@@ -82,7 +82,7 @@ impl Xdg {
 
 impl ShellSurface for Xdg {
     fn resize(&self, seat: &wl_seat::WlSeat, serial: u32, edges: xdg_toplevel::ResizeEdge) {
-        self.toplevel.resize(seat, serial, edges as u32);
+        self.toplevel.resize(seat, serial, edges);
     }
 
     fn move_(&self, seat: &wl_seat::WlSeat, serial: u32) {
