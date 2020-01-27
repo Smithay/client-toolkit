@@ -27,7 +27,7 @@ pub struct WaylandSource {
 impl WaylandSource {
     /// Wrap an `EventQueue` as a `WaylandSource`.
     pub fn new(queue: EventQueue) -> WaylandSource {
-        let fd = queue.get_connection_fd();
+        let fd = queue.display().get_connection_fd();
         WaylandSource {
             queue: Rc::new(RefCell::new(queue)),
             fd: calloop::generic::SourceRawFd(fd),
@@ -35,8 +35,54 @@ impl WaylandSource {
     }
 }
 
+/// An error that can occur during the dispatching of the event queue
+///
+/// These are transmitted to your callback for the `WaylandSource`. Receiving
+/// any of them is very likely fatal to your Wayland connection.
+#[derive(Debug)]
+pub enum DispatchError {
+    /// A protocol error was triggered
+    ///
+    /// This means something your app did was considered a violation of the
+    /// protocol by the server. The inner error contains details.
+    Protocol(wayland_client::ProtocolError),
+    /// An IO error occured
+    ///
+    /// This very likely means your connection to the server was unexpectedly lost.
+    Io(io::Error),
+    /// An orphan event was received during the dispatch
+    ///
+    /// While `wayland-client` supports the handling of events from the fallback
+    /// closure during dispatching, this adapter does not. If you want to handle
+    /// them you cannot use the `WaylandSource`.
+    OrphanEvent {
+        /// Interface of the object that received the event
+        interface: String,
+        /// ID of the object that received the event
+        id: u32,
+        /// Name of the event
+        event_name: String,
+    },
+}
+
+impl std::error::Error for DispatchError {}
+
+impl std::fmt::Display for DispatchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DispatchError::Io(e) => write!(f, "IO error: {}", e),
+            DispatchError::Protocol(e) => write!(f, "Protocol error: {}", e),
+            DispatchError::OrphanEvent {
+                interface,
+                id,
+                event_name,
+            } => write!(f, "Orphan event on {}@{}: {}", interface, id, event_name),
+        }
+    }
+}
+
 impl EventSource for WaylandSource {
-    type Event = io::Result<u32>;
+    type Event = Result<u32, DispatchError>;
 
     fn as_mio_source(&mut self) -> Option<&mut dyn mio::event::Source> {
         Some(&mut self.fd)
@@ -61,7 +107,7 @@ struct WaylandDispatcher<F> {
 
 impl<Data, F> EventDispatcher<Data> for WaylandDispatcher<F>
 where
-    F: FnMut(io::Result<u32>, &mut Data),
+    F: FnMut(Result<u32, DispatchError>, &mut Data),
     Data: 'static,
 {
     fn ready(&mut self, _: Option<&mio::event::Event>, data: &mut Data) {
@@ -76,20 +122,33 @@ where
                 if let Err(e) = guard.read_events() {
                     if e.kind() != io::ErrorKind::WouldBlock {
                         // in case of error, forward it and fast-exit
-                        (self.callback)(Err(e), data);
+                        if let Some(perr) = queue.display().protocol_error() {
+                            (self.callback)(Err(DispatchError::Protocol(perr)), data);
+                        } else {
+                            (self.callback)(Err(DispatchError::Io(e)), data);
+                        }
                         return;
                     }
                 }
             }
             // 2. dispatch any pending event in the queue
+            // Abort when receiving an orphan even, this adapter
+            // does not support them.
+            let mut orphan = None;
             let ret = queue.dispatch_pending(data, |evt, object, _| {
-                panic!(
-                    "[SCTK] Orphan event reached the event queue: {}@{} -> {}",
-                    evt.interface,
-                    object.as_ref().id(),
-                    evt.name
-                );
+                // only store & report the first orphan event
+                if orphan.is_none() {
+                    orphan = Some(DispatchError::OrphanEvent {
+                        interface: evt.interface.into(),
+                        id: object.as_ref().id(),
+                        event_name: evt.name.into(),
+                    });
+                }
             });
+            if let Some(orphan) = orphan {
+                (self.callback)(Err(orphan), data);
+                return;
+            }
             match ret {
                 Ok(0) => {
                     // no events were dispatched even after reading the socket,
@@ -102,16 +161,24 @@ where
                 }
                 Err(e) => {
                     // in case of error, forward it and fast-exit
-                    (self.callback)(Err(e), data);
+                    if let Some(perr) = queue.display().protocol_error() {
+                        (self.callback)(Err(DispatchError::Protocol(perr)), data);
+                    } else {
+                        (self.callback)(Err(DispatchError::Io(e)), data);
+                    }
                     return;
                 }
             }
         }
         // 3. Once dispatching is finished, flush the responses to the compositor
-        if let Err(e) = queue.flush() {
+        if let Err(e) = queue.display().flush() {
             if e.kind() != io::ErrorKind::WouldBlock {
                 // in case of error, forward it and fast-exit
-                (self.callback)(Err(e), data);
+                if let Some(perr) = queue.display().protocol_error() {
+                    (self.callback)(Err(DispatchError::Protocol(perr)), data);
+                } else {
+                    (self.callback)(Err(DispatchError::Io(e)), data);
+                }
                 return;
             }
             // WouldBlock error means the compositor could not process all our messages

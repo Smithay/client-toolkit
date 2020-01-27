@@ -47,7 +47,7 @@ pub mod window;
 mod event_loop;
 mod surface;
 
-pub use event_loop::WaylandSource;
+pub use event_loop::{DispatchError, WaylandSource};
 pub use surface::{get_surface_outputs, get_surface_scale_factor};
 
 #[macro_export]
