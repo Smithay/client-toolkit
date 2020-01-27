@@ -16,6 +16,7 @@
 - Pointer theming utilities can no longer be shared across threads, as it was racy.
 - `Window` now tracks new seats automatically (the `new_seat` method is removed)
 - `Window` can no longer be shared across threads, as it was racy.
+- Decorations management is now handled with the `Decorations` enum, for full control to clients.
 
 #### Additions
 

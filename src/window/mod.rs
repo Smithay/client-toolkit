@@ -110,6 +110,26 @@ pub enum Event {
     Refresh,
 }
 
+/// Possible decoration modes for a Window
+///
+/// This represents what your application requests from the server.
+///
+/// In any case, the compositor may override your requests. In that case SCTK
+/// will follow its decision.
+///
+/// If you don't care about it, you should use `FollowServer` (which is the
+/// SCTK default). It'd be the most ergonomic for your users.
+pub enum Decorations {
+    /// Request server-side decorations
+    ServerSide,
+    /// Force using the client-side `Frame`
+    ClientSide,
+    /// Follow the preference of the compositor
+    FollowServer,
+    /// Don't decorate the Window
+    None,
+}
+
 struct WindowInner<F> {
     frame: Arc<Mutex<F>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
@@ -358,7 +378,6 @@ impl<F: Frame + 'static> Window<F> {
                         }
                     }
                 });
-                decoration.set_mode(Mode::ServerSide);
                 Some(decoration.detach())
             }
             _ => None,
@@ -412,18 +431,40 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
-    pub fn set_decorate(&self, decorate: bool) {
-        self.frame.lock().unwrap().set_hidden(!decorate);
+    pub fn set_decorate(&self, decorate: Decorations) {
+        use self::zxdg_toplevel_decoration_v1::Mode;
         let mut decoration_guard = self.decoration.lock().unwrap();
+
+        if let Decorations::ClientSide = decorate {
+            self.frame.lock().unwrap().set_hidden(false);
+        } else {
+            self.frame.lock().unwrap().set_hidden(true);
+        }
+
+        if let Some(ref mut inner) = *self.inner.lock().unwrap() {
+            if let Decorations::None = decorate {
+                inner.decorated = false;
+            } else {
+                inner.decorated = true;
+            }
+        }
+
+        // destroy the decoration object, so that the server does not
+        // decorate us if we don't want to
+        if let Decorations::None | Decorations::ClientSide = decorate {
+            if let Some(ref dec) = decoration_guard.take() {
+                dec.destroy();
+            }
+            return;
+        }
+
+        // We didn't early exit, so we need to deal with server-side decorations
         self.ensure_decoration(&mut decoration_guard);
         if let Some(ref dec) = *decoration_guard {
-            if decorate {
-                // let the server decide decorations
-                dec.unset_mode();
+            if let Decorations::ServerSide = decorate {
+                dec.set_mode(Mode::ServerSide);
             } else {
-                // destroy the decoration object, so that the server does not
-                // decorate us
-                dec.destroy();
+                dec.unset_mode();
             }
         }
     }
