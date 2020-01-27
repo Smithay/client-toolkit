@@ -262,8 +262,9 @@ macro_rules! default_environment {
 /// ```
 ///
 /// If you instead want the macro to use some pre-existing display and event queue, you can
-/// add the `with` argument providing them. In that case the macro will simply evaluate to
-/// an `Environment` value, not a result.
+/// add the `with` argument providing them. In that case the macro will evaluate to
+/// a `Result<Environment, io::Error>`, forwarding to you any error that may have occured
+/// during the initial roundtrips.
 ///
 /// ```no_run
 /// # use smithay_client_toolkit::{default_environment, init_default_environment};
@@ -278,7 +279,7 @@ macro_rules! default_environment {
 ///         somefield: 42,
 ///         otherfield: String::from("Hello World"),
 ///     ]
-/// );
+/// ).expect("Initial roundtrip failed!");
 /// ```
 macro_rules! init_default_environment {
     ($env_name:ident, desktop
@@ -319,28 +320,36 @@ macro_rules! init_default_environment {
             });
 
             // two roundtrips to init the environment
-            $queue
-                .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-                .unwrap();
-            $queue
-                .sync_roundtrip(&mut (), |_, _, _| unreachable!())
-                .unwrap();
+            let ret = $queue .sync_roundtrip(&mut (), |_, _, _| unreachable!());
+            let ret = ret.and_then(|_| $queue.sync_roundtrip(&mut (), |_, _, _| unreachable!()));
 
-            env
+            ret.map(|_| env)
         }
     };
     ($env_name:ident
         $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
         $(,)?
     ) => {
-        $crate::reexports::client::Display::connect_to_env().map(|display| {
+        $crate::reexports::client::Display::connect_to_env().and_then(|display| {
             let mut queue = display.create_event_queue();
-            let env = $crate::init_default_environment!(
+            let ret = $crate::init_default_environment!(
                 $env_name,
                 with=(display, queue),
                 fields=[$($($fname: $fval),*)?],
             );
-            (env, display, queue)
+            match ret {
+                Ok(env) => Ok((env, display, queue)),
+                Err(e) => {
+                    if let Some(perr) = display.protocol_error() {
+                        panic!("[SCTK] A protocol error occured during initial setup: {}", perr);
+                    } else {
+                        // For some other reason the connection with the compositor was lost
+                        // This should not arrive unless maybe the compositor was shutdown during
+                        // the initial setup...
+                        Err($crate::reexports::client::ConnectError::NoCompositorListening)
+                    }
+                }
+            }
         })
     };
 }
