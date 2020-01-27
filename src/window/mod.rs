@@ -88,6 +88,9 @@ pub enum Event {
         /// a new size if you want better control on the possible
         /// sizes of your window.
         ///
+        /// The size is expressed in logical pixels, you need to multiply it by
+        /// your buffer scale to get the actual number of pixels to draw.
+        ///
         /// In all cases, these events can be generated in large batches
         /// during an interactive resize, and you should buffer them before
         /// processing them. You only need to handle the last one of a batch.
@@ -468,6 +471,9 @@ impl<F: Frame + 'static> Window<F> {
     /// You should call this whenever you change the size of the contents
     /// of your window, with the new _inner size_ of your window.
     ///
+    /// This size is expressed in logical pixels, like the one received
+    /// in [`Event::Configure`](enum.Event.html).
+    ///
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
     pub fn resize(&mut self, w: u32, h: u32) {
@@ -517,7 +523,10 @@ impl<F: Frame + 'static> Window<F> {
     /// Provide either a tuple `Some((width, height))` or `None` to unset the
     /// minimum size.
     ///
-    /// The provided size is the interior size, not counting decorations
+    /// The provided size is the interior size, not counting decorations.
+    ///
+    /// This size is expressed in logical pixels, like the one received
+    /// in [`Event::Configure`](enum.Event.html).
     pub fn set_min_size(&mut self, size: Option<(u32, u32)>) {
         let (w, h) = size.unwrap_or(MIN_WINDOW_SIZE);
         let (w, h) = self.frame.lock().unwrap().add_borders(w as i32, h as i32);
@@ -532,7 +541,10 @@ impl<F: Frame + 'static> Window<F> {
     /// Provide either a tuple `Some((width, height))` or `None` to unset the
     /// maximum size.
     ///
-    /// The provided size is the interior size, not counting decorations
+    /// The provided size is the interior size, not counting decorations.
+    ///
+    /// This size is expressed in logical pixels, like the one received
+    /// in [`Event::Configure`](enum.Event.html).
     pub fn set_max_size(&mut self, size: Option<(u32, u32)>) {
         let max_size =
             size.map(|(w, h)| self.frame.lock().unwrap().add_borders(w as i32, h as i32));
