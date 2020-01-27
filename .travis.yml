@@ -49,6 +49,8 @@ before_script:
   - |
       if [ -n "$CLIPPY" ]; then
         rustup component add clippy
+      elif [ -n "$BUILD_FMT" ]; then
+        rustup component add rustfmt
       elif [ -n "$BUILD_DOC" ]; then
         echo "Building doc, nothing to install..."
       elif [ -n "$TARGET" ]; then
