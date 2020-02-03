@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- `set_decorations` arbitrary changing SSD mode to CSD
+
 #### Additions
 
 - The `pointer` theming will now read the `XCURSOR_THEME` and `XCURSOR_SIZE` environment
