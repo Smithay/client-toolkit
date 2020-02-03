@@ -103,7 +103,7 @@ impl AutoPointer {
     /// Possible names depend on the theme. Does nothing and returns
     /// `Err(())` if given name is not available.
     ///
-    /// Does nothing an returns `Ok(())` if no theme is loaded (if
+    /// Does nothing and returns `Ok(())` if no theme is loaded (if
     /// `wayland-cursor` is not available).
     ///
     /// If this is done as an answer to an input event, you need to provide
@@ -111,6 +111,29 @@ impl AutoPointer {
     pub fn set_cursor(&self, name: &str, serial: Option<u32>) -> Result<(), ()> {
         match *self {
             AutoPointer::Themed(ref themed) => themed.set_cursor(name, serial),
+            AutoPointer::UnThemed(_) => Ok(()),
+        }
+    }
+
+    /// Change the cursor to the given cursor name and apply a scale to an underlying cursor
+    /// surface
+    ///
+    /// Possible names depend on the theme. Does nothing and returns
+    /// `Err(())` if given name is not available.
+    ///
+    /// Does nothing and returns `Ok(())` if no theme is loaded (if
+    /// `wayland-cursor` is not available).
+    ///
+    /// If this is done as an answer to an input event, you need to provide
+    /// the associated serial otherwise the server may ignore the request.
+    pub fn set_cursor_with_scale(
+        &self,
+        name: &str,
+        scale: u32,
+        serial: Option<u32>,
+    ) -> Result<(), ()> {
+        match *self {
+            AutoPointer::Themed(ref themed) => themed.set_cursor_with_scale(name, scale, serial),
             AutoPointer::UnThemed(_) => Ok(()),
         }
     }
