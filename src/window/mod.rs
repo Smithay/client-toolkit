@@ -12,7 +12,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
-use self::zxdg_toplevel_decoration_v1::{Mode as DecoratoinsMode};
+use self::zxdg_toplevel_decoration_v1::{Mode as DecorationsMode};
 
 use {Environment, Shell};
 
@@ -351,10 +351,10 @@ impl<F: Frame + 'static> Window<F> {
                         move |event, _| {
                             if let Event::Configure { mode } = event {
                                 match mode {
-                                    DecoratoinsMode::ServerSide => {
+                                    DecorationsMode::ServerSide => {
                                         decoration_frame.lock().unwrap().set_hidden(true);
                                     }
-                                    DecoratoinsMode::ClientSide => {
+                                    DecorationsMode::ClientSide => {
                                         let want_decorate = decoration_inner
                                             .lock()
                                             .unwrap()
@@ -372,7 +372,7 @@ impl<F: Frame + 'static> Window<F> {
                 })
                 .ok()
                 .map(|decoration| {
-                    decoration.set_mode(DecoratoinsMode::ServerSide);
+                    decoration.set_mode(DecorationsMode::ServerSide);
                     decoration
                 })
             }
@@ -442,7 +442,7 @@ impl<F: Frame + 'static> Window<F> {
             if decorate {
                 dec.unset_mode();
             } else {
-                dec.set_mode(DecoratoinsMode::ClientSide);
+                dec.set_mode(DecorationsMode::ClientSide);
                 self.frame.lock().unwrap().set_hidden(!decorate);
             }
         } else {
