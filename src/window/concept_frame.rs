@@ -14,6 +14,7 @@ use wayland_client::protocol::{
 use wayland_client::NewProxy;
 
 use super::{ButtonState, Frame, FrameRequest, Theme};
+use crate::surface;
 use pointer::{AutoPointer, AutoThemer};
 use utils::DoubleMemPool;
 
@@ -242,6 +243,7 @@ pub struct ConceptFrame {
     theme: Box<Theme>,
     title: Option<String>,
     font_data: Option<Vec<u8>>,
+    base_surface: wl_surface::WlSurface,
 }
 
 impl Frame for ConceptFrame {
@@ -284,12 +286,14 @@ impl Frame for ConceptFrame {
             theme: Box::new(DefaultTheme),
             title: None,
             font_data: None,
+            base_surface: base_surface.clone(),
         })
     }
 
     fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
         use self::wl_pointer::Event;
         let inner = self.inner.clone();
+        let base_surface = self.base_surface.clone();
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
             move |event, pointer: AutoPointer| {
@@ -312,12 +316,14 @@ impl Frame for ConceptFrame {
                         );
                         data.position = (surface_x, surface_y);
                         if resizable {
-                            change_pointer(&pointer, data.location, Some(serial))
+                            let scale = surface::get_dpi_factor(&base_surface) as u32;
+                            change_pointer(&pointer, scale, data.location, Some(serial))
                         }
                     }
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
-                        change_pointer(&pointer, data.location, Some(serial));
+                        let scale = surface::get_dpi_factor(&base_surface) as u32;
+                        change_pointer(&pointer, scale, data.location, Some(serial));
                         (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
                     }
                     Event::Motion {
@@ -339,7 +345,8 @@ impl Frame for ConceptFrame {
                             // may need to be changed
                             data.location = newpos;
                             if resizable {
-                                change_pointer(&pointer, data.location, None)
+                                let scale = surface::get_dpi_factor(&base_surface) as u32;
+                                change_pointer(&pointer, scale, data.location, None)
                             }
                         }
                     }
@@ -414,7 +421,22 @@ impl Frame for ConceptFrame {
             }
             return;
         }
+
+        let scale = surface::get_dpi_factor(&self.base_surface);
+
+        // Update dpi scaling factor.
+        for p in &self.inner.parts {
+            p.surface.set_buffer_scale(scale as i32);
+        }
+
         let (width, height) = *(self.inner.size.lock().unwrap());
+
+        let scale = scale as u32;
+
+        let scaled_header = HEADER_SIZE * scale;
+        let scaled_border = BORDER_SIZE * scale;
+        let scaled_width = scale * width;
+        let scaled_height = scale * height;
 
         {
             // grab the current pool
@@ -423,10 +445,10 @@ impl Frame for ConceptFrame {
                 None => return,
             };
             // resize the pool as appropriate
-            let pxcount = (HEADER_SIZE * width)
+            let pxcount = (scaled_header * scaled_width)
                 + max(
-                    (width + 2 * BORDER_SIZE) * BORDER_SIZE,
-                    (height + HEADER_SIZE) * BORDER_SIZE,
+                    (scaled_width + 2 * scaled_border) * scaled_border,
+                    (scaled_height + scaled_header) * scaled_border,
                 );
 
             pool.resize(4 * pxcount as usize)
@@ -439,17 +461,17 @@ impl Frame for ConceptFrame {
                     let color = self.theme.get_primary_color(self.active);
 
                     let mut header_canvas = Canvas::new(
-                        &mut mmap[0..HEADER_SIZE as usize * width as usize * 4],
-                        width as usize,
-                        HEADER_SIZE as usize,
-                        width as usize * 4,
+                        &mut mmap[0..scaled_header as usize * scaled_width as usize * 4],
+                        scaled_width as usize,
+                        scaled_header as usize,
+                        scaled_width as usize * 4,
                         Endian::native(),
                     );
                     header_canvas.clear();
 
                     let header_bar = rectangle::Rectangle::new(
                         (0, 0),
-                        (width as usize - 1, HEADER_SIZE as usize - 1),
+                        (scaled_width as usize, scaled_header as usize),
                         None,
                         Some(color),
                     );
@@ -458,6 +480,7 @@ impl Frame for ConceptFrame {
                     draw_buttons(
                         &mut header_canvas,
                         width,
+                        scale,
                         true,
                         &self
                             .pointers
@@ -503,11 +526,11 @@ impl Frame for ConceptFrame {
                         // Create text from stored title and font data
                         if let Some(ref font_data) = self.font_data {
                             let mut title_text = text::Text::new(
-                                (0, HEADER_SIZE as usize / 2 - 8),
+                                (0, (HEADER_SIZE as usize / 2 - 8) * scale as usize),
                                 [0, 0, 0, 255],
                                 font_data,
-                                17.0,
-                                1.0,
+                                17.0 * scale as f32,
+                                1.0 * scale as f32,
                                 title,
                             );
 
@@ -515,15 +538,15 @@ impl Frame for ConceptFrame {
                             if (width as isize - 88 - 4 * BUTTON_SPACE as isize)
                                 > (title_text.get_width() + BUTTON_SPACE as usize) as isize
                             {
-                                title_text.pos.0 =
-                                    (width as usize) / 2 - (title_text.get_width() / 2);
+                                title_text.pos.0 = scale as usize
+                                    * ((width as usize) / 2 - (title_text.get_width() / 2));
                                 // Adjust position for buttons if both compete for space
                                 if (width as usize) / 2 + (title_text.get_width() / 2)
                                     > (width - 88 - 2 * 2 * BUTTON_SPACE) as usize
                                 {
-                                    title_text.pos.0 -= ((width as usize) / 2
-                                        + (title_text.get_width() / 2))
-                                        - (width - 88 - 2 * 2 * BUTTON_SPACE) as usize;
+                                    title_text.pos.0 -= scale as usize
+                                        * (((width as usize) / 2 + (title_text.get_width() / 2))
+                                            - (width - 88 - 2 * 2 * BUTTON_SPACE) as usize);
                                 }
                                 header_canvas.draw(&title_text);
                             }
@@ -533,7 +556,7 @@ impl Frame for ConceptFrame {
 
                 // For each pixel in borders
                 {
-                    for b in &mut mmap[HEADER_SIZE as usize * width as usize * 4..] {
+                    for b in &mut mmap[scaled_header as usize * scaled_width as usize * 4..] {
                         *b = 0x00;
                     }
                 }
@@ -549,9 +572,9 @@ impl Frame for ConceptFrame {
             // -> head-subsurface
             let buffer = pool.buffer(
                 0,
-                width as i32,
-                HEADER_SIZE as i32,
-                4 * width as i32,
+                scaled_width as i32,
+                scaled_header as i32,
+                4 * scaled_width as i32,
                 wl_shm::Format::Argb8888,
             );
             self.inner.parts[HEAD]
@@ -576,10 +599,10 @@ impl Frame for ConceptFrame {
 
             // -> top-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                (width + 2 * BORDER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                4 * (width + 2 * BORDER_SIZE) as i32,
+                4 * (scaled_width * scaled_header) as i32,
+                (scaled_width + 2 * scaled_border) as i32,
+                scaled_border as i32,
+                4 * (scaled_width + 2 * scaled_border) as i32,
                 wl_shm::Format::Argb8888,
             );
             self.inner.parts[TOP].subsurface.set_position(
@@ -608,10 +631,10 @@ impl Frame for ConceptFrame {
 
             // -> bottom-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                (width + 2 * BORDER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                4 * (width + 2 * BORDER_SIZE) as i32,
+                4 * (scaled_width * scaled_header) as i32,
+                (scaled_width + 2 * scaled_border) as i32,
+                scaled_border as i32,
+                4 * (scaled_width + 2 * scaled_border) as i32,
                 wl_shm::Format::Argb8888,
             );
             self.inner.parts[BOTTOM]
@@ -639,10 +662,10 @@ impl Frame for ConceptFrame {
 
             // -> left-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                (height + HEADER_SIZE) as i32,
-                4 * (BORDER_SIZE as i32),
+                4 * (scaled_width * scaled_header) as i32,
+                scaled_border as i32,
+                (scaled_height + scaled_header) as i32,
+                4 * (scaled_border as i32),
                 wl_shm::Format::Argb8888,
             );
             self.inner.parts[LEFT]
@@ -670,10 +693,10 @@ impl Frame for ConceptFrame {
 
             // -> right-subsurface
             let buffer = pool.buffer(
-                4 * (width * HEADER_SIZE) as i32,
-                BORDER_SIZE as i32,
-                (height + HEADER_SIZE) as i32,
-                4 * (BORDER_SIZE as i32),
+                4 * (scaled_width * scaled_header) as i32,
+                scaled_border as i32,
+                (scaled_height + scaled_header) as i32,
+                4 * (scaled_border as i32),
                 wl_shm::Format::Argb8888,
             );
             self.inner.parts[RIGHT]
@@ -744,7 +767,7 @@ impl Drop for ConceptFrame {
     }
 }
 
-fn change_pointer(pointer: &AutoPointer, location: Location, serial: Option<u32>) {
+fn change_pointer(pointer: &AutoPointer, scale: u32, location: Location, serial: Option<u32>) {
     let name = match location {
         Location::Top => "top_side",
         Location::TopRight => "top_right_corner",
@@ -756,7 +779,7 @@ fn change_pointer(pointer: &AutoPointer, location: Location, serial: Option<u32>
         Location::TopLeft => "top_left_corner",
         _ => "left_ptr",
     };
-    if pointer.set_cursor(name, serial).is_err() {
+    if pointer.set_cursor_with_scale(name, scale, serial).is_err() {
         eprintln!("[SCTK] Basic frame: failed to set cursor");
     }
 }
@@ -804,18 +827,25 @@ fn request_for_location(
 fn draw_buttons(
     canvas: &mut Canvas,
     width: u32,
+    scale: u32,
     maximizable: bool,
     mouses: &[Location],
     theme: &Theme,
 ) {
+    let scale = scale as usize;
+
     // Draw seperator between header and window contents
-    let division_line = line::Line::new(
-        (0, (HEADER_SIZE - 1) as usize),
-        ((width) as usize, (HEADER_SIZE - 1) as usize),
-        theme.get_secondary_color(false),
-        true,
-    );
-    canvas.draw(&division_line);
+
+    for i in 1..=scale {
+        let y = HEADER_SIZE as usize * scale - i;
+        let division_line = line::Line::new(
+            (0, y),
+            (width as usize * scale, y),
+            theme.get_secondary_color(false),
+            false,
+        );
+        canvas.draw(&division_line);
+    }
 
     if width >= HEADER_SIZE {
         // Draw the red button
@@ -829,58 +859,65 @@ fn draw_buttons(
             // Change the button color (yet to be drawn) to the hovered version
             button_color = theme.get_close_button_icon_color(ButtonState::Hovered);
             let red_hover = rectangle::Rectangle::new(
-                ((width - HEADER_SIZE) as usize, 0),
-                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                ((width - HEADER_SIZE) as usize * scale, 0),
+                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
                 None,
                 Some(red_shade),
             );
             canvas.draw(&red_hover);
-            let red_division_line = line::Line::new(
-                ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
-                ((width) as usize, (HEADER_SIZE - 1) as usize),
-                [
-                    red_shade[0].saturating_sub(50),
-                    red_shade[1].saturating_sub(50),
-                    red_shade[2].saturating_sub(50),
-                    255,
-                ],
-                true,
-            );
-            canvas.draw(&red_division_line);
+
+            for i in 1..=scale {
+                let y = HEADER_SIZE as usize * scale - i;
+                let red_division_line = line::Line::new(
+                    ((width - HEADER_SIZE) as usize * scale, y),
+                    ((width) as usize * scale, y),
+                    [
+                        red_shade[0].saturating_sub(50),
+                        red_shade[1].saturating_sub(50),
+                        red_shade[2].saturating_sub(50),
+                        255,
+                    ],
+                    false,
+                );
+                canvas.draw(&red_division_line);
+            }
         } else {
             // draw shading if around close button when idle
             let red_shade = theme.get_close_button_color(ButtonState::Idle);
             let red_hover = rectangle::Rectangle::new(
-                ((width - HEADER_SIZE) as usize, 0),
-                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                ((width - HEADER_SIZE) as usize * scale, 0),
+                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
                 None,
                 Some(red_shade),
             );
             canvas.draw(&red_hover);
-            let red_division_line = line::Line::new(
-                ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
-                ((width) as usize, (HEADER_SIZE - 1) as usize),
-                [
-                    red_shade[0].saturating_sub(50),
-                    red_shade[1].saturating_sub(50),
-                    red_shade[2].saturating_sub(50),
-                    255,
-                ],
-                true,
-            );
-            canvas.draw(&red_division_line);
+            for i in 1..=scale {
+                let y = HEADER_SIZE as usize * scale - i;
+                let red_division_line = line::Line::new(
+                    ((width - HEADER_SIZE) as usize * scale, y),
+                    ((width) as usize * scale, y),
+                    [
+                        red_shade[0].saturating_sub(50),
+                        red_shade[1].saturating_sub(50),
+                        red_shade[2].saturating_sub(50),
+                        255,
+                    ],
+                    false,
+                );
+                canvas.draw(&red_division_line);
+            }
         };
 
         // Draw cross to represent the close button
-        for i in 0..2 {
+        for i in 0..2 * scale {
             let diagonal_line = line::Line::new(
                 (
-                    (width - HEADER_SIZE / 2 - 4 + i) as usize,
-                    (HEADER_SIZE / 2 - 4) as usize,
+                    (width - HEADER_SIZE / 2 - 4) as usize * scale + i,
+                    (HEADER_SIZE / 2 - 4) as usize * scale,
                 ),
                 (
-                    (width - HEADER_SIZE / 2 + 4) as usize,
-                    (HEADER_SIZE / 2 + 4 - i) as usize,
+                    (width - HEADER_SIZE / 2 + 4) as usize * scale,
+                    (HEADER_SIZE / 2 + 4) as usize * scale - i,
                 ),
                 button_color,
                 true,
@@ -888,25 +925,12 @@ fn draw_buttons(
             canvas.draw(&diagonal_line);
             let diagonal_line = line::Line::new(
                 (
-                    (width - HEADER_SIZE / 2 - 4) as usize,
-                    (HEADER_SIZE / 2 - 4 + i) as usize,
+                    (width - HEADER_SIZE / 2 - 4) as usize * scale,
+                    (HEADER_SIZE / 2 - 4) as usize * scale + i,
                 ),
                 (
-                    (width - HEADER_SIZE / 2 + 4 - i) as usize,
-                    (HEADER_SIZE / 2 + 4) as usize,
-                ),
-                button_color,
-                true,
-            );
-            canvas.draw(&diagonal_line);
-            let diagonal_line = line::Line::new(
-                (
-                    (width - HEADER_SIZE / 2 + 4 - i) as usize,
-                    (HEADER_SIZE / 2 - 4) as usize,
-                ),
-                (
-                    (width - HEADER_SIZE / 2 - 4) as usize,
-                    (HEADER_SIZE / 2 + 4 - i) as usize,
+                    (width - HEADER_SIZE / 2 + 4) as usize * scale - i,
+                    (HEADER_SIZE / 2 + 4) as usize * scale,
                 ),
                 button_color,
                 true,
@@ -914,12 +938,25 @@ fn draw_buttons(
             canvas.draw(&diagonal_line);
             let diagonal_line = line::Line::new(
                 (
-                    (width - HEADER_SIZE / 2 + 4) as usize,
-                    (HEADER_SIZE / 2 - 4 + i) as usize,
+                    (width - HEADER_SIZE / 2 + 4) as usize * scale - i,
+                    (HEADER_SIZE / 2 - 4) as usize * scale,
                 ),
                 (
-                    (width - HEADER_SIZE / 2 - 4 + i) as usize,
-                    (HEADER_SIZE / 2 + 4) as usize,
+                    (width - HEADER_SIZE / 2 - 4) as usize * scale,
+                    (HEADER_SIZE / 2 + 4) as usize * scale - i,
+                ),
+                button_color,
+                true,
+            );
+            canvas.draw(&diagonal_line);
+            let diagonal_line = line::Line::new(
+                (
+                    (width - HEADER_SIZE / 2 + 4) as usize * scale,
+                    (HEADER_SIZE / 2 - 4) as usize * scale + i,
+                ),
+                (
+                    (width - HEADER_SIZE / 2 - 4) as usize * scale + i,
+                    (HEADER_SIZE / 2 + 4) as usize * scale,
                 ),
                 button_color,
                 true,
@@ -941,63 +978,66 @@ fn draw_buttons(
             // Change the button color (yet to be drawn) to the hovered version
             button_color = theme.get_maximize_button_icon_color(ButtonState::Hovered);
             let green_hover = rectangle::Rectangle::new(
-                ((width - 2 * HEADER_SIZE) as usize, 0),
-                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                ((width - 2 * HEADER_SIZE) as usize * scale, 0),
+                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
                 None,
                 Some(green_shade),
             );
             canvas.draw(&green_hover);
-            let green_division_line = line::Line::new(
-                (
-                    (width - 2 * HEADER_SIZE) as usize,
-                    (HEADER_SIZE - 1) as usize,
-                ),
-                ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
-                [
-                    green_shade[0].saturating_sub(50),
-                    green_shade[1].saturating_sub(50),
-                    green_shade[2].saturating_sub(50),
-                    255,
-                ],
-                true,
-            );
-            canvas.draw(&green_division_line);
+            for i in 1..=scale {
+                let y = HEADER_SIZE as usize * scale - i;
+                let green_division_line = line::Line::new(
+                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
+                    ((width - HEADER_SIZE) as usize * scale, y),
+                    [
+                        green_shade[0].saturating_sub(50),
+                        green_shade[1].saturating_sub(50),
+                        green_shade[2].saturating_sub(50),
+                        255,
+                    ],
+                    false,
+                );
+
+                canvas.draw(&green_division_line);
+            }
         } else {
             // Draw a green shading around maximize button if idle
             let green_shade = theme.get_maximize_button_color(ButtonState::Idle);
             let green_hover = rectangle::Rectangle::new(
-                ((width - 2 * HEADER_SIZE) as usize, 0),
-                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                ((width - 2 * HEADER_SIZE) as usize * scale, 0),
+                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
                 None,
                 Some(green_shade),
             );
+
             canvas.draw(&green_hover);
-            let green_division_line = line::Line::new(
-                (
-                    (width - 2 * HEADER_SIZE) as usize,
-                    (HEADER_SIZE - 1) as usize,
-                ),
-                ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
-                [
-                    green_shade[0].saturating_sub(50),
-                    green_shade[1].saturating_sub(50),
-                    green_shade[2].saturating_sub(50),
-                    255,
-                ],
-                true,
-            );
-            canvas.draw(&green_division_line);
+
+            for i in 1..=scale {
+                let y = HEADER_SIZE as usize * scale - i;
+                let green_division_line = line::Line::new(
+                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
+                    ((width - HEADER_SIZE) as usize * scale, y),
+                    [
+                        green_shade[0].saturating_sub(50),
+                        green_shade[1].saturating_sub(50),
+                        green_shade[2].saturating_sub(50),
+                        255,
+                    ],
+                    true,
+                );
+                canvas.draw(&green_division_line);
+            }
         };
 
-        for i in 0..3 {
+        for i in 0..3 * scale {
             let left_diagional = line::Line::new(
                 (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2 - 4 - i) as usize,
-                    (HEADER_SIZE / 2 + 2) as usize,
+                    (width - HEADER_SIZE - HEADER_SIZE / 2 - 4) as usize * scale - i,
+                    (HEADER_SIZE / 2 + 2) as usize * scale,
                 ),
                 (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2) as usize,
-                    (HEADER_SIZE / 2 - 2 - i) as usize,
+                    (width - HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
+                    (HEADER_SIZE / 2 - 2) as usize * scale - i,
                 ),
                 button_color,
                 true,
@@ -1005,12 +1045,12 @@ fn draw_buttons(
             canvas.draw(&left_diagional);
             let right_diagional = line::Line::new(
                 (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2 + 4 + i) as usize,
-                    (HEADER_SIZE / 2 + 2) as usize,
+                    (width - HEADER_SIZE - HEADER_SIZE / 2 + 4) as usize * scale + i,
+                    (HEADER_SIZE / 2 + 2) as usize * scale,
                 ),
                 (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2) as usize,
-                    (HEADER_SIZE / 2 - 2 - i) as usize,
+                    (width - HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
+                    (HEADER_SIZE / 2 - 2) as usize * scale - i,
                 ),
                 button_color,
                 true,
@@ -1031,69 +1071,63 @@ fn draw_buttons(
             // Change the button color (yet to be drawn) to the hovered version
             button_color = theme.get_minimize_button_icon_color(ButtonState::Hovered);
             let blue_hover = rectangle::Rectangle::new(
-                ((width - 3 * HEADER_SIZE) as usize, 0),
-                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                ((width - 3 * HEADER_SIZE) as usize * scale, 0),
+                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
                 None,
                 Some(blue_shade),
             );
             canvas.draw(&blue_hover);
-            let blue_division_line = line::Line::new(
-                (
-                    (width - 3 * HEADER_SIZE) as usize,
-                    (HEADER_SIZE - 1) as usize,
-                ),
-                (
-                    (width - 2 * HEADER_SIZE) as usize,
-                    (HEADER_SIZE - 1) as usize,
-                ),
-                [
-                    blue_shade[0].saturating_sub(50),
-                    blue_shade[1].saturating_sub(50),
-                    blue_shade[2].saturating_sub(50),
-                    255,
-                ],
-                true,
-            );
-            canvas.draw(&blue_division_line);
+            for i in 1..=scale {
+                let y = HEADER_SIZE as usize * scale - i;
+                let blue_division_line = line::Line::new(
+                    ((width - 3 * HEADER_SIZE) as usize * scale, y),
+                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
+                    [
+                        blue_shade[0].saturating_sub(50),
+                        blue_shade[1].saturating_sub(50),
+                        blue_shade[2].saturating_sub(50),
+                        255,
+                    ],
+                    false,
+                );
+                canvas.draw(&blue_division_line);
+            }
         } else {
             // Draw a blue shading around minimize button if idle
             let blue_shade = theme.get_minimize_button_color(ButtonState::Idle);
             let blue_hover = rectangle::Rectangle::new(
-                ((width - 3 * HEADER_SIZE) as usize, 0),
-                (HEADER_SIZE as usize, HEADER_SIZE as usize),
+                ((width - 3 * HEADER_SIZE) as usize * scale, 0),
+                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
                 None,
                 Some(blue_shade),
             );
             canvas.draw(&blue_hover);
-            let blue_division_line = line::Line::new(
-                (
-                    (width - 3 * HEADER_SIZE) as usize,
-                    (HEADER_SIZE - 1) as usize,
-                ),
-                (
-                    (width - 2 * HEADER_SIZE) as usize,
-                    (HEADER_SIZE - 1) as usize,
-                ),
-                [
-                    blue_shade[0].saturating_sub(50),
-                    blue_shade[1].saturating_sub(50),
-                    blue_shade[2].saturating_sub(50),
-                    255,
-                ],
-                true,
-            );
-            canvas.draw(&blue_division_line);
+            for i in 1..=scale {
+                let y = HEADER_SIZE as usize * scale - i;
+                let blue_division_line = line::Line::new(
+                    ((width - 3 * HEADER_SIZE) as usize * scale, y),
+                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
+                    [
+                        blue_shade[0].saturating_sub(50),
+                        blue_shade[1].saturating_sub(50),
+                        blue_shade[2].saturating_sub(50),
+                        255,
+                    ],
+                    false,
+                );
+                canvas.draw(&blue_division_line);
+            }
         }
 
-        for i in 0..3 {
+        for i in 0..3 * scale {
             let left_diagional = line::Line::new(
                 (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2 - 4 - i) as usize,
-                    (HEADER_SIZE / 2 - 3) as usize,
+                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2 - 4) as usize * scale - i,
+                    (HEADER_SIZE / 2 - 3) as usize * scale,
                 ),
                 (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize,
-                    (HEADER_SIZE / 2 + 1 + i) as usize,
+                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
+                    (HEADER_SIZE / 2 + 1) as usize * scale + i,
                 ),
                 button_color,
                 true,
@@ -1101,12 +1135,12 @@ fn draw_buttons(
             canvas.draw(&left_diagional);
             let right_diagional = line::Line::new(
                 (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2 + 4 + i) as usize,
-                    (HEADER_SIZE / 2 - 3) as usize,
+                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2 + 4) as usize * scale + i,
+                    (HEADER_SIZE / 2 - 3) as usize * scale,
                 ),
                 (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize,
-                    (HEADER_SIZE / 2 + 1 + i) as usize,
+                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
+                    (HEADER_SIZE / 2 + 1) as usize * scale + i,
                 ),
                 button_color,
                 true,

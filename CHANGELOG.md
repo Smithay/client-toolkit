@@ -7,6 +7,7 @@
 - The `pointer` theming will now read the `XCURSOR_THEME` and `XCURSOR_SIZE` environment
   variables to figure the default theme
 - `pointer` theming utilities now provide a way to set cursor scale factor
+- `HiDPI` scaling for decorations
 
 ## 0.6.4 -- 2019-08-27
 
