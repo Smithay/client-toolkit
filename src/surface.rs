@@ -67,7 +67,7 @@ where
     environment
         .compositor
         .create_surface(move |surface| {
-            surface.implement_closure(
+            surface.implement_closure_threadsafe(
                 move |event, surface| {
                     let mut user_data = surface
                         .as_ref()
