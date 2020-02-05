@@ -105,6 +105,16 @@ pub fn get_dpi_factor(surface: &wl_surface::WlSurface) -> i32 {
         .dpi_factor
 }
 
+/// Returns the current dpi factor of a surface if it was created by SCTK or falling back to 1 if
+/// it's not.
+pub(crate) fn get_dpi_factor_or_fallback(surface: &wl_surface::WlSurface) -> i32 {
+    if let Some(user_data) = surface.as_ref().user_data::<Mutex<SurfaceUserData>>() {
+        user_data.lock().unwrap().dpi_factor
+    } else {
+        1
+    }
+}
+
 /// Returns a list of outputs the surface is displayed on.
 pub fn get_outputs(surface: &wl_surface::WlSurface) -> Vec<wl_output::WlOutput> {
     surface

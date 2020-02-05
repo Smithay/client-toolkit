@@ -316,13 +316,13 @@ impl Frame for ConceptFrame {
                         );
                         data.position = (surface_x, surface_y);
                         if resizable {
-                            let scale = surface::get_dpi_factor(&base_surface) as u32;
+                            let scale = surface::get_dpi_factor_or_fallback(&base_surface) as u32;
                             change_pointer(&pointer, scale, data.location, Some(serial))
                         }
                     }
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
-                        let scale = surface::get_dpi_factor(&base_surface) as u32;
+                        let scale = surface::get_dpi_factor_or_fallback(&base_surface) as u32;
                         change_pointer(&pointer, scale, data.location, Some(serial));
                         (&mut *inner.implem.lock().unwrap())(FrameRequest::Refresh, 0);
                     }
@@ -345,7 +345,7 @@ impl Frame for ConceptFrame {
                             // may need to be changed
                             data.location = newpos;
                             if resizable {
-                                let scale = surface::get_dpi_factor(&base_surface) as u32;
+                                let scale = surface::get_dpi_factor_or_fallback(&base_surface) as u32;
                                 change_pointer(&pointer, scale, data.location, None)
                             }
                         }
@@ -422,7 +422,7 @@ impl Frame for ConceptFrame {
             return;
         }
 
-        let scale = surface::get_dpi_factor(&self.base_surface);
+        let scale = surface::get_dpi_factor_or_fallback(&self.base_surface);
 
         // Update dpi scaling factor.
         for p in &self.inner.parts {
