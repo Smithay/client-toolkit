@@ -12,6 +12,8 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
+use self::zxdg_toplevel_decoration_v1::{Mode as DecorationsMode};
+
 use {Environment, Shell};
 
 mod basic_frame;
@@ -343,16 +345,16 @@ impl<F: Frame + 'static> Window<F> {
         let decoration_inner = self.inner.clone();
         *decoration = match (self.shell_surface.get_xdg(), &self.decoration_mgr) {
             (Some(toplevel), &Some(ref mgr)) => {
-                use self::zxdg_toplevel_decoration_v1::{Event, Mode};
+                use self::zxdg_toplevel_decoration_v1::Event;
                 mgr.get_toplevel_decoration(toplevel, |newdec| {
                     newdec.implement_closure(
                         move |event, _| {
                             if let Event::Configure { mode } = event {
                                 match mode {
-                                    Mode::ServerSide => {
+                                    DecorationsMode::ServerSide => {
                                         decoration_frame.lock().unwrap().set_hidden(true);
                                     }
-                                    Mode::ClientSide => {
+                                    DecorationsMode::ClientSide => {
                                         let want_decorate = decoration_inner
                                             .lock()
                                             .unwrap()
@@ -370,7 +372,7 @@ impl<F: Frame + 'static> Window<F> {
                 })
                 .ok()
                 .map(|decoration| {
-                    decoration.set_mode(Mode::ServerSide);
+                    decoration.set_mode(DecorationsMode::ServerSide);
                     decoration
                 })
             }
@@ -434,18 +436,18 @@ impl<F: Frame + 'static> Window<F> {
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
     pub fn set_decorate(&self, decorate: bool) {
-        self.frame.lock().unwrap().set_hidden(!decorate);
         let mut decoration_guard = self.decoration.lock().unwrap();
         self.ensure_decoration(&mut decoration_guard);
         if let Some(ref dec) = *decoration_guard {
             if decorate {
-                // let the server decide decorations
                 dec.unset_mode();
             } else {
-                // destroy the decoration object, so that the server does not
-                // decorate us
-                dec.destroy();
+                dec.set_mode(DecorationsMode::ClientSide);
+                self.frame.lock().unwrap().set_hidden(!decorate);
             }
+        } else {
+            // We're managing decorations ourself, so they are always ClientSide
+            self.frame.lock().unwrap().set_hidden(!decorate);
         }
     }
 
