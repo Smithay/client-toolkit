@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 -- 2020-02-07
+
 #### Breaking changes
 
 - Upgrade to `wayland-client` 0.25. This changes the prototype of most callbacks by

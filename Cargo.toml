@@ -1,6 +1,6 @@
 [package]
 name = "smithay-client-toolkit"
-version = "0.6.4"
+version = "0.7.0"
 authors = ["Victor Berger <victor.berger@m4x.org>"]
 documentation = "https://smithay.github.io/client-toolkit"
 repository = "https://github.com/smithay/client-toolkit"
@@ -15,18 +15,18 @@ travis-ci = { repository = "smithay/client-toolkit" }
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.16"
+nix = "0.17"
 dlib = "0.4"
 lazy_static = "1.0"
 memmap = "0.7"
 andrew = "0.2.0"
 log = "0.4"
-wayland-client = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" , features = ["client", "unstable_protocols"] }
-wayland-cursor = { git = "https://github.com/Smithay/wayland-rs" }
-calloop = { git = "https://github.com/Smithay/calloop" }
+wayland-client = "0.25"
+wayland-protocols = { version = "0.25" , features = ["client", "unstable_protocols"] }
+wayland-cursor = "0.25"
+calloop = "0.5"
 byteorder = "1.0"
 
 [dev-dependencies]
 image = "0.22"
-wayland-client = { git = "https://github.com/Smithay/wayland-rs", features = ["dlopen"] }
+wayland-client = { version = "0.25", features = ["dlopen"] }
