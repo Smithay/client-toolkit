@@ -2,9 +2,12 @@
 
 ## Unreleased
 
+## 0.6.5 -- 2020-02-07
+
 #### Bugfixes
 
 - `set_decorations` arbitrary changing SSD mode to CSD
+- It is now possible to check the DPI factor of a surface from an other thread
 
 #### Additions
 
