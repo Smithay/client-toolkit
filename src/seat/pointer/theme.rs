@@ -207,16 +207,15 @@ struct PointerInner {
 impl PointerInner {
     fn update_cursor(&self, pointer: &wl_pointer::WlPointer) -> Result<(), ()> {
         let mut themes = self.themes.borrow_mut();
-        let cursor = themes
-            .get_cursor(&self.current_cursor, self.scale_factor as u32)
-            .ok_or(())?;
+        let scale = self.scale_factor as u32;
+        let cursor = themes.get_cursor(&self.current_cursor, scale).ok_or(())?;
         let buffer = cursor.frame_buffer(0).ok_or(())?;
         let (w, h, hx, hy) = cursor
             .frame_info(0)
-            .map(|(w, h, hx, hy, _)| (w as i32, h as i32, hx as i32, hy as i32))
+            .map(|(w, h, hx, hy, _)| (w as i32, h as i32, (hx / scale) as i32, (hy / scale) as i32))
             .unwrap_or((0, 0, 0, 0));
 
-        self.surface.set_buffer_scale(self.scale_factor);
+        self.surface.set_buffer_scale(scale as i32);
         self.surface.attach(Some(&buffer), 0, 0);
         if self.surface.as_ref().version() >= 4 {
             self.surface.damage_buffer(0, 0, w, h);
