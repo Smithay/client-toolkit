@@ -231,7 +231,7 @@ impl ThemedPointer {
         } else {
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            surface.damage(0, 0, w, h);
+            surface.damage(0, 0, w / scale, h / scale);
         }
         surface.commit();
         self.pointer.set_cursor(*last_serial, Some(surface), hx, hy);
