@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- Damaging decorations buffers in wrong coordinates
+
 ## 0.6.5 -- 2020-02-07
 
 #### Bugfixes
