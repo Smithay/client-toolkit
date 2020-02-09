@@ -214,23 +214,24 @@ impl ThemedPointer {
         let mut theme = theme.lock().unwrap();
         let cursor = theme.get_cursor(name, scale).ok_or(())?;
         let buffer = cursor.frame_buffer(0).ok_or(())?;
+        let scale = scale as i32;
         let (w, h, hx, hy) = cursor
             .frame_info(0)
-            .map(|(w, h, hx, hy, _)| (w as i32, h as i32, hx as i32, hy as i32))
+            .map(|(w, h, hx, hy, _)| (w as i32, h as i32, hx as i32 / scale, hy as i32 / scale))
             .unwrap_or((0, 0, 0, 0));
 
         if let Some(s) = serial {
             *last_serial = s;
         }
 
-        surface.set_buffer_scale(scale as i32);
+        surface.set_buffer_scale(scale);
         surface.attach(Some(&buffer), 0, 0);
         if surface.as_ref().version() >= 4 {
             surface.damage_buffer(0, 0, w, h);
         } else {
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            surface.damage(0, 0, w, h);
+            surface.damage(0, 0, w / scale, h / scale);
         }
         surface.commit();
         self.pointer.set_cursor(*last_serial, Some(surface), hx, hy);

@@ -5,6 +5,7 @@
 #### Bugfixes
 
 - Damaging decorations buffers in wrong coordinates
+- Fix `HiDPI` cursor bounding box
 
 ## 0.6.5 -- 2020-02-07
 
