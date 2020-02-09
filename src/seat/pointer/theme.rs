@@ -222,7 +222,8 @@ impl PointerInner {
         } else {
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            self.surface.damage(0, 0, w, h);
+            self.surface
+                .damage(0, 0, w / scale as i32, h / scale as i32);
         }
         self.surface.commit();
         pointer.set_cursor(self.last_serial, Some(&self.surface), hx, hy);
