@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- HiDPI cursor icon position
+
 ## 0.7.0 -- 2020-02-07
 
 #### Breaking changes
