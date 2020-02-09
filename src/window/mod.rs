@@ -12,7 +12,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
 
-use self::zxdg_toplevel_decoration_v1::{Mode as DecorationsMode};
+use self::zxdg_toplevel_decoration_v1::Mode as DecorationsMode;
 
 use {Environment, Shell};
 

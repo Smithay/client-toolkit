@@ -587,8 +587,8 @@ impl Frame for ConceptFrame {
                 self.inner.parts[HEAD].surface.damage_buffer(
                     0,
                     0,
-                    width as i32,
-                    HEADER_SIZE as i32,
+                    scaled_width as i32,
+                    scaled_header as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
@@ -616,8 +616,8 @@ impl Frame for ConceptFrame {
                 self.inner.parts[TOP].surface.damage_buffer(
                     0,
                     0,
-                    (width + 2 * BORDER_SIZE) as i32,
-                    BORDER_SIZE as i32,
+                    (scaled_width + 2 * scaled_border) as i32,
+                    scaled_border as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
@@ -647,8 +647,8 @@ impl Frame for ConceptFrame {
                 self.inner.parts[BOTTOM].surface.damage_buffer(
                     0,
                     0,
-                    (width + 2 * BORDER_SIZE) as i32,
-                    BORDER_SIZE as i32,
+                    (scaled_width + 2 * scaled_border) as i32,
+                    scaled_border as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
@@ -678,8 +678,8 @@ impl Frame for ConceptFrame {
                 self.inner.parts[LEFT].surface.damage_buffer(
                     0,
                     0,
-                    BORDER_SIZE as i32,
-                    (height + HEADER_SIZE) as i32,
+                    scaled_border as i32,
+                    (scaled_height + scaled_header) as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
@@ -709,8 +709,8 @@ impl Frame for ConceptFrame {
                 self.inner.parts[RIGHT].surface.damage_buffer(
                     0,
                     0,
-                    BORDER_SIZE as i32,
-                    (height + HEADER_SIZE) as i32,
+                    scaled_border as i32,
+                    (scaled_height + scaled_height) as i32,
                 );
             } else {
                 // surface is old and does not support damage_buffer, so we damage
