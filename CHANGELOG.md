@@ -2,10 +2,15 @@
 
 ## Unreleased
 
+#### Additions
+
+- HiDPI scaling for decorations
+
 #### Bugfixes
 
 - HiDPI cursor icon position
 - Fix graphical glitches in `ConceptFrame` decoration drawing
+- Black pixel on left-bottom corner on CSD
 
 ## 0.7.0 -- 2020-02-07
 
