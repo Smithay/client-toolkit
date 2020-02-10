@@ -852,10 +852,10 @@ fn draw_buttons(
                 ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
                 ((width) as usize, (HEADER_SIZE - 1) as usize),
                 [
-                    red_shade[0].saturating_sub(50),
+                    red_shade[0],
                     red_shade[1].saturating_sub(50),
                     red_shade[2].saturating_sub(50),
-                    255,
+                    red_shade[3].saturating_sub(50),
                 ],
                 true,
             );
@@ -874,10 +874,10 @@ fn draw_buttons(
                 ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
                 ((width) as usize, (HEADER_SIZE - 1) as usize),
                 [
-                    red_shade[0].saturating_sub(50),
+                    red_shade[0],
                     red_shade[1].saturating_sub(50),
                     red_shade[2].saturating_sub(50),
-                    255,
+                    red_shade[3].saturating_sub(50),
                 ],
                 true,
             );
@@ -967,10 +967,10 @@ fn draw_buttons(
                 ),
                 ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
                 [
-                    green_shade[0].saturating_sub(50),
+                    green_shade[0],
                     green_shade[1].saturating_sub(50),
                     green_shade[2].saturating_sub(50),
-                    255,
+                    green_shade[3].saturating_sub(50),
                 ],
                 true,
             );
@@ -992,10 +992,10 @@ fn draw_buttons(
                 ),
                 ((width - HEADER_SIZE) as usize, (HEADER_SIZE - 1) as usize),
                 [
-                    green_shade[0].saturating_sub(50),
+                    green_shade[0],
                     green_shade[1].saturating_sub(50),
                     green_shade[2].saturating_sub(50),
-                    255,
+                    green_shade[3].saturating_sub(50),
                 ],
                 true,
             );
@@ -1060,10 +1060,10 @@ fn draw_buttons(
                     (HEADER_SIZE - 1) as usize,
                 ),
                 [
-                    blue_shade[0].saturating_sub(50),
+                    blue_shade[0],
                     blue_shade[1].saturating_sub(50),
                     blue_shade[2].saturating_sub(50),
-                    255,
+                    blue_shade[3].saturating_sub(50),
                 ],
                 true,
             );
@@ -1088,10 +1088,10 @@ fn draw_buttons(
                     (HEADER_SIZE - 1) as usize,
                 ),
                 [
-                    blue_shade[0].saturating_sub(50),
+                    blue_shade[0],
                     blue_shade[1].saturating_sub(50),
                     blue_shade[2].saturating_sub(50),
-                    255,
+                    blue_shade[3].saturating_sub(50),
                 ],
                 true,
             );

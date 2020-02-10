@@ -40,6 +40,14 @@ pub enum ButtonState {
 /// A type implementing this trait can be used to define custom
 /// themes to adjust the decorations provided by a type implementing
 /// the 'Frame' trait
+///
+/// Note that the buttons will be drawn on top of the primary/secondary color.
+/// As such if their alpha channel is not `255` some blending will occur.
+///
+/// On `ConceptFrame`, setting the alpha channel to `0` thus makes the button
+/// background the same color as the titlebar.
+///
+/// All colors are to be specified in ARGB format.
 pub trait Theme: 'static {
     /// Gets the primary color of the scheme, active when window is
     fn get_primary_color(&self, active: bool) -> [u8; 4];
