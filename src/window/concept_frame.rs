@@ -1025,7 +1025,7 @@ fn draw_buttons(
                         green_shade[2].saturating_sub(50),
                         green_shade[3].saturating_sub(50),
                     ],
-                    true,
+                    false,
                 );
                 canvas.draw(&green_division_line);
             }
