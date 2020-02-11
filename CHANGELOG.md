@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.6 -- 2020-02-11
+
 #### Bugfixes
 
 - Damaging decorations buffers in wrong coordinates
