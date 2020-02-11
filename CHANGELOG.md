@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- `Frame` configuration is now done through a `Frame::Config` associated type and the `Theme` trait is removed.
+
 #### Additions
 
 - HiDPI scaling for decorations

@@ -8,9 +8,65 @@ use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::shm::MemPool;
-use sctk::window::{ButtonState, ConceptFrame, Event as WEvent, Theme};
+use sctk::window::{ButtonColorSpec, ColorSpec, ConceptConfig, ConceptFrame, Event as WEvent};
 
 sctk::default_environment!(ThemedFrameExample, desktop);
+
+// The frame configuration we will use in this example
+fn create_frame_config() -> ConceptConfig {
+    let icon_spec = ButtonColorSpec {
+        hovered: ColorSpec::identical([0xFF, 0x22, 0x22, 0x22].into()),
+        idle: ColorSpec::identical([0xFF, 0xff, 0xff, 0xff].into()),
+        disabled: ColorSpec::invisible(),
+    };
+
+    ConceptConfig {
+        // dark theme
+        primary_color: ColorSpec {
+            active: [0xFF, 0x22, 0x22, 0x22].into(),
+            inactive: [0xFF, 0x33, 0x33, 0x33].into(),
+        },
+        // white separation line
+        secondary_color: ColorSpec::identical([0xFF, 0xFF, 0xFF, 0xFF].into()),
+        // red close button
+        close_button: Some((
+            // icon
+            icon_spec,
+            // button background
+            ButtonColorSpec {
+                hovered: ColorSpec::identical([0xFF, 0xFF, 0x00, 0x00].into()),
+                idle: ColorSpec::identical([0xFF, 0x88, 0x00, 0x00].into()),
+                disabled: ColorSpec::invisible(),
+            },
+        )),
+        // green maximize button
+        maximize_button: Some((
+            // icon
+            icon_spec,
+            // button background
+            ButtonColorSpec {
+                hovered: ColorSpec::identical([0xFF, 0x00, 0xFF, 0x00].into()),
+                idle: ColorSpec::identical([0xFF, 0x00, 0x88, 0x00].into()),
+                disabled: ColorSpec::invisible(),
+            },
+        )),
+        // blue minimize button
+        minimize_button: Some((
+            // icon
+            icon_spec,
+            // button background
+            ButtonColorSpec {
+                hovered: ColorSpec::identical([0xFF, 0x00, 0x00, 0xFF].into()),
+                idle: ColorSpec::identical([0xFF, 0x00, 0x00, 0x88].into()),
+                disabled: ColorSpec::invisible(),
+            },
+        )),
+        // same font as default
+        title_font: Some(("sans".into(), 17.0)),
+        // clear text over dark background
+        title_color: ColorSpec::identical([0xFF, 0xD0, 0xD0, 0xD0].into()),
+    }
+}
 
 fn main() {
     /*
@@ -47,24 +103,8 @@ fn main() {
         })
         .expect("Failed to create a window !");
 
-    let scaled_bg = [0xFF, 0x22, 0x22, 0x22];
-    let vscaled_bg = [0xFF, 0x33, 0x33, 0x33];
-
     window.set_title("Themed frame".to_string());
-    window.set_theme(WaylandTheme {
-        primary_active: scaled_bg,
-        primary_inactive: vscaled_bg,
-        secondary_active: [0xFF, 0xFF, 0xFF, 0xFF],
-        secondary_inactive: [0xFF, 0xFF, 0xFF, 0xFF],
-        close_button_hovered: [0xFF, 0xFF, 0x00, 0x00],
-        close_button: [0xFF, 0x88, 0x00, 0x00],
-        close_button_icon_hovered: scaled_bg,
-        close_button_icon: [0xFF, 0xff, 0xff, 0xff],
-        maximize_button_hovered: [0xFF, 0x00, 0xFF, 0x00],
-        maximize_button: [0xFF, 0x00, 0x88, 0x00],
-        minimize_button_hovered: [0xFF, 0x00, 0x00, 0xFF],
-        minimize_button: [0xFF, 0x00, 0x00, 0x88],
-    });
+    window.set_frame_config(create_frame_config());
 
     let mut pools = env
         .create_double_pool(|_| {})
@@ -142,80 +182,4 @@ fn redraw(
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     Ok(())
-}
-
-pub struct WaylandTheme {
-    /// Primary color when the window is focused
-    pub primary_active: [u8; 4],
-    /// Primary color when the window is unfocused
-    pub primary_inactive: [u8; 4],
-    /// Secondary color when the window is focused
-    pub secondary_active: [u8; 4],
-    /// Secondary color when the window is unfocused
-    pub secondary_inactive: [u8; 4],
-    /// Close button color when hovered over
-    pub close_button_hovered: [u8; 4],
-    /// Close button color
-    pub close_button: [u8; 4],
-    /// Close button fg color when hovered over
-    pub close_button_icon_hovered: [u8; 4],
-    /// Close button fg color
-    pub close_button_icon: [u8; 4],
-    /// Close button color when hovered over
-    pub maximize_button_hovered: [u8; 4],
-    /// Maximize button color
-    pub maximize_button: [u8; 4],
-    /// Minimize button color when hovered over
-    pub minimize_button_hovered: [u8; 4],
-    /// Minimize button color
-    pub minimize_button: [u8; 4],
-}
-
-impl Theme for WaylandTheme {
-    fn get_primary_color(&self, active: bool) -> [u8; 4] {
-        if active {
-            self.primary_active
-        } else {
-            self.primary_inactive
-        }
-    }
-
-    // Used for division line
-    fn get_secondary_color(&self, active: bool) -> [u8; 4] {
-        if active {
-            self.secondary_active
-        } else {
-            self.secondary_inactive
-        }
-    }
-
-    fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => self.close_button_hovered,
-            ButtonState::Idle => self.close_button,
-            _ => self.close_button,
-        }
-    }
-
-    fn get_close_button_icon_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => self.close_button_icon_hovered,
-            ButtonState::Idle => self.close_button_icon,
-            _ => self.close_button,
-        }
-    }
-
-    fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => self.maximize_button_hovered,
-            _ => self.maximize_button,
-        }
-    }
-
-    fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => self.minimize_button_hovered,
-            _ => self.minimize_button,
-        }
-    }
 }
