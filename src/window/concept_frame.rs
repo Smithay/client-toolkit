@@ -14,7 +14,7 @@ use wayland_client::protocol::{
 };
 use wayland_client::{Attached, DispatchData};
 
-use super::{ButtonState, Frame, FrameRequest, Theme};
+use super::{ARGBColor, ButtonColorSpec, ButtonState, ColorSpec, Frame, FrameRequest, WindowState};
 use crate::seat::pointer::{AutoPointer, AutoThemer, ThemeSpec};
 use crate::shm::DoubleMemPool;
 
@@ -24,48 +24,91 @@ use crate::shm::DoubleMemPool;
 
 const BORDER_SIZE: u32 = 12;
 const HEADER_SIZE: u32 = 30;
-const BUTTON_SPACE: u32 = 10;
 
-// Defining the theme
-struct DefaultTheme;
+/// Configuration for ConceptFrame
+#[derive(Clone, Debug)]
+pub struct ConceptConfig {
+    /// The primary color of the titlebar
+    pub primary_color: ColorSpec,
+    /// Secondary color of the theme
+    ///
+    /// Used for the division line between the titlebar and the content
+    pub secondary_color: ColorSpec,
+    /// Parameters of the "Close" (or "x") button
+    ///
+    /// (icon color, button color)
+    ///
+    /// if `None` the button will not be drawn
+    pub close_button: Option<(ButtonColorSpec, ButtonColorSpec)>,
+    /// Parameters of the "Maximize" (or "^") button
+    ///
+    /// (icon color, button color)
+    ///
+    /// if `None` the button will not be drawn
+    pub maximize_button: Option<(ButtonColorSpec, ButtonColorSpec)>,
+    /// Parameters of the "Minimize" (or "v") button
+    ///
+    /// (icon color, button color)
+    ///
+    /// if `None` the button will not be drawn
+    pub minimize_button: Option<(ButtonColorSpec, ButtonColorSpec)>,
+    /// Font configuration for the titlebar
+    ///
+    /// Font name and size. If set to `None`, the title is not drawn.
+    pub title_font: Option<(String, f32)>,
+    /// Color for drawing the title text
+    pub title_color: ColorSpec,
+}
 
-impl Theme for DefaultTheme {
-    // Used for header color
-    fn get_primary_color(&self, active: bool) -> [u8; 4] {
-        if active {
-            [0xFF, 0xE6, 0xE6, 0xE6]
-        } else {
-            [0xFF, 0xDC, 0xDC, 0xDC]
-        }
-    }
+impl Default for ConceptConfig {
+    fn default() -> ConceptConfig {
+        let icon_spec = ButtonColorSpec {
+            idle: ColorSpec::identical([0xFF, 0x1E, 0x1E, 0x1E].into()),
+            hovered: ColorSpec::identical([0xFF, 0x1E, 0x1E, 0x1E].into()),
+            disabled: ColorSpec::invisible(),
+        };
 
-    // Used for division line
-    fn get_secondary_color(&self, active: bool) -> [u8; 4] {
-        if active {
-            [0xFF, 0x1E, 0x1E, 0x1E]
-        } else {
-            [0xFF, 0x78, 0x78, 0x78]
-        }
-    }
-
-    fn get_close_button_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => [0xFF, 0xD9, 0x43, 0x52],
-            _ => [0x00, 0x00, 0x00, 0x00],
-        }
-    }
-
-    fn get_maximize_button_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => [0xFF, 0x2D, 0xCB, 0x70],
-            _ => [0x00, 0x00, 0x00, 0x00],
-        }
-    }
-
-    fn get_minimize_button_color(&self, state: ButtonState) -> [u8; 4] {
-        match state {
-            ButtonState::Hovered => [0xFF, 0x3C, 0xAD, 0xE8],
-            _ => [0x00, 0x00, 0x00, 0x00],
+        ConceptConfig {
+            primary_color: ColorSpec {
+                active: [0xFF, 0xE6, 0xE6, 0xE6].into(),
+                inactive: [0xFF, 0xDC, 0xDC, 0xDC].into(),
+            },
+            secondary_color: ColorSpec {
+                active: [0xFF, 0x1E, 0x1E, 0x1E].into(),
+                inactive: [0xFF, 0x78, 0x78, 0x78].into(),
+            },
+            close_button: Some((
+                // icon
+                icon_spec,
+                // button background
+                ButtonColorSpec {
+                    idle: ColorSpec::invisible(),
+                    hovered: ColorSpec::identical([0xFF, 0xD9, 0x43, 0x52].into()),
+                    disabled: ColorSpec::invisible(),
+                },
+            )),
+            maximize_button: Some((
+                // icon
+                icon_spec,
+                // button background
+                ButtonColorSpec {
+                    idle: ColorSpec::invisible(),
+                    hovered: ColorSpec::identical([0xFF, 0x2D, 0xCB, 0x70].into()),
+                    disabled: ColorSpec::invisible(),
+                },
+            )),
+            minimize_button: Some((
+                // icon
+                icon_spec,
+                // button background
+                ButtonColorSpec {
+                    idle: ColorSpec::invisible(),
+                    hovered: ColorSpec::identical([0xFF, 0x3C, 0xAD, 0xE8].into()),
+                    disabled: ColorSpec::invisible(),
+                },
+            )),
+            title_font: Some(("sans".into(), 17.0)),
+            title_color: ColorSpec::identical([0xFF, 0x00, 0x00, 0x00].into()),
         }
     }
 }
@@ -169,6 +212,7 @@ struct Inner {
     resizable: bool,
     implem: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     maximized: bool,
+    buttons: (bool, bool, bool),
 }
 
 impl Inner {
@@ -192,9 +236,15 @@ impl Inner {
     }
 }
 
-fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
+fn precise_location(
+    old: Location,
+    width: u32,
+    x: f64,
+    y: f64,
+    buttons: (bool, bool, bool),
+) -> Location {
     match old {
-        Location::Head | Location::Button(_) => find_button(x, y, width),
+        Location::Head | Location::Button(_) => find_button(x, y, width, buttons),
 
         Location::Top | Location::TopLeft | Location::TopRight => {
             if x <= f64::from(BORDER_SIZE) {
@@ -220,28 +270,43 @@ fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
     }
 }
 
-fn find_button(x: f64, y: f64, w: u32) -> Location {
-    if (w >= 24 + 2 * BUTTON_SPACE)
+fn find_button(x: f64, y: f64, w: u32, buttons: (bool, bool, bool)) -> Location {
+    if (w >= HEADER_SIZE)
         && (x >= f64::from(w - HEADER_SIZE))
         && (x <= f64::from(w))
         && (y <= f64::from(HEADER_SIZE))
         && (y >= f64::from(0))
     {
-        Location::Button(UIButton::Close)
-    } else if (w >= 56 + 2 * BUTTON_SPACE)
+        // first button
+        match buttons {
+            (true, _, _) => Location::Button(UIButton::Close),
+            (false, true, _) => Location::Button(UIButton::Maximize),
+            (false, false, true) => Location::Button(UIButton::Minimize),
+            _ => Location::Head,
+        }
+    } else if (w >= 2 * HEADER_SIZE)
         && (x >= f64::from(w - 2 * HEADER_SIZE))
         && (x <= f64::from(w - HEADER_SIZE))
         && (y <= f64::from(HEADER_SIZE))
         && (y >= f64::from(0))
     {
-        Location::Button(UIButton::Maximize)
-    } else if (w >= 88 + 2 * BUTTON_SPACE)
+        // second button
+        match buttons {
+            (true, true, _) => Location::Button(UIButton::Maximize),
+            (false, true, true) => Location::Button(UIButton::Minimize),
+            _ => Location::Head,
+        }
+    } else if (w >= 3 * HEADER_SIZE)
         && (x >= f64::from(w - 3 * HEADER_SIZE))
         && (x <= f64::from(w - 2 * HEADER_SIZE))
         && (y <= f64::from(HEADER_SIZE))
         && (y >= f64::from(0))
     {
-        Location::Button(UIButton::Minimize)
+        // third button
+        match buttons {
+            (true, true, true) => Location::Button(UIButton::Minimize),
+            _ => Location::Head,
+        }
     } else {
         Location::Head
     }
@@ -255,18 +320,19 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 pub struct ConceptFrame {
     inner: Rc<RefCell<Inner>>,
     pools: DoubleMemPool,
-    active: bool,
+    active: WindowState,
     hidden: bool,
     pointers: Vec<AutoPointer>,
     themer: AutoThemer,
     surface_version: u32,
-    theme: Box<dyn Theme>,
+    config: ConceptConfig,
     title: Option<String>,
     font_data: Option<Vec<u8>>,
 }
 
 impl Frame for ConceptFrame {
     type Error = ::std::io::Error;
+    type Config = ConceptConfig;
     fn init(
         base_surface: &wl_surface::WlSurface,
         compositor: &Attached<wl_compositor::WlCompositor>,
@@ -280,6 +346,7 @@ impl Frame for ConceptFrame {
             resizable: true,
             implem: implementation,
             maximized: false,
+            buttons: (true, true, true),
         }));
 
         inner.borrow_mut().parts = vec![
@@ -304,12 +371,12 @@ impl Frame for ConceptFrame {
         Ok(ConceptFrame {
             inner,
             pools,
-            active: false,
+            active: WindowState::Inactive,
             hidden: false,
             pointers: Vec::new(),
             themer: AutoThemer::init(ThemeSpec::System, compositor.clone(), shm.clone()),
             surface_version: compositor.as_ref().version(),
-            theme: Box::new(DefaultTheme),
+            config: ConceptConfig::default(),
             title: None,
             font_data: None,
         })
@@ -336,6 +403,7 @@ impl Frame for ConceptFrame {
                             inner.size.0,
                             surface_x,
                             surface_y,
+                            inner.buttons,
                         );
                         data.position = (surface_x, surface_y);
                         if inner.resizable {
@@ -353,8 +421,13 @@ impl Frame for ConceptFrame {
                         ..
                     } => {
                         data.position = (surface_x, surface_y);
-                        let newpos =
-                            precise_location(data.location, inner.size.0, surface_x, surface_y);
+                        let newpos = precise_location(
+                            data.location,
+                            inner.size.0,
+                            surface_x,
+                            surface_y,
+                            inner.buttons,
+                        );
                         if newpos != data.location {
                             match (newpos, data.location) {
                                 (Location::Button(_), _) | (_, Location::Button(_)) => {
@@ -421,7 +494,7 @@ impl Frame for ConceptFrame {
         });
     }
 
-    fn set_active(&mut self, active: bool) -> bool {
+    fn set_active(&mut self, active: WindowState) -> bool {
         if self.active != active {
             self.active = active;
             true
@@ -501,7 +574,7 @@ impl Frame for ConceptFrame {
             {
                 let mmap = pool.mmap();
                 {
-                    let color = self.theme.get_primary_color(self.active);
+                    let color = self.config.primary_color.get_for(self.active).into();
 
                     let mut header_canvas = Canvas::new(
                         &mut mmap
@@ -526,6 +599,7 @@ impl Frame for ConceptFrame {
                         width,
                         header_scale,
                         true,
+                        self.active,
                         &self
                             .pointers
                             .iter()
@@ -539,59 +613,75 @@ impl Frame for ConceptFrame {
                                 }
                             })
                             .collect::<Vec<Location>>(),
-                        &*self.theme,
+                        &self.config,
                     );
-
-                    if let Some(title) = self.title.clone() {
-                        // If theres no stored font data, find the first ttf regular sans font and
-                        // store it
-                        if self.font_data.is_none() {
-                            if let Some(font) = fontconfig::FontConfig::new()
-                                .unwrap()
-                                .get_regular_family_fonts("sans")
-                                .unwrap()
-                                .iter()
-                                .filter(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
-                                .nth(0)
-                            {
-                                let mut font_data = Vec::new();
-                                if let Ok(mut file) = ::std::fs::File::open(font) {
-                                    match file.read_to_end(&mut font_data) {
-                                        Ok(_) => self.font_data = Some(font_data),
-                                        Err(err) => {
-                                            log::error!("Could not read font file: {}", err)
+                    if let Some((ref font_face, font_size)) = self.config.title_font {
+                        if let Some(title) = self.title.clone() {
+                            // If theres no stored font data, find the first ttf regular sans font and
+                            // store it
+                            if self.font_data.is_none() {
+                                if let Some(font) = fontconfig::FontConfig::new()
+                                    .unwrap()
+                                    .get_regular_family_fonts(&font_face)
+                                    .unwrap()
+                                    .iter()
+                                    .filter(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
+                                    .nth(0)
+                                {
+                                    let mut font_data = Vec::new();
+                                    if let Ok(mut file) = ::std::fs::File::open(font) {
+                                        match file.read_to_end(&mut font_data) {
+                                            Ok(_) => self.font_data = Some(font_data),
+                                            Err(err) => {
+                                                log::error!("Could not read font file: {}", err)
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        // Create text from stored title and font data
-                        if let Some(ref font_data) = self.font_data {
-                            let mut title_text = text::Text::new(
-                                (0, (HEADER_SIZE as usize / 2 - 8) * header_scale as usize),
-                                [0, 0, 0, 255],
-                                font_data,
-                                17.0 * header_scale as f32,
-                                1.0 * header_scale as f32,
-                                title,
-                            );
+                            // Create text from stored title and font data
+                            if let Some(ref font_data) = self.font_data {
+                                let title_color = self.config.title_color.get_for(self.active);
+                                let mut title_text = text::Text::new(
+                                    (
+                                        0,
+                                        (HEADER_SIZE as usize / 2)
+                                            .saturating_sub((font_size / 2.0).ceil() as usize)
+                                            * header_scale as usize,
+                                    ),
+                                    title_color.into(),
+                                    font_data,
+                                    font_size * header_scale as f32,
+                                    1.0,
+                                    title,
+                                );
 
-                            // Check if text is bigger then the avaliable width
-                            if (width as isize - 88 - 4 * BUTTON_SPACE as isize)
-                                > (title_text.get_width() + BUTTON_SPACE as usize) as isize
-                            {
-                                title_text.pos.0 = header_scale as usize
-                                    * ((width as usize) / 2 - (title_text.get_width() / 2));
-                                // Adjust position for buttons if both compete for space
-                                if (width as usize) / 2 + (title_text.get_width() / 2)
-                                    > (width - 88 - 2 * 2 * BUTTON_SPACE) as usize
-                                {
-                                    title_text.pos.0 -= header_scale as usize
-                                        * (((width as usize) / 2 + (title_text.get_width() / 2))
-                                            - (width - 88 - 2 * 2 * BUTTON_SPACE) as usize);
+                                let mut button_count = 0isize;
+                                if self.config.close_button.is_some() {
+                                    button_count += 1;
                                 }
-                                header_canvas.draw(&title_text);
+                                if self.config.maximize_button.is_some() {
+                                    button_count += 1;
+                                }
+                                if self.config.minimize_button.is_some() {
+                                    button_count += 1;
+                                }
+
+                                let scaled_button_size =
+                                    HEADER_SIZE as isize * header_scale as isize;
+                                let button_space = button_count * scaled_button_size;
+                                let scaled_header_width = width as isize * header_scale as isize;
+
+                                // Check if text is bigger then the available width
+                                if (scaled_header_width - button_space)
+                                    > (title_text.get_width() as isize + scaled_button_size)
+                                {
+                                    title_text.pos.0 =
+                                        (scaled_header_width - button_space) as usize / 2
+                                            - (title_text.get_width() / 2);
+                                    header_canvas.draw(&title_text);
+                                }
                             }
                         }
                     }
@@ -790,8 +880,14 @@ impl Frame for ConceptFrame {
         }
     }
 
-    fn set_theme<T: Theme>(&mut self, theme: T) {
-        self.theme = Box::new(theme)
+    fn set_config(&mut self, config: ConceptConfig) {
+        self.config = config;
+        let mut inner = self.inner.borrow_mut();
+        inner.buttons = (
+            self.config.close_button.is_some(),
+            self.config.maximize_button.is_some(),
+            self.config.minimize_button.is_some(),
+        );
     }
 
     fn set_title(&mut self, title: String) {
@@ -866,331 +962,248 @@ fn request_for_location(
     }
 }
 
+// average of the two colors, approximately taking into account gamma correction
+// result is as transparent as the most transparent color
+fn mix_colors(x: ARGBColor, y: ARGBColor) -> ARGBColor {
+    #[inline]
+    fn gamma_mix(x: u8, y: u8) -> u8 {
+        let x = x as f32 / 255.0;
+        let y = y as f32 / 255.0;
+        let z = ((x * x + y * y) / 2.0).sqrt();
+        (z * 255.0) as u8
+    }
+
+    ARGBColor {
+        a: x.a.min(y.a),
+        r: gamma_mix(x.r, y.r),
+        g: gamma_mix(x.g, y.g),
+        b: gamma_mix(x.b, y.b),
+    }
+}
+
 fn draw_buttons(
     canvas: &mut Canvas,
     width: u32,
     scale: u32,
     maximizable: bool,
+    state: WindowState,
     mouses: &[Location],
-    theme: &dyn Theme,
+    config: &ConceptConfig,
 ) {
     let scale = scale as usize;
 
     // Draw seperator between header and window contents
-
+    let line_color = config.secondary_color.get_for(state);
     for i in 1..=scale {
         let y = HEADER_SIZE as usize * scale - i;
         let division_line = line::Line::new(
             (0, y),
             (width as usize * scale, y),
-            theme.get_secondary_color(false),
+            line_color.into(),
             false,
         );
         canvas.draw(&division_line);
     }
 
+    let mut drawn_buttons = 0usize;
+
     if width >= HEADER_SIZE {
-        // Draw the red button
-        let mut button_color = theme.get_close_button_icon_color(ButtonState::Idle);
-        if mouses
-            .iter()
-            .any(|&l| l == Location::Button(UIButton::Close))
-        {
-            // Draw a red shading around close button if hovered over
-            let red_shade = theme.get_close_button_color(ButtonState::Hovered);
-            // Change the button color (yet to be drawn) to the hovered version
-            button_color = theme.get_close_button_icon_color(ButtonState::Hovered);
-            let red_hover = rectangle::Rectangle::new(
-                ((width - HEADER_SIZE) as usize * scale, 0),
-                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
-                None,
-                Some(red_shade),
-            );
-            canvas.draw(&red_hover);
+        if let Some((ref icon_config, ref btn_config)) = config.close_button {
+            // Draw the close button
+            let btn_state = if mouses
+                .iter()
+                .any(|&l| l == Location::Button(UIButton::Close))
+            {
+                ButtonState::Hovered
+            } else {
+                ButtonState::Idle
+            };
 
-            for i in 1..=scale {
-                let y = HEADER_SIZE as usize * scale - i;
-                let red_division_line = line::Line::new(
-                    ((width - HEADER_SIZE) as usize * scale, y),
-                    ((width) as usize * scale, y),
-                    [
-                        red_shade[0],
-                        red_shade[1].saturating_sub(50),
-                        red_shade[2].saturating_sub(50),
-                        red_shade[3].saturating_sub(50),
-                    ],
-                    false,
-                );
-                canvas.draw(&red_division_line);
-            }
-        } else {
-            // draw shading if around close button when idle
-            let red_shade = theme.get_close_button_color(ButtonState::Idle);
-            let red_hover = rectangle::Rectangle::new(
-                ((width - HEADER_SIZE) as usize * scale, 0),
-                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
-                None,
-                Some(red_shade),
-            );
-            canvas.draw(&red_hover);
+            let icon_color = icon_config.get_for(btn_state).get_for(state);
+            let button_color = btn_config.get_for(btn_state).get_for(state);
 
-            for i in 1..=scale {
-                let y = HEADER_SIZE as usize * scale - i;
-                let red_division_line = line::Line::new(
-                    ((width - HEADER_SIZE) as usize * scale, y),
-                    ((width) as usize * scale, y),
-                    [
-                        red_shade[0],
-                        red_shade[1].saturating_sub(50),
-                        red_shade[2].saturating_sub(50),
-                        red_shade[3].saturating_sub(50),
-                    ],
-                    false,
-                );
-                canvas.draw(&red_division_line);
-            }
-        };
-
-        // Draw cross to represent the close button
-        for i in 0..2 * scale {
-            let diagonal_line = line::Line::new(
-                (
-                    (width - HEADER_SIZE / 2 - 4) as usize * scale + i,
-                    (HEADER_SIZE / 2 - 4) as usize * scale,
-                ),
-                (
-                    (width - HEADER_SIZE / 2 + 4) as usize * scale,
-                    (HEADER_SIZE / 2 + 4) as usize * scale - i,
-                ),
+            draw_button(
+                canvas,
+                0,
+                scale,
                 button_color,
-                true,
+                mix_colors(button_color, line_color),
             );
-            canvas.draw(&diagonal_line);
-            let diagonal_line = line::Line::new(
-                (
-                    (width - HEADER_SIZE / 2 - 4) as usize * scale,
-                    (HEADER_SIZE / 2 - 4) as usize * scale + i,
-                ),
-                (
-                    (width - HEADER_SIZE / 2 + 4) as usize * scale - i,
-                    (HEADER_SIZE / 2 + 4) as usize * scale,
-                ),
-                button_color,
-                true,
-            );
-            canvas.draw(&diagonal_line);
-            let diagonal_line = line::Line::new(
-                (
-                    (width - HEADER_SIZE / 2 + 4) as usize * scale - i,
-                    (HEADER_SIZE / 2 - 4) as usize * scale,
-                ),
-                (
-                    (width - HEADER_SIZE / 2 - 4) as usize * scale,
-                    (HEADER_SIZE / 2 + 4) as usize * scale - i,
-                ),
-                button_color,
-                true,
-            );
-            canvas.draw(&diagonal_line);
-            let diagonal_line = line::Line::new(
-                (
-                    (width - HEADER_SIZE / 2 + 4) as usize * scale,
-                    (HEADER_SIZE / 2 - 4) as usize * scale + i,
-                ),
-                (
-                    (width - HEADER_SIZE / 2 - 4) as usize * scale + i,
-                    (HEADER_SIZE / 2 + 4) as usize * scale,
-                ),
-                button_color,
-                true,
-            );
-            canvas.draw(&diagonal_line);
+            draw_icon(canvas, 0, scale, icon_color, Icon::Close);
+            drawn_buttons += 1;
         }
     }
 
-    if width >= 2 * HEADER_SIZE {
-        // Draw the green button
-        let mut button_color = theme.get_maximize_button_icon_color(ButtonState::Idle);
-        if !maximizable {
-        } else if mouses
-            .iter()
-            .any(|&l| l == Location::Button(UIButton::Maximize))
-        {
-            // Draw a green shading around maximize button if hovered over
-            let green_shade = theme.get_maximize_button_color(ButtonState::Hovered);
-            // Change the button color (yet to be drawn) to the hovered version
-            button_color = theme.get_maximize_button_icon_color(ButtonState::Hovered);
-            let green_hover = rectangle::Rectangle::new(
-                ((width - 2 * HEADER_SIZE) as usize * scale, 0),
-                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
-                None,
-                Some(green_shade),
-            );
-            canvas.draw(&green_hover);
+    if width as usize >= (drawn_buttons + 1) * HEADER_SIZE as usize {
+        if let Some((ref icon_config, ref btn_config)) = config.maximize_button {
+            let btn_state = if !maximizable {
+                ButtonState::Disabled
+            } else if mouses
+                .iter()
+                .any(|&l| l == Location::Button(UIButton::Maximize))
+            {
+                ButtonState::Hovered
+            } else {
+                ButtonState::Idle
+            };
 
-            for i in 1..=scale {
-                let y = HEADER_SIZE as usize * scale - i;
-                let green_division_line = line::Line::new(
-                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
-                    ((width - HEADER_SIZE) as usize * scale, y),
-                    [
-                        green_shade[0],
-                        green_shade[1].saturating_sub(50),
-                        green_shade[2].saturating_sub(50),
-                        green_shade[3].saturating_sub(50),
-                    ],
-                    false,
-                );
+            let icon_color = icon_config.get_for(btn_state).get_for(state);
+            let button_color = btn_config.get_for(btn_state).get_for(state);
 
-                canvas.draw(&green_division_line);
-            }
-        } else {
-            // Draw a green shading around maximize button if idle
-            let green_shade = theme.get_maximize_button_color(ButtonState::Idle);
-            let green_hover = rectangle::Rectangle::new(
-                ((width - 2 * HEADER_SIZE) as usize * scale, 0),
-                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
-                None,
-                Some(green_shade),
-            );
-
-            canvas.draw(&green_hover);
-
-            for i in 1..=scale {
-                let y = HEADER_SIZE as usize * scale - i;
-                let green_division_line = line::Line::new(
-                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
-                    ((width - HEADER_SIZE) as usize * scale, y),
-                    [
-                        green_shade[0],
-                        green_shade[1].saturating_sub(50),
-                        green_shade[2].saturating_sub(50),
-                        green_shade[3].saturating_sub(50),
-                    ],
-                    false,
-                );
-                canvas.draw(&green_division_line);
-            }
-        };
-
-        for i in 0..3 * scale {
-            let left_diagional = line::Line::new(
-                (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2 - 4) as usize * scale - i,
-                    (HEADER_SIZE / 2 + 2) as usize * scale,
-                ),
-                (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
-                    (HEADER_SIZE / 2 - 2) as usize * scale - i,
-                ),
+            draw_button(
+                canvas,
+                drawn_buttons * HEADER_SIZE as usize,
+                scale,
                 button_color,
-                true,
+                mix_colors(button_color, line_color),
             );
-            canvas.draw(&left_diagional);
-            let right_diagional = line::Line::new(
-                (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2 + 4) as usize * scale + i,
-                    (HEADER_SIZE / 2 + 2) as usize * scale,
-                ),
-                (
-                    (width - HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
-                    (HEADER_SIZE / 2 - 2) as usize * scale - i,
-                ),
-                button_color,
-                true,
+            draw_icon(
+                canvas,
+                drawn_buttons * HEADER_SIZE as usize,
+                scale,
+                icon_color,
+                Icon::Maximize,
             );
-            canvas.draw(&right_diagional);
+            drawn_buttons += 1;
         }
     }
 
-    if width >= 3 * HEADER_SIZE {
-        // Draw the blue button
-        let mut button_color = theme.get_minimize_button_icon_color(ButtonState::Idle);
-        if mouses
-            .iter()
-            .any(|&l| l == Location::Button(UIButton::Minimize))
-        {
-            // Draw a blue shading around minimize button if hovered over
-            let blue_shade = theme.get_minimize_button_color(ButtonState::Hovered);
-            // Change the button color (yet to be drawn) to the hovered version
-            button_color = theme.get_minimize_button_icon_color(ButtonState::Hovered);
-            let blue_hover = rectangle::Rectangle::new(
-                ((width - 3 * HEADER_SIZE) as usize * scale, 0),
-                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
-                None,
-                Some(blue_shade),
-            );
-            canvas.draw(&blue_hover);
-            for i in 1..=scale {
-                let y = HEADER_SIZE as usize * scale - i;
-                let blue_division_line = line::Line::new(
-                    ((width - 3 * HEADER_SIZE) as usize * scale, y),
-                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
-                    [
-                        blue_shade[0],
-                        blue_shade[1].saturating_sub(50),
-                        blue_shade[2].saturating_sub(50),
-                        blue_shade[3].saturating_sub(50),
-                    ],
-                    false,
-                );
-                canvas.draw(&blue_division_line);
-            }
-        } else {
-            // Draw a blue shading around minimize button if idle
-            let blue_shade = theme.get_minimize_button_color(ButtonState::Idle);
-            let blue_hover = rectangle::Rectangle::new(
-                ((width - 3 * HEADER_SIZE) as usize * scale, 0),
-                (HEADER_SIZE as usize * scale, HEADER_SIZE as usize * scale),
-                None,
-                Some(blue_shade),
-            );
-            canvas.draw(&blue_hover);
+    if width as usize >= (drawn_buttons + 1) * HEADER_SIZE as usize {
+        if let Some((ref icon_config, ref btn_config)) = config.minimize_button {
+            let btn_state = if mouses
+                .iter()
+                .any(|&l| l == Location::Button(UIButton::Minimize))
+            {
+                ButtonState::Hovered
+            } else {
+                ButtonState::Idle
+            };
 
-            for i in 1..=scale {
-                let y = HEADER_SIZE as usize * scale - i;
-                let blue_division_line = line::Line::new(
-                    ((width - 3 * HEADER_SIZE) as usize * scale, y),
-                    ((width - 2 * HEADER_SIZE) as usize * scale, y),
-                    [
-                        blue_shade[0],
-                        blue_shade[1].saturating_sub(50),
-                        blue_shade[2].saturating_sub(50),
-                        blue_shade[3].saturating_sub(50),
-                    ],
-                    false,
-                );
-                canvas.draw(&blue_division_line);
+            let icon_color = icon_config.get_for(btn_state).get_for(state);
+            let button_color = btn_config.get_for(btn_state).get_for(state);
+
+            draw_button(
+                canvas,
+                drawn_buttons * HEADER_SIZE as usize,
+                scale,
+                button_color,
+                mix_colors(button_color, line_color),
+            );
+            draw_icon(
+                canvas,
+                drawn_buttons * HEADER_SIZE as usize,
+                scale,
+                icon_color,
+                Icon::Minimize,
+            );
+        }
+    }
+}
+
+enum Icon {
+    Close,
+    Maximize,
+    Minimize,
+}
+
+fn draw_button(
+    canvas: &mut Canvas,
+    x_offset: usize,
+    scale: usize,
+    btn_color: ARGBColor,
+    line_color: ARGBColor,
+) {
+    let h = HEADER_SIZE as usize;
+    let x_start = canvas.width / scale - h - x_offset;
+    // main square
+    canvas.draw(&rectangle::Rectangle::new(
+        (x_start * scale, 0),
+        (h * scale, (h - 1) * scale),
+        None,
+        Some(btn_color.into()),
+    ));
+    // separation line
+    canvas.draw(&rectangle::Rectangle::new(
+        (x_start * scale, (h - 1) * scale),
+        (h * scale, scale),
+        None,
+        Some(line_color.into()),
+    ));
+}
+
+fn draw_icon(
+    canvas: &mut Canvas,
+    x_offset: usize,
+    scale: usize,
+    icon_color: ARGBColor,
+    icon: Icon,
+) {
+    let h = HEADER_SIZE as usize;
+    let cx = canvas.width / scale - h / 2 - x_offset;
+    let cy = h / 2;
+    let s = scale;
+
+    match icon {
+        Icon::Close => {
+            // Draw cross to represent the close button
+            for i in 0..2 * scale {
+                canvas.draw(&line::Line::new(
+                    ((cx - 4) * s + i, (cy - 4) * s),
+                    ((cx + 4) * s, (cy + 4) * s - i),
+                    icon_color.into(),
+                    true,
+                ));
+                canvas.draw(&line::Line::new(
+                    ((cx - 4) * s, (cy - 4) * s + i),
+                    ((cx + 4) * s - i, (cy + 4) * s),
+                    icon_color.into(),
+                    true,
+                ));
+                canvas.draw(&line::Line::new(
+                    ((cx + 4) * s - i, (cy - 4) * s),
+                    ((cx - 4) * s, (cy + 4) * s - i),
+                    icon_color.into(),
+                    true,
+                ));
+                canvas.draw(&line::Line::new(
+                    ((cx + 4) * s, (cy - 4) * s + i),
+                    ((cx - 4) * s + i, (cy + 4) * s),
+                    icon_color.into(),
+                    true,
+                ));
             }
         }
-
-        for i in 0..3 * scale {
-            let left_diagional = line::Line::new(
-                (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2 - 4) as usize * scale - i,
-                    (HEADER_SIZE / 2 - 3) as usize * scale,
-                ),
-                (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
-                    (HEADER_SIZE / 2 + 1) as usize * scale + i,
-                ),
-                button_color,
-                true,
-            );
-            canvas.draw(&left_diagional);
-            let right_diagional = line::Line::new(
-                (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2 + 4) as usize * scale + i,
-                    (HEADER_SIZE / 2 - 3) as usize * scale,
-                ),
-                (
-                    (width - 2 * HEADER_SIZE - HEADER_SIZE / 2) as usize * scale,
-                    (HEADER_SIZE / 2 + 1) as usize * scale + i,
-                ),
-                button_color,
-                true,
-            );
-            canvas.draw(&right_diagional);
+        Icon::Maximize => {
+            for i in 0..3 * scale {
+                canvas.draw(&line::Line::new(
+                    ((cx - 4) * s - i, (cy + 2) * s),
+                    (cx * s, (cy - 2) * s - i),
+                    icon_color.into(),
+                    true,
+                ));
+                canvas.draw(&line::Line::new(
+                    ((cx + 4) * s + i, (cy + 2) * s),
+                    (cx * s, (cy - 2) * s - i),
+                    icon_color.into(),
+                    true,
+                ));
+            }
+        }
+        Icon::Minimize => {
+            for i in 0..3 * scale {
+                canvas.draw(&line::Line::new(
+                    ((cx - 4) * s - i, (cy - 3) * s),
+                    (cx * s, (cy + 1) * s + i),
+                    icon_color.into(),
+                    true,
+                ));
+                canvas.draw(&line::Line::new(
+                    ((cx + 4) * s + i, (cy - 3) * s),
+                    (cx * s, (cy + 1) * s + i),
+                    icon_color.into(),
+                    true,
+                ));
+            }
         }
     }
 }
