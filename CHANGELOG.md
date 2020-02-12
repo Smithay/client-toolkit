@@ -5,6 +5,7 @@
 #### Breaking Changes
 
 - `Frame` configuration is now done through a `Frame::Config` associated type and the `Theme` trait is removed.
+- Merge `Frame::set_active` and `Frame::set_maximized` into `Frame::set_states`
 
 #### Additions
 

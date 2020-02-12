@@ -288,20 +288,23 @@ impl<F: Frame + 'static> Window<F> {
                                 (max(w, 1) as u32, max(h, 1) as u32)
                             });
                             // compute frame changes
-                            let mut need_refresh = false;
-                            need_refresh |= frame.set_maximized(states.contains(&State::Maximized));
-                            if need_refresh {
-                                // the maximization state changed
-                                if states.contains(&State::Maximized) {
+                            let need_refresh = frame.set_states(&states);
+                            // check if the maximization state changed
+                            if states.contains(&State::Maximized) {
+                                if inner.old_size.is_none() {
                                     // we are getting maximized, store the size for restoration
                                     inner.old_size = Some(inner.current_size);
-                                } else if new_size.is_none() {
-                                    // we are getting de-maximized, restore the size
-                                    new_size = inner.old_size.take();
                                 }
+                            } else if new_size.is_none() {
+                                // we are getting de-maximized, restore the size
+                                // if we were not previously maximized, old_size is None and this does nothing
+                                new_size = inner.old_size.take();
+                            } else {
+                                // we are not maximized but are given a size, respect it
+                                // and forget about the old size
+                                inner.old_size = None;
                             }
-                            need_refresh |=
-                                frame.set_active(states.contains(&State::Activated).into());
+
                             if need_refresh {
                                 (inner.user_impl)(Event::Refresh, ddata.reborrow());
                             }
@@ -691,16 +694,15 @@ pub trait Frame: Sized {
         shm: &Attached<wl_shm::WlShm>,
         callback: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     ) -> Result<Self, Self::Error>;
-    /// Set whether the decorations should be drawn as active or not
+    /// Set the Window XDG states for the frame
+    ///
+    /// This notably includes information about whether the window is
+    /// maximized, active, or tiled, and can affect the way decorations
+    /// are drawn.
     ///
     /// Calling this should *not* trigger a redraw, but return `true` if
     /// a redraw is needed.
-    fn set_active(&mut self, active: WindowState) -> bool;
-    /// Set whether the decorations should be drawn as maximized or not
-    ///
-    /// Calling this should *not* trigger a redraw, but return `true` if
-    /// a redraw is needed.
-    fn set_maximized(&mut self, maximized: bool) -> bool;
+    fn set_states(&mut self, states: &[State]) -> bool;
     /// Hide or show the decorations
     ///
     /// Calling this should *not* trigger a redraw

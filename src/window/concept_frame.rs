@@ -14,7 +14,9 @@ use wayland_client::protocol::{
 };
 use wayland_client::{Attached, DispatchData};
 
-use super::{ARGBColor, ButtonColorSpec, ButtonState, ColorSpec, Frame, FrameRequest, WindowState};
+use super::{
+    ARGBColor, ButtonColorSpec, ButtonState, ColorSpec, Frame, FrameRequest, State, WindowState,
+};
 use crate::seat::pointer::{AutoPointer, AutoThemer, ThemeSpec};
 use crate::shm::DoubleMemPool;
 
@@ -494,27 +496,27 @@ impl Frame for ConceptFrame {
         });
     }
 
-    fn set_active(&mut self, active: WindowState) -> bool {
-        if self.active != active {
-            self.active = active;
-            true
+    fn set_states(&mut self, states: &[State]) -> bool {
+        let mut inner = self.inner.borrow_mut();
+        let mut need_redraw = false;
+        // process active
+        let new_active = if states.contains(&State::Activated) {
+            WindowState::Active
         } else {
-            false
-        }
+            WindowState::Inactive
+        };
+        need_redraw |= new_active != self.active;
+        self.active = new_active;
+        // process maximized
+        let new_maximized = states.contains(&State::Maximized);
+        need_redraw |= new_maximized != inner.maximized;
+        inner.maximized = new_maximized;
+
+        need_redraw
     }
 
     fn set_hidden(&mut self, hidden: bool) {
         self.hidden = hidden;
-    }
-
-    fn set_maximized(&mut self, maximized: bool) -> bool {
-        let mut inner = self.inner.borrow_mut();
-        if inner.maximized != maximized {
-            inner.maximized = maximized;
-            true
-        } else {
-            false
-        }
     }
 
     fn set_resizable(&mut self, resizable: bool) {
