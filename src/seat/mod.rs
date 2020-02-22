@@ -145,23 +145,25 @@ fn process_seat_event(
     listeners: &RefCell<Vec<Weak<RefCell<SeatCallback>>>>,
     mut ddata: DispatchData,
 ) {
-    let data = seat.as_ref().user_data().get::<Mutex<SeatData>>().unwrap();
-    let mut guard = data.lock().unwrap();
-    match event {
-        wl_seat::Event::Name { name } => guard.name = name,
-        wl_seat::Event::Capabilities { capabilities } => {
-            guard.has_pointer = capabilities.contains(wl_seat::Capability::Pointer);
-            guard.has_keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
-            guard.has_touch = capabilities.contains(wl_seat::Capability::Touch);
+    let new_data = {
+        let data = seat.as_ref().user_data().get::<Mutex<SeatData>>().unwrap();
+        let mut guard = data.lock().unwrap();
+        match event {
+            wl_seat::Event::Name { name } => guard.name = name,
+            wl_seat::Event::Capabilities { capabilities } => {
+                guard.has_pointer = capabilities.contains(wl_seat::Capability::Pointer);
+                guard.has_keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
+                guard.has_touch = capabilities.contains(wl_seat::Capability::Touch);
+            }
+            _ => unreachable!(),
         }
-        _ => unreachable!(),
-    }
-    // only advertize a seat once it is initialized, meaining it has a name
-    // and at least one capability
-    if !guard.name.is_empty() && (guard.has_pointer || guard.has_keyboard || guard.has_touch) {
+        guard.clone()
+    };
+    // only advertize a seat once it has a name
+    if !new_data.name.is_empty() {
         listeners.borrow_mut().retain(|lst| {
             if let Some(cb) = Weak::upgrade(lst) {
-                (&mut *cb.borrow_mut())((*seat).clone(), &*guard, ddata.reborrow());
+                (&mut *cb.borrow_mut())((*seat).clone(), &new_data, ddata.reborrow());
                 true
             } else {
                 false

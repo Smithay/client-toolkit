@@ -16,6 +16,7 @@
 - HiDPI cursor icon position
 - Fix graphical glitches in `ConceptFrame` decoration drawing
 - Black pixel on left-bottom corner on CSD
+- Remove a deadlock when trying to access the seat data from within the seat callback
 
 ## 0.7.0 -- 2020-02-07
 
