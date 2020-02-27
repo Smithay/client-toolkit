@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 -- 2020-02-27
+
 #### Breaking Changes
 
 - `Frame` configuration is now done through a `Frame::Config` associated type and the `Theme` trait is removed.
