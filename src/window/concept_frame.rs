@@ -627,8 +627,7 @@ impl Frame for ConceptFrame {
                                     .get_regular_family_fonts(&font_face)
                                     .unwrap()
                                     .iter()
-                                    .filter(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
-                                    .nth(0)
+                                    .find(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
                                 {
                                     let mut font_data = Vec::new();
                                     if let Ok(mut file) = ::std::fs::File::open(font) {
