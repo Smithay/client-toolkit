@@ -185,6 +185,18 @@ macro_rules! default_environment {
             }
         }
 
+        // Output utility
+        impl $crate::output::OutputHandling for $env_name {
+            fn listen<F>(&mut self, f: F) -> $crate::output::OutputStatusListener
+            where F: FnMut(
+                $crate::reexports::client::protocol::wl_output::WlOutput,
+                &$crate::output::OutputInfo,
+            ) + 'static
+            {
+                self.sctk_outputs.listen(f)
+            }
+        }
+
         // Data Device Utility
         impl $crate::data_device::DataDeviceHandling for $env_name {
             fn set_callback<F>(&mut self, callback: F) -> Result<(), ()>

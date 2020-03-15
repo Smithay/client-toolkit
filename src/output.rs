@@ -9,7 +9,11 @@
 //! The second is the [`with_output_info`](fn.with_output_info.html) with allows you to
 //! access the information associated to this output, as an [`OutputInfo`](struct.OutputInfo.html).
 
-use std::sync::{Arc, Mutex, Weak};
+use std::{
+    cell::RefCell,
+    rc::{self, Rc},
+    sync::{self, Arc, Mutex},
+};
 
 use wayland_client::{
     protocol::{
@@ -101,14 +105,16 @@ type OutputCallback = dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync;
 enum OutputData {
     Ready {
         info: OutputInfo,
-        callbacks: Vec<Weak<OutputCallback>>,
+        callbacks: Vec<sync::Weak<OutputCallback>>,
     },
     Pending {
         id: u32,
         events: Vec<Event>,
-        callbacks: Vec<Weak<OutputCallback>>,
+        callbacks: Vec<sync::Weak<OutputCallback>>,
     },
 }
+
+type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo) + 'static;
 
 /// A handler for `wl_output`
 ///
@@ -120,12 +126,16 @@ enum OutputData {
 /// [`with_output_info`](fn.with_output_info.html) function.
 pub struct OutputHandler {
     outputs: Vec<(u32, Attached<WlOutput>)>,
+    status_listeners: Rc<RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>>,
 }
 
 impl OutputHandler {
     /// Create a new instance of this handler
     pub fn new() -> OutputHandler {
-        OutputHandler { outputs: vec![] }
+        OutputHandler {
+            outputs: Vec::new(),
+            status_listeners: Rc::new(RefCell::new(Vec::new())),
+        }
     }
 }
 
@@ -158,15 +168,19 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
                 })
             });
         }
-        output.quick_assign(process_output_event);
+        let status_listeners_handle = self.status_listeners.clone();
+        output.quick_assign(move |output, event, ddata| {
+            process_output_event(output, event, ddata, &status_listeners_handle)
+        });
         self.outputs.push((id, (*output).clone()));
     }
     fn removed(&mut self, id: u32, mut ddata: DispatchData) {
+        let status_listeners_handle = self.status_listeners.clone();
         self.outputs.retain(|(i, o)| {
             if *i != id {
                 true
             } else {
-                make_obsolete(o, ddata.reborrow());
+                make_obsolete(o, ddata.reborrow(), &status_listeners_handle);
                 false
             }
         });
@@ -176,7 +190,12 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
     }
 }
 
-fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchData) {
+fn process_output_event(
+    output: Main<WlOutput>,
+    event: Event,
+    ddata: DispatchData,
+    listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
+) {
     let udata_mutex = output
         .as_ref()
         .user_data()
@@ -204,6 +223,7 @@ fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchDat
             merge_event(&mut info, evt);
         }
         notify(&output, &info, ddata, &mut callbacks);
+        notify_status_listeners(&output, &info, listeners);
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
@@ -221,7 +241,11 @@ fn process_output_event(output: Main<WlOutput>, event: Event, ddata: DispatchDat
     }
 }
 
-fn make_obsolete(output: &WlOutput, ddata: DispatchData) {
+fn make_obsolete(
+    output: &Attached<WlOutput>,
+    ddata: DispatchData,
+    listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
+) {
     let udata_mutex = output
         .as_ref()
         .user_data()
@@ -235,6 +259,7 @@ fn make_obsolete(output: &WlOutput, ddata: DispatchData) {
         } => {
             info.obsolete = true;
             notify(output, info, ddata, callbacks);
+            notify_status_listeners(&output, info, listeners);
             return;
         }
         OutputData::Pending {
@@ -246,6 +271,7 @@ fn make_obsolete(output: &WlOutput, ddata: DispatchData) {
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
     notify(output, &info, ddata, &mut callbacks);
+    notify_status_listeners(&output, &info, listeners);
     *udata = OutputData::Ready { info, callbacks };
 }
 
@@ -307,16 +333,32 @@ fn notify(
     output: &WlOutput,
     info: &OutputInfo,
     mut ddata: DispatchData,
-    callbacks: &mut Vec<Weak<OutputCallback>>,
+    callbacks: &mut Vec<sync::Weak<OutputCallback>>,
 ) {
     callbacks.retain(|weak| {
-        if let Some(arc) = Weak::upgrade(weak) {
+        if let Some(arc) = sync::Weak::upgrade(weak) {
             (*arc)(output.clone(), info, ddata.reborrow());
             true
         } else {
             false
         }
     });
+}
+
+fn notify_status_listeners(
+    output: &Attached<WlOutput>,
+    info: &OutputInfo,
+    listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
+) {
+    // Notify the callbacks listening for new outputs
+    listeners.borrow_mut().retain(|lst| {
+        if let Some(cb) = rc::Weak::upgrade(lst) {
+            (&mut *cb.borrow_mut())(output.detach(), info);
+            true
+        } else {
+            false
+        }
+    })
 }
 
 /// Access the info associated with this output
@@ -380,6 +422,51 @@ pub fn add_output_listener<F: Fn(WlOutput, &OutputInfo, DispatchData) + Send + S
 /// Dropping it disables the associated callback and frees the closure.
 pub struct OutputListener {
     _cb: Arc<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync + 'static>,
+}
+
+/// A handle to an output status callback
+///
+/// Dropping it disables the associated callback and frees the closure.
+pub struct OutputStatusListener {
+    _cb: Rc<RefCell<OutputStatusCallback>>,
+}
+
+/// Trait representing the OutputHandler functions
+///
+/// Implementing this trait on your inner environment struct used with the
+/// [`environment!`](../macro.environment.html) by delegating it to its
+/// [`OutputHandler`](struct.OutputHandler.html) field will make available the output-associated
+/// method on your [`Environment`](../environment/struct.Environment.html).
+pub trait OutputHandling {
+    /// Insert a listener for output creation and removal events
+    fn listen<F: FnMut(WlOutput, &OutputInfo) + 'static>(&mut self, f: F) -> OutputStatusListener;
+}
+
+impl OutputHandling for OutputHandler {
+    fn listen<F: FnMut(WlOutput, &OutputInfo) + 'static>(&mut self, f: F) -> OutputStatusListener {
+        let rc = Rc::new(RefCell::new(f)) as Rc<_>;
+        self.status_listeners.borrow_mut().push(Rc::downgrade(&rc));
+        OutputStatusListener { _cb: rc }
+    }
+}
+
+impl<E: OutputHandling> crate::environment::Environment<E> {
+    /// Insert a new listener for outputs
+    ///
+    /// The provided closure will be invoked whenever a `wl_output` is created or removed.
+    ///
+    /// Note that if outputs already exist when this callback is setup, it'll not be invoked on them.
+    /// For you to be notified of them as well, you need to first process them manually by calling
+    /// `.get_all_outputs()`.
+    ///
+    /// The returned [`OutputStatusListener`](../output/struct.OutputStatusListener.hmtl) keeps your
+    /// callback alive, dropping it will disable it.
+    pub fn listen_for_outputs<F: FnMut(WlOutput, &OutputInfo) + 'static>(
+        &self,
+        f: F,
+    ) -> OutputStatusListener {
+        self.with_inner(move |inner| OutputHandling::listen(inner, f))
+    }
 }
 
 impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::Environment<E> {
