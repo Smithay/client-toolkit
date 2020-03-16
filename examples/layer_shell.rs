@@ -1,17 +1,17 @@
 use smithay_client_toolkit::{
     default_environment,
-    environment::{Environment, SimpleGlobal},
+    environment::SimpleGlobal,
     init_default_environment,
-    output::{with_output_info, OutputHandler, OutputHandling, OutputInfo, OutputStatusListener},
+    output::{with_output_info, OutputInfo},
     reexports::{
         calloop,
-        client::protocol::{wl_compositor, wl_output, wl_shm, wl_surface},
-        client::{Attached, Display, Main, Proxy},
+        client::protocol::{wl_output, wl_shm, wl_surface},
+        client::{Attached, Main},
         protocols::wlr::unstable::layer_shell::v1::client::{
             zwlr_layer_shell_v1, zwlr_layer_surface_v1,
         },
     },
-    shm::{DoubleMemPool, ShmHandler},
+    shm::DoubleMemPool,
     WaylandSource,
 };
 
