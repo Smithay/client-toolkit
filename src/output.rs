@@ -114,7 +114,7 @@ enum OutputData {
     },
 }
 
-type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo) + 'static;
+type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo, DispatchData) + 'static;
 
 /// A handler for `wl_output`
 ///
@@ -193,7 +193,7 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
 fn process_output_event(
     output: Main<WlOutput>,
     event: Event,
-    ddata: DispatchData,
+    mut ddata: DispatchData,
     listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
 ) {
     let udata_mutex = output
@@ -222,8 +222,8 @@ fn process_output_event(
         for evt in pending_events {
             merge_event(&mut info, evt);
         }
-        notify(&output, &info, ddata, &mut callbacks);
-        notify_status_listeners(&output, &info, listeners);
+        notify(&output, &info, ddata.reborrow(), &mut callbacks);
+        notify_status_listeners(&output, &info, ddata, listeners);
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
@@ -243,7 +243,7 @@ fn process_output_event(
 
 fn make_obsolete(
     output: &Attached<WlOutput>,
-    ddata: DispatchData,
+    mut ddata: DispatchData,
     listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
 ) {
     let udata_mutex = output
@@ -258,8 +258,8 @@ fn make_obsolete(
             ref mut callbacks,
         } => {
             info.obsolete = true;
-            notify(output, info, ddata, callbacks);
-            notify_status_listeners(&output, info, listeners);
+            notify(output, info, ddata.reborrow(), callbacks);
+            notify_status_listeners(&output, info, ddata, listeners);
             return;
         }
         OutputData::Pending {
@@ -270,8 +270,8 @@ fn make_obsolete(
     };
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
-    notify(output, &info, ddata, &mut callbacks);
-    notify_status_listeners(&output, &info, listeners);
+    notify(output, &info, ddata.reborrow(), &mut callbacks);
+    notify_status_listeners(&output, &info, ddata, listeners);
     *udata = OutputData::Ready { info, callbacks };
 }
 
@@ -348,12 +348,13 @@ fn notify(
 fn notify_status_listeners(
     output: &Attached<WlOutput>,
     info: &OutputInfo,
+    mut ddata: DispatchData,
     listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
 ) {
     // Notify the callbacks listening for new outputs
     listeners.borrow_mut().retain(|lst| {
         if let Some(cb) = rc::Weak::upgrade(lst) {
-            (&mut *cb.borrow_mut())(output.detach(), info);
+            (&mut *cb.borrow_mut())(output.detach(), info, ddata.reborrow());
             true
         } else {
             false
@@ -439,11 +440,17 @@ pub struct OutputStatusListener {
 /// method on your [`Environment`](../environment/struct.Environment.html).
 pub trait OutputHandling {
     /// Insert a listener for output creation and removal events
-    fn listen<F: FnMut(WlOutput, &OutputInfo) + 'static>(&mut self, f: F) -> OutputStatusListener;
+    fn listen<F: FnMut(WlOutput, &OutputInfo, DispatchData) + 'static>(
+        &mut self,
+        f: F,
+    ) -> OutputStatusListener;
 }
 
 impl OutputHandling for OutputHandler {
-    fn listen<F: FnMut(WlOutput, &OutputInfo) + 'static>(&mut self, f: F) -> OutputStatusListener {
+    fn listen<F: FnMut(WlOutput, &OutputInfo, DispatchData) + 'static>(
+        &mut self,
+        f: F,
+    ) -> OutputStatusListener {
         let rc = Rc::new(RefCell::new(f)) as Rc<_>;
         self.status_listeners.borrow_mut().push(Rc::downgrade(&rc));
         OutputStatusListener { _cb: rc }
@@ -461,7 +468,7 @@ impl<E: OutputHandling> crate::environment::Environment<E> {
     ///
     /// The returned [`OutputStatusListener`](../output/struct.OutputStatusListener.hmtl) keeps your
     /// callback alive, dropping it will disable it.
-    pub fn listen_for_outputs<F: FnMut(WlOutput, &OutputInfo) + 'static>(
+    pub fn listen_for_outputs<F: FnMut(WlOutput, &OutputInfo, DispatchData) + 'static>(
         &self,
         f: F,
     ) -> OutputStatusListener {

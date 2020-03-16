@@ -191,6 +191,7 @@ macro_rules! default_environment {
             where F: FnMut(
                 $crate::reexports::client::protocol::wl_output::WlOutput,
                 &$crate::output::OutputInfo,
+                $crate::reexports::client::DispatchData,
             ) + 'static
             {
                 self.sctk_outputs.listen(f)

@@ -221,7 +221,8 @@ fn main() {
 
     // Setup a listener for changes
     // The listener will live for as long as we keep this handle alive
-    let _listner_handle = env.listen_for_outputs(output_handler);
+    let _listner_handle =
+        env.listen_for_outputs(move |output, info, _| output_handler(output, info));
 
     let mut event_loop = calloop::EventLoop::<()>::new().unwrap();
 
