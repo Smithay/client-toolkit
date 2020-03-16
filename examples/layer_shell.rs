@@ -1,6 +1,7 @@
 use smithay_client_toolkit::{
-    environment,
+    default_environment,
     environment::{Environment, SimpleGlobal},
+    init_default_environment,
     output::{with_output_info, OutputHandler, OutputHandling, OutputInfo, OutputStatusListener},
     reexports::{
         calloop,
@@ -20,31 +21,13 @@ use std::cell::{Cell, RefCell};
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::rc::Rc;
 
-struct Env {
-    compositor: SimpleGlobal<wl_compositor::WlCompositor>,
-    layer_shell: SimpleGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
-    shm: ShmHandler,
-    outputs: OutputHandler,
-}
-
-impl OutputHandling for Env {
-    fn listen<F: FnMut(wl_output::WlOutput, &OutputInfo) + 'static>(
-        &mut self,
-        f: F,
-    ) -> OutputStatusListener {
-        self.outputs.listen(f)
-    }
-}
-
-environment!(Env,
-    singles = [
-        wl_compositor::WlCompositor => compositor,
-        zwlr_layer_shell_v1::ZwlrLayerShellV1 => layer_shell,
-        wl_shm::WlShm => shm,
+default_environment!(Env,
+    fields = [
+        layer_shell: SimpleGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
     ],
-    multis = [
-        wl_output::WlOutput => outputs
-    ]
+    singles = [
+        zwlr_layer_shell_v1::ZwlrLayerShellV1 => layer_shell
+    ],
 );
 
 #[derive(PartialEq, Copy, Clone)]
@@ -129,6 +112,9 @@ impl Surface {
     }
 
     fn draw(&mut self) {
+        // Note: unwrap() is only used here in the interest of simplicity of the example.
+        // A "real" application should handle the case where both pools are still in use by the
+        // compositor.
         let pool = self.pools.pool().unwrap();
 
         let stride = 4 * self.dimensions.0 as i32;
@@ -169,24 +155,9 @@ impl Drop for Surface {
 }
 
 fn main() {
-    let (env, display, queue) = {
-        let display = Display::connect_to_env().unwrap();
-        let mut queue = display.create_event_queue();
-        let env = Environment::init(
-            &Proxy::clone(&display).attach(queue.token()),
-            Env {
-                compositor: SimpleGlobal::new(),
-                layer_shell: SimpleGlobal::new(),
-                shm: ShmHandler::new(),
-                outputs: OutputHandler::new(),
-            },
-        );
-        let ret = queue.sync_roundtrip(&mut (), |_, _, _| unreachable!());
-        ret.and_then(|_| queue.sync_roundtrip(&mut (), |_, _, _| unreachable!()))
-            .expect("Error during initial setup");
-
-        (env, display, queue)
-    };
+    let (env, display, queue) =
+        init_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(),])
+            .expect("Initial roundtrip failed!");
 
     let surfaces = Rc::new(RefCell::new(Vec::new()));
 
