@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+#### Additions
+
+- Add `listen_for_outputs()` which calls a provided callback on creation/removal of outputs.
+- Add an `OutputHandling` trait making `listen_for_outputs()` available on `Environment`.
+
 ## 0.8.0 -- 2020-02-27
 
 #### Breaking Changes
