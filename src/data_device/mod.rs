@@ -14,7 +14,9 @@ mod offer;
 mod source;
 
 pub use self::device::{DataDevice, DndEvent};
-pub use self::offer::{DataOffer, ReadPipe, ReadPipeSource};
+#[cfg(feature = "calloop")]
+pub use self::offer::ReadPipeSource;
+pub use self::offer::{DataOffer, ReadPipe};
 pub use self::source::{DataSource, DataSourceEvent, WritePipe};
 
 type DDCallback = dyn FnMut(wl_seat::WlSeat, DndEvent, DispatchData);

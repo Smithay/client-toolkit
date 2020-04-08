@@ -31,6 +31,7 @@ extern crate dlib;
 
 /// Re-exports of some crates, for convenience
 pub mod reexports {
+    #[cfg(feature = "calloop")]
     pub use calloop;
     pub use wayland_client as client;
     pub use wayland_protocols as protocols;
@@ -44,9 +45,11 @@ pub mod shell;
 pub mod shm;
 pub mod window;
 
+#[cfg(feature = "calloop")]
 mod event_loop;
 mod surface;
 
+#[cfg(feature = "calloop")]
 pub use event_loop::{DispatchError, WaylandSource};
 pub use surface::{get_surface_outputs, get_surface_scale_factor};
 

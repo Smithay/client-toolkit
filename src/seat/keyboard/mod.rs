@@ -12,7 +12,9 @@
 //! calloop event loop. Not doing so will prevent key repetition to work
 //! (but the rest of the functionnality will not be affected).
 
-use std::{cell::RefCell, os::unix::io::RawFd, rc::Rc, sync::Arc, time::Duration};
+use std::{cell::RefCell, os::unix::io::RawFd, rc::Rc};
+#[cfg(feature = "calloop")]
+use std::{sync::Arc, time::Duration};
 
 use byteorder::{ByteOrder, NativeEndian};
 
@@ -118,6 +120,8 @@ pub enum Event<'a> {
 ///
 /// Returns an error if xkbcommon could not be initialized, the RMLVO specification
 /// contained invalid values, or if the provided seat does not have keyboard capability.
+///
+/// **Note:** The keyboard repetition handling requires the `calloop` cargo feature.
 pub fn map_keyboard<F>(
     seat: &Attached<wl_seat::WlSeat>,
     rmlvo: Option<RMLVO>,
@@ -140,17 +144,7 @@ where
             .unwrap_or_else(KbState::new)?,
     ));
 
-    let current_repeat = Rc::new(RefCell::new(None));
     let callback = Rc::new(RefCell::new(callback));
-
-    let source = RepeatSource {
-        timer: calloop::timer::Timer::new(),
-        state: state.clone(),
-        current_repeat: current_repeat.clone(),
-        callback: callback.clone(),
-    };
-
-    let timer_handle = source.timer.handle();
 
     let repeat = match repeatkind {
         RepeatKind::System => RepeatDetails {
@@ -165,13 +159,39 @@ where
         },
     };
 
-    let mut kbd_handler = KbdHandler {
-        callback,
-        timer_handle,
-        current_repeat,
-        state,
-        repeat,
+    // prepare the repetition handling if supported
+    #[cfg(feature = "calloop")]
+    let (mut kbd_handler, source) = {
+        let current_repeat = Rc::new(RefCell::new(None));
+
+        let source = RepeatSource {
+            timer: calloop::timer::Timer::new(),
+            state: state.clone(),
+            current_repeat: current_repeat.clone(),
+            callback: callback.clone(),
+        };
+
+        let timer_handle = source.timer.handle();
+
+        let handler = KbdHandler {
+            callback,
+            timer_handle,
+            current_repeat,
+            state,
+            repeat,
+        };
+        (handler, source)
     };
+    // If not supported, only the leaner handler is provided
+    #[cfg(not(feature = "calloop"))]
+    let (mut kbd_handler, source) = (
+        KbdHandler {
+            callback,
+            state,
+            repeat,
+        },
+        RepeatSource {},
+    );
 
     keyboard.quick_assign(move |keyboard, event, data| {
         kbd_handler.event(keyboard.detach(), event, data)
@@ -193,13 +213,16 @@ struct RepeatDetails {
 }
 
 struct KbdHandler {
+    #[cfg(feature = "calloop")]
     timer_handle: calloop::timer::TimerHandle<()>,
     state: Rc<RefCell<KbState>>,
+    #[cfg(feature = "calloop")]
     current_repeat: Rc<RefCell<Option<RepeatData>>>,
     callback: Rc<RefCell<KbdCallback>>,
     repeat: RepeatDetails,
 }
 
+#[cfg(feature = "calloop")]
 impl KbdHandler {
     fn start_repeat(&self, key: u32, keyboard: wl_keyboard::WlKeyboard, time: u32) {
         // start a new repetition, overwriting the previous ones
@@ -228,6 +251,13 @@ impl KbdHandler {
         self.timer_handle.cancel_all_timeouts();
         *self.current_repeat.borrow_mut() = None;
     }
+}
+
+#[cfg(not(feature = "calloop"))]
+impl KbdHandler {
+    fn start_repeat(&self, _: u32, _: wl_keyboard::WlKeyboard, _: u32) {}
+    fn stop_repeat(&self, _: u32) {}
+    fn stop_all_repeat(&self) {}
 }
 
 impl KbdHandler {
@@ -439,6 +469,7 @@ impl KbdHandler {
  * Repeat handling
  */
 
+#[cfg(feature = "calloop")]
 struct RepeatData {
     keyboard: wl_keyboard::WlKeyboard,
     keycode: u32,
@@ -458,13 +489,20 @@ struct RepeatData {
 /// This source will not directly generate calloop events, and the callback provided to
 /// `EventLoopHandle::insert_source()` will be ignored. Instead it triggers the
 /// callback you provided to [`map_keyboard`](fn.map_keyboard.html).
+///
+/// **Note:** This type is inert if the `calloop` cargo feature is not enabled
 pub struct RepeatSource {
+    #[cfg(feature = "calloop")]
     timer: calloop::timer::Timer<()>,
+    #[cfg(feature = "calloop")]
     state: Rc<RefCell<KbState>>,
+    #[cfg(feature = "calloop")]
     current_repeat: Rc<RefCell<Option<RepeatData>>>,
+    #[cfg(feature = "calloop")]
     callback: Rc<RefCell<KbdCallback>>,
 }
 
+#[cfg(feature = "calloop")]
 impl calloop::EventSource for RepeatSource {
     type Event = ();
 
