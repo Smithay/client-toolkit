@@ -22,6 +22,10 @@ rust:
   - beta
   - nightly
 
+env:
+  - NOFEATURES=1
+  - ALLFEATURES=1
+
 matrix:
   allow_failures:
     - rust: nightly
@@ -73,16 +77,11 @@ script:
         cargo clippy -- -D warnings
       elif [ -n "$BUILD_DOC" ]; then
         cargo doc --no-deps --all-features
-      elif [[ "$TRAVIS_RUST_VERSION" = "1.22.0" ]]; then
-        # create a Cargo.lock, and restrict dependencies that do not work on rust 1.22
-        cargo update
-        cargo update -p stb_truetype --precise 0.2.2
-        cargo update -p rusttype --precise 0.7.1
-        cargo update -p lazy_static --precise 1.1.0
-        # Only build, no tests on 1.22.0, as our dev-deps 'image' does not build on 1.22.0
-        env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo build --all-features
       elif [[ -n "$TARGET" ]]; then
         cross build --target "$TARGET"
+      elif [[ -n "$NOFEATURES" ]]; then
+        env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo test --no-default-features --lib
+        env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo test --no-default-features --doc
       else
         env LD_LIBRARY_PATH=~/install/lib:$LD_LIBRARY_PATH cargo test --all-features
       fi

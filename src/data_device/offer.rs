@@ -133,14 +133,23 @@ impl Drop for DataOffer {
     }
 }
 
-/// A file descriptor that can only be written to
+/// A file descriptor that can only be read from
+///
+/// If the `calloop` cargo feature is enabled, also provides
+/// the necessary glue to insert it as an event source in a
+/// calloop event loop.
 pub struct ReadPipe {
+    #[cfg(feature = "calloop")]
     file: calloop::generic::SourceFd<fs::File>,
+    #[cfg(not(feature = "calloop"))]
+    file: fs::File,
 }
 
 /// A type alias for the calloop source associated with a ReadPipe
+#[cfg(feature = "calloop")]
 pub type ReadPipeSource = calloop::generic::Generic<calloop::generic::SourceFd<ReadPipe>>;
 
+#[cfg(feature = "calloop")]
 impl ReadPipe {
     /// Make this ReadPipe into a calloop-compatible event source
     ///
@@ -153,12 +162,21 @@ impl ReadPipe {
     }
 }
 
+#[cfg(feature = "calloop")]
 impl io::Read for ReadPipe {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.file.0.read(buf)
     }
 }
 
+#[cfg(not(feature = "calloop"))]
+impl io::Read for ReadPipe {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.file.read(buf)
+    }
+}
+
+#[cfg(feature = "calloop")]
 impl FromRawFd for ReadPipe {
     unsafe fn from_raw_fd(fd: RawFd) -> ReadPipe {
         ReadPipe {
@@ -167,14 +185,39 @@ impl FromRawFd for ReadPipe {
     }
 }
 
+#[cfg(not(feature = "calloop"))]
+impl FromRawFd for ReadPipe {
+    unsafe fn from_raw_fd(fd: RawFd) -> ReadPipe {
+        ReadPipe {
+            file: FromRawFd::from_raw_fd(fd),
+        }
+    }
+}
+
+#[cfg(feature = "calloop")]
 impl AsRawFd for ReadPipe {
     fn as_raw_fd(&self) -> RawFd {
         self.file.0.as_raw_fd()
     }
 }
 
+#[cfg(not(feature = "calloop"))]
+impl AsRawFd for ReadPipe {
+    fn as_raw_fd(&self) -> RawFd {
+        self.file.as_raw_fd()
+    }
+}
+
+#[cfg(feature = "calloop")]
 impl IntoRawFd for ReadPipe {
     fn into_raw_fd(self) -> RawFd {
         self.file.0.into_raw_fd()
+    }
+}
+
+#[cfg(not(feature = "calloop"))]
+impl IntoRawFd for ReadPipe {
+    fn into_raw_fd(self) -> RawFd {
+        self.file.into_raw_fd()
     }
 }

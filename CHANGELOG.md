@@ -6,6 +6,10 @@
 
 - Add `listen_for_outputs()` which calls a provided callback on creation/removal of outputs.
 - Add an `OutputHandling` trait making `listen_for_outputs()` available on `Environment`.
+- Introduce the `calloop` cargo feature, enabled by default, controlling the support for the calloop event
+  loop
+- Introduce the `frames` cargo feature, enabled by default, controlling the existence of provided `Frame`
+  implementations (currently `ConceptFrame`) and the dependency on `andrew`
 
 ## 0.8.0 -- 2020-02-27
 
