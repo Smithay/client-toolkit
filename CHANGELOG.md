@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.1 -- 2020-04-09
+
 #### Additions
 
 - Add `listen_for_outputs()` which calls a provided callback on creation/removal of outputs.
