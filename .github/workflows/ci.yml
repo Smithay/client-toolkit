@@ -1,0 +1,70 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: ['1.40.0', 'stable', 'beta']
+      
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Cargo cache
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo
+          key: cargo-${{ matrix.rust }}
+
+      - name: Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      - name: Test lib no features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features --lib
+ 
+      - name: Test doc no features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features --doc
+      
+      - name: Test full features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Cargo fmt
+        run: cargo fmt --all -- --check
+      
+      - name: Clippy
+        run: cargo clippy -- -D warnings
