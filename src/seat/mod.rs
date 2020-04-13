@@ -172,6 +172,22 @@ fn process_seat_event(
     }
 }
 
+/// Get the copy of the data associated with this seat
+///
+/// If the provided `WlSeat` has not yet been initialized or is not managed by SCTK, `None` is returned.
+///
+/// If the seat has been removed by the compositor, the `defunct` field of the `SeatData`
+/// will be set to `true`. This handler will not automatically detroy the output by calling its
+/// `release` method, to avoid interfering with your logic.
+pub fn clone_seat_data(seat: &wl_seat::WlSeat) -> Option<SeatData> {
+    if let Some(ref udata_mutex) = seat.as_ref().user_data().get::<Mutex<SeatData>>() {
+        let udata = udata_mutex.lock().unwrap();
+        Some(udata.clone())
+    } else {
+        None
+    }
+}
+
 /// Access the data associated with this seat
 ///
 /// The provided closure is given the [`SeatData`](struct.SeatData.html) as argument,
