@@ -85,7 +85,7 @@ impl DataOffer {
     /// the dnd cursor, or to inspect the data in order to choose your
     /// response.
     ///
-    /// Note that you should *not* read the contents right way in a
+    /// Note that you should *not* read the contents right away in a
     /// blocking way, as you may deadlock your application doing so.
     /// At least make sure you flush your events to the server before
     /// doing so.

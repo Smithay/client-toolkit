@@ -39,7 +39,9 @@ pub mod reexports {
 
 pub mod data_device;
 pub mod environment;
+mod lazy_global;
 pub mod output;
+pub mod primary_selection;
 pub mod seat;
 pub mod shell;
 pub mod shm;
@@ -69,6 +71,7 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// - `wl_seat` with the [`SeatHandler`](seat/struct.SeatHandler.html)
 /// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
 /// - `wl_shm` as a [`ShmHandler`](shm/struct.ShmHandler.html)
+/// - `zwp` and `gtk` primary selection device manager as a [`PrimarySelectionHandler`](primary_selection/struct.PrimarySelectionHandler.html)
 ///
 /// If you don't need to add anything more, using it is as simple as:
 ///
@@ -162,6 +165,8 @@ macro_rules! default_environment {
             sctk_seats: $crate::seat::SeatHandler,
             // data device
             sctk_data_device_manager: $crate::data_device::DataDeviceHandler,
+            // primary selection
+            sctk_primary_selection_manager: $crate::primary_selection::PrimarySelectionHandler,
             // user added
             $($(
                 $fname : $fty,
@@ -201,7 +206,7 @@ macro_rules! default_environment {
             }
         }
 
-        // Data Device Utility
+        // Data device utility
         impl $crate::data_device::DataDeviceHandling for $env_name {
             fn set_callback<F>(&mut self, callback: F) -> Result<(), ()>
             where F: FnMut(
@@ -222,9 +227,26 @@ macro_rules! default_environment {
             }
         }
 
-        /*
-         * Final macro delegation
-         */
+        // Primary selection utility
+        impl $crate::primary_selection::PrimarySelectionHandling for $env_name {
+            fn with_primary_selection<F>(
+                &self,
+                seat: &$crate::reexports::client::protocol::wl_seat::WlSeat,
+                f: F,
+            ) -> Result<(), ()>
+            where F: FnOnce(&$crate::primary_selection::PrimarySelectionDevice)
+            {
+                self.sctk_primary_selection_manager.with_primary_selection(seat, f)
+            }
+
+            fn get_primary_selection_manager(&self) -> Option<$crate::primary_selection::PrimarySelectionDeviceManager> {
+                self.sctk_primary_selection_manager.get_primary_selection_manager()
+            }
+        }
+
+        //
+        // Final macro delegation
+        //
         $crate::environment!($env_name,
             singles = [
                 // SimpleGlobals
@@ -234,6 +256,9 @@ macro_rules! default_environment {
                 $crate::reexports::client::protocol::wl_shm::WlShm => sctk_shm,
                 // data device
                 $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager => sctk_data_device_manager,
+                // primary selection
+                $crate::reexports::protocols::unstable::primary_selection::v1::client::zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1 => sctk_primary_selection_manager,
+                $crate::reexports::protocols::misc::gtk_primary_selection::client::gtk_primary_selection_device_manager::GtkPrimarySelectionDeviceManager => sctk_primary_selection_manager,
                 // user added
                 $($($sty => $sname),*)?
             ],
@@ -321,6 +346,7 @@ macro_rules! init_default_environment {
         {
             let mut sctk_seats = $crate::seat::SeatHandler::new();
             let sctk_data_device_manager = $crate::data_device::DataDeviceHandler::init(&mut sctk_seats);
+            let sctk_primary_selection_manager = $crate::primary_selection::PrimarySelectionHandler::init(&mut sctk_seats);
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
             let env = $crate::environment::Environment::init(&display.attach($queue.token()), $env_name {
@@ -330,6 +356,7 @@ macro_rules! init_default_environment {
                 sctk_outputs: $crate::output::OutputHandler::new(),
                 sctk_seats,
                 sctk_data_device_manager,
+                sctk_primary_selection_manager,
                 $($(
                     $fname: $fval,
                 )*)?

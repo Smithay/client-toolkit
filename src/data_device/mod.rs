@@ -190,7 +190,7 @@ impl crate::environment::GlobalHandler<wl_data_device_manager::WlDataDeviceManag
 
 /// An interface trait to forward the data device handler capability
 ///
-/// You need to implement this trait for you environment struct, by
+/// You need to implement this trait for your environment struct, by
 /// delegating it to its `DataDeviceHandler` field in order to get the
 /// associated methods on your [`Environment`](../environment/struct.environment.html).
 pub trait DataDeviceHandling {
@@ -233,7 +233,7 @@ where
     ///
     /// Once this source is created, you will need to give it to a
     /// [`DataDevice`](../data_device/struct.DataDevice.html)
-    /// to start such and interaction.
+    /// to start interaction.
     pub fn new_data_source<F>(&self, mime_types: Vec<String>, callback: F) -> DataSource
     where
         F: FnMut(DataSourceEvent, DispatchData) + 'static,
@@ -254,7 +254,7 @@ where
     ///
     /// You should set it before entering your main loop, to ensure you will not miss any events.
     ///
-    /// Returns an error if the compositor did not advertize a data device capability.
+    /// Returns an error if the compositor did not advertise a data device capability.
     pub fn set_data_device_callback<F: FnMut(wl_seat::WlSeat, DndEvent, DispatchData) + 'static>(
         &mut self,
         callback: F,
