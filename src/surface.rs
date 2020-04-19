@@ -69,19 +69,12 @@ impl SurfaceUserData {
         self.outputs.push((output, output_scale, listener));
     }
 
-    pub(crate) fn leave(
-        &mut self,
-        output: &wl_output::WlOutput,
-    )
-    {
+    pub(crate) fn leave(&mut self, output: &wl_output::WlOutput) {
         self.outputs
             .retain(|(ref output2, _, _)| !output.as_ref().equals(output2.as_ref()));
     }
 
-    fn recompute_scale_factor(
-        &mut self,
-    ) -> i32
-    {
+    fn recompute_scale_factor(&mut self) -> i32 {
         let mut new_scale_factor = 1;
         self.outputs.retain(|&(_, output_scale, _)| {
             if output_scale > 0 {
