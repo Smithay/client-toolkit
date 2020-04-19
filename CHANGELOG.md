@@ -6,6 +6,10 @@
 
 - Add `clone_seat_data()` method as a shorthand to get `SeatData`
 
+#### Bugfixes
+
+- Surface lock held across scale factor callback deadlocks scale factor API.
+
 ## 0.8.1 -- 2020-04-09
 
 #### Additions
