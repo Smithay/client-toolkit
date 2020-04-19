@@ -5,6 +5,7 @@
 #### Additions
 
 - keyboard: Update the keysyms list with new symbols
+- Add primary selection helpers, which are included as part of default `Environment`.
 
 #### Changes
 

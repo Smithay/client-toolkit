@@ -6,8 +6,9 @@ use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::{
-    data_device::ReadPipe,
+    data_device::{DataSourceEvent, ReadPipe},
     environment::Environment,
+    primary_selection::PrimarySelectionSourceEvent,
     seat::keyboard::{map_keyboard_repeat, Event as KbEvent, KeyState, RepeatKind},
     shm::MemPool,
     window::{ConceptFrame, Event as WEvent},
@@ -63,7 +64,9 @@ fn main() {
             }
         })
         .expect("Failed to create a window !");
-    window.set_title("Selection".to_string());
+    window.set_title(
+        "Selection example, press c/C p/P to copy/paste from selection/primary clipboard respectively".to_string(),
+    );
 
     let mut pools = env
         .create_double_pool(|_| {})
@@ -143,6 +146,8 @@ fn main() {
             }
         }
     });
+    // Get primary selection manager
+    env.get_primary_selection_manager();
 
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
@@ -197,50 +202,145 @@ fn process_keyboard_event(
         KbEvent::Key {
             state,
             utf8: Some(text),
+            serial,
             ..
         } => {
             if text == "p" && state == KeyState::Pressed {
                 // pressed the 'p' key, try to read contents !
                 env.with_data_device(seat, |device| {
                     device.with_selection(|offer| {
-                        if let Some(offer) = offer {
-                            let seat_name =
-                                sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
-                            print!(
-                                "Current selection buffer mime types on seat '{}': [ ",
-                                seat_name
-                            );
-                            let mut has_text = false;
-                            offer.with_mime_types(|types| {
-                                for t in types {
-                                    print!("\"{}\", ", t);
-                                    if t == "text/plain;charset=utf-8" {
-                                        has_text = true;
-                                    }
-                                }
-                            });
-                            println!("]");
-                            if has_text {
-                                println!("Buffer contains text, going to read it...");
-                                let reader =
-                                    offer.receive("text/plain;charset=utf-8".into()).unwrap();
-                                let src_handle = handle.clone();
-                                let source = handle
-                                    .insert_source(reader, move |(), file, ddata| {
-                                        let mut txt = String::new();
-                                        file.read_to_string(&mut txt).unwrap();
-                                        println!("Selection contents are: \"{}\"", txt);
-                                        if let Some(src) = ddata.2.take() {
-                                            src_handle.kill(src);
-                                        }
-                                    })
-                                    .unwrap();
-                                *opt_source = Some(source);
+                        let offer = match offer {
+                            Some(offer) => offer,
+                            None => {
+                                println!("No current selection buffer!");
+                                return;
                             }
-                        } else {
-                            println!("No current selection buffer!");
+                        };
+
+                        let seat_name =
+                            sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
+                        print!(
+                            "Current selection buffer mime types on seat '{}': [ ",
+                            seat_name
+                        );
+                        let mut has_text = false;
+                        offer.with_mime_types(|types| {
+                            for t in types {
+                                print!("\"{}\", ", t);
+                                if t == "text/plain;charset=utf-8" {
+                                    has_text = true;
+                                }
+                            }
+                        });
+                        println!("]");
+                        if has_text {
+                            println!("Buffer contains text, going to read it...");
+                            let reader = offer.receive("text/plain;charset=utf-8".into()).unwrap();
+                            let src_handle = handle.clone();
+                            let source = handle
+                                .insert_source(reader, move |(), file, ddata| {
+                                    let mut txt = String::new();
+                                    file.read_to_string(&mut txt).unwrap();
+                                    println!("Selection contents are: \"{}\"", txt);
+                                    if let Some(src) = ddata.2.take() {
+                                        src_handle.kill(src);
+                                    }
+                                })
+                                .unwrap();
+                            *opt_source = Some(source);
                         }
                     });
+                })
+                .unwrap();
+            }
+
+            if text == "P" && state == KeyState::Pressed {
+                env.with_primary_selection(seat, |primary_selection| {
+                    println!("In primary selection closure");
+                    primary_selection.with_selection(|offer| {
+                        let offer = match offer {
+                            Some(offer) => offer,
+                            None => {
+                                println!("No current primary selection buffer!");
+                                return;
+                            }
+                        };
+
+                        let seat_name =
+                            sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
+                        print!(
+                            "Current primary selection buffer mime type on seat '{}': [ ",
+                            seat_name
+                        );
+
+                        let mut has_text = false;
+                        offer.with_mime_types(|types| {
+                            for t in types {
+                                print!("\"{}\", ", t);
+                                if t == "text/plain;charset=utf-8" {
+                                    has_text = true;
+                                }
+                            }
+                        });
+                        println!("]");
+                        if has_text {
+                            println!("Buffer contains text, going to read it...");
+                            let reader = offer.receive("text/plain;charset=utf-8".into()).unwrap();
+                            let src_handle = handle.clone();
+                            let source = handle
+                                .insert_source(reader, move |(), file, ddata| {
+                                    let mut txt = String::new();
+                                    file.read_to_string(&mut txt).unwrap();
+                                    println!("Selection contents are: \"{}\"", txt);
+                                    if let Some(src) = ddata.2.take() {
+                                        src_handle.kill(src);
+                                    }
+                                })
+                                .unwrap();
+
+                            *opt_source = Some(source);
+                        }
+                    })
+                })
+                .unwrap()
+            }
+
+            if text == "c" && state == KeyState::Pressed {
+                let data_source = env.new_data_source(
+                    vec!["text/plain;charset=utf-8".into()],
+                    move |event, _| match event {
+                        DataSourceEvent::Send { mut pipe, .. } => {
+                            let contents = "Hello from clipboard";
+                            println!("Setting clipboard to: {}", &contents);
+                            write!(pipe, "{}", contents).unwrap();
+                        }
+                        _ => (),
+                    },
+                );
+
+                env.with_data_device(&seat, |device| {
+                    println!("Set selection source");
+                    device.set_selection(&Some(data_source), serial);
+                })
+                .unwrap();
+            }
+
+            if text == "C" && state == KeyState::Pressed {
+                let data_source = env.new_primary_selection_source(
+                    vec!["text/plain;charset=utf-8".into()],
+                    move |event, _| match event {
+                        PrimarySelectionSourceEvent::Send { mut pipe, .. } => {
+                            let contents = "Hello from primary selection";
+                            println!("Setting clipboard primary clipboard to {}", &contents);
+                            write!(pipe, "{}", contents).unwrap();
+                        }
+                        _ => (),
+                    },
+                );
+
+                env.with_primary_selection(&seat, |device| {
+                    println!("Set primary selection source");
+                    device.set_selection(&Some(data_source), serial);
                 })
                 .unwrap();
             }
