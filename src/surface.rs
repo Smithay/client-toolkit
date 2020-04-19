@@ -24,7 +24,6 @@ impl SurfaceUserData {
         &mut self,
         output: wl_output::WlOutput,
         surface: wl_surface::WlSurface,
-        ddata: DispatchData,
         callback: &Option<Rc<RefCell<F>>>,
     ) where
         F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
@@ -58,33 +57,30 @@ impl SurfaceUserData {
             }
             // recompute the scale factor with the new info
             let callback = my_callback.get::<Rc<RefCell<F>>>().cloned();
-            user_data.recompute_scale_factor(&my_surface, ddata, &callback);
+            let old_scale_factor = user_data.scale_factor;
+            let new_scale_factor = user_data.recompute_scale_factor();
+            drop(user_data);
+            if let Some(ref cb) = callback {
+                if old_scale_factor != new_scale_factor {
+                    (&mut *cb.borrow_mut())(new_scale_factor, surface.clone(), ddata);
+                }
+            }
         });
         self.outputs.push((output, output_scale, listener));
-        self.recompute_scale_factor(&surface, ddata, callback);
     }
 
-    pub(crate) fn leave<F>(
+    pub(crate) fn leave(
         &mut self,
         output: &wl_output::WlOutput,
-        surface: wl_surface::WlSurface,
-        ddata: DispatchData,
-        callback: &Option<Rc<RefCell<F>>>,
-    ) where
-        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
+    )
     {
         self.outputs
             .retain(|(ref output2, _, _)| !output.as_ref().equals(output2.as_ref()));
-        self.recompute_scale_factor(&surface, ddata, callback);
     }
 
-    fn recompute_scale_factor<F>(
+    fn recompute_scale_factor(
         &mut self,
-        surface: &wl_surface::WlSurface,
-        ddata: DispatchData,
-        callback: &Option<Rc<RefCell<F>>>,
-    ) where
-        F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
+    ) -> i32
     {
         let mut new_scale_factor = 1;
         self.outputs.retain(|&(_, output_scale, _)| {
@@ -96,12 +92,8 @@ impl SurfaceUserData {
                 false
             }
         });
-        if self.scale_factor != new_scale_factor {
-            self.scale_factor = new_scale_factor;
-            if let Some(ref cb) = callback {
-                (&mut *cb.borrow_mut())(new_scale_factor, surface.clone(), ddata);
-            }
-        }
+        self.scale_factor = new_scale_factor;
+        new_scale_factor
     }
 }
 
@@ -123,13 +115,22 @@ where
             .unwrap();
         match event {
             wl_surface::Event::Enter { output } => {
-                user_data.enter(output, surface.detach(), ddata, &callback);
+                // Passing the callback to be added to output listener
+                user_data.enter(output, surface.detach(), &callback);
             }
             wl_surface::Event::Leave { output } => {
-                user_data.leave(&output, surface.detach(), ddata, &callback);
+                user_data.leave(&output);
             }
             _ => unreachable!(),
         };
+        let old_scale_factor = user_data.scale_factor;
+        let new_scale_factor = user_data.recompute_scale_factor();
+        drop(user_data);
+        if let Some(ref cb) = callback {
+            if old_scale_factor != new_scale_factor {
+                (&mut *cb.borrow_mut())(new_scale_factor, surface.detach(), ddata);
+            }
+        }
     });
     surface
         .as_ref()
