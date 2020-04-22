@@ -7,7 +7,7 @@ use wayland_client::{
     protocol::{wl_compositor, wl_pointer, wl_seat, wl_shm, wl_surface},
     Attached, DispatchData,
 };
-use wayland_cursor::{is_available, load_theme, Cursor, CursorTheme};
+use wayland_cursor::{Cursor, CursorTheme};
 
 /// The specification of a cursor theme to be used by the ThemeManager
 pub enum ThemeSpec<'a> {
@@ -54,15 +54,11 @@ impl ThemeManager {
         theme: ThemeSpec,
         compositor: Attached<wl_compositor::WlCompositor>,
         shm: Attached<wl_shm::WlShm>,
-    ) -> Result<ThemeManager, ()> {
-        if !is_available() {
-            return Err(());
-        }
-
-        Ok(ThemeManager {
+    ) -> ThemeManager {
+        ThemeManager {
             compositor,
             themes: Rc::new(RefCell::new(ScaledThemeList::new(theme, shm))),
-        })
+        }
     }
 
     /// Wrap a pointer to theme it
@@ -153,7 +149,7 @@ impl ThemeManager {
 
 struct ScaledThemeList {
     shm: Attached<wl_shm::WlShm>,
-    name: Option<String>,
+    name: String,
     size: u32,
     themes: Vec<(u32, CursorTheme)>,
 }
@@ -161,9 +157,11 @@ struct ScaledThemeList {
 impl ScaledThemeList {
     fn new(theme: ThemeSpec, shm: Attached<wl_shm::WlShm>) -> ScaledThemeList {
         let (name, size) = match theme {
-            ThemeSpec::Precise { name, size } => (Some(name.into()), size),
+            ThemeSpec::Precise { name, size } => (name.into(), size),
             ThemeSpec::System => {
-                let name = std::env::var("XCURSOR_THEME").ok();
+                let name = std::env::var("XCURSOR_THEME")
+                    .ok()
+                    .unwrap_or_else(|| "default".into());
                 let size = std::env::var("XCURSOR_SIZE")
                     .ok()
                     .and_then(|s| s.parse().ok())
@@ -179,19 +177,15 @@ impl ScaledThemeList {
         }
     }
 
-    fn get_cursor<'a>(&'a mut self, name: &str, scale: u32) -> Option<Cursor<'a>> {
+    fn get_cursor(&mut self, name: &str, scale: u32) -> Option<&Cursor> {
         // Check if we already loaded the theme for this scale factor
         let opt_index = self.themes.iter().position(|&(s, _)| s == scale);
         if let Some(idx) = opt_index {
             self.themes[idx].1.get_cursor(name)
         } else {
-            let new_theme = load_theme(
-                self.name.as_ref().map(|s| &s[..]),
-                self.size * scale,
-                &self.shm,
-            );
+            let new_theme = CursorTheme::load_from_name(&self.name, self.size * scale, &self.shm);
             self.themes.push((scale, new_theme));
-            self.themes.last().unwrap().1.get_cursor(name)
+            self.themes.last_mut().unwrap().1.get_cursor(name)
         }
     }
 }
@@ -209,24 +203,26 @@ impl PointerInner {
         let mut themes = self.themes.borrow_mut();
         let scale = self.scale_factor as u32;
         let cursor = themes.get_cursor(&self.current_cursor, scale).ok_or(())?;
-        let buffer = cursor.frame_buffer(0).ok_or(())?;
-        let (w, h, hx, hy) = cursor
-            .frame_info(0)
-            .map(|(w, h, hx, hy, _)| (w as i32, h as i32, (hx / scale) as i32, (hy / scale) as i32))
-            .unwrap_or((0, 0, 0, 0));
-
+        let image = &cursor[0];
+        let (w, h) = image.dimensions();
+        let (hx, hy) = image.hotspot();
         self.surface.set_buffer_scale(scale as i32);
-        self.surface.attach(Some(&buffer), 0, 0);
+        self.surface.attach(Some(&image), 0, 0);
         if self.surface.as_ref().version() >= 4 {
-            self.surface.damage_buffer(0, 0, w, h);
+            self.surface.damage_buffer(0, 0, w as i32, h as i32);
         } else {
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
             self.surface
-                .damage(0, 0, w / scale as i32, h / scale as i32);
+                .damage(0, 0, w as i32 / scale as i32, h as i32 / scale as i32);
         }
         self.surface.commit();
-        pointer.set_cursor(self.last_serial, Some(&self.surface), hx, hy);
+        pointer.set_cursor(
+            self.last_serial,
+            Some(&self.surface),
+            hx as i32 / scale as i32,
+            hy as i32 / scale as i32,
+        );
         Ok(())
     }
 }

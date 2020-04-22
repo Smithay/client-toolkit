@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- `AutoThemer` is removed as it is no longer necessary with `wayland-cursor` 0.26
+
 #### Additions
 
 - Add `clone_seat_data()` method as a shorthand to get `SeatData`

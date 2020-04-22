@@ -21,9 +21,9 @@ lazy_static = "1.0"
 memmap = "0.7"
 andrew = { version = "0.2.0", optional = true }
 log = "0.4"
-wayland-client = "0.25"
-wayland-protocols = { version = "0.25" , features = ["client", "unstable_protocols"] }
-wayland-cursor = "0.25"
+wayland-client = "0.26"
+wayland-protocols = { version = "0.26" , features = ["client", "unstable_protocols"] }
+wayland-cursor = "0.26.1"
 calloop = { version = "0.5", optional = true }
 byteorder = "1.0"
 
@@ -33,4 +33,4 @@ frames = ["andrew"]
 
 [dev-dependencies]
 image = "0.22"
-wayland-client = { version = "0.25", features = ["dlopen"] }
+wayland-client = { version = "0.26", features = ["dlopen"] }
