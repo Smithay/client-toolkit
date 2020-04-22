@@ -32,5 +32,5 @@ default = ["frames", "calloop"]
 frames = ["andrew"]
 
 [dev-dependencies]
-image = "0.22"
+image = "0.23"
 wayland-client = { version = "0.26", features = ["dlopen"] }

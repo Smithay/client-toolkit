@@ -266,7 +266,7 @@ fn redraw(
             // first, resize it to the requested size. We just use the function provided
             // by the image crate here.
             let image =
-                image::imageops::resize(base_image, buf_x, buf_y, image::FilterType::Nearest);
+                image::imageops::resize(base_image, buf_x, buf_y, image::imageops::FilterType::Nearest);
 
             // Now, we'll write the pixels of the image to the MemPool.
             //
