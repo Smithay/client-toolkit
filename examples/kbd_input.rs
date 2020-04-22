@@ -8,7 +8,7 @@ use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::calloop;
 use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
-use sctk::seat::keyboard::{map_keyboard, Event as KbEvent, RepeatKind};
+use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent};
 
@@ -82,15 +82,15 @@ fn main() {
         }) {
             if has_kbd {
                 let seat_name = name.clone();
-                match map_keyboard(&seat, None, RepeatKind::System, move |event, _, _| {
-                    print_keyboard_event(event, &seat_name)
-                }) {
+                match map_keyboard_repeat(
+                    event_loop.handle(),
+                    &seat,
+                    None,
+                    RepeatKind::System,
+                    move |event, _, _| print_keyboard_event(event, &seat_name),
+                ) {
                     Ok((kbd, repeat_source)) => {
-                        let source = event_loop
-                            .handle()
-                            .insert_source(repeat_source, |_, _| {})
-                            .unwrap();
-                        seats.push((name, Some((kbd, source))));
+                        seats.push((name, Some((kbd, repeat_source))));
                     }
                     Err(e) => {
                         eprintln!("Failed to map keyboard on seat {} : {:?}.", name, e);
@@ -119,12 +119,15 @@ fn main() {
             if opt_kbd.is_none() {
                 // we should initalize a keyboard
                 let seat_name = seat_data.name.clone();
-                match map_keyboard(&seat, None, RepeatKind::System, move |event, _, _| {
-                    print_keyboard_event(event, &seat_name)
-                }) {
+                match map_keyboard_repeat(
+                    loop_handle.clone(),
+                    &seat,
+                    None,
+                    RepeatKind::System,
+                    move |event, _, _| print_keyboard_event(event, &seat_name),
+                ) {
                     Ok((kbd, repeat_source)) => {
-                        let source = loop_handle.insert_source(repeat_source, |_, _| {}).unwrap();
-                        *opt_kbd = Some((kbd, source));
+                        *opt_kbd = Some((kbd, repeat_source));
                     }
                     Err(e) => eprintln!(
                         "Failed to map keyboard on seat {} : {:?}.",
@@ -136,7 +139,7 @@ fn main() {
             if let Some((kbd, source)) = opt_kbd.take() {
                 // the keyboard has been removed, cleanup
                 kbd.release();
-                source.remove();
+                loop_handle.remove(source);
             }
         }
     });
@@ -151,13 +154,8 @@ fn main() {
 
     let mut next_action = None;
 
-    let _source_queue = event_loop
-        .handle()
-        .insert_source(sctk::WaylandSource::new(queue), |ret, _| {
-            if let Err(e) = ret {
-                panic!("Wayland connection lost: {:?}", e);
-            }
-        })
+    sctk::WaylandSource::new(queue)
+        .quick_insert(event_loop.handle())
         .unwrap();
 
     loop {

@@ -14,8 +14,6 @@ mod offer;
 mod source;
 
 pub use self::device::{DataDevice, DndEvent};
-#[cfg(feature = "calloop")]
-pub use self::offer::ReadPipeSource;
 pub use self::offer::{DataOffer, ReadPipe};
 pub use self::source::{DataSource, DataSourceEvent, WritePipe};
 

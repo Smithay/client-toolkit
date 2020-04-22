@@ -5,6 +5,7 @@
 #### Breaking Changes
 
 - `AutoThemer` is removed as it is no longer necessary with `wayland-cursor` 0.26
+- `calloop` is updated to 0.6, and the adapters are modified in consequence
 
 #### Additions
 
