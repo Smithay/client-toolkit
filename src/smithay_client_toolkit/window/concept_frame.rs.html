@@ -1228,7 +1228,7 @@
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">ARGBColor</span>, <span class="ident">ButtonColorSpec</span>, <span class="ident">ButtonState</span>, <span class="ident">ColorSpec</span>, <span class="ident">Frame</span>, <span class="ident">FrameRequest</span>, <span class="ident">State</span>, <span class="ident">WindowState</span>,
 };
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">seat</span>::<span class="ident">pointer</span>::{<span class="ident">AutoPointer</span>, <span class="ident">AutoThemer</span>, <span class="ident">ThemeSpec</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">seat</span>::<span class="ident">pointer</span>::{<span class="ident">ThemeManager</span>, <span class="ident">ThemeSpec</span>, <span class="ident">ThemedPointer</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">shm</span>::<span class="ident">DoubleMemPool</span>;
 
 <span class="comment">/*
@@ -1535,8 +1535,8 @@
     <span class="ident">pools</span>: <span class="ident">DoubleMemPool</span>,
     <span class="ident">active</span>: <span class="ident">WindowState</span>,
     <span class="ident">hidden</span>: <span class="ident">bool</span>,
-    <span class="ident">pointers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AutoPointer</span><span class="op">&gt;</span>,
-    <span class="ident">themer</span>: <span class="ident">AutoThemer</span>,
+    <span class="ident">pointers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ThemedPointer</span><span class="op">&gt;</span>,
+    <span class="ident">themer</span>: <span class="ident">ThemeManager</span>,
     <span class="ident">surface_version</span>: <span class="ident">u32</span>,
     <span class="ident">config</span>: <span class="ident">ConceptConfig</span>,
     <span class="ident">title</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1587,7 +1587,7 @@
             <span class="ident">active</span>: <span class="ident">WindowState</span>::<span class="ident">Inactive</span>,
             <span class="ident">hidden</span>: <span class="bool-val">false</span>,
             <span class="ident">pointers</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
-            <span class="ident">themer</span>: <span class="ident">AutoThemer</span>::<span class="ident">init</span>(<span class="ident">ThemeSpec</span>::<span class="ident">System</span>, <span class="ident">compositor</span>.<span class="ident">clone</span>(), <span class="ident">shm</span>.<span class="ident">clone</span>()),
+            <span class="ident">themer</span>: <span class="ident">ThemeManager</span>::<span class="ident">init</span>(<span class="ident">ThemeSpec</span>::<span class="ident">System</span>, <span class="ident">compositor</span>.<span class="ident">clone</span>(), <span class="ident">shm</span>.<span class="ident">clone</span>()),
             <span class="ident">surface_version</span>: <span class="ident">compositor</span>.<span class="ident">as_ref</span>().<span class="ident">version</span>(),
             <span class="ident">config</span>: <span class="ident">ConceptConfig</span>::<span class="ident">default</span>(),
             <span class="ident">title</span>: <span class="prelude-val">None</span>,
@@ -1600,7 +1600,7 @@
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">pointer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">themer</span>.<span class="ident">theme_pointer_with_impl</span>(
             <span class="ident">seat</span>,
-            <span class="kw">move</span> <span class="op">|</span><span class="ident">event</span>, <span class="ident">pointer</span>: <span class="ident">AutoPointer</span>, <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
+            <span class="kw">move</span> <span class="op">|</span><span class="ident">event</span>, <span class="ident">pointer</span>: <span class="ident">ThemedPointer</span>, <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">PointerUserData</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pointer</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>().<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
@@ -2117,7 +2117,7 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">change_pointer</span>(<span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">AutoPointer</span>, <span class="ident">location</span>: <span class="ident">Location</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) {
+<span class="kw">fn</span> <span class="ident">change_pointer</span>(<span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">ThemedPointer</span>, <span class="ident">location</span>: <span class="ident">Location</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) {
     <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">location</span> {
         <span class="ident">Location</span>::<span class="ident">Top</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_side&quot;</span>,
         <span class="ident">Location</span>::<span class="ident">TopRight</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_right_corner&quot;</span>,

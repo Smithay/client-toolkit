@@ -274,8 +274,6 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helpers to handle data device related actions</span>
 
@@ -293,8 +291,6 @@
 <span class="kw">mod</span> <span class="ident">source</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">device</span>::{<span class="ident">DataDevice</span>, <span class="ident">DndEvent</span>};
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">offer</span>::<span class="ident">ReadPipeSource</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">offer</span>::{<span class="ident">DataOffer</span>, <span class="ident">ReadPipe</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">source</span>::{<span class="ident">DataSource</span>, <span class="ident">DataSourceEvent</span>, <span class="ident">WritePipe</span>};
 
