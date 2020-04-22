@@ -17,7 +17,7 @@ use wayland_client::{Attached, DispatchData};
 use super::{
     ARGBColor, ButtonColorSpec, ButtonState, ColorSpec, Frame, FrameRequest, State, WindowState,
 };
-use crate::seat::pointer::{AutoPointer, AutoThemer, ThemeSpec};
+use crate::seat::pointer::{ThemeManager, ThemeSpec, ThemedPointer};
 use crate::shm::DoubleMemPool;
 
 /*
@@ -324,8 +324,8 @@ pub struct ConceptFrame {
     pools: DoubleMemPool,
     active: WindowState,
     hidden: bool,
-    pointers: Vec<AutoPointer>,
-    themer: AutoThemer,
+    pointers: Vec<ThemedPointer>,
+    themer: ThemeManager,
     surface_version: u32,
     config: ConceptConfig,
     title: Option<String>,
@@ -376,7 +376,7 @@ impl Frame for ConceptFrame {
             active: WindowState::Inactive,
             hidden: false,
             pointers: Vec::new(),
-            themer: AutoThemer::init(ThemeSpec::System, compositor.clone(), shm.clone()),
+            themer: ThemeManager::init(ThemeSpec::System, compositor.clone(), shm.clone()),
             surface_version: compositor.as_ref().version(),
             config: ConceptConfig::default(),
             title: None,
@@ -389,7 +389,7 @@ impl Frame for ConceptFrame {
         let inner = self.inner.clone();
         let pointer = self.themer.theme_pointer_with_impl(
             seat,
-            move |event, pointer: AutoPointer, ddata: DispatchData| {
+            move |event, pointer: ThemedPointer, ddata: DispatchData| {
                 let data: &RefCell<PointerUserData> = pointer.as_ref().user_data().get().unwrap();
                 let mut data = data.borrow_mut();
                 let mut inner = inner.borrow_mut();
@@ -906,7 +906,7 @@ impl Drop for ConceptFrame {
     }
 }
 
-fn change_pointer(pointer: &AutoPointer, location: Location, serial: Option<u32>) {
+fn change_pointer(pointer: &ThemedPointer, location: Location, serial: Option<u32>) {
     let name = match location {
         Location::Top => "top_side",
         Location::TopRight => "top_right_corner",
