@@ -6,9 +6,9 @@ use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::{
-    data_device::ReadPipeSource,
+    data_device::ReadPipe,
     environment::Environment,
-    seat::keyboard::{map_keyboard, Event as KbEvent, KeyState, RepeatKind},
+    seat::keyboard::{map_keyboard_repeat, Event as KbEvent, KeyState, RepeatKind},
     shm::MemPool,
     window::{ConceptFrame, Event as WEvent},
 };
@@ -28,7 +28,7 @@ sctk::default_environment!(SelectionExample, desktop);
 type DData = (
     Environment<SelectionExample>,
     Option<WEvent>,
-    Option<Source<ReadPipeSource>>,
+    Option<Source<ReadPipe>>,
 );
 
 fn main() {
@@ -82,9 +82,13 @@ fn main() {
             if has_kbd {
                 let my_seat = seat.clone();
                 let handle = event_loop.handle();
-                match map_keyboard(&seat, None, RepeatKind::System, move |event, _, ddata| {
-                    process_keyboard_event(event, &my_seat, &handle, ddata)
-                }) {
+                match map_keyboard_repeat(
+                    event_loop.handle(),
+                    &seat,
+                    None,
+                    RepeatKind::System,
+                    move |event, _, ddata| process_keyboard_event(event, &my_seat, &handle, ddata),
+                ) {
                     Ok((kbd, _)) => {
                         seats.push((name, Some(kbd)));
                     }
@@ -116,9 +120,13 @@ fn main() {
                 // we should initalize a keyboard
                 let my_seat = seat.clone();
                 let handle = loop_handle.clone();
-                match map_keyboard(&seat, None, RepeatKind::System, move |event, _, ddata| {
-                    process_keyboard_event(event, &my_seat, &handle, ddata)
-                }) {
+                match map_keyboard_repeat(
+                    handle.clone(),
+                    &seat,
+                    None,
+                    RepeatKind::System,
+                    move |event, _, ddata| process_keyboard_event(event, &my_seat, &handle, ddata),
+                ) {
                     Ok((kbd, _)) => {
                         *opt_kbd = Some(kbd);
                     }
@@ -147,13 +155,8 @@ fn main() {
     // the data that will be shared to all callbacks
     let mut data: DData = (env, None, None);
 
-    let _source_queue = event_loop
-        .handle()
-        .insert_source(sctk::WaylandSource::new(queue), |ret, _| {
-            if let Err(e) = ret {
-                panic!("Wayland connection lost: {:?}", e);
-            }
-        })
+    sctk::WaylandSource::new(queue)
+        .quick_insert(event_loop.handle())
         .unwrap();
 
     loop {
@@ -221,18 +224,14 @@ fn process_keyboard_event(
                                 println!("Buffer contains text, going to read it...");
                                 let reader =
                                     offer.receive("text/plain;charset=utf-8".into()).unwrap();
+                                let src_handle = handle.clone();
                                 let source = handle
-                                    .insert_source(reader.into_source(), |event, ddata| {
-                                        // a sub-scope because we cannot be borrowing the source (pipe variable)
-                                        // when we try to remove() it later.
-                                        {
-                                            let mut pipe = event.source.borrow_mut();
-                                            let mut txt = String::new();
-                                            pipe.0.read_to_string(&mut txt).unwrap();
-                                            println!("Selection contents are: \"{}\"", txt);
-                                        }
+                                    .insert_source(reader, move |(), file, ddata| {
+                                        let mut txt = String::new();
+                                        file.read_to_string(&mut txt).unwrap();
+                                        println!("Selection contents are: \"{}\"", txt);
                                         if let Some(src) = ddata.2.take() {
-                                            src.remove();
+                                            src_handle.kill(src);
                                         }
                                     })
                                     .unwrap();

@@ -197,13 +197,8 @@ fn main() {
 
     let mut event_loop = calloop::EventLoop::<()>::new().unwrap();
 
-    let _source_queue = event_loop
-        .handle()
-        .insert_source(WaylandSource::new(queue), |ret, _| {
-            if let Err(e) = ret {
-                panic!("Wayland connection lost: {:?}", e);
-            }
-        })
+    WaylandSource::new(queue)
+        .quick_insert(event_loop.handle())
         .unwrap();
 
     loop {

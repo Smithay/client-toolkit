@@ -135,37 +135,19 @@ impl Drop for DataOffer {
 
 /// A file descriptor that can only be read from
 ///
-/// If the `calloop` cargo feature is enabled, also provides
-/// the necessary glue to insert it as an event source in a
-/// calloop event loop.
+/// If the `calloop` cargo feature is enabled, this can be used
+/// as an `EventSource` in a calloop event loop.
 pub struct ReadPipe {
     #[cfg(feature = "calloop")]
-    file: calloop::generic::SourceFd<fs::File>,
+    file: calloop::generic::Generic<fs::File>,
     #[cfg(not(feature = "calloop"))]
     file: fs::File,
-}
-
-/// A type alias for the calloop source associated with a ReadPipe
-#[cfg(feature = "calloop")]
-pub type ReadPipeSource = calloop::generic::Generic<calloop::generic::SourceFd<ReadPipe>>;
-
-#[cfg(feature = "calloop")]
-impl ReadPipe {
-    /// Make this ReadPipe into a calloop-compatible event source
-    ///
-    /// It'll be an instance of the `calloop::generic::Generic` source
-    /// wrapping the `ReadPipe`.
-    pub fn into_source(self) -> ReadPipeSource {
-        let mut source = calloop::generic::Generic::from_fd_source(self);
-        source.set_interest(calloop::mio::Interest::READABLE);
-        source
-    }
 }
 
 #[cfg(feature = "calloop")]
 impl io::Read for ReadPipe {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.file.0.read(buf)
+        self.file.file.read(buf)
     }
 }
 
@@ -180,7 +162,11 @@ impl io::Read for ReadPipe {
 impl FromRawFd for ReadPipe {
     unsafe fn from_raw_fd(fd: RawFd) -> ReadPipe {
         ReadPipe {
-            file: calloop::generic::SourceFd(FromRawFd::from_raw_fd(fd)),
+            file: calloop::generic::Generic::new(
+                FromRawFd::from_raw_fd(fd),
+                calloop::Interest::Readable,
+                calloop::Mode::Level,
+            ),
         }
     }
 }
@@ -197,7 +183,7 @@ impl FromRawFd for ReadPipe {
 #[cfg(feature = "calloop")]
 impl AsRawFd for ReadPipe {
     fn as_raw_fd(&self) -> RawFd {
-        self.file.0.as_raw_fd()
+        self.file.file.as_raw_fd()
     }
 }
 
@@ -211,7 +197,7 @@ impl AsRawFd for ReadPipe {
 #[cfg(feature = "calloop")]
 impl IntoRawFd for ReadPipe {
     fn into_raw_fd(self) -> RawFd {
-        self.file.0.into_raw_fd()
+        self.file.file.into_raw_fd()
     }
 }
 
@@ -219,5 +205,43 @@ impl IntoRawFd for ReadPipe {
 impl IntoRawFd for ReadPipe {
     fn into_raw_fd(self) -> RawFd {
         self.file.into_raw_fd()
+    }
+}
+
+#[cfg(feature = "calloop")]
+impl calloop::EventSource for ReadPipe {
+    type Event = ();
+    type Metadata = fs::File;
+    type Ret = ();
+
+    fn process_events<F>(
+        &mut self,
+        readiness: calloop::Readiness,
+        token: calloop::Token,
+        mut callback: F,
+    ) -> std::io::Result<()>
+    where
+        F: FnMut((), &mut fs::File),
+    {
+        self.file.process_events(readiness, token, |_, file| {
+            callback((), file);
+            Ok(())
+        })
+    }
+
+    fn register(&mut self, poll: &mut calloop::Poll, token: calloop::Token) -> std::io::Result<()> {
+        self.file.register(poll, token)
+    }
+
+    fn reregister(
+        &mut self,
+        poll: &mut calloop::Poll,
+        token: calloop::Token,
+    ) -> std::io::Result<()> {
+        self.file.reregister(poll, token)
+    }
+
+    fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
+        self.file.unregister(poll)
     }
 }
