@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 -- 2020-04-22
+
 #### Breaking Changes
 
 - `AutoThemer` is removed as it is no longer necessary with `wayland-cursor` 0.26
