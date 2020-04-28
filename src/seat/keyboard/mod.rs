@@ -124,7 +124,7 @@ pub enum Event<'a> {
 /// contained invalid values, or if the provided seat does not have keyboard capability.
 ///
 /// **Note:** This adapter does not handle key repetition. See `map_keyboard_repeat` for that.
-pub fn map_keyboard<F, Data: 'static>(
+pub fn map_keyboard<F>(
     seat: &Attached<wl_seat::WlSeat>,
     rmlvo: Option<RMLVO>,
     callback: F,
