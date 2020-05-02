@@ -2992,12 +2992,24 @@
 <span id="2992">2992</span>
 <span id="2993">2993</span>
 <span id="2994">2994</span>
+<span id="2995">2995</span>
+<span id="2996">2996</span>
+<span id="2997">2997</span>
+<span id="2998">2998</span>
+<span id="2999">2999</span>
+<span id="3000">3000</span>
+<span id="3001">3001</span>
+<span id="3002">3002</span>
+<span id="3003">3003</span>
+<span id="3004">3004</span>
+<span id="3005">3005</span>
+<span id="3006">3006</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="comment">//</span>
 <span class="comment">// This file was auto-generated using the update-keysyms.sh script.</span>
 <span class="comment">//</span>
 
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">missing_docs</span>, <span class="ident">non_upper_case_globals</span>, <span class="ident">clippy</span>::<span class="ident">all</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">missing_docs</span>, <span class="ident">non_upper_case_globals</span>, <span class="ident">unused_parens</span>, <span class="ident">clippy</span>::<span class="ident">all</span>)]</span>
 <span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">rustfmt</span>, <span class="ident">rustfmt_skip</span>)]</span>
 
 <span class="comment">/***********************************************************
@@ -3075,7 +3087,7 @@ SOFTWARE.
  * Unicode number plus :u32 = 0x01000000;. The keysym values in the range
  * :u32 = 0x01000100; to :u32 = 0x0110ffff; are reserved to represent Unicode
  * characters in the range U+0100 to U+10FFFF.
- * 
+ *
  * While most newer Unicode-based X11 clients do already accept
  * Unicode-mapped keysyms in the range :u32 = 0x01000100; to :u32 = 0x0110ffff;, it
  * will remain necessary for clients -- in the interest of
@@ -3106,11 +3118,11 @@ SOFTWARE.
  * When adding new keysyms to this file, do not forget to also update the
  * following as needed:
  *
- *   - the mappings in src/KeyBind.c in the repo
- *     git://anongit.freedesktop.org/xorg/lib/libX11.git
+ *   - the mappings in src/KeyBind.c in the libX11 repo
+ *     https://gitlab.freedesktop.org/xorg/lib/libx11
  *
- *   - the protocol specification in specs/keysyms.xml
- *     in the repo git://anongit.freedesktop.org/xorg/proto/x11proto.git
+ *   - the protocol specification in specs/keysyms.xml in this repo
+ *     https://gitlab.freedesktop.org/xorg/proto/xorgproto
  *
  */</span>
 
@@ -4926,7 +4938,7 @@ SOFTWARE.
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Ibreve</span>                     :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x100012c</span>;  <span class="comment">/* U+012C LATIN CAPITAL LETTER I WITH BREVE */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Zstroke</span>                    :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x10001b5</span>;  <span class="comment">/* U+01B5 LATIN CAPITAL LETTER Z WITH STROKE */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Gcaron</span>                     :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x10001e6</span>;  <span class="comment">/* U+01E6 LATIN CAPITAL LETTER G WITH CARON */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Ocaron</span>                     :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x10001d1</span>;  <span class="comment">/* U+01D2 LATIN CAPITAL LETTER O WITH CARON */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Ocaron</span>                     :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x10001d1</span>;  <span class="comment">/* U+01D1 LATIN CAPITAL LETTER O WITH CARON */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Obarred</span>                    :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x100019f</span>;  <span class="comment">/* U+019F LATIN CAPITAL LETTER O WITH MIDDLE TILDE */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_xabovedot</span>                  :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1001e8b</span>;  <span class="comment">/* U+1E8B LATIN SMALL LETTER X WITH DOT ABOVE */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_ibreve</span>                     :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x100012d</span>;  <span class="comment">/* U+012D LATIN SMALL LETTER I WITH BREVE */</span>
@@ -4946,7 +4958,7 @@ SOFTWARE.
 <span class="comment">/*
  * Vietnamese
  */</span>
- 
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Abelowdot</span>                  :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1001ea0</span>;  <span class="comment">/* U+1EA0 LATIN CAPITAL LETTER A WITH DOT BELOW */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_abelowdot</span>                  :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1001ea1</span>;  <span class="comment">/* U+1EA1 LATIN SMALL LETTER A WITH DOT BELOW */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_Ahook</span>                      :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1001ea2</span>;  <span class="comment">/* U+1EA2 LATIN CAPITAL LETTER A WITH HOOK ABOVE */</span>
@@ -5087,7 +5099,7 @@ SOFTWARE.
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_approxeq</span>                   :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1002248</span>;  <span class="comment">/* U+2245 ALMOST EQUAL TO */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_notapproxeq</span>                :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1002247</span>;  <span class="comment">/* U+2247 NOT ALMOST EQUAL TO */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_notidentical</span>               :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1002262</span>;  <span class="comment">/* U+2262 NOT IDENTICAL TO */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_stricteq</span>                   :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1002263</span>;  <span class="comment">/* U+2263 STRICTLY EQUIVALENT TO */</span>          
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_stricteq</span>                   :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1002263</span>;  <span class="comment">/* U+2263 STRICTLY EQUIVALENT TO */</span>
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_braille_dot_1</span>                 :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0xfff1</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_braille_dot_2</span>                 :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0xfff2</span>;
@@ -5466,11 +5478,12 @@ SOFTWARE.
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86ModeLock</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF01</span>;	<span class="comment">/* Mode Switch Lock */</span>
 
 <span class="comment">/* Backlight controls. */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MonBrightnessUp</span>   :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF02</span>;  <span class="comment">/* Monitor/panel brightness */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MonBrightnessDown</span> :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF03</span>;  <span class="comment">/* Monitor/panel brightness */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86KbdLightOnOff</span>     :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF04</span>;  <span class="comment">/* Keyboards may be lit     */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86KbdBrightnessUp</span>   :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF05</span>;  <span class="comment">/* Keyboards may be lit     */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86KbdBrightnessDown</span> :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF06</span>;  <span class="comment">/* Keyboards may be lit     */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MonBrightnessUp</span>    :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF02</span>;  <span class="comment">/* Monitor/panel brightness */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MonBrightnessDown</span>  :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF03</span>;  <span class="comment">/* Monitor/panel brightness */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86KbdLightOnOff</span>      :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF04</span>;  <span class="comment">/* Keyboards may be lit     */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86KbdBrightnessUp</span>    :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF05</span>;  <span class="comment">/* Keyboards may be lit     */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86KbdBrightnessDown</span>  :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF06</span>;  <span class="comment">/* Keyboards may be lit     */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MonBrightnessCycle</span> :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF07</span>;  <span class="comment">/* Monitor/panel brightness */</span>
 
 <span class="comment">/*
  * Keys found on some &quot;Internet&quot; keyboards.
@@ -5560,12 +5573,12 @@ SOFTWARE.
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86Explorer</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF5D</span>;   <span class="comment">/* Launch file explorer        */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86Game</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF5E</span>;   <span class="comment">/* Launch game                 */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86Go</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF5F</span>;   <span class="comment">/* Go to URL                   */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86iTouch</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF60</span>;   <span class="comment">/* Logitch iTouch- don&#39;t use   */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86iTouch</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF60</span>;   <span class="comment">/* Logitech iTouch- don&#39;t use  */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86LogOff</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF61</span>;   <span class="comment">/* Log off system              */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86Market</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF62</span>;   <span class="comment">/* ??                          */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86Meeting</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF63</span>;   <span class="comment">/* enter meeting in calendar   */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MenuKB</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF65</span>;   <span class="comment">/* distingush keyboard from PB */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MenuPB</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF66</span>;   <span class="comment">/* distinuish PB from keyboard */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MenuKB</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF65</span>;   <span class="comment">/* distinguish keyboard from PB */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MenuPB</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF66</span>;   <span class="comment">/* distinguish PB from keyboard */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86MySites</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF67</span>;   <span class="comment">/* Favourites                  */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86New</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF68</span>;   <span class="comment">/* New (folder, document...    */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86News</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FF69</span>;   <span class="comment">/* News                        */</span>
@@ -5639,6 +5652,17 @@ SOFTWARE.
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86TouchpadOff</span>	:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB1</span>;   <span class="comment">/* The touchpad got switched off */</span>
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86AudioMicMute</span>	:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB2</span>;   <span class="comment">/* Mute the Mic from the system */</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86Keyboard</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB3</span>;   <span class="comment">/* User defined keyboard related action */</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86WWAN</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB4</span>;   <span class="comment">/* Toggle WWAN (LTE, UMTS, etc.) radio */</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86RFKill</span>		:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB5</span>;   <span class="comment">/* Toggle radios on/off */</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86AudioPreset</span>	:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB6</span>;   <span class="comment">/* Select equalizer preset, e.g. theatre-mode */</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86RotationLockToggle</span> :<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB7</span>; <span class="comment">/* Toggle screen rotation lock on/off */</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XKB_KEY_XF86FullScreen</span>	:<span class="ident">u32</span> <span class="op">=</span> <span class="number">0x1008FFB8</span>;   <span class="comment">/* Toggle fullscreen */</span>
 
 <span class="comment">/* Keys for special action keys (hot keys) */</span>
 <span class="comment">/* Virtual terminals on some operating systems */</span>
@@ -5796,13 +5820,13 @@ Copyright 1988 by Digital Equipment Corporation, Maynard, Massachusetts.
 
                         All Rights Reserved
 
-Permission to use, copy, modify, and distribute this software and its 
-documentation for any purpose and without fee is hereby granted, 
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
 provided that the above copyright notice appear in all copies and that
-both that copyright notice and this permission notice appear in 
+both that copyright notice and this permission notice appear in
 supporting documentation, and that the name of Digital not be
 used in advertising or publicity pertaining to distribution of the
-software without specific, written prior permission.  
+software without specific, written prior permission.
 
 DIGITAL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
 ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
