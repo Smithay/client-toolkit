@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+#### Additions
+
+- keyboard: Update the keysyms list with new symbols
+
+#### Changes
+
+- surfaces: dpi-aware surface will no longer believe their DPI factor reverts to 1 when they
+  become hidden.
+
+#### BugFixes
+
+- keyboard: Remove the unnecessary type parameter of `map_keyboard`
+
 ## 0.9.0 -- 2020-04-22
 
 #### Breaking Changes
