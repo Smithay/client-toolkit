@@ -1,6 +1,6 @@
 [![crates.io](http://meritbadge.herokuapp.com/smithay-client-toolkit)](https://crates.io/crates/smithay-client-toolkit)
-[![Build Status](https://travis-ci.org/Smithay/client-toolkit.svg?branch=master)](https://travis-ci.org/Smithay/client-toolkit)
-
+[![docs.rs](https://docs.rs/smithay-client-toolkit/badge.svg)](https://docs.rs/smithay-client-toolkit)
+[![Build Status](https://github.com/Smithay/client-toolkit/workflows/Continuous%20Integration/badge.svg)](https://github.com/Smithay/client-toolkit/actions?query=workflow%3A%22Continuous+Integration%22)
 
 # Smithay's Client Toolkit
 
