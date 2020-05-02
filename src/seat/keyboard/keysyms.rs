@@ -2,7 +2,7 @@
 // This file was auto-generated using the update-keysyms.sh script.
 //
 
-#![allow(missing_docs, non_upper_case_globals, clippy::all)]
+#![allow(missing_docs, non_upper_case_globals, unused_parens, clippy::all)]
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
 /***********************************************************
@@ -80,7 +80,7 @@ SOFTWARE.
  * Unicode number plus :u32 = 0x01000000;. The keysym values in the range
  * :u32 = 0x01000100; to :u32 = 0x0110ffff; are reserved to represent Unicode
  * characters in the range U+0100 to U+10FFFF.
- * 
+ *
  * While most newer Unicode-based X11 clients do already accept
  * Unicode-mapped keysyms in the range :u32 = 0x01000100; to :u32 = 0x0110ffff;, it
  * will remain necessary for clients -- in the interest of
@@ -111,11 +111,11 @@ SOFTWARE.
  * When adding new keysyms to this file, do not forget to also update the
  * following as needed:
  *
- *   - the mappings in src/KeyBind.c in the repo
- *     git://anongit.freedesktop.org/xorg/lib/libX11.git
+ *   - the mappings in src/KeyBind.c in the libX11 repo
+ *     https://gitlab.freedesktop.org/xorg/lib/libx11
  *
- *   - the protocol specification in specs/keysyms.xml
- *     in the repo git://anongit.freedesktop.org/xorg/proto/x11proto.git
+ *   - the protocol specification in specs/keysyms.xml in this repo
+ *     https://gitlab.freedesktop.org/xorg/proto/xorgproto
  *
  */
 
@@ -1931,7 +1931,7 @@ pub const XKB_KEY_Xabovedot                  :u32 = 0x1001e8a;  /* U+1E8A LATIN 
 pub const XKB_KEY_Ibreve                     :u32 = 0x100012c;  /* U+012C LATIN CAPITAL LETTER I WITH BREVE */
 pub const XKB_KEY_Zstroke                    :u32 = 0x10001b5;  /* U+01B5 LATIN CAPITAL LETTER Z WITH STROKE */
 pub const XKB_KEY_Gcaron                     :u32 = 0x10001e6;  /* U+01E6 LATIN CAPITAL LETTER G WITH CARON */
-pub const XKB_KEY_Ocaron                     :u32 = 0x10001d1;  /* U+01D2 LATIN CAPITAL LETTER O WITH CARON */
+pub const XKB_KEY_Ocaron                     :u32 = 0x10001d1;  /* U+01D1 LATIN CAPITAL LETTER O WITH CARON */
 pub const XKB_KEY_Obarred                    :u32 = 0x100019f;  /* U+019F LATIN CAPITAL LETTER O WITH MIDDLE TILDE */
 pub const XKB_KEY_xabovedot                  :u32 = 0x1001e8b;  /* U+1E8B LATIN SMALL LETTER X WITH DOT ABOVE */
 pub const XKB_KEY_ibreve                     :u32 = 0x100012d;  /* U+012D LATIN SMALL LETTER I WITH BREVE */
@@ -1951,7 +1951,7 @@ pub const XKB_KEY_lbelowdot                  :u32 = 0x1001e37;  /* U+1E37 LATIN 
 /*
  * Vietnamese
  */
- 
+
 pub const XKB_KEY_Abelowdot                  :u32 = 0x1001ea0;  /* U+1EA0 LATIN CAPITAL LETTER A WITH DOT BELOW */
 pub const XKB_KEY_abelowdot                  :u32 = 0x1001ea1;  /* U+1EA1 LATIN SMALL LETTER A WITH DOT BELOW */
 pub const XKB_KEY_Ahook                      :u32 = 0x1001ea2;  /* U+1EA2 LATIN CAPITAL LETTER A WITH HOOK ABOVE */
@@ -2092,7 +2092,7 @@ pub const XKB_KEY_because                    :u32 = 0x1002235;  /* U+2235 BECAUS
 pub const XKB_KEY_approxeq                   :u32 = 0x1002248;  /* U+2245 ALMOST EQUAL TO */
 pub const XKB_KEY_notapproxeq                :u32 = 0x1002247;  /* U+2247 NOT ALMOST EQUAL TO */
 pub const XKB_KEY_notidentical               :u32 = 0x1002262;  /* U+2262 NOT IDENTICAL TO */
-pub const XKB_KEY_stricteq                   :u32 = 0x1002263;  /* U+2263 STRICTLY EQUIVALENT TO */          
+pub const XKB_KEY_stricteq                   :u32 = 0x1002263;  /* U+2263 STRICTLY EQUIVALENT TO */
 
 pub const XKB_KEY_braille_dot_1                 :u32 = 0xfff1;
 pub const XKB_KEY_braille_dot_2                 :u32 = 0xfff2;
@@ -2471,11 +2471,12 @@ pub const XKB_KEY_Sinh_kunddaliya    :u32 = 0x1000df4;  /* U+0DF4 SINHALA KUNDDA
 pub const XKB_KEY_XF86ModeLock		:u32 = 0x1008FF01;	/* Mode Switch Lock */
 
 /* Backlight controls. */
-pub const XKB_KEY_XF86MonBrightnessUp   :u32 = 0x1008FF02;  /* Monitor/panel brightness */
-pub const XKB_KEY_XF86MonBrightnessDown :u32 = 0x1008FF03;  /* Monitor/panel brightness */
-pub const XKB_KEY_XF86KbdLightOnOff     :u32 = 0x1008FF04;  /* Keyboards may be lit     */
-pub const XKB_KEY_XF86KbdBrightnessUp   :u32 = 0x1008FF05;  /* Keyboards may be lit     */
-pub const XKB_KEY_XF86KbdBrightnessDown :u32 = 0x1008FF06;  /* Keyboards may be lit     */
+pub const XKB_KEY_XF86MonBrightnessUp    :u32 = 0x1008FF02;  /* Monitor/panel brightness */
+pub const XKB_KEY_XF86MonBrightnessDown  :u32 = 0x1008FF03;  /* Monitor/panel brightness */
+pub const XKB_KEY_XF86KbdLightOnOff      :u32 = 0x1008FF04;  /* Keyboards may be lit     */
+pub const XKB_KEY_XF86KbdBrightnessUp    :u32 = 0x1008FF05;  /* Keyboards may be lit     */
+pub const XKB_KEY_XF86KbdBrightnessDown  :u32 = 0x1008FF06;  /* Keyboards may be lit     */
+pub const XKB_KEY_XF86MonBrightnessCycle :u32 = 0x1008FF07;  /* Monitor/panel brightness */
 
 /*
  * Keys found on some "Internet" keyboards.
@@ -2565,12 +2566,12 @@ pub const XKB_KEY_XF86Excel		:u32 = 0x1008FF5C;   /* Launch spread sheet        
 pub const XKB_KEY_XF86Explorer		:u32 = 0x1008FF5D;   /* Launch file explorer        */
 pub const XKB_KEY_XF86Game		:u32 = 0x1008FF5E;   /* Launch game                 */
 pub const XKB_KEY_XF86Go		:u32 = 0x1008FF5F;   /* Go to URL                   */
-pub const XKB_KEY_XF86iTouch		:u32 = 0x1008FF60;   /* Logitch iTouch- don't use   */
+pub const XKB_KEY_XF86iTouch		:u32 = 0x1008FF60;   /* Logitech iTouch- don't use  */
 pub const XKB_KEY_XF86LogOff		:u32 = 0x1008FF61;   /* Log off system              */
 pub const XKB_KEY_XF86Market		:u32 = 0x1008FF62;   /* ??                          */
 pub const XKB_KEY_XF86Meeting		:u32 = 0x1008FF63;   /* enter meeting in calendar   */
-pub const XKB_KEY_XF86MenuKB		:u32 = 0x1008FF65;   /* distingush keyboard from PB */
-pub const XKB_KEY_XF86MenuPB		:u32 = 0x1008FF66;   /* distinuish PB from keyboard */
+pub const XKB_KEY_XF86MenuKB		:u32 = 0x1008FF65;   /* distinguish keyboard from PB */
+pub const XKB_KEY_XF86MenuPB		:u32 = 0x1008FF66;   /* distinguish PB from keyboard */
 pub const XKB_KEY_XF86MySites		:u32 = 0x1008FF67;   /* Favourites                  */
 pub const XKB_KEY_XF86New		:u32 = 0x1008FF68;   /* New (folder, document...    */
 pub const XKB_KEY_XF86News		:u32 = 0x1008FF69;   /* News                        */
@@ -2644,6 +2645,17 @@ pub const XKB_KEY_XF86TouchpadOn	:u32 = 0x1008FFB0;   /* The touchpad got switch
 pub const XKB_KEY_XF86TouchpadOff	:u32 = 0x1008FFB1;   /* The touchpad got switched off */
 
 pub const XKB_KEY_XF86AudioMicMute	:u32 = 0x1008FFB2;   /* Mute the Mic from the system */
+
+pub const XKB_KEY_XF86Keyboard		:u32 = 0x1008FFB3;   /* User defined keyboard related action */
+
+pub const XKB_KEY_XF86WWAN		:u32 = 0x1008FFB4;   /* Toggle WWAN (LTE, UMTS, etc.) radio */
+pub const XKB_KEY_XF86RFKill		:u32 = 0x1008FFB5;   /* Toggle radios on/off */
+
+pub const XKB_KEY_XF86AudioPreset	:u32 = 0x1008FFB6;   /* Select equalizer preset, e.g. theatre-mode */
+
+pub const XKB_KEY_XF86RotationLockToggle :u32 = 0x1008FFB7; /* Toggle screen rotation lock on/off */
+
+pub const XKB_KEY_XF86FullScreen	:u32 = 0x1008FFB8;   /* Toggle fullscreen */
 
 /* Keys for special action keys (hot keys) */
 /* Virtual terminals on some operating systems */
@@ -2801,13 +2813,13 @@ Copyright 1988 by Digital Equipment Corporation, Maynard, Massachusetts.
 
                         All Rights Reserved
 
-Permission to use, copy, modify, and distribute this software and its 
-documentation for any purpose and without fee is hereby granted, 
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
 provided that the above copyright notice appear in all copies and that
-both that copyright notice and this permission notice appear in 
+both that copyright notice and this permission notice appear in
 supporting documentation, and that the name of Digital not be
 used in advertising or publicity pertaining to distribution of the
-software without specific, written prior permission.  
+software without specific, written prior permission.
 
 DIGITAL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
 ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
