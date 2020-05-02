@@ -85,6 +85,10 @@ impl SurfaceUserData {
                 false
             }
         });
+        if self.outputs.is_empty() {
+            // don't update the scale factor if we are not displayed on any output
+            return self.scale_factor;
+        }
         self.scale_factor = new_scale_factor;
         new_scale_factor
     }
