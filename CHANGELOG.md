@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1 -- 2020-05-03
+
 #### Additions
 
 - keyboard: Update the keysyms list with new symbols
