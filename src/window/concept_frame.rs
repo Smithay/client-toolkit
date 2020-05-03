@@ -618,7 +618,7 @@ impl Frame for ConceptFrame {
                         &self.config,
                     );
                     if let Some((ref font_face, font_size)) = self.config.title_font {
-                        if let Some(title) = self.title.clone() {
+                        if let Some(mut title) = self.title.clone() {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
@@ -643,21 +643,6 @@ impl Frame for ConceptFrame {
 
                             // Create text from stored title and font data
                             if let Some(ref font_data) = self.font_data {
-                                let title_color = self.config.title_color.get_for(self.active);
-                                let mut title_text = text::Text::new(
-                                    (
-                                        0,
-                                        (HEADER_SIZE as usize / 2)
-                                            .saturating_sub((font_size / 2.0).ceil() as usize)
-                                            * header_scale as usize,
-                                    ),
-                                    title_color.into(),
-                                    font_data,
-                                    font_size * header_scale as f32,
-                                    1.0,
-                                    title,
-                                );
-
                                 let mut button_count = 0isize;
                                 if self.config.close_button.is_some() {
                                     button_count += 1;
@@ -674,14 +659,41 @@ impl Frame for ConceptFrame {
                                 let button_space = button_count * scaled_button_size;
                                 let scaled_header_width = width as isize * header_scale as isize;
 
-                                // Check if text is bigger then the available width
-                                if (scaled_header_width - button_space)
-                                    > (title_text.get_width() as isize + scaled_button_size)
-                                {
-                                    title_text.pos.0 =
-                                        (scaled_header_width - button_space) as usize / 2
-                                            - (title_text.get_width() / 2);
-                                    header_canvas.draw(&title_text);
+                                let title_color =
+                                    self.config.title_color.get_for(self.active).into();
+
+                                let text_pos = (
+                                    0,
+                                    (HEADER_SIZE as usize / 2)
+                                        .saturating_sub((font_size / 2.0).ceil() as usize)
+                                        * header_scale as usize,
+                                );
+
+                                while !title.is_empty() {
+                                    let mut title_text = text::Text::new(
+                                        text_pos,
+                                        title_color,
+                                        font_data,
+                                        font_size * header_scale as f32,
+                                        1.0,
+                                        &title,
+                                    );
+
+                                    let text_width = title_text.get_width();
+
+                                    // Check if text is bigger than the available width
+                                    if (scaled_header_width - button_space)
+                                        > (text_width as isize + scaled_button_size)
+                                    {
+                                        title_text.pos.0 =
+                                            (scaled_header_width - button_space) as usize / 2
+                                                - (text_width / 2);
+                                        header_canvas.draw(&title_text);
+                                        break;
+                                    }
+
+                                    // Not enough space; trim the title and try again.
+                                    title.pop();
                                 }
                             }
                         }
