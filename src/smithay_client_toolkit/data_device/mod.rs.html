@@ -467,7 +467,7 @@
 
 <span class="doccomment">/// An interface trait to forward the data device handler capability</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// You need to implement this trait for you environment struct, by</span>
+<span class="doccomment">/// You need to implement this trait for your environment struct, by</span>
 <span class="doccomment">/// delegating it to its `DataDeviceHandler` field in order to get the</span>
 <span class="doccomment">/// associated methods on your [`Environment`](../environment/struct.environment.html).</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DataDeviceHandling</span> {
@@ -510,7 +510,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Once this source is created, you will need to give it to a</span>
     <span class="doccomment">/// [`DataDevice`](../data_device/struct.DataDevice.html)</span>
-    <span class="doccomment">/// to start such and interaction.</span>
+    <span class="doccomment">/// to start interaction.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_data_source</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mime_types</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">callback</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">DataSource</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">DataSourceEvent</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
@@ -531,7 +531,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// You should set it before entering your main loop, to ensure you will not miss any events.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the compositor did not advertize a data device capability.</span>
+    <span class="doccomment">/// Returns an error if the compositor did not advertise a data device capability.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_data_device_callback</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>, <span class="ident">DndEvent</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">callback</span>: <span class="ident">F</span>,
