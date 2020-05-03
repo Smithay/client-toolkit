@@ -366,6 +366,9 @@ macro_rules! init_default_environment {
             let ret = $queue .sync_roundtrip(&mut (), |_, _, _| unreachable!());
             let ret = ret.and_then(|_| $queue.sync_roundtrip(&mut (), |_, _, _| unreachable!()));
 
+            // Bind primary selection manager
+            let _psm = env.get_primary_selection_manager();
+
             ret.map(|_| env)
         }
     };

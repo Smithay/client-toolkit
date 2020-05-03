@@ -101,6 +101,15 @@ impl PrimarySelectionOffer {
     }
 }
 
+impl Drop for PrimarySelectionOffer {
+    fn drop(&mut self) {
+        match &self.offer {
+            PrimarySelectionOfferImpl::Zwp(offer) => offer.destroy(),
+            PrimarySelectionOfferImpl::Gtk(offer) => offer.destroy(),
+        }
+    }
+}
+
 /// Inner state for `PrimarySelectionOffer`.
 #[derive(Default)]
 struct PrimarySelectionOfferInner {
