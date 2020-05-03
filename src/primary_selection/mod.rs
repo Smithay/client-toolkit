@@ -1,4 +1,7 @@
 //! Helpers to handle primary selection related actions.
+//!
+//! If you're not using [`default_environment!`](../macro.default_environment.html) you should
+//! call `get_primary_selection_manager` to bind proper primary selection manager.
 
 use std::{cell::RefCell, rc::Rc};
 

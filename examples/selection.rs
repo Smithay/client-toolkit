@@ -64,9 +64,9 @@ fn main() {
             }
         })
         .expect("Failed to create a window !");
-    window.set_title(
-        "Selection example, press c/C p/P to copy/paste from selection/primary clipboard respectively".to_string(),
-    );
+    window.set_title("Selection example".to_string());
+
+    println!("Press c/C p/P to copy/paste from selection/primary clipboard respectively.");
 
     let mut pools = env
         .create_double_pool(|_| {})
@@ -146,8 +146,6 @@ fn main() {
             }
         }
     });
-    // Get primary selection manager
-    env.get_primary_selection_manager();
 
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
