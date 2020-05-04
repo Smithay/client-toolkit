@@ -596,29 +596,8 @@ impl Frame for ConceptFrame {
                     );
                     header_canvas.draw(&header_bar);
 
-                    draw_buttons(
-                        &mut header_canvas,
-                        width,
-                        header_scale,
-                        true,
-                        self.active,
-                        &self
-                            .pointers
-                            .iter()
-                            .flat_map(|p| {
-                                if p.as_ref().is_alive() {
-                                    let data: &RefCell<PointerUserData> =
-                                        p.as_ref().user_data().get().unwrap();
-                                    Some(data.borrow().location)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<Location>>(),
-                        &self.config,
-                    );
                     if let Some((ref font_face, font_size)) = self.config.title_font {
-                        if let Some(mut title) = self.title.clone() {
+                        if let Some(title) = self.title.clone() {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
@@ -669,35 +648,53 @@ impl Frame for ConceptFrame {
                                         * header_scale as usize,
                                 );
 
-                                while !title.is_empty() {
-                                    let mut title_text = text::Text::new(
-                                        text_pos,
-                                        title_color,
-                                        font_data,
-                                        font_size * header_scale as f32,
-                                        1.0,
-                                        &title,
-                                    );
+                                let mut title_text = text::Text::new(
+                                    text_pos,
+                                    title_color,
+                                    font_data,
+                                    font_size * header_scale as f32,
+                                    1.0,
+                                    &title,
+                                );
 
-                                    let text_width = title_text.get_width();
+                                let text_width = title_text.get_width();
 
-                                    // Check if text is bigger than the available width
-                                    if (scaled_header_width - button_space)
-                                        > (text_width as isize + scaled_button_size)
-                                    {
-                                        title_text.pos.0 =
-                                            (scaled_header_width - button_space) as usize / 2
-                                                - (text_width / 2);
-                                        header_canvas.draw(&title_text);
-                                        break;
-                                    }
-
-                                    // Not enough space; trim the title and try again.
-                                    title.pop();
+                                // Center the title in the header area if possible
+                                if (scaled_header_width - button_space) > (text_width as isize) {
+                                    title_text.pos.0 =
+                                        (scaled_header_width - button_space) as usize / 2
+                                            - (text_width / 2);
                                 }
+
+                                // Note that long titles will leak out of the header area,
+                                // so we render this text before we draw the buttons over
+                                // the top of it.
+                                header_canvas.draw(&title_text);
                             }
                         }
                     }
+
+                    draw_buttons(
+                        &mut header_canvas,
+                        width,
+                        header_scale,
+                        true,
+                        self.active,
+                        &self
+                            .pointers
+                            .iter()
+                            .flat_map(|p| {
+                                if p.as_ref().is_alive() {
+                                    let data: &RefCell<PointerUserData> =
+                                        p.as_ref().user_data().get().unwrap();
+                                    Some(data.borrow().location)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Location>>(),
+                        &self.config,
+                    );
                 }
 
                 // For each pixel in borders
