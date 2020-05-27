@@ -16,7 +16,7 @@ nix = "0.17"
 dlib = "0.4"
 lazy_static = "1.0"
 memmap = "0.7"
-andrew = { version = "0.2.0", optional = true }
+andrew = { version = "0.3.0", optional = true }
 log = "0.4"
 wayland-client = "0.26"
 wayland-protocols = { version = "0.26" , features = ["client", "unstable_protocols"] }
