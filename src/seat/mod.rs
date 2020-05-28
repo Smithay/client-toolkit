@@ -77,10 +77,7 @@ pub struct SeatHandler {
 impl SeatHandler {
     /// Create a new SeatHandler
     pub fn new() -> SeatHandler {
-        SeatHandler {
-            seats: Vec::new(),
-            listeners: Rc::new(RefCell::new(Vec::new())),
-        }
+        SeatHandler { seats: Vec::new(), listeners: Rc::new(RefCell::new(Vec::new())) }
     }
 }
 
@@ -102,9 +99,7 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
         // Seat is supported up to version 6
         let version = std::cmp::min(version, 6);
         let seat = registry.bind::<wl_seat::WlSeat>(version, id);
-        seat.as_ref()
-            .user_data()
-            .set_threadsafe(|| Mutex::new(SeatData::new()));
+        seat.as_ref().user_data().set_threadsafe(|| Mutex::new(SeatData::new()));
         let cb_listeners = self.listeners.clone();
         seat.quick_assign(move |seat, event, ddata| {
             process_seat_event(seat, event, &cb_listeners, ddata)
@@ -259,8 +254,6 @@ impl<E: crate::environment::MultiGlobalHandler<wl_seat::WlSeat>>
 {
     /// Shorthand method to retrieve the list of seats
     pub fn get_all_seats(&self) -> Vec<Attached<wl_seat::WlSeat>> {
-        self.get_all_globals::<wl_seat::WlSeat>()
-            .into_iter()
-            .collect()
+        self.get_all_globals::<wl_seat::WlSeat>().into_iter().collect()
     }
 }

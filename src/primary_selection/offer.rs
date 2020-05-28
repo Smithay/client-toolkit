@@ -72,10 +72,7 @@ impl PrimarySelectionOffer {
             }
         });
 
-        Self {
-            offer: PrimarySelectionOfferImpl::Zwp(offer.detach()),
-            inner,
-        }
+        Self { offer: PrimarySelectionOfferImpl::Zwp(offer.detach()), inner }
     }
 
     /// Initialize `PrimarySelectionOffer` from the `Gtk` offer.
@@ -94,10 +91,7 @@ impl PrimarySelectionOffer {
             }
         });
 
-        Self {
-            offer: PrimarySelectionOfferImpl::Gtk(offer.detach()),
-            inner,
-        }
+        Self { offer: PrimarySelectionOfferImpl::Gtk(offer.detach()), inner }
     }
 }
 

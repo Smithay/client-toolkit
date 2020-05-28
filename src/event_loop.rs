@@ -26,10 +26,7 @@ impl WaylandSource {
     /// Wrap an `EventQueue` as a `WaylandSource`.
     pub fn new(queue: EventQueue) -> WaylandSource {
         let fd = queue.display().get_connection_fd();
-        WaylandSource {
-            queue,
-            fd: Generic::from_fd(fd, Interest::Readable, Mode::Level),
-        }
+        WaylandSource { queue, fd: Generic::from_fd(fd, Interest::Readable, Mode::Level) }
     }
 
     /// Insert this source into given event loop with an adapter that panics on orphan events

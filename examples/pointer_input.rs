@@ -37,10 +37,7 @@ impl WindowConfig {
     }
 
     pub fn dimensions(&self) -> (u32, u32) {
-        (
-            self.width * self.dpi_scale as u32,
-            self.height * self.dpi_scale as u32,
-        )
+        (self.width * self.dpi_scale as u32, self.height * self.dpi_scale as u32)
     }
 
     pub fn handle_action(&mut self, new_action: NextAction) {
@@ -86,10 +83,7 @@ fn main() {
                 let mut config = dispatch_data.get::<WindowConfig>().unwrap();
                 match event {
                     WEvent::Refresh => config.handle_action(NextAction::Refresh),
-                    WEvent::Configure {
-                        new_size: Some((w, h)),
-                        ..
-                    } => {
+                    WEvent::Configure { new_size: Some((w, h)), .. } => {
                         if config.dimensions() != (w, h) || !config.has_drawn_once {
                             config.width = w;
                             config.height = h;
@@ -111,9 +105,7 @@ fn main() {
         )
         .expect("Failed to create a window !");
 
-    let mut pools = env
-        .create_double_pool(|_| {})
-        .expect("Failed to create a memory pool !");
+    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
 
     /*
      * Pointer initialization
@@ -123,10 +115,7 @@ fn main() {
     // first process already existing seats
     for seat in env.get_all_seats() {
         if let Some((has_ptr, name)) = sctk::seat::with_seat_data(&seat, |seat_data| {
-            (
-                seat_data.has_pointer && !seat_data.defunct,
-                seat_data.name.clone(),
-            )
+            (seat_data.has_pointer && !seat_data.defunct, seat_data.name.clone())
         }) {
             if has_ptr {
                 let seat_name = name.clone();
@@ -208,8 +197,7 @@ fn redraw(
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize)
-        .expect("Failed to resize the memory pool.");
+    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
     pool.seek(SeekFrom::Start(0))?;
     {
@@ -225,13 +213,8 @@ fn redraw(
         writer.flush()?;
     }
     // get a buffer and attach it
-    let new_buffer = pool.buffer(
-        0,
-        buf_x as i32,
-        buf_y as i32,
-        4 * buf_x as i32,
-        wl_shm::Format::Argb8888,
-    );
+    let new_buffer =
+        pool.buffer(0, buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888);
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     Ok(())
@@ -243,12 +226,7 @@ fn print_pointer_event(
     main_surface: &wl_surface::WlSurface,
 ) {
     match event {
-        wl_pointer::Event::Enter {
-            surface,
-            surface_x,
-            surface_y,
-            ..
-        } => {
+        wl_pointer::Event::Enter { surface, surface_x, surface_y, .. } => {
             if main_surface == &surface {
                 println!(
                     "Pointer of seat '{}' entered at ({}, {})",
@@ -262,19 +240,11 @@ fn print_pointer_event(
             }
         }
         wl_pointer::Event::Button { button, state, .. } => {
-            println!(
-                "Button {:?} of seat '{}' was {:?}",
-                button, seat_name, state
-            );
+            println!("Button {:?} of seat '{}' was {:?}", button, seat_name, state);
         }
-        wl_pointer::Event::Motion {
-            surface_x,
-            surface_y,
-            ..
-        } => println!(
-            "Pointer motion to ({}, {}) on seat '{}'",
-            surface_x, surface_y, seat_name
-        ),
+        wl_pointer::Event::Motion { surface_x, surface_y, .. } => {
+            println!("Pointer motion to ({}, {}) on seat '{}'", surface_x, surface_y, seat_name)
+        }
         _ => {}
     }
 }

@@ -219,10 +219,7 @@ impl<F: Frame + 'static> Window<F> {
             move |event, mut ddata: DispatchData| {
                 if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
                     match event {
-                        shell::Event::Configure {
-                            states,
-                            mut new_size,
-                        } => {
+                        shell::Event::Configure { states, mut new_size } => {
                             let mut frame = inner.frame.lock().unwrap();
                             // clamp size
                             new_size = new_size.map(|(w, h)| {
@@ -486,17 +483,13 @@ impl<F: Frame + 'static> Window<F> {
                     Some(inner.min_size).map(|(w, h)| frame.add_borders(w as i32, h as i32)),
                 );
                 self.shell_surface.set_max_size(
-                    inner
-                        .max_size
-                        .map(|(w, h)| frame.add_borders(w as i32, h as i32)),
+                    inner.max_size.map(|(w, h)| frame.add_borders(w as i32, h as i32)),
                 );
             } else {
                 // lock the min/max sizes to current size
                 let (w, h) = inner.current_size;
-                self.shell_surface
-                    .set_min_size(Some(frame.add_borders(w as i32, h as i32)));
-                self.shell_surface
-                    .set_max_size(Some(frame.add_borders(w as i32, h as i32)));
+                self.shell_surface.set_min_size(Some(frame.add_borders(w as i32, h as i32)));
+                self.shell_surface.set_max_size(Some(frame.add_borders(w as i32, h as i32)));
             }
         }
     }
@@ -750,10 +743,7 @@ impl ColorSpec {
     /// Create a ColorSpec that is always the same color
     #[inline]
     pub const fn identical(color: ARGBColor) -> ColorSpec {
-        ColorSpec {
-            active: color,
-            inactive: color,
-        }
+        ColorSpec { active: color, inactive: color }
     }
 
     /// Create a ColorSpec corresponding to an always invisible color
@@ -804,12 +794,7 @@ pub struct ARGBColor {
 impl ARGBColor {
     /// The invisible `#00000000` color
     pub const fn zero() -> ARGBColor {
-        ARGBColor {
-            a: 0,
-            r: 0,
-            g: 0,
-            b: 0,
-        }
+        ARGBColor { a: 0, r: 0, g: 0, b: 0 }
     }
 }
 
@@ -821,11 +806,6 @@ impl From<ARGBColor> for [u8; 4] {
 
 impl From<[u8; 4]> for ARGBColor {
     fn from(array: [u8; 4]) -> ARGBColor {
-        ARGBColor {
-            a: array[0],
-            r: array[1],
-            g: array[2],
-            b: array[3],
-        }
+        ARGBColor { a: array[0], r: array[1], g: array[2], b: array[3] }
     }
 }

@@ -26,11 +26,7 @@ sctk::default_environment!(SelectionExample, desktop);
 
 // Here the type parameter is a global value that will be shared by
 // all callbacks invoked by the event loop.
-type DData = (
-    Environment<SelectionExample>,
-    Option<WEvent>,
-    Option<Source<ReadPipe>>,
-);
+type DData = (Environment<SelectionExample>, Option<WEvent>, Option<Source<ReadPipe>>);
 
 fn main() {
     /*
@@ -68,19 +64,14 @@ fn main() {
 
     println!("Press c/C p/P to copy/paste from selection/primary clipboard respectively.");
 
-    let mut pools = env
-        .create_double_pool(|_| {})
-        .expect("Failed to create a memory pool !");
+    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
 
     let mut seats = Vec::<(String, Option<wl_keyboard::WlKeyboard>)>::new();
 
     // first process already existing seats
     for seat in env.get_all_seats() {
         if let Some((has_kbd, name)) = sctk::seat::with_seat_data(&seat, |seat_data| {
-            (
-                seat_data.has_keyboard && !seat_data.defunct,
-                seat_data.name.clone(),
-            )
+            (seat_data.has_keyboard && !seat_data.defunct, seat_data.name.clone())
         }) {
             if has_kbd {
                 let my_seat = seat.clone();
@@ -133,10 +124,9 @@ fn main() {
                     Ok((kbd, _)) => {
                         *opt_kbd = Some(kbd);
                     }
-                    Err(e) => eprintln!(
-                        "Failed to map keyboard on seat {} : {:?}.",
-                        seat_data.name, e
-                    ),
+                    Err(e) => {
+                        eprintln!("Failed to map keyboard on seat {} : {:?}.", seat_data.name, e)
+                    }
                 }
             }
         } else {
@@ -158,9 +148,7 @@ fn main() {
     // the data that will be shared to all callbacks
     let mut data: DData = (env, None, None);
 
-    sctk::WaylandSource::new(queue)
-        .quick_insert(event_loop.handle())
-        .unwrap();
+    sctk::WaylandSource::new(queue).quick_insert(event_loop.handle()).unwrap();
 
     loop {
         match data.1.take() {
@@ -197,12 +185,7 @@ fn process_keyboard_event(
 ) {
     let (env, _, opt_source) = ddata.get::<DData>().unwrap();
     match event {
-        KbEvent::Key {
-            state,
-            utf8: Some(text),
-            serial,
-            ..
-        } => {
+        KbEvent::Key { state, utf8: Some(text), serial, .. } => {
             if text == "p" && state == KeyState::Pressed {
                 // pressed the 'p' key, try to read contents !
                 env.with_data_device(seat, |device| {
@@ -217,10 +200,7 @@ fn process_keyboard_event(
 
                         let seat_name =
                             sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
-                        print!(
-                            "Current selection buffer mime types on seat '{}': [ ",
-                            seat_name
-                        );
+                        print!("Current selection buffer mime types on seat '{}': [ ", seat_name);
                         let mut has_text = false;
                         offer.with_mime_types(|types| {
                             for t in types {
@@ -353,8 +333,7 @@ fn redraw(
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize)
-        .expect("Failed to resize the memory pool.");
+    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
     pool.seek(SeekFrom::Start(0))?;
     {
@@ -365,13 +344,8 @@ fn redraw(
         writer.flush()?;
     }
     // get a buffer and attach it
-    let new_buffer = pool.buffer(
-        0,
-        buf_x as i32,
-        buf_y as i32,
-        4 * buf_x as i32,
-        wl_shm::Format::Argb8888,
-    );
+    let new_buffer =
+        pool.buffer(0, buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888);
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     Ok(())

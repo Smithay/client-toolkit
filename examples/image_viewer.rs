@@ -115,9 +115,7 @@ fn main() {
     /*
      * Initialization of the memory pool
      */
-    let mut pools = env
-        .create_double_pool(|_| {})
-        .expect("Failed to create the memory pools.");
+    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create the memory pools.");
 
     /*
      * Event Loop preparation and running
@@ -143,13 +141,8 @@ fn main() {
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {
-            redraw(
-                pool,
-                window.surface(),
-                dimensions,
-                if resizing { None } else { Some(&image) },
-            )
-            .expect("Failed to draw")
+            redraw(pool, window.surface(), dimensions, if resizing { None } else { Some(&image) })
+                .expect("Failed to draw")
         }
         window.refresh();
     }
@@ -247,8 +240,7 @@ fn redraw(
     //
     // While writing on the file will automatically grow it, we need to advertise the
     // server of its new size, so the call to this method is necessary.
-    pool.resize((4 * buf_x * buf_y) as usize)
-        .expect("Failed to resize the memory pool.");
+    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
 
     // Now, we can write the contents. MemPool implement the `Seek` and `Write` traits,
     // so we use it directly as a file to write on.

@@ -5,8 +5,8 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use wayland_protocols::unstable::primary_selection::v1::client::zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1;
 use wayland_protocols::misc::gtk_primary_selection::client::gtk_primary_selection_device_manager::GtkPrimarySelectionDeviceManager;
+use wayland_protocols::unstable::primary_selection::v1::client::zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1;
 
 use wayland_client::{
     protocol::{wl_registry::WlRegistry, wl_seat::WlSeat},
@@ -67,10 +67,7 @@ impl PrimarySelectionHandler {
             }
         });
 
-        Self {
-            inner,
-            _listener: listener,
-        }
+        Self { inner, _listener: listener }
     }
 }
 
@@ -173,13 +170,8 @@ impl PrimarySelectionHandling for PrimarySelectionHandler {
 
 /// Initialization phase of `PrimarySelectionDeviceManagerInner`.
 enum PrimarySelectionDeviceManagerInitState {
-    Ready {
-        manager: PrimarySelectionDeviceManager,
-        devices: Vec<(WlSeat, PrimarySelectionDevice)>,
-    },
-    Pending {
-        seats: Vec<WlSeat>,
-    },
+    Ready { manager: PrimarySelectionDeviceManager, devices: Vec<(WlSeat, PrimarySelectionDevice)> },
+    Pending { seats: Vec<WlSeat> },
 }
 
 /// Inner mutable state for `PrimarySelectionHandler`.

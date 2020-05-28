@@ -63,9 +63,7 @@ impl PrimarySelectionSource {
                     source.offer(mime.into());
                 }
 
-                Self {
-                    source: PrimarySelectionSourceImpl::Zwp(source.detach()),
-                }
+                Self { source: PrimarySelectionSourceImpl::Zwp(source.detach()) }
             }
             PrimarySelectionDeviceManager::Gtk(ref manager) => {
                 let source = manager.create_source();
@@ -77,9 +75,7 @@ impl PrimarySelectionSource {
                     source.offer(mime.into());
                 }
 
-                Self {
-                    source: PrimarySelectionSourceImpl::Gtk(source.detach()),
-                }
+                Self { source: PrimarySelectionSourceImpl::Gtk(source.detach()) }
             }
         }
     }

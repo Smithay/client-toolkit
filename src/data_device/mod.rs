@@ -53,11 +53,7 @@ impl DDInner {
             devices.push((seat.clone(), device));
         }
 
-        *self = DDInner::Ready {
-            mgr,
-            devices,
-            callback,
-        };
+        *self = DDInner::Ready { mgr, devices, callback };
     }
 
     // A potential new seat is seen
@@ -65,11 +61,7 @@ impl DDInner {
     // should do nothing if the seat is already known
     fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
         match self {
-            DDInner::Ready {
-                mgr,
-                devices,
-                callback,
-            } => {
+            DDInner::Ready { mgr, devices, callback } => {
                 if devices.iter().any(|(s, _)| s == seat) {
                     // the seat already exists, nothing to do
                     return;
@@ -161,10 +153,7 @@ impl DataDeviceHandler {
             }
         });
 
-        DataDeviceHandler {
-            inner,
-            _listener: listener,
-        }
+        DataDeviceHandler { inner, _listener: listener }
     }
 }
 

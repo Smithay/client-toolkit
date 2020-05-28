@@ -49,11 +49,7 @@ impl Xdg {
                 xdg_toplevel::Event::Close => {
                     (&mut *implementation.borrow_mut())(Event::Close, ddata)
                 }
-                xdg_toplevel::Event::Configure {
-                    width,
-                    height,
-                    states,
-                } => {
+                xdg_toplevel::Event::Configure { width, height, states } => {
                     use std::cmp::max;
                     let new_size = if width == 0 || height == 0 {
                         // if either w or h is zero, then we get to choose our size
@@ -73,10 +69,7 @@ impl Xdg {
             }
         });
         surface.commit();
-        Xdg {
-            surface: xdgs.detach(),
-            toplevel: toplevel.detach(),
-        }
+        Xdg { surface: xdgs.detach(), toplevel: toplevel.detach() }
     }
 }
 

@@ -20,10 +20,8 @@ impl Inner {
 
     fn set_selection(&mut self, offer: Option<wl_data_offer::WlDataOffer>) {
         if let Some(offer) = offer {
-            if let Some(id) = self
-                .known_offers
-                .iter()
-                .position(|o| o.offer.as_ref().equals(&offer.as_ref()))
+            if let Some(id) =
+                self.known_offers.iter().position(|o| o.offer.as_ref().equals(&offer.as_ref()))
             {
                 self.selection = Some(self.known_offers.swap_remove(id));
             } else {
@@ -37,10 +35,8 @@ impl Inner {
 
     fn set_dnd(&mut self, offer: Option<wl_data_offer::WlDataOffer>) {
         if let Some(offer) = offer {
-            if let Some(id) = self
-                .known_offers
-                .iter()
-                .position(|o| o.offer.as_ref().equals(&offer.as_ref()))
+            if let Some(id) =
+                self.known_offers.iter().position(|o| o.offer.as_ref().equals(&offer.as_ref()))
             {
                 self.current_dnd = Some(self.known_offers.swap_remove(id));
             } else {
@@ -119,44 +115,19 @@ fn data_device_implem<F>(
 
     match event {
         Event::DataOffer { id } => inner.new_offer(id),
-        Event::Enter {
-            serial,
-            surface,
-            x,
-            y,
-            id,
-        } => {
+        Event::Enter { serial, surface, x, y, id } => {
             inner.set_dnd(id);
             implem(
-                DndEvent::Enter {
-                    serial,
-                    surface,
-                    x,
-                    y,
-                    offer: inner.current_dnd.as_ref(),
-                },
+                DndEvent::Enter { serial, surface, x, y, offer: inner.current_dnd.as_ref() },
                 ddata,
             );
         }
         Event::Motion { time, x, y } => {
-            implem(
-                DndEvent::Motion {
-                    x,
-                    y,
-                    time,
-                    offer: inner.current_dnd.as_ref(),
-                },
-                ddata,
-            );
+            implem(DndEvent::Motion { x, y, time, offer: inner.current_dnd.as_ref() }, ddata);
         }
         Event::Leave => implem(DndEvent::Leave, ddata),
         Event::Drop => {
-            implem(
-                DndEvent::Drop {
-                    offer: inner.current_dnd.as_ref(),
-                },
-                ddata,
-            );
+            implem(DndEvent::Drop { offer: inner.current_dnd.as_ref() }, ddata);
         }
         Event::Selection { id } => inner.set_selection(id),
         _ => unreachable!(),
@@ -189,10 +160,7 @@ impl DataDevice {
             data_device_implem(evt, &mut *inner, &mut callback, ddata);
         });
 
-        DataDevice {
-            device: device.detach(),
-            inner,
-        }
+        DataDevice { device: device.detach(), inner }
     }
 
     /// Start a drag'n'drop offer
@@ -220,8 +188,7 @@ impl DataDevice {
     ) {
         if let Some(source) = source {
             source.source.set_actions(actions.to_raw());
-            self.device
-                .start_drag(Some(&source.source), origin, icon, serial);
+            self.device.start_drag(Some(&source.source), origin, icon, serial);
         } else {
             self.device.start_drag(None, origin, icon, serial);
         }
@@ -232,8 +199,7 @@ impl DataDevice {
     /// Correspond to traditional copy/paste behavior. Setting the
     /// source to `None` will clear the selection.
     pub fn set_selection(&self, source: &Option<DataSource>, serial: u32) {
-        self.device
-            .set_selection(source.as_ref().map(|s| &s.source), serial);
+        self.device.set_selection(source.as_ref().map(|s| &s.source), serial);
     }
 
     /// Access the `DataOffer` currently associated with the selection buffer

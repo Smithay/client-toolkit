@@ -139,11 +139,7 @@ where
         return Err(Error::NoKeyboard);
     };
 
-    let state = Rc::new(RefCell::new(
-        rmlvo
-            .map(KbState::from_rmlvo)
-            .unwrap_or_else(KbState::new)?,
-    ));
+    let state = Rc::new(RefCell::new(rmlvo.map(KbState::from_rmlvo).unwrap_or_else(KbState::new)?));
 
     let callback = Rc::new(RefCell::new(callback));
 
@@ -192,25 +188,15 @@ where
         return Err(Error::NoKeyboard);
     };
 
-    let state = Rc::new(RefCell::new(
-        rmlvo
-            .map(KbState::from_rmlvo)
-            .unwrap_or_else(KbState::new)?,
-    ));
+    let state = Rc::new(RefCell::new(rmlvo.map(KbState::from_rmlvo).unwrap_or_else(KbState::new)?));
 
     let callback = Rc::new(RefCell::new(callback));
 
     let repeat = match repeatkind {
-        RepeatKind::System => RepeatDetails {
-            locked: false,
-            gap: 100,
-            delay: 300,
-        },
-        RepeatKind::Fixed { rate, delay } => RepeatDetails {
-            locked: true,
-            gap: 1000 / rate,
-            delay,
-        },
+        RepeatKind::System => RepeatDetails { locked: false, gap: 100, delay: 300 },
+        RepeatKind::Fixed { rate, delay } => {
+            RepeatDetails { locked: true, gap: 1000 / rate, delay }
+        }
     };
 
     // prepare the repetition handling
@@ -228,11 +214,7 @@ where
         let handler = KbdHandler {
             callback: callback.clone(),
             state,
-            repeat: Some(KbdRepeat {
-                timer_handle,
-                current_repeat,
-                details: repeat,
-            }),
+            repeat: Some(KbdRepeat { timer_handle, current_repeat, details: repeat }),
         };
         (handler, source)
     };
@@ -292,8 +274,7 @@ impl KbdRepeat {
             gap: self.details.gap,
             time: time + self.details.delay,
         });
-        self.timer_handle
-            .add_timeout(Duration::from_millis(self.details.delay as u64), ());
+        self.timer_handle.add_timeout(Duration::from_millis(self.details.delay as u64), ());
     }
 
     fn stop_repeat(&self, key: u32) {
@@ -323,32 +304,16 @@ impl KbdHandler {
 
         match event {
             Event::Keymap { format, fd, size } => self.keymap(kbd, format, fd, size),
-            Event::Enter {
-                serial,
-                surface,
-                keys,
-            } => self.enter(kbd, serial, surface, keys, dispatch_data),
+            Event::Enter { serial, surface, keys } => {
+                self.enter(kbd, serial, surface, keys, dispatch_data)
+            }
             Event::Leave { serial, surface } => self.leave(kbd, serial, surface, dispatch_data),
-            Event::Key {
-                serial,
-                time,
-                key,
-                state,
-            } => self.key(kbd, serial, time, key, state, dispatch_data),
-            Event::Modifiers {
-                mods_depressed,
-                mods_latched,
-                mods_locked,
-                group,
-                ..
-            } => self.modifiers(
-                kbd,
-                mods_depressed,
-                mods_latched,
-                mods_locked,
-                group,
-                dispatch_data,
-            ),
+            Event::Key { serial, time, key, state } => {
+                self.key(kbd, serial, time, key, state, dispatch_data)
+            }
+            Event::Modifiers { mods_depressed, mods_latched, mods_locked, group, .. } => {
+                self.modifiers(kbd, mods_depressed, mods_latched, mods_locked, group, dispatch_data)
+            }
             Event::RepeatInfo { rate, delay } => self.repeat_info(kbd, rate, delay),
             _ => {}
         }
@@ -392,18 +357,10 @@ impl KbdHandler {
         dispatch_data: wayland_client::DispatchData,
     ) {
         let mut state = self.state.borrow_mut();
-        let rawkeys = keys
-            .chunks_exact(4)
-            .map(NativeEndian::read_u32)
-            .collect::<Vec<_>>();
+        let rawkeys = keys.chunks_exact(4).map(NativeEndian::read_u32).collect::<Vec<_>>();
         let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
         (&mut *self.callback.borrow_mut())(
-            Event::Enter {
-                serial,
-                surface,
-                rawkeys: &rawkeys,
-                keysyms: &keys,
-            },
+            Event::Enter { serial, surface, rawkeys: &rawkeys, keysyms: &keys },
             object,
             dispatch_data,
         );
@@ -486,14 +443,7 @@ impl KbdHandler {
         }
 
         (&mut *self.callback.borrow_mut())(
-            Event::Key {
-                serial,
-                time,
-                rawkey: key,
-                keysym: sym,
-                state: key_state,
-                utf8,
-            },
+            Event::Key { serial, time, rawkey: key, keysym: sym, state: key_state, utf8 },
             object,
             dispatch_data,
         );
@@ -512,9 +462,7 @@ impl KbdHandler {
             let mut state = self.state.borrow_mut();
             state.update_modifiers(mods_depressed, mods_latched, mods_locked, group);
             (&mut *self.callback.borrow_mut())(
-                Event::Modifiers {
-                    modifiers: state.mods_state(),
-                },
+                Event::Modifiers { modifiers: state.mods_state() },
                 object,
                 dispatch_data,
             );
@@ -583,30 +531,24 @@ impl calloop::EventSource for RepeatSource {
     {
         let current_repeat = &self.current_repeat;
         let state = &self.state;
-        self.timer
-            .process_events(readiness, token, |(), timer_handle| {
-                if let Some(ref mut data) = *current_repeat.borrow_mut() {
-                    // there is something to repeat
-                    let mut state = state.borrow_mut();
-                    let keysym = state.get_one_sym_raw(data.keycode);
-                    let utf8 = state.get_utf8_raw(data.keycode);
-                    let new_time = data.gap + data.time;
-                    // notify the callback
-                    callback(
-                        Event::Repeat {
-                            time: new_time,
-                            rawkey: data.keycode,
-                            keysym,
-                            utf8,
-                        },
-                        &mut data.keyboard,
-                    );
-                    // update the time of last event
-                    data.time = new_time;
-                    // schedule the next timeout
-                    timer_handle.add_timeout(Duration::from_millis(data.gap as u64), ());
-                }
-            })
+        self.timer.process_events(readiness, token, |(), timer_handle| {
+            if let Some(ref mut data) = *current_repeat.borrow_mut() {
+                // there is something to repeat
+                let mut state = state.borrow_mut();
+                let keysym = state.get_one_sym_raw(data.keycode);
+                let utf8 = state.get_utf8_raw(data.keycode);
+                let new_time = data.gap + data.time;
+                // notify the callback
+                callback(
+                    Event::Repeat { time: new_time, rawkey: data.keycode, keysym, utf8 },
+                    &mut data.keyboard,
+                );
+                // update the time of last event
+                data.time = new_time;
+                // schedule the next timeout
+                timer_handle.add_timeout(Duration::from_millis(data.gap as u64), ());
+            }
+        })
     }
 
     fn register(&mut self, poll: &mut calloop::Poll, token: calloop::Token) -> std::io::Result<()> {

@@ -48,10 +48,7 @@ impl DataOffer {
             }
         });
 
-        DataOffer {
-            offer: offer.detach(),
-            inner,
-        }
+        DataOffer { offer: offer.detach(), inner }
     }
 
     /// Access the list of mime types proposed by this offer
@@ -112,8 +109,7 @@ impl DataOffer {
     /// You need to provide the set of supported actions, as well as
     /// a single preferred action.
     pub fn set_actions(&self, supported: DndAction, preferred: DndAction) {
-        self.offer
-            .set_actions(supported.to_raw(), preferred.to_raw());
+        self.offer.set_actions(supported.to_raw(), preferred.to_raw());
     }
 
     /// Notify that you are finished with this offer, and will no longer
@@ -174,9 +170,7 @@ impl FromRawFd for ReadPipe {
 #[cfg(not(feature = "calloop"))]
 impl FromRawFd for ReadPipe {
     unsafe fn from_raw_fd(fd: RawFd) -> ReadPipe {
-        ReadPipe {
-            file: FromRawFd::from_raw_fd(fd),
-        }
+        ReadPipe { file: FromRawFd::from_raw_fd(fd) }
     }
 }
 
