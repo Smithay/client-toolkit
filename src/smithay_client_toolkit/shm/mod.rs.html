@@ -77,9 +77,6 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Various small utilities helping you to write clients</span>
 
@@ -107,10 +104,7 @@
 <span class="kw">impl</span> <span class="ident">ShmHandler</span> {
     <span class="doccomment">/// Create a new ShmHandler</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ShmHandler</span> {
-        <span class="ident">ShmHandler</span> {
-            <span class="ident">shm</span>: <span class="prelude-val">None</span>,
-            <span class="ident">formats</span>: <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[])),
-        }
+        <span class="ident">ShmHandler</span> { <span class="ident">shm</span>: <span class="prelude-val">None</span>, <span class="ident">formats</span>: <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[])) }
     }
 }
 

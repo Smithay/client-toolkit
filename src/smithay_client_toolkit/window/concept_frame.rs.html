@@ -1144,70 +1144,6 @@
 <span id="1144">1144</span>
 <span id="1145">1145</span>
 <span id="1146">1146</span>
-<span id="1147">1147</span>
-<span id="1148">1148</span>
-<span id="1149">1149</span>
-<span id="1150">1150</span>
-<span id="1151">1151</span>
-<span id="1152">1152</span>
-<span id="1153">1153</span>
-<span id="1154">1154</span>
-<span id="1155">1155</span>
-<span id="1156">1156</span>
-<span id="1157">1157</span>
-<span id="1158">1158</span>
-<span id="1159">1159</span>
-<span id="1160">1160</span>
-<span id="1161">1161</span>
-<span id="1162">1162</span>
-<span id="1163">1163</span>
-<span id="1164">1164</span>
-<span id="1165">1165</span>
-<span id="1166">1166</span>
-<span id="1167">1167</span>
-<span id="1168">1168</span>
-<span id="1169">1169</span>
-<span id="1170">1170</span>
-<span id="1171">1171</span>
-<span id="1172">1172</span>
-<span id="1173">1173</span>
-<span id="1174">1174</span>
-<span id="1175">1175</span>
-<span id="1176">1176</span>
-<span id="1177">1177</span>
-<span id="1178">1178</span>
-<span id="1179">1179</span>
-<span id="1180">1180</span>
-<span id="1181">1181</span>
-<span id="1182">1182</span>
-<span id="1183">1183</span>
-<span id="1184">1184</span>
-<span id="1185">1185</span>
-<span id="1186">1186</span>
-<span id="1187">1187</span>
-<span id="1188">1188</span>
-<span id="1189">1189</span>
-<span id="1190">1190</span>
-<span id="1191">1191</span>
-<span id="1192">1192</span>
-<span id="1193">1193</span>
-<span id="1194">1194</span>
-<span id="1195">1195</span>
-<span id="1196">1196</span>
-<span id="1197">1197</span>
-<span id="1198">1198</span>
-<span id="1199">1199</span>
-<span id="1200">1200</span>
-<span id="1201">1201</span>
-<span id="1202">1202</span>
-<span id="1203">1203</span>
-<span id="1204">1204</span>
-<span id="1205">1205</span>
-<span id="1206">1206</span>
-<span id="1207">1207</span>
-<span id="1208">1208</span>
-<span id="1209">1209</span>
-<span id="1210">1210</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>;
@@ -1373,32 +1309,25 @@
         <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="ident">inner</span> {
             <span class="kw">crate</span>::<span class="ident">surface</span>::<span class="ident">setup_surface</span>(
                 <span class="ident">compositor</span>.<span class="ident">create_surface</span>(),
-                <span class="prelude-val">Some</span>(
-                    <span class="kw">move</span> <span class="op">|</span><span class="ident">dpi</span>, <span class="ident">surface</span>: <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>, <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
-                        <span class="ident">surface</span>.<span class="ident">set_buffer_scale</span>(<span class="ident">dpi</span>);
-                        <span class="ident">surface</span>.<span class="ident">commit</span>();
-                        (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>.<span class="ident">borrow_mut</span>().<span class="ident">implem</span>)(<span class="ident">FrameRequest</span>::<span class="ident">Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
-                    },
-                ),
+                <span class="prelude-val">Some</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">dpi</span>, <span class="ident">surface</span>: <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>, <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
+                    <span class="ident">surface</span>.<span class="ident">set_buffer_scale</span>(<span class="ident">dpi</span>);
+                    <span class="ident">surface</span>.<span class="ident">commit</span>();
+                    (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>.<span class="ident">borrow_mut</span>().<span class="ident">implem</span>)(<span class="ident">FrameRequest</span>::<span class="ident">Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
+                }),
             )
         } <span class="kw">else</span> {
             <span class="kw">crate</span>::<span class="ident">surface</span>::<span class="ident">setup_surface</span>(
                 <span class="ident">compositor</span>.<span class="ident">create_surface</span>(),
-                <span class="prelude-val">Some</span>(
-                    <span class="kw">move</span> <span class="op">|</span><span class="ident">dpi</span>, <span class="ident">surface</span>: <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>, <span class="ident">_ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
-                        <span class="ident">surface</span>.<span class="ident">set_buffer_scale</span>(<span class="ident">dpi</span>);
-                        <span class="ident">surface</span>.<span class="ident">commit</span>();
-                    },
-                ),
+                <span class="prelude-val">Some</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">dpi</span>, <span class="ident">surface</span>: <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>, <span class="ident">_ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
+                    <span class="ident">surface</span>.<span class="ident">set_buffer_scale</span>(<span class="ident">dpi</span>);
+                    <span class="ident">surface</span>.<span class="ident">commit</span>();
+                }),
             )
         };
 
         <span class="kw">let</span> <span class="ident">subsurface</span> <span class="op">=</span> <span class="ident">subcompositor</span>.<span class="ident">get_subsurface</span>(<span class="kw-2">&amp;</span><span class="ident">surface</span>, <span class="ident">parent</span>);
 
-        <span class="ident">Part</span> {
-            <span class="ident">surface</span>,
-            <span class="ident">subsurface</span>: <span class="ident">subsurface</span>.<span class="ident">detach</span>(),
-        }
+        <span class="ident">Part</span> { <span class="ident">surface</span>, <span class="ident">subsurface</span>: <span class="ident">subsurface</span>.<span class="ident">detach</span>() }
     }
 }
 
@@ -1434,10 +1363,7 @@
             <span class="ident">Location</span>::<span class="ident">Head</span>
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">surface</span>.<span class="ident">as_ref</span>().<span class="ident">equals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">as_ref</span>()) {
             <span class="ident">Location</span>::<span class="ident">Top</span>
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">surface</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">equals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">as_ref</span>())
-        {
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">surface</span>.<span class="ident">as_ref</span>().<span class="ident">equals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">as_ref</span>()) {
             <span class="ident">Location</span>::<span class="ident">Bottom</span>
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">surface</span>.<span class="ident">as_ref</span>().<span class="ident">equals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">as_ref</span>()) {
             <span class="ident">Location</span>::<span class="ident">Left</span>
@@ -1563,12 +1489,7 @@
         }));
 
         <span class="ident">inner</span>.<span class="ident">borrow_mut</span>().<span class="ident">parts</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
-            <span class="ident">Part</span>::<span class="ident">new</span>(
-                <span class="ident">base_surface</span>,
-                <span class="ident">compositor</span>,
-                <span class="ident">subcompositor</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">Rc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">inner</span>)),
-            ),
+            <span class="ident">Part</span>::<span class="ident">new</span>(<span class="ident">base_surface</span>, <span class="ident">compositor</span>, <span class="ident">subcompositor</span>, <span class="prelude-val">Some</span>(<span class="ident">Rc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">inner</span>))),
             <span class="ident">Part</span>::<span class="ident">new</span>(<span class="ident">base_surface</span>, <span class="ident">compositor</span>, <span class="ident">subcompositor</span>, <span class="prelude-val">None</span>),
             <span class="ident">Part</span>::<span class="ident">new</span>(<span class="ident">base_surface</span>, <span class="ident">compositor</span>, <span class="ident">subcompositor</span>, <span class="prelude-val">None</span>),
             <span class="ident">Part</span>::<span class="ident">new</span>(<span class="ident">base_surface</span>, <span class="ident">compositor</span>, <span class="ident">subcompositor</span>, <span class="prelude-val">None</span>),
@@ -1605,12 +1526,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">match</span> <span class="ident">event</span> {
-                    <span class="ident">Event</span>::<span class="ident">Enter</span> {
-                        <span class="ident">serial</span>,
-                        <span class="ident">surface</span>,
-                        <span class="ident">surface_x</span>,
-                        <span class="ident">surface_y</span>,
-                    } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Event</span>::<span class="ident">Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">surface_x</span>, <span class="ident">surface_y</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">data</span>.<span class="ident">location</span> <span class="op">=</span> <span class="ident">precise_location</span>(
                             <span class="ident">inner</span>.<span class="ident">find_surface</span>(<span class="kw-2">&amp;</span><span class="ident">surface</span>),
                             <span class="ident">inner</span>.<span class="ident">size</span>.<span class="number">0</span>,
@@ -1628,11 +1544,7 @@
                         <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>));
                         (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>.<span class="ident">implem</span>)(<span class="ident">FrameRequest</span>::<span class="ident">Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
                     }
-                    <span class="ident">Event</span>::<span class="ident">Motion</span> {
-                        <span class="ident">surface_x</span>,
-                        <span class="ident">surface_y</span>,
-                        ..
-                    } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Event</span>::<span class="ident">Motion</span> { <span class="ident">surface_x</span>, <span class="ident">surface_y</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">data</span>.<span class="ident">position</span> <span class="op">=</span> (<span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
                         <span class="kw">let</span> <span class="ident">newpos</span> <span class="op">=</span> <span class="ident">precise_location</span>(
                             <span class="ident">data</span>.<span class="ident">location</span>,
@@ -1657,12 +1569,7 @@
                             }
                         }
                     }
-                    <span class="ident">Event</span>::<span class="ident">Button</span> {
-                        <span class="ident">serial</span>,
-                        <span class="ident">button</span>,
-                        <span class="ident">state</span>,
-                        ..
-                    } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Event</span>::<span class="ident">Button</span> { <span class="ident">serial</span>, <span class="ident">button</span>, <span class="ident">state</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">if</span> <span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">wl_pointer</span>::<span class="ident">ButtonState</span>::<span class="ident">Pressed</span> <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">button</span> <span class="op">=</span><span class="op">=</span> <span class="number">0x110</span> {
                             <span class="comment">// left click</span>
                             <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">request_for_location</span>(
@@ -1692,11 +1599,7 @@
 
     <span class="kw">fn</span> <span class="ident">remove_seat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>) {
         <span class="self">self</span>.<span class="ident">pointers</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">pointer</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">user_data</span> <span class="op">=</span> <span class="ident">pointer</span>
-                .<span class="ident">as_ref</span>()
-                .<span class="ident">user_data</span>()
-                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">PointerUserData</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-                .<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">user_data</span> <span class="op">=</span> <span class="ident">pointer</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">PointerUserData</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">user_data</span>.<span class="ident">borrow_mut</span>();
             <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">guard</span>.<span class="ident">seat</span> <span class="op">=</span><span class="op">=</span> <span class="ident">seat</span> {
                 <span class="ident">pointer</span>.<span class="ident">release</span>();
@@ -1780,8 +1683,7 @@
                     (<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">lr_surfaces_scale</span> <span class="op">*</span> <span class="ident">lr_surfaces_scale</span>,
                 );
 
-            <span class="ident">pool</span>.<span class="ident">resize</span>(<span class="number">4</span> <span class="op">*</span> <span class="ident">pxcount</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;I/O Error while redrawing the borders&quot;</span>);
+            <span class="ident">pool</span>.<span class="ident">resize</span>(<span class="number">4</span> <span class="op">*</span> <span class="ident">pxcount</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">expect</span>(<span class="string">&quot;I/O Error while redrawing the borders&quot;</span>);
 
             <span class="comment">// draw the white header bar</span>
             {
@@ -1921,9 +1823,7 @@
                 <span class="number">4</span> <span class="op">*</span> <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
             );
-            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>]
-                .<span class="ident">subsurface</span>
-                .<span class="ident">set_position</span>(<span class="number">0</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
+            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="number">0</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
             <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
                 <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
@@ -1935,9 +1835,7 @@
             } <span class="kw">else</span> {
                 <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
                 <span class="comment">// in surface coordinates and hope it is not rescaled</span>
-                <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>]
-                    .<span class="ident">surface</span>
-                    .<span class="ident">damage</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>);
             }
             <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
 
@@ -1949,10 +1847,9 @@
                 (<span class="number">4</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>] <span class="op">*</span> (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>)) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
             );
-            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(
-                <span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>),
-                <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span> <span class="op">+</span> <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>),
-            );
+            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">TOP</span>]
+                .<span class="ident">subsurface</span>
+                .<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span> <span class="op">+</span> <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
             <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
                 <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
@@ -1981,9 +1878,7 @@
                 (<span class="number">4</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>] <span class="op">*</span> (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>)) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
             );
-            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">BOTTOM</span>]
-                .<span class="ident">subsurface</span>
-                .<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="ident">height</span> <span class="kw">as</span> <span class="ident">i32</span>);
+            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="ident">height</span> <span class="kw">as</span> <span class="ident">i32</span>);
             <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
                 <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
@@ -2012,9 +1907,7 @@
                 <span class="number">4</span> <span class="op">*</span> (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
             );
-            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">LEFT</span>]
-                .<span class="ident">subsurface</span>
-                .<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
+            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
             <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
                 <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
@@ -2043,9 +1936,7 @@
                 <span class="number">4</span> <span class="op">*</span> (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
             );
-            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">RIGHT</span>]
-                .<span class="ident">subsurface</span>
-                .<span class="ident">set_position</span>(<span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
+            <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
             <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
                 <span class="ident">inner</span>.<span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
@@ -2208,12 +2099,8 @@
     <span class="kw">let</span> <span class="ident">line_color</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">secondary_color</span>.<span class="ident">get_for</span>(<span class="ident">state</span>);
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="op">=</span><span class="ident">scale</span> {
         <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">scale</span> <span class="op">-</span> <span class="ident">i</span>;
-        <span class="kw">let</span> <span class="ident">division_line</span> <span class="op">=</span> <span class="ident">line</span>::<span class="ident">Line</span>::<span class="ident">new</span>(
-            (<span class="number">0</span>, <span class="ident">y</span>),
-            (<span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">scale</span>, <span class="ident">y</span>),
-            <span class="ident">line_color</span>.<span class="ident">into</span>(),
-            <span class="bool-val">false</span>,
-        );
+        <span class="kw">let</span> <span class="ident">division_line</span> <span class="op">=</span>
+            <span class="ident">line</span>::<span class="ident">Line</span>::<span class="ident">new</span>((<span class="number">0</span>, <span class="ident">y</span>), (<span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">scale</span>, <span class="ident">y</span>), <span class="ident">line_color</span>.<span class="ident">into</span>(), <span class="bool-val">false</span>);
         <span class="ident">canvas</span>.<span class="ident">draw</span>(<span class="kw-2">&amp;</span><span class="ident">division_line</span>);
     }
 
@@ -2222,10 +2109,7 @@
     <span class="kw">if</span> <span class="ident">width</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">HEADER_SIZE</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw-2">ref</span> <span class="ident">icon_config</span>, <span class="kw-2">ref</span> <span class="ident">btn_config</span>)) <span class="op">=</span> <span class="ident">config</span>.<span class="ident">close_button</span> {
             <span class="comment">// Draw the close button</span>
-            <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="ident">Button</span>(<span class="ident">UIButton</span>::<span class="ident">Close</span>))
-            {
+            <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="ident">Button</span>(<span class="ident">UIButton</span>::<span class="ident">Close</span>)) {
                 <span class="ident">ButtonState</span>::<span class="ident">Hovered</span>
             } <span class="kw">else</span> {
                 <span class="ident">ButtonState</span>::<span class="ident">Idle</span>
@@ -2234,13 +2118,7 @@
             <span class="kw">let</span> <span class="ident">icon_color</span> <span class="op">=</span> <span class="ident">icon_config</span>.<span class="ident">get_for</span>(<span class="ident">btn_state</span>).<span class="ident">get_for</span>(<span class="ident">state</span>);
             <span class="kw">let</span> <span class="ident">button_color</span> <span class="op">=</span> <span class="ident">btn_config</span>.<span class="ident">get_for</span>(<span class="ident">btn_state</span>).<span class="ident">get_for</span>(<span class="ident">state</span>);
 
-            <span class="ident">draw_button</span>(
-                <span class="ident">canvas</span>,
-                <span class="number">0</span>,
-                <span class="ident">scale</span>,
-                <span class="ident">button_color</span>,
-                <span class="ident">mix_colors</span>(<span class="ident">button_color</span>, <span class="ident">line_color</span>),
-            );
+            <span class="ident">draw_button</span>(<span class="ident">canvas</span>, <span class="number">0</span>, <span class="ident">scale</span>, <span class="ident">button_color</span>, <span class="ident">mix_colors</span>(<span class="ident">button_color</span>, <span class="ident">line_color</span>));
             <span class="ident">draw_icon</span>(<span class="ident">canvas</span>, <span class="number">0</span>, <span class="ident">scale</span>, <span class="ident">icon_color</span>, <span class="ident">Icon</span>::<span class="ident">Close</span>);
             <span class="ident">drawn_buttons</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         }
@@ -2250,10 +2128,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw-2">ref</span> <span class="ident">icon_config</span>, <span class="kw-2">ref</span> <span class="ident">btn_config</span>)) <span class="op">=</span> <span class="ident">config</span>.<span class="ident">maximize_button</span> {
             <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">maximizable</span> {
                 <span class="ident">ButtonState</span>::<span class="ident">Disabled</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">mouses</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="ident">Button</span>(<span class="ident">UIButton</span>::<span class="ident">Maximize</span>))
-            {
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="ident">Button</span>(<span class="ident">UIButton</span>::<span class="ident">Maximize</span>)) {
                 <span class="ident">ButtonState</span>::<span class="ident">Hovered</span>
             } <span class="kw">else</span> {
                 <span class="ident">ButtonState</span>::<span class="ident">Idle</span>
@@ -2282,10 +2157,7 @@
 
     <span class="kw">if</span> <span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">&gt;</span><span class="op">=</span> (<span class="ident">drawn_buttons</span> <span class="op">+</span> <span class="number">1</span>) <span class="op">*</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw-2">ref</span> <span class="ident">icon_config</span>, <span class="kw-2">ref</span> <span class="ident">btn_config</span>)) <span class="op">=</span> <span class="ident">config</span>.<span class="ident">minimize_button</span> {
-            <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="ident">Button</span>(<span class="ident">UIButton</span>::<span class="ident">Minimize</span>))
-            {
+            <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="ident">Button</span>(<span class="ident">UIButton</span>::<span class="ident">Minimize</span>)) {
                 <span class="ident">ButtonState</span>::<span class="ident">Hovered</span>
             } <span class="kw">else</span> {
                 <span class="ident">ButtonState</span>::<span class="ident">Idle</span>

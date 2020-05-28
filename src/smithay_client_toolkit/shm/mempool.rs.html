@@ -329,8 +329,6 @@
 <span id="329">329</span>
 <span id="330">330</span>
 <span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">cell</span>::<span class="ident">RefCell</span>,
@@ -526,9 +524,7 @@
         <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">buffer_count</span>.<span class="ident">borrow_mut</span>() <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         <span class="kw">let</span> <span class="ident">my_buffer_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">buffer_count</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">my_callback</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">pool</span>
-            .<span class="ident">create_buffer</span>(<span class="ident">offset</span>, <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">stride</span>, <span class="ident">format</span>);
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">create_buffer</span>(<span class="ident">offset</span>, <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">stride</span>, <span class="ident">format</span>);
         <span class="ident">buffer</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">buffer</span>, <span class="ident">event</span>, <span class="ident">dispatch_data</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">event</span> {
             <span class="ident">wl_buffer</span>::<span class="ident">Event</span>::<span class="ident">Release</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">buffer</span>.<span class="ident">destroy</span>();

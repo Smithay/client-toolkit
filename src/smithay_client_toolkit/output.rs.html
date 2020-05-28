@@ -438,53 +438,6 @@
 <span id="438">438</span>
 <span id="439">439</span>
 <span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types and functions related to graphical outputs</span>
 <span class="doccomment">//!</span>
@@ -591,15 +544,8 @@
 <span class="kw">type</span> <span class="ident">OutputCallback</span> <span class="op">=</span> <span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>;
 
 <span class="kw">enum</span> <span class="ident">OutputData</span> {
-    <span class="ident">Ready</span> {
-        <span class="ident">info</span>: <span class="ident">OutputInfo</span>,
-        <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync</span>::<span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
-    <span class="ident">Pending</span> {
-        <span class="ident">id</span>: <span class="ident">u32</span>,
-        <span class="ident">events</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&gt;</span>,
-        <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync</span>::<span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
+    <span class="ident">Ready</span> { <span class="ident">info</span>: <span class="ident">OutputInfo</span>, <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync</span>::<span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span> },
+    <span class="ident">Pending</span> { <span class="ident">id</span>: <span class="ident">u32</span>, <span class="ident">events</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&gt;</span>, <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync</span>::<span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span> },
 }
 
 <span class="kw">type</span> <span class="ident">OutputStatusCallback</span> <span class="op">=</span> <span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>;
@@ -620,10 +566,7 @@
 <span class="kw">impl</span> <span class="ident">OutputHandler</span> {
     <span class="doccomment">/// Create a new instance of this handler</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputHandler</span> {
-        <span class="ident">OutputHandler</span> {
-            <span class="ident">outputs</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
-            <span class="ident">status_listeners</span>: <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">Vec</span>::<span class="ident">new</span>())),
-        }
+        <span class="ident">OutputHandler</span> { <span class="ident">outputs</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(), <span class="ident">status_listeners</span>: <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">Vec</span>::<span class="ident">new</span>())) }
     }
 }
 
@@ -642,18 +585,11 @@
             <span class="comment">// wl_output.done event was only added at version 2</span>
             <span class="comment">// In case of an old version 1, we just behave as if it was send at the start</span>
             <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">set_threadsafe</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">OutputData</span>::<span class="ident">Pending</span> {
-                    <span class="ident">id</span>,
-                    <span class="ident">events</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                    <span class="ident">callbacks</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                })
+                <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">OutputData</span>::<span class="ident">Pending</span> { <span class="ident">id</span>, <span class="ident">events</span>: <span class="macro">vec</span><span class="macro">!</span>[], <span class="ident">callbacks</span>: <span class="macro">vec</span><span class="macro">!</span>[] })
             });
         } <span class="kw">else</span> {
             <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">set_threadsafe</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">OutputData</span>::<span class="ident">Ready</span> {
-                    <span class="ident">info</span>: <span class="ident">OutputInfo</span>::<span class="ident">new</span>(<span class="ident">id</span>),
-                    <span class="ident">callbacks</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                })
+                <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">OutputData</span>::<span class="ident">Ready</span> { <span class="ident">info</span>: <span class="ident">OutputInfo</span>::<span class="ident">new</span>(<span class="ident">id</span>), <span class="ident">callbacks</span>: <span class="macro">vec</span><span class="macro">!</span>[] })
             });
         }
         <span class="kw">let</span> <span class="ident">status_listeners_handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">status_listeners</span>.<span class="ident">clone</span>();
@@ -691,21 +627,13 @@
         .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Event</span>::<span class="ident">Done</span> <span class="op">=</span> <span class="ident">event</span> {
-        <span class="kw">let</span> (<span class="ident">id</span>, <span class="ident">pending_events</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">OutputData</span>::<span class="ident">Pending</span> {
-            <span class="ident">id</span>,
-            <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>,
-            <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>,
-        } <span class="op">=</span> <span class="kw-2">*</span><span class="ident">udata</span>
-        {
-            (
-                <span class="ident">id</span>,
-                <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">v</span>, <span class="macro">vec</span><span class="macro">!</span>[]),
-                <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">cb</span>, <span class="macro">vec</span><span class="macro">!</span>[]),
-            )
-        } <span class="kw">else</span> {
-            <span class="comment">// a Done event on an output that is already ready =&gt; nothing to do</span>
-            <span class="kw">return</span>;
-        };
+        <span class="kw">let</span> (<span class="ident">id</span>, <span class="ident">pending_events</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">OutputData</span>::<span class="ident">Pending</span> { <span class="ident">id</span>, <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span> } <span class="op">=</span> <span class="kw-2">*</span><span class="ident">udata</span> {
+                (<span class="ident">id</span>, <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">v</span>, <span class="macro">vec</span><span class="macro">!</span>[]), <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">cb</span>, <span class="macro">vec</span><span class="macro">!</span>[]))
+            } <span class="kw">else</span> {
+                <span class="comment">// a Done event on an output that is already ready =&gt; nothing to do</span>
+                <span class="kw">return</span>;
+            };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">OutputInfo</span>::<span class="ident">new</span>(<span class="ident">id</span>);
         <span class="kw">for</span> <span class="ident">evt</span> <span class="kw">in</span> <span class="ident">pending_events</span> {
             <span class="ident">merge_event</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">info</span>, <span class="ident">evt</span>);
@@ -715,13 +643,8 @@
         <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData</span>::<span class="ident">Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
     } <span class="kw">else</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData</span>::<span class="ident">Pending</span> {
-                <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, ..
-            } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">event</span>),
-            <span class="ident">OutputData</span>::<span class="ident">Ready</span> {
-                <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>,
-                <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>,
-            } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData</span>::<span class="ident">Pending</span> { <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, .. } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">event</span>),
+            <span class="ident">OutputData</span>::<span class="ident">Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">merge_event</span>(<span class="ident">info</span>, <span class="ident">event</span>);
                 <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">callbacks</span>);
             }
@@ -741,20 +664,15 @@
         .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
     <span class="kw">let</span> (<span class="ident">id</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-        <span class="ident">OutputData</span>::<span class="ident">Ready</span> {
-            <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>,
-            <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>,
-        } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">OutputData</span>::<span class="ident">Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
             <span class="ident">notify</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
             <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
             <span class="kw">return</span>;
         }
-        <span class="ident">OutputData</span>::<span class="ident">Pending</span> {
-            <span class="ident">id</span>,
-            <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>,
-            ..
-        } <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">cb</span>, <span class="macro">vec</span><span class="macro">!</span>[])),
+        <span class="ident">OutputData</span>::<span class="ident">Pending</span> { <span class="ident">id</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="ident">id</span>, <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">cb</span>, <span class="macro">vec</span><span class="macro">!</span>[]))
+        }
     };
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">OutputInfo</span>::<span class="ident">new</span>(<span class="ident">id</span>);
     <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
@@ -785,12 +703,7 @@
         <span class="ident">Event</span>::<span class="ident">Scale</span> { <span class="ident">factor</span> } <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">info</span>.<span class="ident">scale_factor</span> <span class="op">=</span> <span class="ident">factor</span>;
         }
-        <span class="ident">Event</span>::<span class="ident">Mode</span> {
-            <span class="ident">width</span>,
-            <span class="ident">height</span>,
-            <span class="ident">refresh</span>,
-            <span class="ident">flags</span>,
-        } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event</span>::<span class="ident">Mode</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">refresh</span>, <span class="ident">flags</span> } <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">found</span> <span class="op">=</span> <span class="bool-val">false</span>;
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mode</span>) <span class="op">=</span> <span class="ident">info</span>
                 .<span class="ident">modes</span>
@@ -890,14 +803,10 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
 
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData</span>::<span class="ident">Pending</span> {
-                <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, ..
-            } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData</span>::<span class="ident">Pending</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">callbacks</span>.<span class="ident">push</span>(<span class="ident">Arc</span>::<span class="ident">downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">arc</span>));
             }
-            <span class="ident">OutputData</span>::<span class="ident">Ready</span> {
-                <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, ..
-            } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData</span>::<span class="ident">Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">callbacks</span>.<span class="ident">push</span>(<span class="ident">Arc</span>::<span class="ident">downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">arc</span>));
             }
         }
@@ -967,10 +876,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="kw">crate</span>::<span class="ident">environment</span>::<span class="ident">MultiGlobalHandler</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">environment</span>::<span class="ident">Environment</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Shorthand method to retrieve the list of outputs</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_all_outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_all_globals</span>::<span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>()
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">detach</span>())
-            .<span class="ident">collect</span>()
+        <span class="self">self</span>.<span class="ident">get_all_globals</span>::<span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">detach</span>()).<span class="ident">collect</span>()
     }
 }
 </pre></div>

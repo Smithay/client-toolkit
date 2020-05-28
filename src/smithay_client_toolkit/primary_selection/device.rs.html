@@ -256,9 +256,9 @@
 
                     <span class="kw">use</span> <span class="ident">zwp_primary_selection_device_v1</span>::<span class="ident">Event</span>;
                     <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">Event</span>::<span class="ident">DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>
-                            .<span class="ident">know_offers</span>
-                            .<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer</span>::<span class="ident">from_zwp</span>(<span class="ident">offer</span>)),
+                        <span class="ident">Event</span>::<span class="ident">DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer</span>::<span class="ident">from_zwp</span>(<span class="ident">offer</span>))
+                        }
                         <span class="ident">Event</span>::<span class="ident">Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Zwp</span>);
                             <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>);
@@ -277,9 +277,9 @@
 
                     <span class="kw">use</span> <span class="ident">gtk_primary_selection_device</span>::<span class="ident">Event</span>;
                     <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">Event</span>::<span class="ident">DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>
-                            .<span class="ident">know_offers</span>
-                            .<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer</span>::<span class="ident">from_gtk</span>(<span class="ident">offer</span>)),
+                        <span class="ident">Event</span>::<span class="ident">DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer</span>::<span class="ident">from_gtk</span>(<span class="ident">offer</span>))
+                        }
                         <span class="ident">Event</span>::<span class="ident">Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Gtk</span>);
                             <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>);

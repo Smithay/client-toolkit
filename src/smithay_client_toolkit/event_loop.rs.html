@@ -118,9 +118,6 @@
 <span id="118">118</span>
 <span id="119">119</span>
 <span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
 
@@ -150,10 +147,7 @@
     <span class="doccomment">/// Wrap an `EventQueue` as a `WaylandSource`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">queue</span>: <span class="ident">EventQueue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WaylandSource</span> {
         <span class="kw">let</span> <span class="ident">fd</span> <span class="op">=</span> <span class="ident">queue</span>.<span class="ident">display</span>().<span class="ident">get_connection_fd</span>();
-        <span class="ident">WaylandSource</span> {
-            <span class="ident">queue</span>,
-            <span class="ident">fd</span>: <span class="ident">Generic</span>::<span class="ident">from_fd</span>(<span class="ident">fd</span>, <span class="ident">Interest</span>::<span class="ident">Readable</span>, <span class="ident">Mode</span>::<span class="ident">Level</span>),
-        }
+        <span class="ident">WaylandSource</span> { <span class="ident">queue</span>, <span class="ident">fd</span>: <span class="ident">Generic</span>::<span class="ident">from_fd</span>(<span class="ident">fd</span>, <span class="ident">Interest</span>::<span class="ident">Readable</span>, <span class="ident">Mode</span>::<span class="ident">Level</span>) }
     }
 
     <span class="doccomment">/// Insert this source into given event loop with an adapter that panics on orphan events</span>

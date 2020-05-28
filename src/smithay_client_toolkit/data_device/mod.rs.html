@@ -263,17 +263,6 @@
 <span id="263">263</span>
 <span id="264">264</span>
 <span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helpers to handle data device related actions</span>
 
@@ -330,11 +319,7 @@
             <span class="ident">devices</span>.<span class="ident">push</span>((<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">device</span>));
         }
 
-        <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">DDInner</span>::<span class="ident">Ready</span> {
-            <span class="ident">mgr</span>,
-            <span class="ident">devices</span>,
-            <span class="ident">callback</span>,
-        };
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">DDInner</span>::<span class="ident">Ready</span> { <span class="ident">mgr</span>, <span class="ident">devices</span>, <span class="ident">callback</span> };
     }
 
     <span class="comment">// A potential new seat is seen</span>
@@ -342,11 +327,7 @@
     <span class="comment">// should do nothing if the seat is already known</span>
     <span class="kw">fn</span> <span class="ident">new_seat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">DDInner</span>::<span class="ident">Ready</span> {
-                <span class="ident">mgr</span>,
-                <span class="ident">devices</span>,
-                <span class="ident">callback</span>,
-            } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">DDInner</span>::<span class="ident">Ready</span> { <span class="ident">mgr</span>, <span class="ident">devices</span>, <span class="ident">callback</span> } <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="ident">devices</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span>(<span class="ident">s</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">s</span> <span class="op">=</span><span class="op">=</span> <span class="ident">seat</span>) {
                     <span class="comment">// the seat already exists, nothing to do</span>
                     <span class="kw">return</span>;
@@ -438,10 +419,7 @@
             }
         });
 
-        <span class="ident">DataDeviceHandler</span> {
-            <span class="ident">inner</span>,
-            <span class="ident">_listener</span>: <span class="ident">listener</span>,
-        }
+        <span class="ident">DataDeviceHandler</span> { <span class="ident">inner</span>, <span class="ident">_listener</span>: <span class="ident">listener</span> }
     }
 }
 

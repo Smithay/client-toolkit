@@ -122,12 +122,6 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">os</span>::<span class="ident">unix</span>::<span class="ident">io</span>::<span class="ident">FromRawFd</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
@@ -203,10 +197,7 @@
             }
         });
 
-        <span class="self">Self</span> {
-            <span class="ident">offer</span>: <span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Zwp</span>(<span class="ident">offer</span>.<span class="ident">detach</span>()),
-            <span class="ident">inner</span>,
-        }
+        <span class="self">Self</span> { <span class="ident">offer</span>: <span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Zwp</span>(<span class="ident">offer</span>.<span class="ident">detach</span>()), <span class="ident">inner</span> }
     }
 
     <span class="doccomment">/// Initialize `PrimarySelectionOffer` from the `Gtk` offer.</span>
@@ -225,10 +216,7 @@
             }
         });
 
-        <span class="self">Self</span> {
-            <span class="ident">offer</span>: <span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Gtk</span>(<span class="ident">offer</span>.<span class="ident">detach</span>()),
-            <span class="ident">inner</span>,
-        }
+        <span class="self">Self</span> { <span class="ident">offer</span>: <span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Gtk</span>(<span class="ident">offer</span>.<span class="ident">detach</span>()), <span class="ident">inner</span> }
     }
 }
 
