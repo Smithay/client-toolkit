@@ -178,10 +178,7 @@ impl<E> Environment<E> {
 
 impl<E> Clone for Environment<E> {
     fn clone(&self) -> Environment<E> {
-        Environment {
-            manager: self.manager.clone(),
-            inner: self.inner.clone(),
-        }
+        Environment { manager: self.manager.clone(), inner: self.inner.clone() }
     }
 }
 

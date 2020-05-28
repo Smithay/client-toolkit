@@ -92,9 +92,9 @@ impl PrimarySelectionDevice {
 
                     use zwp_primary_selection_device_v1::Event;
                     match event {
-                        Event::DataOffer { offer } => inner
-                            .know_offers
-                            .push(PrimarySelectionOffer::from_zwp(offer)),
+                        Event::DataOffer { offer } => {
+                            inner.know_offers.push(PrimarySelectionOffer::from_zwp(offer))
+                        }
                         Event::Selection { id } => {
                             let id = id.map(PrimarySelectionOfferImpl::Zwp);
                             inner.set_selection(id);
@@ -113,9 +113,9 @@ impl PrimarySelectionDevice {
 
                     use gtk_primary_selection_device::Event;
                     match event {
-                        Event::DataOffer { offer } => inner
-                            .know_offers
-                            .push(PrimarySelectionOffer::from_gtk(offer)),
+                        Event::DataOffer { offer } => {
+                            inner.know_offers.push(PrimarySelectionOffer::from_gtk(offer))
+                        }
                         Event::Selection { id } => {
                             let id = id.map(PrimarySelectionOfferImpl::Gtk);
                             inner.set_selection(id);

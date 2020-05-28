@@ -55,10 +55,7 @@ impl ThemeManager {
         compositor: Attached<wl_compositor::WlCompositor>,
         shm: Attached<wl_shm::WlShm>,
     ) -> ThemeManager {
-        ThemeManager {
-            compositor,
-            themes: Rc::new(RefCell::new(ScaledThemeList::new(theme, shm))),
-        }
+        ThemeManager { compositor, themes: Rc::new(RefCell::new(ScaledThemeList::new(theme, shm))) }
     }
 
     /// Wrap a pointer to theme it
@@ -114,14 +111,7 @@ impl ThemeManager {
         let inner2 = inner.clone();
         let pointer = seat.get_pointer();
         pointer.quick_assign(move |ptr, event, ddata| {
-            callback(
-                event,
-                ThemedPointer {
-                    pointer: ptr.detach(),
-                    inner: inner2.clone(),
-                },
-                ddata,
-            )
+            callback(event, ThemedPointer { pointer: ptr.detach(), inner: inner2.clone() }, ddata)
         });
 
         let winner = Rc::downgrade(&inner);
@@ -140,10 +130,7 @@ impl ThemeManager {
             }),
         );
 
-        ThemedPointer {
-            pointer: pointer.detach(),
-            inner,
-        }
+        ThemedPointer { pointer: pointer.detach(), inner }
     }
 }
 
@@ -159,22 +146,13 @@ impl ScaledThemeList {
         let (name, size) = match theme {
             ThemeSpec::Precise { name, size } => (name.into(), size),
             ThemeSpec::System => {
-                let name = std::env::var("XCURSOR_THEME")
-                    .ok()
-                    .unwrap_or_else(|| "default".into());
-                let size = std::env::var("XCURSOR_SIZE")
-                    .ok()
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(24);
+                let name = std::env::var("XCURSOR_THEME").ok().unwrap_or_else(|| "default".into());
+                let size =
+                    std::env::var("XCURSOR_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or(24);
                 (name, size)
             }
         };
-        ScaledThemeList {
-            shm,
-            name,
-            size,
-            themes: vec![],
-        }
+        ScaledThemeList { shm, name, size, themes: vec![] }
     }
 
     fn get_cursor(&mut self, name: &str, scale: u32) -> Option<&Cursor> {
@@ -213,8 +191,7 @@ impl PointerInner {
         } else {
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            self.surface
-                .damage(0, 0, w as i32 / scale as i32, h as i32 / scale as i32);
+            self.surface.damage(0, 0, w as i32 / scale as i32, h as i32 / scale as i32);
         }
         self.surface.commit();
         pointer.set_cursor(
@@ -261,10 +238,7 @@ impl ThemedPointer {
 
 impl Clone for ThemedPointer {
     fn clone(&self) -> ThemedPointer {
-        ThemedPointer {
-            pointer: self.pointer.clone(),
-            inner: self.inner.clone(),
-        }
+        ThemedPointer { pointer: self.pointer.clone(), inner: self.inner.clone() }
     }
 }
 

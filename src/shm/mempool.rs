@@ -192,9 +192,7 @@ impl MemPool {
         *self.buffer_count.borrow_mut() += 1;
         let my_buffer_count = self.buffer_count.clone();
         let my_callback = self.callback.clone();
-        let buffer = self
-            .pool
-            .create_buffer(offset, width, height, stride, format);
+        let buffer = self.pool.create_buffer(offset, width, height, stride, format);
         buffer.quick_assign(move |buffer, event, dispatch_data| match event {
             wl_buffer::Event::Release => {
                 buffer.destroy();

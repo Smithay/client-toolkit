@@ -52,11 +52,7 @@ impl Zxdg {
                 zxdg_toplevel_v6::Event::Close => {
                     (&mut *implementation.borrow_mut())(Event::Close, ddata)
                 }
-                zxdg_toplevel_v6::Event::Configure {
-                    width,
-                    height,
-                    states,
-                } => {
+                zxdg_toplevel_v6::Event::Configure { width, height, states } => {
                     use std::cmp::max;
                     let new_size = if width == 0 || height == 0 {
                         // if either w or h is zero, then we get to choose our size
@@ -76,10 +72,7 @@ impl Zxdg {
             }
         });
         surface.commit();
-        Zxdg {
-            surface: xdgs.detach(),
-            toplevel: toplevel.detach(),
-        }
+        Zxdg { surface: xdgs.detach(), toplevel: toplevel.detach() }
     }
 }
 

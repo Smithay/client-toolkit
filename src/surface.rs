@@ -14,10 +14,7 @@ pub(crate) struct SurfaceUserData {
 
 impl SurfaceUserData {
     fn new() -> Self {
-        SurfaceUserData {
-            scale_factor: 1,
-            outputs: Vec::new(),
-        }
+        SurfaceUserData { scale_factor: 1, outputs: Vec::new() }
     }
 
     pub(crate) fn enter<F>(
@@ -70,8 +67,7 @@ impl SurfaceUserData {
     }
 
     pub(crate) fn leave(&mut self, output: &wl_output::WlOutput) {
-        self.outputs
-            .retain(|(ref output2, _, _)| !output.as_ref().equals(output2.as_ref()));
+        self.outputs.retain(|(ref output2, _, _)| !output.as_ref().equals(output2.as_ref()));
     }
 
     fn recompute_scale_factor(&mut self) -> i32 {
@@ -103,13 +99,8 @@ where
 {
     let callback = callback.map(|c| Rc::new(RefCell::new(c)));
     surface.quick_assign(move |surface, event, ddata| {
-        let mut user_data = surface
-            .as_ref()
-            .user_data()
-            .get::<Mutex<SurfaceUserData>>()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let mut user_data =
+            surface.as_ref().user_data().get::<Mutex<SurfaceUserData>>().unwrap().lock().unwrap();
         match event {
             wl_surface::Event::Enter { output } => {
                 // Passing the callback to be added to output listener
@@ -129,10 +120,7 @@ where
             }
         }
     });
-    surface
-        .as_ref()
-        .user_data()
-        .set_threadsafe(|| Mutex::new(SurfaceUserData::new()));
+    surface.as_ref().user_data().set_threadsafe(|| Mutex::new(SurfaceUserData::new()));
     surface.detach()
 }
 

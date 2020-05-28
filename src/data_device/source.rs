@@ -88,10 +88,9 @@ fn data_source_impl<Impl>(
     use self::wl_data_source::Event;
     let event = match evt {
         Event::Target { mime_type } => DataSourceEvent::Target { mime_type },
-        Event::Send { mime_type, fd } => DataSourceEvent::Send {
-            mime_type,
-            pipe: unsafe { FromRawFd::from_raw_fd(fd) },
-        },
+        Event::Send { mime_type, fd } => {
+            DataSourceEvent::Send { mime_type, pipe: unsafe { FromRawFd::from_raw_fd(fd) } }
+        }
         Event::Action { dnd_action } => DataSourceEvent::Action {
             action: wl_data_device_manager::DndAction::from_bits_truncate(dnd_action),
         },
@@ -133,9 +132,7 @@ impl DataSource {
             source.offer(mime.into());
         }
 
-        DataSource {
-            source: source.detach(),
-        }
+        DataSource { source: source.detach() }
     }
 }
 
@@ -155,9 +152,7 @@ impl io::Write for WritePipe {
 
 impl FromRawFd for WritePipe {
     unsafe fn from_raw_fd(fd: RawFd) -> WritePipe {
-        WritePipe {
-            file: FromRawFd::from_raw_fd(fd),
-        }
+        WritePipe { file: FromRawFd::from_raw_fd(fd) }
     }
 }
 

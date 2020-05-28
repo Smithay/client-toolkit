@@ -24,10 +24,7 @@ pub struct ShmHandler {
 impl ShmHandler {
     /// Create a new ShmHandler
     pub fn new() -> ShmHandler {
-        ShmHandler {
-            shm: None,
-            formats: Rc::new(RefCell::new(vec![])),
-        }
+        ShmHandler { shm: None, formats: Rc::new(RefCell::new(vec![])) }
     }
 }
 

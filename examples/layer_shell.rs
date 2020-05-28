@@ -70,14 +70,9 @@ impl Surface {
                 (zwlr_layer_surface_v1::Event::Closed, _) => {
                     next_render_event_handle.set(Some(RenderEvent::Closed));
                 }
-                (
-                    zwlr_layer_surface_v1::Event::Configure {
-                        serial,
-                        width,
-                        height,
-                    },
-                    next,
-                ) if next != Some(RenderEvent::Closed) => {
+                (zwlr_layer_surface_v1::Event::Configure { serial, width, height }, next)
+                    if next != Some(RenderEvent::Closed) =>
+                {
                     layer_surface.ack_configure(serial);
                     next_render_event_handle.set(Some(RenderEvent::Configure { width, height }));
                 }
@@ -88,13 +83,7 @@ impl Surface {
         // Commit so that the server will send a configure event
         surface.commit();
 
-        Self {
-            surface,
-            layer_surface,
-            next_render_event,
-            pools,
-            dimensions: (0, 0),
-        }
+        Self { surface, layer_surface, next_render_event, pools, dimensions: (0, 0) }
     }
 
     /// Handles any events that have occurred since the last call, redrawing if needed.
@@ -139,8 +128,7 @@ impl Surface {
 
         // Attach the buffer to the surface and mark the entire surface as damaged
         self.surface.attach(Some(&buffer), 0, 0);
-        self.surface
-            .damage_buffer(0, 0, width as i32, height as i32);
+        self.surface.damage_buffer(0, 0, width as i32, height as i32);
 
         // Finally, commit the surface
         self.surface.commit();
@@ -173,13 +161,10 @@ fn main() {
         } else {
             // an output has been created, construct a surface for it
             let surface = env_handle.create_surface();
-            let pools = env_handle
-                .create_double_pool(|_| {})
-                .expect("Failed to create a memory pool!");
-            (*surfaces_handle.borrow_mut()).push((
-                info.id,
-                Surface::new(&output, surface, &layer_shell.clone(), pools),
-            ));
+            let pools =
+                env_handle.create_double_pool(|_| {}).expect("Failed to create a memory pool!");
+            (*surfaces_handle.borrow_mut())
+                .push((info.id, Surface::new(&output, surface, &layer_shell.clone(), pools)));
         }
     };
 
@@ -197,9 +182,7 @@ fn main() {
 
     let mut event_loop = calloop::EventLoop::<()>::new().unwrap();
 
-    WaylandSource::new(queue)
-        .quick_insert(event_loop.handle())
-        .unwrap();
+    WaylandSource::new(queue).quick_insert(event_loop.handle()).unwrap();
 
     loop {
         // This is ugly, let's hope that some version of drain_filter() gets stabilized soon

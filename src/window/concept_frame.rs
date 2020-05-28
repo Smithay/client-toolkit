@@ -162,32 +162,25 @@ impl Part {
         let surface = if let Some(inner) = inner {
             crate::surface::setup_surface(
                 compositor.create_surface(),
-                Some(
-                    move |dpi, surface: wl_surface::WlSurface, ddata: DispatchData| {
-                        surface.set_buffer_scale(dpi);
-                        surface.commit();
-                        (&mut inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
-                    },
-                ),
+                Some(move |dpi, surface: wl_surface::WlSurface, ddata: DispatchData| {
+                    surface.set_buffer_scale(dpi);
+                    surface.commit();
+                    (&mut inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
+                }),
             )
         } else {
             crate::surface::setup_surface(
                 compositor.create_surface(),
-                Some(
-                    move |dpi, surface: wl_surface::WlSurface, _ddata: DispatchData| {
-                        surface.set_buffer_scale(dpi);
-                        surface.commit();
-                    },
-                ),
+                Some(move |dpi, surface: wl_surface::WlSurface, _ddata: DispatchData| {
+                    surface.set_buffer_scale(dpi);
+                    surface.commit();
+                }),
             )
         };
 
         let subsurface = subcompositor.get_subsurface(&surface, parent);
 
-        Part {
-            surface,
-            subsurface: subsurface.detach(),
-        }
+        Part { surface, subsurface: subsurface.detach() }
     }
 }
 
@@ -223,10 +216,7 @@ impl Inner {
             Location::Head
         } else if surface.as_ref().equals(&self.parts[TOP].surface.as_ref()) {
             Location::Top
-        } else if surface
-            .as_ref()
-            .equals(&self.parts[BOTTOM].surface.as_ref())
-        {
+        } else if surface.as_ref().equals(&self.parts[BOTTOM].surface.as_ref()) {
             Location::Bottom
         } else if surface.as_ref().equals(&self.parts[LEFT].surface.as_ref()) {
             Location::Left
@@ -352,12 +342,7 @@ impl Frame for ConceptFrame {
         }));
 
         inner.borrow_mut().parts = vec![
-            Part::new(
-                base_surface,
-                compositor,
-                subcompositor,
-                Some(Rc::clone(&inner)),
-            ),
+            Part::new(base_surface, compositor, subcompositor, Some(Rc::clone(&inner))),
             Part::new(base_surface, compositor, subcompositor, None),
             Part::new(base_surface, compositor, subcompositor, None),
             Part::new(base_surface, compositor, subcompositor, None),
@@ -394,12 +379,7 @@ impl Frame for ConceptFrame {
                 let mut data = data.borrow_mut();
                 let mut inner = inner.borrow_mut();
                 match event {
-                    Event::Enter {
-                        serial,
-                        surface,
-                        surface_x,
-                        surface_y,
-                    } => {
+                    Event::Enter { serial, surface, surface_x, surface_y } => {
                         data.location = precise_location(
                             inner.find_surface(&surface),
                             inner.size.0,
@@ -417,11 +397,7 @@ impl Frame for ConceptFrame {
                         change_pointer(&pointer, data.location, Some(serial));
                         (&mut inner.implem)(FrameRequest::Refresh, 0, ddata);
                     }
-                    Event::Motion {
-                        surface_x,
-                        surface_y,
-                        ..
-                    } => {
+                    Event::Motion { surface_x, surface_y, .. } => {
                         data.position = (surface_x, surface_y);
                         let newpos = precise_location(
                             data.location,
@@ -446,12 +422,7 @@ impl Frame for ConceptFrame {
                             }
                         }
                     }
-                    Event::Button {
-                        serial,
-                        button,
-                        state,
-                        ..
-                    } => {
+                    Event::Button { serial, button, state, .. } => {
                         if state == wl_pointer::ButtonState::Pressed && button == 0x110 {
                             // left click
                             let req = request_for_location(
@@ -481,11 +452,7 @@ impl Frame for ConceptFrame {
 
     fn remove_seat(&mut self, seat: &wl_seat::WlSeat) {
         self.pointers.retain(|pointer| {
-            let user_data = pointer
-                .as_ref()
-                .user_data()
-                .get::<RefCell<PointerUserData>>()
-                .unwrap();
+            let user_data = pointer.as_ref().user_data().get::<RefCell<PointerUserData>>().unwrap();
             let guard = user_data.borrow_mut();
             if &guard.seat == seat {
                 pointer.release();
@@ -569,8 +536,7 @@ impl Frame for ConceptFrame {
                     (height + HEADER_SIZE) * BORDER_SIZE * lr_surfaces_scale * lr_surfaces_scale,
                 );
 
-            pool.resize(4 * pxcount as usize)
-                .expect("I/O Error while redrawing the borders");
+            pool.resize(4 * pxcount as usize).expect("I/O Error while redrawing the borders");
 
             // draw the white header bar
             {
@@ -710,9 +676,7 @@ impl Frame for ConceptFrame {
                 4 * scaled_header_width as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[HEAD]
-                .subsurface
-                .set_position(0, -(HEADER_SIZE as i32));
+            inner.parts[HEAD].subsurface.set_position(0, -(HEADER_SIZE as i32));
             inner.parts[HEAD].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 inner.parts[HEAD].surface.damage_buffer(
@@ -724,9 +688,7 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                inner.parts[HEAD]
-                    .surface
-                    .damage(0, 0, width as i32, HEADER_SIZE as i32);
+                inner.parts[HEAD].surface.damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
             inner.parts[HEAD].surface.commit();
 
@@ -738,10 +700,9 @@ impl Frame for ConceptFrame {
                 (4 * scales[TOP] * (width + 2 * BORDER_SIZE)) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[TOP].subsurface.set_position(
-                -(BORDER_SIZE as i32),
-                -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
-            );
+            inner.parts[TOP]
+                .subsurface
+                .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32 + BORDER_SIZE as i32));
             inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 inner.parts[TOP].surface.damage_buffer(
@@ -770,9 +731,7 @@ impl Frame for ConceptFrame {
                 (4 * scales[BOTTOM] * (width + 2 * BORDER_SIZE)) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[BOTTOM]
-                .subsurface
-                .set_position(-(BORDER_SIZE as i32), height as i32);
+            inner.parts[BOTTOM].subsurface.set_position(-(BORDER_SIZE as i32), height as i32);
             inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 inner.parts[BOTTOM].surface.damage_buffer(
@@ -801,9 +760,7 @@ impl Frame for ConceptFrame {
                 4 * (BORDER_SIZE * scales[LEFT]) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[LEFT]
-                .subsurface
-                .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
+            inner.parts[LEFT].subsurface.set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
             inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 inner.parts[LEFT].surface.damage_buffer(
@@ -832,9 +789,7 @@ impl Frame for ConceptFrame {
                 4 * (BORDER_SIZE * scales[RIGHT]) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[RIGHT]
-                .subsurface
-                .set_position(width as i32, -(HEADER_SIZE as i32));
+            inner.parts[RIGHT].subsurface.set_position(width as i32, -(HEADER_SIZE as i32));
             inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
                 inner.parts[RIGHT].surface.damage_buffer(
@@ -997,12 +952,8 @@ fn draw_buttons(
     let line_color = config.secondary_color.get_for(state);
     for i in 1..=scale {
         let y = HEADER_SIZE as usize * scale - i;
-        let division_line = line::Line::new(
-            (0, y),
-            (width as usize * scale, y),
-            line_color.into(),
-            false,
-        );
+        let division_line =
+            line::Line::new((0, y), (width as usize * scale, y), line_color.into(), false);
         canvas.draw(&division_line);
     }
 
@@ -1011,10 +962,7 @@ fn draw_buttons(
     if width >= HEADER_SIZE {
         if let Some((ref icon_config, ref btn_config)) = config.close_button {
             // Draw the close button
-            let btn_state = if mouses
-                .iter()
-                .any(|&l| l == Location::Button(UIButton::Close))
-            {
+            let btn_state = if mouses.iter().any(|&l| l == Location::Button(UIButton::Close)) {
                 ButtonState::Hovered
             } else {
                 ButtonState::Idle
@@ -1023,13 +971,7 @@ fn draw_buttons(
             let icon_color = icon_config.get_for(btn_state).get_for(state);
             let button_color = btn_config.get_for(btn_state).get_for(state);
 
-            draw_button(
-                canvas,
-                0,
-                scale,
-                button_color,
-                mix_colors(button_color, line_color),
-            );
+            draw_button(canvas, 0, scale, button_color, mix_colors(button_color, line_color));
             draw_icon(canvas, 0, scale, icon_color, Icon::Close);
             drawn_buttons += 1;
         }
@@ -1039,10 +981,7 @@ fn draw_buttons(
         if let Some((ref icon_config, ref btn_config)) = config.maximize_button {
             let btn_state = if !maximizable {
                 ButtonState::Disabled
-            } else if mouses
-                .iter()
-                .any(|&l| l == Location::Button(UIButton::Maximize))
-            {
+            } else if mouses.iter().any(|&l| l == Location::Button(UIButton::Maximize)) {
                 ButtonState::Hovered
             } else {
                 ButtonState::Idle
@@ -1071,10 +1010,7 @@ fn draw_buttons(
 
     if width as usize >= (drawn_buttons + 1) * HEADER_SIZE as usize {
         if let Some((ref icon_config, ref btn_config)) = config.minimize_button {
-            let btn_state = if mouses
-                .iter()
-                .any(|&l| l == Location::Button(UIButton::Minimize))
-            {
+            let btn_state = if mouses.iter().any(|&l| l == Location::Button(UIButton::Minimize)) {
                 ButtonState::Hovered
             } else {
                 ButtonState::Idle

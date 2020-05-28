@@ -106,9 +106,7 @@ fn main() {
     window.set_title("Themed frame".to_string());
     window.set_frame_config(create_frame_config());
 
-    let mut pools = env
-        .create_double_pool(|_| {})
-        .expect("Failed to create a memory pool !");
+    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
 
     /*
      * Keyboard initialization
@@ -155,8 +153,7 @@ fn redraw(
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize)
-        .expect("Failed to resize the memory pool.");
+    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
     pool.seek(SeekFrom::Start(0))?;
     {
@@ -172,13 +169,8 @@ fn redraw(
         writer.flush()?;
     }
     // get a buffer and attach it
-    let new_buffer = pool.buffer(
-        0,
-        buf_x as i32,
-        buf_y as i32,
-        4 * buf_x as i32,
-        wl_shm::Format::Argb8888,
-    );
+    let new_buffer =
+        pool.buffer(0, buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888);
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     Ok(())

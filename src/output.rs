@@ -103,15 +103,8 @@ impl OutputInfo {
 type OutputCallback = dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync;
 
 enum OutputData {
-    Ready {
-        info: OutputInfo,
-        callbacks: Vec<sync::Weak<OutputCallback>>,
-    },
-    Pending {
-        id: u32,
-        events: Vec<Event>,
-        callbacks: Vec<sync::Weak<OutputCallback>>,
-    },
+    Ready { info: OutputInfo, callbacks: Vec<sync::Weak<OutputCallback>> },
+    Pending { id: u32, events: Vec<Event>, callbacks: Vec<sync::Weak<OutputCallback>> },
 }
 
 type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo, DispatchData) + 'static;
@@ -132,10 +125,7 @@ pub struct OutputHandler {
 impl OutputHandler {
     /// Create a new instance of this handler
     pub fn new() -> OutputHandler {
-        OutputHandler {
-            outputs: Vec::new(),
-            status_listeners: Rc::new(RefCell::new(Vec::new())),
-        }
+        OutputHandler { outputs: Vec::new(), status_listeners: Rc::new(RefCell::new(Vec::new())) }
     }
 }
 
@@ -154,18 +144,11 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
             // wl_output.done event was only added at version 2
             // In case of an old version 1, we just behave as if it was send at the start
             output.as_ref().user_data().set_threadsafe(|| {
-                Mutex::new(OutputData::Pending {
-                    id,
-                    events: vec![],
-                    callbacks: vec![],
-                })
+                Mutex::new(OutputData::Pending { id, events: vec![], callbacks: vec![] })
             });
         } else {
             output.as_ref().user_data().set_threadsafe(|| {
-                Mutex::new(OutputData::Ready {
-                    info: OutputInfo::new(id),
-                    callbacks: vec![],
-                })
+                Mutex::new(OutputData::Ready { info: OutputInfo::new(id), callbacks: vec![] })
             });
         }
         let status_listeners_handle = self.status_listeners.clone();
@@ -203,21 +186,13 @@ fn process_output_event(
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
     if let Event::Done = event {
-        let (id, pending_events, mut callbacks) = if let OutputData::Pending {
-            id,
-            events: ref mut v,
-            callbacks: ref mut cb,
-        } = *udata
-        {
-            (
-                id,
-                std::mem::replace(v, vec![]),
-                std::mem::replace(cb, vec![]),
-            )
-        } else {
-            // a Done event on an output that is already ready => nothing to do
-            return;
-        };
+        let (id, pending_events, mut callbacks) =
+            if let OutputData::Pending { id, events: ref mut v, callbacks: ref mut cb } = *udata {
+                (id, std::mem::replace(v, vec![]), std::mem::replace(cb, vec![]))
+            } else {
+                // a Done event on an output that is already ready => nothing to do
+                return;
+            };
         let mut info = OutputInfo::new(id);
         for evt in pending_events {
             merge_event(&mut info, evt);
@@ -227,13 +202,8 @@ fn process_output_event(
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
-            OutputData::Pending {
-                events: ref mut v, ..
-            } => v.push(event),
-            OutputData::Ready {
-                ref mut info,
-                ref mut callbacks,
-            } => {
+            OutputData::Pending { events: ref mut v, .. } => v.push(event),
+            OutputData::Ready { ref mut info, ref mut callbacks } => {
                 merge_event(info, event);
                 notify(&output, info, ddata, callbacks);
             }
@@ -253,20 +223,15 @@ fn make_obsolete(
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
     let (id, mut callbacks) = match *udata {
-        OutputData::Ready {
-            ref mut info,
-            ref mut callbacks,
-        } => {
+        OutputData::Ready { ref mut info, ref mut callbacks } => {
             info.obsolete = true;
             notify(output, info, ddata.reborrow(), callbacks);
             notify_status_listeners(&output, info, ddata, listeners);
             return;
         }
-        OutputData::Pending {
-            id,
-            callbacks: ref mut cb,
-            ..
-        } => (id, std::mem::replace(cb, vec![])),
+        OutputData::Pending { id, callbacks: ref mut cb, .. } => {
+            (id, std::mem::replace(cb, vec![]))
+        }
     };
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
@@ -297,12 +262,7 @@ fn merge_event(info: &mut OutputInfo, event: Event) {
         Event::Scale { factor } => {
             info.scale_factor = factor;
         }
-        Event::Mode {
-            width,
-            height,
-            refresh,
-            flags,
-        } => {
+        Event::Mode { width, height, refresh, flags } => {
             let mut found = false;
             if let Some(mode) = info
                 .modes
@@ -402,14 +362,10 @@ pub fn add_output_listener<F: Fn(WlOutput, &OutputInfo, DispatchData) + Send + S
         let mut udata = udata_mutex.lock().unwrap();
 
         match *udata {
-            OutputData::Pending {
-                ref mut callbacks, ..
-            } => {
+            OutputData::Pending { ref mut callbacks, .. } => {
                 callbacks.push(Arc::downgrade(&arc));
             }
-            OutputData::Ready {
-                ref mut callbacks, ..
-            } => {
+            OutputData::Ready { ref mut callbacks, .. } => {
                 callbacks.push(Arc::downgrade(&arc));
             }
         }
@@ -479,9 +435,6 @@ impl<E: OutputHandling> crate::environment::Environment<E> {
 impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::Environment<E> {
     /// Shorthand method to retrieve the list of outputs
     pub fn get_all_outputs(&self) -> Vec<WlOutput> {
-        self.get_all_globals::<WlOutput>()
-            .into_iter()
-            .map(|o| o.detach())
-            .collect()
+        self.get_all_globals::<WlOutput>().into_iter().map(|o| o.detach()).collect()
     }
 }

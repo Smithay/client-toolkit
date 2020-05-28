@@ -59,26 +59,18 @@ fn main() {
 
     window.set_title("Kbd Input".to_string());
 
-    let mut pools = env
-        .create_double_pool(|_| {})
-        .expect("Failed to create a memory pool !");
+    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
 
     /*
      * Keyboard initialization
      */
 
-    let mut seats = Vec::<(
-        String,
-        Option<(wl_keyboard::WlKeyboard, calloop::Source<_>)>,
-    )>::new();
+    let mut seats = Vec::<(String, Option<(wl_keyboard::WlKeyboard, calloop::Source<_>)>)>::new();
 
     // first process already existing seats
     for seat in env.get_all_seats() {
         if let Some((has_kbd, name)) = sctk::seat::with_seat_data(&seat, |seat_data| {
-            (
-                seat_data.has_keyboard && !seat_data.defunct,
-                seat_data.name.clone(),
-            )
+            (seat_data.has_keyboard && !seat_data.defunct, seat_data.name.clone())
         }) {
             if has_kbd {
                 let seat_name = name.clone();
@@ -129,10 +121,9 @@ fn main() {
                     Ok((kbd, repeat_source)) => {
                         *opt_kbd = Some((kbd, repeat_source));
                     }
-                    Err(e) => eprintln!(
-                        "Failed to map keyboard on seat {} : {:?}.",
-                        seat_data.name, e
-                    ),
+                    Err(e) => {
+                        eprintln!("Failed to map keyboard on seat {} : {:?}.", seat_data.name, e)
+                    }
                 }
             }
         } else {
@@ -154,9 +145,7 @@ fn main() {
 
     let mut next_action = None;
 
-    sctk::WaylandSource::new(queue)
-        .quick_insert(event_loop.handle())
-        .unwrap();
+    sctk::WaylandSource::new(queue).quick_insert(event_loop.handle()).unwrap();
 
     loop {
         match next_action.take() {
@@ -189,31 +178,19 @@ fn main() {
 fn print_keyboard_event(event: KbEvent, seat_name: &str) {
     match event {
         KbEvent::Enter { keysyms, .. } => {
-            println!(
-                "Gained focus on seat '{}' while {} keys pressed.",
-                seat_name,
-                keysyms.len(),
-            );
+            println!("Gained focus on seat '{}' while {} keys pressed.", seat_name, keysyms.len(),);
         }
         KbEvent::Leave { .. } => {
             println!("Lost focus on seat '{}'.", seat_name);
         }
-        KbEvent::Key {
-            keysym,
-            state,
-            utf8,
-            ..
-        } => {
+        KbEvent::Key { keysym, state, utf8, .. } => {
             println!("Key {:?}: {:x} on seat '{}'.", state, keysym, seat_name);
             if let Some(txt) = utf8 {
                 println!(" -> Received text \"{}\".", txt);
             }
         }
         KbEvent::Modifiers { modifiers } => {
-            println!(
-                "Modifiers changed to {:?} on seat '{}'.",
-                modifiers, seat_name
-            );
+            println!("Modifiers changed to {:?} on seat '{}'.", modifiers, seat_name);
         }
         KbEvent::Repeat { keysym, utf8, .. } => {
             println!("Key repetition {:x} on seat '{}'.", keysym, seat_name);
@@ -230,8 +207,7 @@ fn redraw(
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
     // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize)
-        .expect("Failed to resize the memory pool.");
+    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
     // write the contents, a nice color gradient =)
     pool.seek(SeekFrom::Start(0))?;
     {
@@ -247,13 +223,8 @@ fn redraw(
         writer.flush()?;
     }
     // get a buffer and attach it
-    let new_buffer = pool.buffer(
-        0,
-        buf_x as i32,
-        buf_y as i32,
-        4 * buf_x as i32,
-        wl_shm::Format::Argb8888,
-    );
+    let new_buffer =
+        pool.buffer(0, buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888);
     surface.attach(Some(&new_buffer), 0, 0);
     surface.commit();
     Ok(())

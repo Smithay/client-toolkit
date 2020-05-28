@@ -41,9 +41,7 @@ impl Wl {
             _ => unreachable!(),
         });
         shell_surface.set_toplevel();
-        Wl {
-            shell_surface: shell_surface.detach(),
-        }
+        Wl { shell_surface: shell_surface.detach() }
     }
 }
 
@@ -76,8 +74,7 @@ impl ShellSurface for Wl {
         self.shell_surface.set_class(app_id);
     }
     fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
-        self.shell_surface
-            .set_fullscreen(wl_shell_surface::FullscreenMethod::Default, 0, output)
+        self.shell_surface.set_fullscreen(wl_shell_surface::FullscreenMethod::Default, 0, output)
     }
 
     fn unset_fullscreen(&self) {

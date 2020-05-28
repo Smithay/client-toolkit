@@ -250,8 +250,7 @@ impl KbState {
 
     pub(crate) fn from_rmlvo(rmlvo: RMLVO) -> Result<KbState, Error> {
         fn to_cstring(s: Option<String>) -> Result<Option<CString>, Error> {
-            s.map_or(Ok(None), |s| CString::new(s).map(Option::Some))
-                .map_err(|_| Error::BadNames)
+            s.map_or(Ok(None), |s| CString::new(s).map(Option::Some)).map_err(|_| Error::BadNames)
         }
 
         let mut state = KbState::new()?;
@@ -329,10 +328,7 @@ impl KbState {
     }
 
     pub(crate) unsafe fn init_with_fd(&mut self, fd: RawFd, size: usize) {
-        let map = MmapOptions::new()
-            .len(size)
-            .map(&File::from_raw_fd(fd))
-            .unwrap();
+        let map = MmapOptions::new().len(size).map(&File::from_raw_fd(fd)).unwrap();
 
         let xkb_keymap = (XKBH.xkb_keymap_new_from_string)(
             self.xkb_context,
