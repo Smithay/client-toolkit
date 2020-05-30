@@ -18,9 +18,7 @@ use crate::{
     shell,
 };
 
-#[cfg(feature = "frames")]
 mod concept_frame;
-#[cfg(feature = "frames")]
 pub use self::concept_frame::{ConceptConfig, ConceptFrame};
 
 // Defines the minimum window size. Minimum width is set to 2 pixels to circumvent

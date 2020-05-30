@@ -1,13 +1,20 @@
 use std::cell::RefCell;
 use std::cmp::max;
-use std::io::Read;
+use std::io::Write;
+use std::ops::DerefMut;
 use std::rc::Rc;
 
-use andrew::line;
-use andrew::shapes::rectangle;
-use andrew::text;
-use andrew::text::fontconfig;
-use andrew::{Canvas, Endian};
+use font_kit::canvas::RasterizationOptions;
+use font_kit::family_name::FamilyName;
+use font_kit::hinting::HintingOptions;
+use font_kit::properties::Properties;
+use font_kit::source::SystemSource;
+use font_kit::loaders;
+use pathfinder_geometry::transform2d::Transform2F;
+use raqote::{
+    DrawOptions, DrawTarget, LineCap, LineJoin, PathBuilder, Point, SolidSource, Source,
+    StrokeStyle
+};
 
 use wayland_client::protocol::{
     wl_compositor, wl_pointer, wl_seat, wl_shm, wl_subcompositor, wl_subsurface, wl_surface,
@@ -539,120 +546,132 @@ impl Frame for ConceptFrame {
             pool.resize(4 * pxcount as usize).expect("I/O Error while redrawing the borders");
 
             // draw the white header bar
-            {
-                let mmap = pool.mmap();
-                {
-                    let color = self.config.primary_color.get_for(self.active).into();
+            let dt = {
+                let color = self.config.primary_color.get_for(self.active);
 
-                    let mut header_canvas = Canvas::new(
-                        &mut mmap
-                            [0..scaled_header_height as usize * scaled_header_width as usize * 4],
-                        scaled_header_width as usize,
-                        scaled_header_height as usize,
-                        scaled_header_width as usize * 4,
-                        Endian::native(),
-                    );
-                    header_canvas.clear();
+                let mut dt =
+                    DrawTarget::new(scaled_header_width as i32, scaled_header_height as i32);
+                let mut header_bar = PathBuilder::new();
+                header_bar.rect(
+                    0.,
+                    0.,
+                    scaled_header_width as f32,
+                    scaled_header_height as f32,
+                );
+                let header_bar = header_bar.finish();
+                dt.fill(
+                    &header_bar,
+                    &Source::Solid(SolidSource {
+                        a: color.a,
+                        r: color.r,
+                        b: color.b,
+                        g: color.g,
+                    }),
+                    &DrawOptions::new(),
+                );
 
-                    let header_bar = rectangle::Rectangle::new(
-                        (0, 0),
-                        (scaled_header_width as usize, scaled_header_height as usize),
-                        None,
-                        Some(color),
-                    );
-                    header_canvas.draw(&header_bar);
-
-                    draw_buttons(
-                        &mut header_canvas,
-                        width,
-                        header_scale,
-                        true,
-                        self.active,
-                        &self
-                            .pointers
-                            .iter()
-                            .flat_map(|p| {
-                                if p.as_ref().is_alive() {
-                                    let data: &RefCell<PointerUserData> =
-                                        p.as_ref().user_data().get().unwrap();
-                                    Some(data.borrow().location)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<Location>>(),
-                        &self.config,
-                    );
-                    if let Some((ref font_face, font_size)) = self.config.title_font {
-                        if let Some(title) = self.title.clone() {
-                            // If theres no stored font data, find the first ttf regular sans font and
-                            // store it
-                            if self.font_data.is_none() {
-                                if let Some(font) = fontconfig::FontConfig::new()
+                if let Some((ref _font_face, font_size)) = self.config.title_font {
+                    if let Some(title) = self.title.clone() {
+                        let font = if let Some(font_data) = &self.font_data {
+                            loaders::freetype::Font::from_bytes(
+                                std::sync::Arc::new(font_data.to_vec()),
+                                0,
+                            )
+                            .unwrap()
+                        } else {
+                            SystemSource::new()
+                                .select_best_match(&[FamilyName::SansSerif], &Properties::new())
+                                .unwrap()
+                                .load()
+                                .unwrap()
+                        };
+                        let title_width = {
+                            let mut title_width = 0;
+                            for c in title.chars() {
+                                title_width += font
+                                    .raster_bounds(
+                                        font.glyph_for_char(c).unwrap(),
+                                        font_size,
+                                        Transform2F::from_scale(1.),
+                                        HintingOptions::None,
+                                        RasterizationOptions::GrayscaleAa,
+                                    )
                                     .unwrap()
-                                    .get_regular_family_fonts(&font_face)
-                                    .unwrap()
-                                    .iter()
-                                    .find(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
-                                {
-                                    let mut font_data = Vec::new();
-                                    if let Ok(mut file) = ::std::fs::File::open(font) {
-                                        match file.read_to_end(&mut font_data) {
-                                            Ok(_) => self.font_data = Some(font_data),
-                                            Err(err) => {
-                                                log::error!("Could not read font file: {}", err)
-                                            }
-                                        }
-                                    }
-                                }
+                                    .width();
                             }
+                            title_width
+                        };
 
-                            // Create text from stored title and font data
-                            if let Some(ref font_data) = self.font_data {
-                                let title_color = self.config.title_color.get_for(self.active);
-                                let mut title_text = text::Text::new(
-                                    (
-                                        0,
-                                        (HEADER_SIZE as usize / 2)
-                                            .saturating_sub((font_size / 2.0).ceil() as usize)
-                                            * header_scale as usize,
-                                    ),
-                                    title_color.into(),
-                                    font_data,
-                                    font_size * header_scale as f32,
-                                    1.0,
-                                    title,
-                                );
+                        let title_color = self.config.title_color.get_for(self.active);
 
-                                let mut button_count = 0isize;
-                                if self.config.close_button.is_some() {
-                                    button_count += 1;
-                                }
-                                if self.config.maximize_button.is_some() {
-                                    button_count += 1;
-                                }
-                                if self.config.minimize_button.is_some() {
-                                    button_count += 1;
-                                }
+                        let mut button_count = 0isize;
+                        if self.config.close_button.is_some() {
+                            button_count += 1;
+                        }
+                        if self.config.maximize_button.is_some() {
+                            button_count += 1;
+                        }
+                        if self.config.minimize_button.is_some() {
+                            button_count += 1;
+                        }
+                        let scaled_button_size = HEADER_SIZE as isize * header_scale as isize;
+                        let button_space = button_count * scaled_button_size;
+                        let scaled_header_width = width as isize * header_scale as isize;
 
-                                let scaled_button_size =
-                                    HEADER_SIZE as isize * header_scale as isize;
-                                let button_space = button_count * scaled_button_size;
-                                let scaled_header_width = width as isize * header_scale as isize;
-
-                                // Check if text is bigger then the available width
-                                if (scaled_header_width - button_space)
-                                    > (title_text.get_width() as isize + scaled_button_size)
-                                {
-                                    title_text.pos.0 =
-                                        (scaled_header_width - button_space) as usize / 2
-                                            - (title_text.get_width() / 2);
-                                    header_canvas.draw(&title_text);
-                                }
-                            }
+                        // Check if text is bigger then the available width
+                        if (scaled_header_width - button_space)
+                            > (title_width as isize + scaled_button_size)
+                        {
+                            dt.draw_text(
+                                &font,
+                                font_size * header_scale as f32,
+                                &title,
+                                Point::new(
+                                    (scaled_header_width - button_space) as f32 / 2.
+                                        - (title_width as f32 / 2.),
+                                    (HEADER_SIZE as f32 / 1.5) * header_scale as f32,
+                                ),
+                                &Source::Solid(SolidSource {
+                                    a: title_color.a,
+                                    r: title_color.r,
+                                    b: title_color.b,
+                                    g: title_color.g,
+                                }),
+                                &DrawOptions::new(),
+                            );
                         }
                     }
                 }
+
+                draw_buttons(
+                    &mut dt,
+                    width as usize,
+                    header_scale as usize,
+                    true,
+                    self.active,
+                    &self
+                        .pointers
+                        .iter()
+                        .flat_map(|p| {
+                            if p.as_ref().is_alive() {
+                                let data: &RefCell<PointerUserData> =
+                                    p.as_ref().user_data().get().unwrap();
+                                Some(data.borrow().location)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<Location>>(),
+                    &self.config,
+                );
+                dt
+            };
+
+            {
+                let mmap = pool.mmap();
+                if let Err(err) = mmap.deref_mut().write_all(dt.get_data_u8()) {
+                    log::error!("Failed to write frame memory map: {}", err);
+                };
 
                 // For each pixel in borders
                 {
@@ -938,9 +957,9 @@ fn mix_colors(x: ARGBColor, y: ARGBColor) -> ARGBColor {
 }
 
 fn draw_buttons(
-    canvas: &mut Canvas,
-    width: u32,
-    scale: u32,
+    dt: &mut DrawTarget,
+    width: usize,
+    scale: usize,
     maximizable: bool,
     state: WindowState,
     mouses: &[Location],
@@ -952,14 +971,40 @@ fn draw_buttons(
     let line_color = config.secondary_color.get_for(state);
     for i in 1..=scale {
         let y = HEADER_SIZE as usize * scale - i;
-        let division_line =
-            line::Line::new((0, y), (width as usize * scale, y), line_color.into(), false);
-        canvas.draw(&division_line);
+        // let division_line = line::Line::new(
+        // (0, y),
+        // (width as usize * scale, y),
+        // line_color.into(),
+        // false,
+        // );
+        // canvas.draw(&division_line);
+        let mut line = PathBuilder::new();
+        line.move_to(0., y as f32);
+        line.line_to(width as f32 * scale as f32, y as f32);
+        let line = line.finish();
+        dt.stroke(
+            &line,
+            &Source::Solid(SolidSource {
+                a: line_color.a,
+                r: line_color.r,
+                b: line_color.b,
+                g: line_color.g,
+            }),
+            &StrokeStyle {
+                cap: LineCap::Round,
+                join: LineJoin::Bevel,
+                width: 1.,
+                miter_limit: 0.,
+                dash_array: vec![],
+                dash_offset: 0.,
+            },
+            &DrawOptions::new(),
+        );
     }
 
     let mut drawn_buttons = 0usize;
 
-    if width >= HEADER_SIZE {
+    if width >= HEADER_SIZE as usize {
         if let Some((ref icon_config, ref btn_config)) = config.close_button {
             // Draw the close button
             let btn_state = if mouses.iter().any(|&l| l == Location::Button(UIButton::Close)) {
@@ -971,8 +1016,14 @@ fn draw_buttons(
             let icon_color = icon_config.get_for(btn_state).get_for(state);
             let button_color = btn_config.get_for(btn_state).get_for(state);
 
-            draw_button(canvas, 0, scale, button_color, mix_colors(button_color, line_color));
-            draw_icon(canvas, 0, scale, icon_color, Icon::Close);
+            draw_button(
+                dt,
+                0,
+                scale as usize,
+                button_color,
+                mix_colors(button_color, line_color),
+            );
+            draw_icon(dt, 0, scale, icon_color, Icon::Close);
             drawn_buttons += 1;
         }
     }
@@ -991,14 +1042,14 @@ fn draw_buttons(
             let button_color = btn_config.get_for(btn_state).get_for(state);
 
             draw_button(
-                canvas,
+                dt,
                 drawn_buttons * HEADER_SIZE as usize,
                 scale,
                 button_color,
                 mix_colors(button_color, line_color),
             );
             draw_icon(
-                canvas,
+                dt,
                 drawn_buttons * HEADER_SIZE as usize,
                 scale,
                 icon_color,
@@ -1020,14 +1071,14 @@ fn draw_buttons(
             let button_color = btn_config.get_for(btn_state).get_for(state);
 
             draw_button(
-                canvas,
+                dt,
                 drawn_buttons * HEADER_SIZE as usize,
-                scale,
+                scale as usize,
                 button_color,
                 mix_colors(button_color, line_color),
             );
             draw_icon(
-                canvas,
+                dt,
                 drawn_buttons * HEADER_SIZE as usize,
                 scale,
                 icon_color,
@@ -1044,39 +1095,63 @@ enum Icon {
 }
 
 fn draw_button(
-    canvas: &mut Canvas,
+    dt: &mut DrawTarget,
     x_offset: usize,
     scale: usize,
     btn_color: ARGBColor,
     line_color: ARGBColor,
 ) {
     let h = HEADER_SIZE as usize;
-    let x_start = canvas.width / scale - h - x_offset;
+    let x_start = dt.width() as usize / scale - h - x_offset;
     // main square
-    canvas.draw(&rectangle::Rectangle::new(
-        (x_start * scale, 0),
-        (h * scale, (h - 1) * scale),
-        None,
-        Some(btn_color.into()),
-    ));
-    // separation line
-    canvas.draw(&rectangle::Rectangle::new(
-        (x_start * scale, (h - 1) * scale),
-        (h * scale, scale),
-        None,
-        Some(line_color.into()),
-    ));
+    let mut header_bar_new = PathBuilder::new();
+    header_bar_new.rect(
+        x_start as f32 * scale as f32,
+        0.,
+        h as f32 * scale as f32,
+        (h - 1) as f32 * scale as f32,
+    );
+    let header_bar_new = header_bar_new.finish();
+    dt.fill(
+        &header_bar_new,
+        &Source::Solid(SolidSource {
+            a: btn_color.a,
+            r: btn_color.r,
+            b: btn_color.b,
+            g: btn_color.g,
+        }),
+        &DrawOptions::new(),
+    );
+
+    let mut header_bar_new = PathBuilder::new();
+    header_bar_new.rect(
+        0.,
+        (h - 1) as f32 * scale as f32,
+        dt.width() as f32,
+        scale as f32,
+    );
+    let header_bar_new = header_bar_new.finish();
+    dt.fill(
+        &header_bar_new,
+        &Source::Solid(SolidSource {
+            a: 0xff,
+            r: line_color.r,
+            b: line_color.b,
+            g: line_color.g,
+        }),
+        &DrawOptions::new(),
+    );
 }
 
 fn draw_icon(
-    canvas: &mut Canvas,
+    dt: &mut DrawTarget,
     x_offset: usize,
     scale: usize,
     icon_color: ARGBColor,
     icon: Icon,
 ) {
     let h = HEADER_SIZE as usize;
-    let cx = canvas.width / scale - h / 2 - x_offset;
+    let cx = dt.width() as usize / scale - h / 2 - x_offset;
     let cy = h / 2;
     let s = scale;
 
@@ -1084,62 +1159,190 @@ fn draw_icon(
         Icon::Close => {
             // Draw cross to represent the close button
             for i in 0..2 * scale {
-                canvas.draw(&line::Line::new(
-                    ((cx - 4) * s + i, (cy - 4) * s),
-                    ((cx + 4) * s, (cy + 4) * s - i),
-                    icon_color.into(),
-                    true,
-                ));
-                canvas.draw(&line::Line::new(
-                    ((cx - 4) * s, (cy - 4) * s + i),
-                    ((cx + 4) * s - i, (cy + 4) * s),
-                    icon_color.into(),
-                    true,
-                ));
-                canvas.draw(&line::Line::new(
-                    ((cx + 4) * s - i, (cy - 4) * s),
-                    ((cx - 4) * s, (cy + 4) * s - i),
-                    icon_color.into(),
-                    true,
-                ));
-                canvas.draw(&line::Line::new(
-                    ((cx + 4) * s, (cy - 4) * s + i),
-                    ((cx - 4) * s + i, (cy + 4) * s),
-                    icon_color.into(),
-                    true,
-                ));
+                let mut line = PathBuilder::new();
+                line.move_to(((cx - 4) * s + i) as f32, ((cy - 4) * s) as f32);
+                line.line_to(((cx + 4) * s) as f32, ((cy + 4) * s - i) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
+                let mut line = PathBuilder::new();
+                line.move_to(((cx - 4) * s) as f32, ((cy - 4) * s + i) as f32);
+                line.line_to(((cx + 4) * s - i) as f32, ((cy + 4) * s) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
+                let mut line = PathBuilder::new();
+                line.move_to(((cx + 4) * s - i) as f32, ((cy - 4) * s) as f32);
+                line.line_to(((cx - 4) * s) as f32, ((cy + 4) * s - i) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
+                let mut line = PathBuilder::new();
+                line.move_to(((cx + 4) * s) as f32, ((cy - 4) * s + i) as f32);
+                line.line_to(((cx - 4) * s + i) as f32, ((cy + 4) * s) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
             }
         }
         Icon::Maximize => {
             for i in 0..3 * scale {
-                canvas.draw(&line::Line::new(
-                    ((cx - 4) * s - i, (cy + 2) * s),
-                    (cx * s, (cy - 2) * s - i),
-                    icon_color.into(),
-                    true,
-                ));
-                canvas.draw(&line::Line::new(
-                    ((cx + 4) * s + i, (cy + 2) * s),
-                    (cx * s, (cy - 2) * s - i),
-                    icon_color.into(),
-                    true,
-                ));
+                let mut line = PathBuilder::new();
+                line.move_to(((cx - 4) * s - i) as f32, ((cy + 2) * s) as f32);
+                line.line_to((cx * s) as f32, ((cy - 2) * s - i) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
+                let mut line = PathBuilder::new();
+                line.move_to(((cx + 4) * s + i) as f32, ((cy + 2) * s) as f32);
+                line.line_to((cx * s) as f32, ((cy - 2) * s - i) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
             }
         }
         Icon::Minimize => {
             for i in 0..3 * scale {
-                canvas.draw(&line::Line::new(
-                    ((cx - 4) * s - i, (cy - 3) * s),
-                    (cx * s, (cy + 1) * s + i),
-                    icon_color.into(),
-                    true,
-                ));
-                canvas.draw(&line::Line::new(
-                    ((cx + 4) * s + i, (cy - 3) * s),
-                    (cx * s, (cy + 1) * s + i),
-                    icon_color.into(),
-                    true,
-                ));
+                let mut line = PathBuilder::new();
+                line.move_to(((cx - 4) * s - i) as f32, ((cy - 3) * s) as f32);
+                line.line_to((cx * s) as f32, ((cy + 1) * s + i) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
+                let mut line = PathBuilder::new();
+                line.move_to(((cx + 4) * s + i) as f32, ((cy - 3) * s) as f32);
+                line.line_to((cx * s) as f32, ((cy + 1) * s + i) as f32);
+                let line = line.finish();
+                dt.stroke(
+                    &line,
+                    &Source::Solid(SolidSource {
+                        a: icon_color.a,
+                        r: icon_color.r,
+                        b: icon_color.b,
+                        g: icon_color.g,
+                    }),
+                    &StrokeStyle {
+                        cap: LineCap::Round,
+                        join: LineJoin::Bevel,
+                        width: 1.,
+                        miter_limit: 0.,
+                        dash_array: vec![],
+                        dash_offset: 0.,
+                    },
+                    &DrawOptions::new(),
+                );
             }
         }
     }
