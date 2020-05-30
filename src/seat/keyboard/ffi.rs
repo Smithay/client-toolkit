@@ -53,7 +53,7 @@ pub enum xkb_keysym_flags {
     /** Do not apply any flags. */
     XKB_KEYSYM_NO_FLAGS = 0,
     /** Find keysym by case-insensitive search. */
-    XKB_KEYSYM_CASE_INSENSITIVE = (1 << 0)
+    XKB_KEYSYM_CASE_INSENSITIVE = 1 << 0
 }
 
 #[repr(C)]
@@ -62,12 +62,12 @@ pub enum xkb_context_flags {
     /** Do not apply any context flags. */
     XKB_CONTEXT_NO_FLAGS = 0,
     /** Create this context with an empty include path. */
-    XKB_CONTEXT_NO_DEFAULT_INCLUDES = (1 << 0),
+    XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1 << 0,
     /**
      * Don't take RMLVO names from the environment.
      * @since 0.3.0
      */
-    XKB_CONTEXT_NO_ENVIRONMENT_NAMES = (1 << 1)
+    XKB_CONTEXT_NO_ENVIRONMENT_NAMES = 1 << 1
 }
 
 #[repr(C)]
