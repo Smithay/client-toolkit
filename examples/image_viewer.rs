@@ -42,9 +42,11 @@ fn main() {
         .expect("Unable to connect to a Wayland compositor");
 
     // Use the compositor global to create a new surface
-    let surface = env.create_surface_with_scale_callback(|dpi, _surface, _dispatch_data| {
-        println!("dpi changed to {}", dpi);
-    });
+    let surface = env
+        .create_surface_with_scale_callback(|dpi, _surface, _dispatch_data| {
+            println!("dpi changed to {}", dpi);
+        })
+        .detach();
 
     /*
      * Init the window

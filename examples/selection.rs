@@ -42,7 +42,7 @@ fn main() {
 
     // we need a window to receive things actually
     let mut dimensions = (320u32, 240u32);
-    let surface = env.create_surface();
+    let surface = env.create_surface().detach();
 
     let mut window = env
         .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, mut dispatch_data| {

@@ -160,7 +160,7 @@ fn main() {
             output.release();
         } else {
             // an output has been created, construct a surface for it
-            let surface = env_handle.create_surface();
+            let surface = env_handle.create_surface().detach();
             let pools =
                 env_handle.create_double_pool(|_| {}).expect("Failed to create a memory pool!");
             (*surfaces_handle.borrow_mut())

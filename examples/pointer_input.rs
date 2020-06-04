@@ -68,12 +68,14 @@ fn main() {
 
     let mut window_config = WindowConfig::new();
 
-    let surface = env.create_surface_with_scale_callback(move |dpi, surface, mut dispatch_data| {
-        let config = dispatch_data.get::<WindowConfig>().unwrap();
-        surface.set_buffer_scale(dpi);
-        config.dpi_scale = dpi;
-        config.handle_action(NextAction::Redraw);
-    });
+    let surface = env
+        .create_surface_with_scale_callback(move |dpi, surface, mut dispatch_data| {
+            let config = dispatch_data.get::<WindowConfig>().unwrap();
+            surface.set_buffer_scale(dpi);
+            config.dpi_scale = dpi;
+            config.handle_action(NextAction::Redraw);
+        })
+        .detach();
 
     let mut window = env
         .create_window::<ConceptFrame, _>(

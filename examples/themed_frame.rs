@@ -84,7 +84,7 @@ fn main() {
      * Init wayland objects
      */
 
-    let surface = env.create_surface();
+    let surface = env.create_surface().detach();
 
     let mut window = env
         .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, mut dispatch_data| {
