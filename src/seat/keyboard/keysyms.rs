@@ -3,7 +3,6 @@
 //
 
 #![allow(missing_docs, non_upper_case_globals, unused_parens, clippy::all)]
-#![cfg_attr(rustfmt, rustfmt_skip)]
 
 /***********************************************************
 Copyright 1987, 1994, 1998  The Open Group
