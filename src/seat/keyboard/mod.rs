@@ -24,8 +24,10 @@ use wayland_client::{
     Attached,
 };
 
+#[rustfmt::skip]
 mod ffi;
 mod state;
+#[rustfmt::skip]
 pub mod keysyms;
 
 use self::state::KbState;
