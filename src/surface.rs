@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, sync::Mutex};
 
 use wayland_client::{
     protocol::{wl_compositor, wl_output, wl_surface},
-    DispatchData, Main,
+    Attached, DispatchData, Main,
 };
 
 use crate::output::{add_output_listener, with_output_info, OutputListener};
@@ -93,7 +93,7 @@ impl SurfaceUserData {
 pub(crate) fn setup_surface<F>(
     surface: Main<wl_surface::WlSurface>,
     callback: Option<F>,
-) -> wl_surface::WlSurface
+) -> Attached<wl_surface::WlSurface>
 where
     F: FnMut(i32, wl_surface::WlSurface, DispatchData) + 'static,
 {
@@ -121,7 +121,7 @@ where
         }
     });
     surface.as_ref().user_data().set_threadsafe(|| Mutex::new(SurfaceUserData::new()));
-    surface.detach()
+    (*surface).clone()
 }
 
 impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>
@@ -133,7 +133,7 @@ impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>
     /// optimal scale factor for these. You can access them using
     /// [`get_surface_scale_factor`](../fn.get_surface_scale_factor.html) and
     /// [`get_surface_outputs`](../fn.get_surface_outputs.html).
-    pub fn create_surface(&self) -> wl_surface::WlSurface {
+    pub fn create_surface(&self) -> Attached<wl_surface::WlSurface> {
         let compositor = self.require_global::<wl_compositor::WlCompositor>();
         setup_surface(compositor.create_surface(), None::<fn(_, _, DispatchData)>)
     }
@@ -148,7 +148,7 @@ impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>
     >(
         &self,
         f: F,
-    ) -> wl_surface::WlSurface {
+    ) -> Attached<wl_surface::WlSurface> {
         let compositor = self.require_global::<wl_compositor::WlCompositor>();
         setup_surface(compositor.create_surface(), Some(f))
     }

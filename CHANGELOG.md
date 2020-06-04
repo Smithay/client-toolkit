@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- `create_surface` and `create_surface_with_scale_callback` now return `Attached<WlSurface>`
+
 #### Changes
 
 - `andrew` is updated to `0.3`.
