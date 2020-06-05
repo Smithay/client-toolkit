@@ -191,7 +191,7 @@
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
     <span class="ident">protocol</span>::{<span class="ident">wl_compositor</span>, <span class="ident">wl_output</span>, <span class="ident">wl_surface</span>},
-    <span class="ident">DispatchData</span>, <span class="ident">Main</span>,
+    <span class="ident">Attached</span>, <span class="ident">DispatchData</span>, <span class="ident">Main</span>,
 };
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">output</span>::{<span class="ident">add_output_listener</span>, <span class="ident">with_output_info</span>, <span class="ident">OutputListener</span>};
@@ -282,7 +282,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">setup_surface</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
     <span class="ident">surface</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">wl_surface</span>::<span class="ident">WlSurface</span><span class="op">&gt;</span>,
     <span class="ident">callback</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_surface</span>::<span class="ident">WlSurface</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">i32</span>, <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {
@@ -310,7 +310,7 @@
         }
     });
     <span class="ident">surface</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">set_threadsafe</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">SurfaceUserData</span>::<span class="ident">new</span>()));
-    <span class="ident">surface</span>.<span class="ident">detach</span>()
+    (<span class="kw-2">*</span><span class="ident">surface</span>).<span class="ident">clone</span>()
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="kw">crate</span>::<span class="ident">environment</span>::<span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span><span class="op">&gt;</span>
@@ -322,7 +322,7 @@
     <span class="doccomment">/// optimal scale factor for these. You can access them using</span>
     <span class="doccomment">/// [`get_surface_scale_factor`](../fn.get_surface_scale_factor.html) and</span>
     <span class="doccomment">/// [`get_surface_outputs`](../fn.get_surface_outputs.html).</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_surface</span>::<span class="ident">WlSurface</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">compositor</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">require_global</span>::<span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span>();
         <span class="ident">setup_surface</span>(<span class="ident">compositor</span>.<span class="ident">create_surface</span>(), <span class="prelude-val">None</span>::<span class="op">&lt;</span><span class="kw">fn</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="ident">DispatchData</span>)<span class="op">&gt;</span>)
     }
@@ -337,7 +337,7 @@
     <span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_surface</span>::<span class="ident">WlSurface</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">compositor</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">require_global</span>::<span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span>();
         <span class="ident">setup_surface</span>(<span class="ident">compositor</span>.<span class="ident">create_surface</span>(), <span class="prelude-val">Some</span>(<span class="ident">f</span>))
     }
