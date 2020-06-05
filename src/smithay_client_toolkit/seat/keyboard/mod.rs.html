@@ -567,6 +567,8 @@
 <span id="567">567</span>
 <span id="568">568</span>
 <span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Utilities for keymap interpretation of keyboard input</span>
 <span class="doccomment">//!</span>
@@ -594,8 +596,10 @@
     <span class="ident">Attached</span>,
 };
 
+<span class="attribute">#[<span class="ident">rustfmt</span>::<span class="ident">skip</span>]</span>
 <span class="kw">mod</span> <span class="ident">ffi</span>;
 <span class="kw">mod</span> <span class="ident">state</span>;
+<span class="attribute">#[<span class="ident">rustfmt</span>::<span class="ident">skip</span>]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">keysyms</span>;
 
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">state</span>::<span class="ident">KbState</span>;
