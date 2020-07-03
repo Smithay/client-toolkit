@@ -5,6 +5,7 @@
 #### Breaking Changes
 
 - `create_surface` and `create_surface_with_scale_callback` now return `Attached<WlSurface>`
+- Update `wayland-client` to `0.27`
 
 #### Changes
 

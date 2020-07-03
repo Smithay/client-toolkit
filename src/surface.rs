@@ -121,7 +121,7 @@ where
         }
     });
     surface.as_ref().user_data().set_threadsafe(|| Mutex::new(SurfaceUserData::new()));
-    (*surface).clone()
+    surface.into()
 }
 
 impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>
