@@ -310,7 +310,7 @@
         }
     });
     <span class="ident">surface</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">set_threadsafe</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">SurfaceUserData</span>::<span class="ident">new</span>()));
-    (<span class="kw-2">*</span><span class="ident">surface</span>).<span class="ident">clone</span>()
+    <span class="ident">surface</span>.<span class="ident">into</span>()
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="kw">crate</span>::<span class="ident">environment</span>::<span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span><span class="op">&gt;</span>
