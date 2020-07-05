@@ -16,9 +16,13 @@
 
 use std::{
     cell::RefCell,
+    fmt::{self, Debug, Formatter},
     rc::{Rc, Weak},
     sync::Mutex,
 };
+
+use bitflags::bitflags;
+
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
     Attached, DispatchData, Main,
@@ -30,7 +34,7 @@ pub mod pointer;
 type SeatCallback = dyn FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static;
 
 /// The metadata associated with a seat
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SeatData {
     /// The name of this seat
     ///
@@ -49,6 +53,30 @@ pub struct SeatData {
     ///
     /// You can thus cleanup all your state associated with this seat.
     pub defunct: bool,
+
+    /// State of readiness of the data.
+    state: SeatDataState,
+}
+
+bitflags! {
+    struct SeatDataState: u8 {
+        const NEW              = 0b00000000;
+        const GOT_NAME         = 0b00000001;
+        const GOT_CAPABILITIES = 0b00000010;
+        const READY            = Self::GOT_NAME.bits | Self::GOT_CAPABILITIES.bits;
+    }
+}
+
+impl Debug for SeatData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SeatData")
+            .field("name", &self.name)
+            .field("has_pointer", &self.has_pointer)
+            .field("has_keyboard", &self.has_keyboard)
+            .field("has_touch", &self.has_touch)
+            .field("defunct", &self.defunct)
+            .finish()
+    }
 }
 
 impl SeatData {
@@ -59,6 +87,7 @@ impl SeatData {
             has_keyboard: false,
             has_touch: false,
             defunct: false,
+            state: SeatDataState::NEW,
         }
     }
 }
@@ -144,8 +173,12 @@ fn process_seat_event(
         let data = seat.as_ref().user_data().get::<Mutex<SeatData>>().unwrap();
         let mut guard = data.lock().unwrap();
         match event {
-            wl_seat::Event::Name { name } => guard.name = name,
+            wl_seat::Event::Name { name } => {
+                guard.state.set(SeatDataState::GOT_NAME, true);
+                guard.name = name;
+            }
             wl_seat::Event::Capabilities { capabilities } => {
+                guard.state.set(SeatDataState::GOT_CAPABILITIES, true);
                 guard.has_pointer = capabilities.contains(wl_seat::Capability::Pointer);
                 guard.has_keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
                 guard.has_touch = capabilities.contains(wl_seat::Capability::Touch);
@@ -154,8 +187,8 @@ fn process_seat_event(
         }
         guard.clone()
     };
-    // only advertize a seat once it has a name
-    if !new_data.name.is_empty() {
+
+    if new_data.state.contains(SeatDataState::READY) {
         listeners.borrow_mut().retain(|lst| {
             if let Some(cb) = Weak::upgrade(lst) {
                 (&mut *cb.borrow_mut())((*seat).clone(), &new_data, ddata.reborrow());
