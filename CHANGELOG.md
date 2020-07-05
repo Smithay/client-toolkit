@@ -26,6 +26,7 @@
 #### BugFixes
 
 - keyboard: Remove the unnecessary type parameter of `map_keyboard`
+- seat: Seats with an empty name are no longer filtered out
 
 ## 0.9.0 -- 2020-04-22
 
