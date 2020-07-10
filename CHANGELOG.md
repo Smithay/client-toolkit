@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.0 -- 2020-07-10
+
 #### Breaking Changes
 
 - `create_surface` and `create_surface_with_scale_callback` now return `Attached<WlSurface>`
@@ -10,6 +12,10 @@
 #### Changes
 
 - `andrew` is updated to `0.3`.
+
+#### Bugfixes
+
+- seat: Seats with an empty name are no longer filtered out
 
 ## 0.9.1 -- 2020-05-03
 
@@ -26,7 +32,6 @@
 #### BugFixes
 
 - keyboard: Remove the unnecessary type parameter of `map_keyboard`
-- seat: Seats with an empty name are no longer filtered out
 
 ## 0.9.0 -- 2020-04-22
 
