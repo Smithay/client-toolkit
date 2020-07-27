@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Additions
+
+- `Waylandsource::queue` to access the `EventQueue` unserlying a `WaylandSource`
+
 ## 0.10.0 -- 2020-07-10
 
 #### Breaking Changes
