@@ -187,8 +187,8 @@
     <span class="doccomment">/// Note that you should be careful when interacting with it if you invoke methods that</span>
     <span class="doccomment">/// interact with the wayland socket (such as `dispatch()` or `prepare_read()`). These may</span>
     <span class="doccomment">/// interefere with the proper waking up of this event source in the event loop.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">queue</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">EventQueue</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">queue</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">queue</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EventQueue</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">queue</span>
     }
 }
 
