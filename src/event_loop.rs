@@ -54,8 +54,8 @@ impl WaylandSource {
     /// Note that you should be careful when interacting with it if you invoke methods that
     /// interact with the wayland socket (such as `dispatch()` or `prepare_read()`). These may
     /// interefere with the proper waking up of this event source in the event loop.
-    pub fn queue(&self) -> &EventQueue {
-        &self.queue
+    pub fn queue(&mut self) -> &mut EventQueue {
+        &mut self.queue
     }
 }
 

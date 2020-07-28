@@ -4,7 +4,7 @@
 
 #### Additions
 
-- `Waylandsource::queue` to access the `EventQueue` unserlying a `WaylandSource`
+- `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
 
 ## 0.10.0 -- 2020-07-10
 
