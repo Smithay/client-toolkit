@@ -560,6 +560,9 @@ impl<F: Frame + 'static> Window<F> {
     /// Provide either a tuple `Some((width, height))` or `None` to unset the
     /// minimum size.
     ///
+    /// Setting either value in the tuple to `0` means that this axis should not
+    /// be limited.
+    ///
     /// The provided size is the interior size, not counting decorations.
     ///
     /// This size is expressed in logical pixels, like the one received
@@ -577,6 +580,9 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// Provide either a tuple `Some((width, height))` or `None` to unset the
     /// maximum size.
+    ///
+    /// Setting either value in the tuple to `0` means that this axis should not
+    /// be limited.
     ///
     /// The provided size is the interior size, not counting decorations.
     ///
