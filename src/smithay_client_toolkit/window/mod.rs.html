@@ -809,6 +809,21 @@
 <span id="809">809</span>
 <span id="810">810</span>
 <span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
@@ -1214,7 +1229,16 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// You need to call `refresh()` afterwards for this to properly</span>
     <span class="doccomment">/// take effect.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_title</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">title</span>: <span class="ident">String</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_title</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">title</span>: <span class="ident">String</span>) {
+        <span class="comment">// Truncate the title to at most 1024 bytes, so that it does not blow up the protocol</span>
+        <span class="comment">// messages</span>
+        <span class="kw">if</span> <span class="ident">title</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1024</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_len</span> <span class="op">=</span> <span class="number">1024</span>;
+            <span class="kw">while</span> <span class="op">!</span><span class="ident">title</span>.<span class="ident">is_char_boundary</span>(<span class="ident">new_len</span>) {
+                <span class="ident">new_len</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+            }
+            <span class="ident">title</span>.<span class="ident">truncate</span>(<span class="ident">new_len</span>);
+        }
         <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_title</span>(<span class="ident">title</span>.<span class="ident">clone</span>());
         <span class="self">self</span>.<span class="ident">shell_surface</span>.<span class="ident">set_title</span>(<span class="ident">title</span>);
     }
@@ -1363,6 +1387,9 @@
     <span class="doccomment">/// Provide either a tuple `Some((width, height))` or `None` to unset the</span>
     <span class="doccomment">/// minimum size.</span>
     <span class="doccomment">///</span>
+    <span class="doccomment">/// Setting either value in the tuple to `0` means that this axis should not</span>
+    <span class="doccomment">/// be limited.</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// The provided size is the interior size, not counting decorations.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This size is expressed in logical pixels, like the one received</span>
@@ -1380,6 +1407,9 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Provide either a tuple `Some((width, height))` or `None` to unset the</span>
     <span class="doccomment">/// maximum size.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Setting either value in the tuple to `0` means that this axis should not</span>
+    <span class="doccomment">/// be limited.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The provided size is the interior size, not counting decorations.</span>
     <span class="doccomment">///</span>
