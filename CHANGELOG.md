@@ -6,6 +6,11 @@
 
 - `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
 
+#### Changes
+
+- `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
+  the Wayland connection
+
 ## 0.10.0 -- 2020-07-10
 
 #### Breaking Changes

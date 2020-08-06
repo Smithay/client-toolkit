@@ -402,7 +402,16 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
-    pub fn set_title(&self, title: String) {
+    pub fn set_title(&self, mut title: String) {
+        // Truncate the title to at most 1024 bytes, so that it does not blow up the protocol
+        // messages
+        if title.len() > 1024 {
+            let mut new_len = 1024;
+            while !title.is_char_boundary(new_len) {
+                new_len -= 1;
+            }
+            title.truncate(new_len);
+        }
         self.frame.lock().unwrap().set_title(title.clone());
         self.shell_surface.set_title(title);
     }
