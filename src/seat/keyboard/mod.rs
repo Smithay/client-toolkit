@@ -14,7 +14,12 @@
 
 #[cfg(feature = "calloop")]
 use std::time::Duration;
-use std::{cell::RefCell, os::unix::io::RawFd, rc::Rc};
+use std::{
+    cell::RefCell,
+    fs::File,
+    os::unix::io::{FromRawFd, RawFd},
+    rc::Rc,
+};
 
 use byteorder::{ByteOrder, NativeEndian};
 
@@ -328,6 +333,7 @@ impl KbdHandler {
         fd: RawFd,
         size: u32,
     ) {
+        let fd = unsafe { File::from_raw_fd(fd) };
         let mut state = self.state.borrow_mut();
         if state.locked() {
             // state is locked, ignore keymap updates
