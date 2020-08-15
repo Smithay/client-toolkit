@@ -45,7 +45,7 @@ pub mod primary_selection;
 pub mod seat;
 pub mod shell;
 pub mod shm;
-pub mod tablet_v2;
+pub mod tablet;
 pub mod window;
 
 #[cfg(feature = "calloop")]
