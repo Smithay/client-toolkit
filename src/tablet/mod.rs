@@ -77,14 +77,15 @@ pub trait TabletHandling {
         callback: F,
     ) -> Result<TabletDeviceListener, ()>;
 }
-/*
+
 impl TabletHandling for TabletHandler {
     fn listen<F: FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static>(
         &mut self,
         callback: F,
     ) -> Result<TabletDeviceListener, ()> {
         let rc = Rc::new(callback) as Rc<TabletDeviceCallback>;
-        match self.inner.borrow_mut() {
+        let ref mut inner = *self.inner.borrow_mut();
+        match inner {
             TabletInner::Ready { listeners, .. } => {
                 listeners.push(Rc::downgrade(&rc));
                 Ok(TabletDeviceListener { _cb: rc })
@@ -92,7 +93,7 @@ impl TabletHandling for TabletHandler {
             TabletInner::Pending { .. } => Err(()),
         }
     }
-}*/
+}
 
 impl TabletInner {
     fn init_tablet_mgr(&mut self, mgr: Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>) {
