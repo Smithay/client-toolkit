@@ -2,16 +2,13 @@ use wayland_protocols::unstable::tablet::v2::client::*;
 
 use crate::environment;
 use std::{
-    borrow::{Borrow, BorrowMut},
     cell::RefCell,
     cmp,
     rc::{Rc, Weak},
-    sync::Mutex,
 };
-use tablet::TabletEvent;
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
-    Attached, DispatchData, Main,
+    Attached, DispatchData,
 };
 
 use bitflags::bitflags;
@@ -47,23 +44,13 @@ pub struct TabletHandler {
 }
 
 pub enum TabletDeviceEvent {
-    ToolAdded {
-        tool: zwp_tablet_tool_v2::ZwpTabletToolV2,
-    },
-    ToolRemoved {
-        tool: zwp_tablet_tool_v2::ZwpTabletToolV2,
-    },
+    ToolAdded { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
+    ToolRemoved { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
 }
 
 pub enum HardwareToolId {
-    Serial {
-        hardware_serial_hi: u32,
-        hardware_serial_lo: u32,
-    },
-    Wacom {
-        hardware_id_hi: u32,
-        hardware_id_lo: u32,
-    }
+    Serial { hardware_serial_hi: u32, hardware_serial_lo: u32 },
+    Wacom { hardware_id_hi: u32, hardware_id_lo: u32 },
 }
 
 bitflags! {
@@ -90,14 +77,14 @@ pub trait TabletHandling {
         callback: F,
     ) -> Result<TabletDeviceListener, ()>;
 }
-
+/*
 impl TabletHandling for TabletHandler {
     fn listen<F: FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static>(
         &mut self,
         callback: F,
     ) -> Result<TabletDeviceListener, ()> {
         let rc = Rc::new(callback) as Rc<TabletDeviceCallback>;
-        match self.inner.borrow_mut().into_inner() {
+        match self.inner.borrow_mut() {
             TabletInner::Ready { listeners, .. } => {
                 listeners.push(Rc::downgrade(&rc));
                 Ok(TabletDeviceListener { _cb: rc })
@@ -105,7 +92,7 @@ impl TabletHandling for TabletHandler {
             TabletInner::Pending { .. } => Err(()),
         }
     }
-}
+}*/
 
 impl TabletInner {
     fn init_tablet_mgr(&mut self, mgr: Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>) {
@@ -124,7 +111,7 @@ impl TabletInner {
             tablet_seats.push((my_seat, tablet_seat))
         }
 
-        *self = TabletInner::Ready { tools: Vec::new(), mgr, tablet_seats: tablet_seats, listeners }
+        *self = TabletInner::Ready { tools: Vec::new(), mgr, tablet_seats, listeners }
     }
     fn get_mgr(&self) -> Option<Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>> {
         match self {
@@ -192,6 +179,6 @@ impl environment::GlobalHandler<zwp_tablet_manager_v2::ZwpTabletManagerV2> for T
         self.inner.borrow_mut().init_tablet_mgr((*manager).clone());
     }
     fn get(&self) -> Option<Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>> {
-        self.inner.into_inner().get_mgr()
+        self.inner.borrow().get_mgr()
     }
 }
