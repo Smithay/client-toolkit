@@ -11,6 +11,10 @@
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
 
+#### Bugfixes
+
+- Precision in a rate of key repeat events
+
 ## 0.10.0 -- 2020-07-10
 
 #### Breaking Changes
