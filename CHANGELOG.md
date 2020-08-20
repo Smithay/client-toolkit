@@ -2,14 +2,27 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- `window.set_decorate` is now taking mutable reference
+
 #### Additions
 
-- `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
+- `WaylandSource::queue` to access the `EventQueue` underlying a `WaylandSource`
 
 #### Changes
 
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
+- Explicitly setting `ClientSide` decorations will result in `ServerSide` ones being destroyed
+- Requesting `ServerSide` decorations in `set_decorate` will now fallback to `ClientSide`
+  if the former are not available
+- Requesting `None` decorations if `ServerSide` are presented will result in setting
+  `ClientSide` decorations with hidden frame
+
+#### Bugfixes
+
+- Toggling between `ServerSide` and `None` decorations raising protocol error
 
 ## 0.10.0 -- 2020-07-10
 
