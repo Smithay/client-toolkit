@@ -5,13 +5,12 @@ use std::{
     cell::RefCell,
     cmp,
     rc::{Rc, Weak},
+    sync::Mutex,
 };
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
     Attached, DispatchData, Main,
 };
-
-use bitflags::bitflags;
 
 mod tablet;
 
@@ -53,27 +52,23 @@ pub enum TabletDeviceEvent {
     ToolAdded { tool: Attached<zwp_tablet_tool_v2::ZwpTabletToolV2> },
     ToolRemoved { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
 }
-
-pub enum HardwareToolId {
-    Serial { hardware_serial_hi: u32, hardware_serial_lo: u32 },
-    Wacom { hardware_id_hi: u32, hardware_id_lo: u32 },
+#[derive(Clone)]
+pub struct HardwareIdWacom {
+    hardware_id_hi: u32,
+    hardware_id_lo: u32,
+}
+#[derive(Clone)]
+pub struct HardwareSerial {
+    hardware_serial_hi: u32,
+    hardware_serial_lo: u32,
 }
 
-bitflags! {
-    struct ToolDataState: u8 {
-        const NEW              = 0b00000000;
-        const GOT_TYPE         = 0b00000001;
-        const GOT_CAPABILITIES = 0b00000010;
-        const GOT_HW_ID        = 0b00000100;
-        const READY            = Self::GOT_TYPE.bits | Self::GOT_CAPABILITIES.bits | Self::GOT_HW_ID.bits;
-    }
-}
-
+#[derive(Clone)]
 pub struct ToolMetaData {
     pub capabilities: Vec<zwp_tablet_tool_v2::Capability>,
-    pub hardware_id: HardwareToolId,
+    pub hardware_id_wacom: HardwareIdWacom,
+    pub hardware_serial: HardwareSerial,
     pub tool_type: zwp_tablet_tool_v2::Type,
-    state: ToolDataState,
 }
 
 pub trait TabletHandling {
@@ -197,10 +192,30 @@ fn tablet_tool_cb(
     mut ddata: DispatchData,
 ) {
     match event {
-        zwp_tablet_tool_v2::Event::Type { .. } => {}
+        zwp_tablet_tool_v2::Event::Type { tool_type } => {
+            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
+            let mut guard = tool_data.lock().unwrap();
+            guard.tool_type = tool_type;
+        }
+        zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
+            let hw_id = HardwareSerial { hardware_serial_hi, hardware_serial_lo };
+            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
+            let mut guard = tool_data.lock().unwrap();
+            guard.hardware_serial = hw_id;
+        }
+        zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => {
+            let hw_id = HardwareIdWacom { hardware_id_hi, hardware_id_lo };
+            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
+            let mut guard = tool_data.lock().unwrap();
+            guard.hardware_id_wacom = hw_id;
+        }
+        zwp_tablet_tool_v2::Event::Capability { capability } => {
+            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
+            let mut guard = tool_data.lock().unwrap();
+            guard.capabilities.push(capability);
+        }
         zwp_tablet_tool_v2::Event::Done => {
             //emit tool added event
-            //need reference to inner to call respective listener
             handler_data.borrow_mut().listeners.retain(|lst| {
                 if let Some(cb) = Weak::upgrade(lst) {
                     let wl_seat = handler_data
