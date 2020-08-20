@@ -118,8 +118,8 @@ impl TabletInner {
             let tablet_seat = mgr.get_tablet_seat(&seat);
             // attach tablet seat to global callback for new devices
             let dclone = data.clone();
-            tablet_seat.quick_assign(move |t_seat, evt, ddata| {
-                tablet_seat_cb(t_seat, dclone.clone(), evt, ddata);
+            tablet_seat.quick_assign(move |t_seat, evt, _| {
+                tablet_seat_cb(t_seat, dclone.clone(), evt);
             });
             data.borrow_mut().tablet_seats.push((seat, tablet_seat.detach()));
         }
@@ -148,7 +148,7 @@ impl TabletInner {
                 // attach tablet seat to global callback for new devices
                 let dclone = data.clone();
                 tablet_seat.quick_assign(move |t_seat, evt, ddata| {
-                    tablet_seat_cb(t_seat, dclone.clone(), evt, ddata)
+                    tablet_seat_cb(t_seat, dclone.clone(), evt)
                 });
             }
             Self::Pending { seats } => {
@@ -169,7 +169,6 @@ fn tablet_seat_cb(
     tablet_seat: Main<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
     handler_data: Rc<RefCell<SharedData>>,
     event: zwp_tablet_seat_v2::Event,
-    ddata: DispatchData,
 ) {
     match event {
         zwp_tablet_seat_v2::Event::ToolAdded { id } => {
@@ -204,13 +203,13 @@ fn tablet_tool_cb(
             //need reference to inner to call respective listener
             handler_data.borrow_mut().listeners.retain(|lst| {
                 if let Some(cb) = Weak::upgrade(lst) {
-                    let wlSeat = handler_data
+                    let wl_seat = handler_data
                         .borrow_mut()
                         .tablet_seats
                         .iter()
                         .find(|(_, tseat)| *tseat == *tablet_seat)
                         .map(|(wseat, _)| wseat.clone());
-                    match wlSeat {
+                    match wl_seat {
                         Some(wseat) => {
                             (&mut *cb.borrow_mut())(
                                 wseat,
