@@ -8,7 +8,7 @@ use std::{
 };
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
-    Attached, DispatchData,
+    Attached, DispatchData, Main,
 };
 
 use bitflags::bitflags;
@@ -19,22 +19,28 @@ mod tablet;
 type TabletDeviceCallback =
     dyn FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static;
 
+type TabletListeners = Vec<Weak<RefCell<TabletDeviceCallback>>>;
+
 pub struct TabletDeviceListener {
-    _cb: Rc<TabletDeviceCallback>,
+    _cb: Rc<RefCell<TabletDeviceCallback>>,
 }
 
 /// Contains TabletManager mapping seats to tablet seats
 enum TabletInner {
     Ready {
         mgr: Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>,
-        tablet_seats: Vec<(wl_seat::WlSeat, zwp_tablet_seat_v2::ZwpTabletSeatV2)>,
-        /// Global callback for new tablet devices
-        listeners: Vec<Weak<TabletDeviceCallback>>,
-        tools: Vec<(zwp_tablet_tool_v2::ZwpTabletToolV2, bool)>,
+        data: Rc<RefCell<SharedData>>,
     },
     Pending {
-        seats: Vec<wl_seat::WlSeat>,
+        seats: Vec<Attached<wl_seat::WlSeat>>,
     },
+}
+
+struct SharedData {
+    tablet_seats: Vec<(Attached<wl_seat::WlSeat>, zwp_tablet_seat_v2::ZwpTabletSeatV2)>,
+    /// Global callback for new tablet devices
+    listeners: TabletListeners,
+    tools: Vec<(zwp_tablet_tool_v2::ZwpTabletToolV2, ToolMetaData)>,
 }
 
 /// Handles tablet device added/removed events
@@ -44,7 +50,7 @@ pub struct TabletHandler {
 }
 
 pub enum TabletDeviceEvent {
-    ToolAdded { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
+    ToolAdded { tool: Attached<zwp_tablet_tool_v2::ZwpTabletToolV2> },
     ToolRemoved { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
 }
 
@@ -83,11 +89,11 @@ impl TabletHandling for TabletHandler {
         &mut self,
         callback: F,
     ) -> Result<TabletDeviceListener, ()> {
-        let rc = Rc::new(callback) as Rc<TabletDeviceCallback>;
+        let rc = Rc::new(RefCell::new(callback)) as Rc<_>;
         let ref mut inner = *self.inner.borrow_mut();
         match inner {
-            TabletInner::Ready { listeners, .. } => {
-                listeners.push(Rc::downgrade(&rc));
+            TabletInner::Ready { data, .. } => {
+                data.borrow_mut().listeners.push(Rc::downgrade(&rc));
                 Ok(TabletDeviceListener { _cb: rc })
             }
             TabletInner::Pending { .. } => Err(()),
@@ -104,15 +110,21 @@ impl TabletInner {
             return;
         };
 
-        let mut tablet_seats = Vec::new();
+        let tablet_seats = Vec::new();
         let listeners = Vec::new();
+
+        let data = Rc::new(RefCell::new(SharedData { tablet_seats, listeners, tools: Vec::new() }));
         for seat in seats {
-            let my_seat = seat.clone();
-            let tablet_seat = mgr.get_tablet_seat(&my_seat).detach();
-            tablet_seats.push((my_seat, tablet_seat))
+            let tablet_seat = mgr.get_tablet_seat(&seat);
+            // attach tablet seat to global callback for new devices
+            let dclone = data.clone();
+            tablet_seat.quick_assign(move |t_seat, evt, ddata| {
+                tablet_seat_cb(t_seat, dclone.clone(), evt, ddata);
+            });
+            data.borrow_mut().tablet_seats.push((seat, tablet_seat.detach()));
         }
 
-        *self = TabletInner::Ready { tools: Vec::new(), mgr, tablet_seats, listeners }
+        *self = TabletInner::Ready { mgr, data };
     }
     fn get_mgr(&self) -> Option<Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>> {
         match self {
@@ -123,15 +135,21 @@ impl TabletInner {
     // A potential new seat is seen
     //
     // should do nothing if the seat is already known
-    fn new_seat(&mut self, seat: &wl_seat::WlSeat) {
+    fn new_seat(&mut self, seat: &Attached<wl_seat::WlSeat>) {
         match self {
-            Self::Ready { mgr, tablet_seats, .. } => {
-                if tablet_seats.iter().any(|(s, _)| s == seat) {
+            Self::Ready { mgr, data, .. } => {
+                let mut datamut = data.borrow_mut();
+                if datamut.tablet_seats.iter().any(|(s, _)| *s == *seat) {
                     // the seat already exists, nothing to do
                     return;
                 }
-                let tablet_seat = mgr.get_tablet_seat(seat).detach();
-                tablet_seats.push((seat.clone(), tablet_seat));
+                let tablet_seat = mgr.get_tablet_seat(seat);
+                datamut.tablet_seats.push((seat.clone(), tablet_seat.detach()));
+                // attach tablet seat to global callback for new devices
+                let dclone = data.clone();
+                tablet_seat.quick_assign(move |t_seat, evt, ddata| {
+                    tablet_seat_cb(t_seat, dclone.clone(), evt, ddata)
+                });
             }
             Self::Pending { seats } => {
                 seats.push(seat.clone());
@@ -139,11 +157,79 @@ impl TabletInner {
         }
     }
 
-    fn remove_seat(&mut self, seat: &wl_seat::WlSeat) {
+    fn remove_seat(&mut self, seat: &Attached<wl_seat::WlSeat>) {
         match self {
-            Self::Ready { tablet_seats, .. } => tablet_seats.retain(|(s, _)| s != seat),
+            Self::Ready { data, .. } => data.borrow_mut().tablet_seats.retain(|(s, _)| s != seat),
             Self::Pending { seats } => seats.retain(|s| s != seat),
         }
+    }
+}
+
+fn tablet_seat_cb(
+    tablet_seat: Main<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
+    handler_data: Rc<RefCell<SharedData>>,
+    event: zwp_tablet_seat_v2::Event,
+    ddata: DispatchData,
+) {
+    match event {
+        zwp_tablet_seat_v2::Event::ToolAdded { id } => {
+            // set callback for tool events
+            id.quick_assign(move |tool, event, ddata| {
+                tablet_tool_cb(
+                    tablet_seat.clone().into(),
+                    tool,
+                    handler_data.clone(),
+                    event,
+                    ddata,
+                );
+            })
+        }
+        _ => {
+            todo!();
+        }
+    }
+}
+
+fn tablet_tool_cb(
+    tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
+    tablet_tool: Main<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+    handler_data: Rc<RefCell<SharedData>>,
+    event: zwp_tablet_tool_v2::Event,
+    mut ddata: DispatchData,
+) {
+    match event {
+        zwp_tablet_tool_v2::Event::Type { .. } => {}
+        zwp_tablet_tool_v2::Event::Done => {
+            //emit tool added event
+            //need reference to inner to call respective listener
+            handler_data.borrow_mut().listeners.retain(|lst| {
+                if let Some(cb) = Weak::upgrade(lst) {
+                    let wlSeat = handler_data
+                        .borrow_mut()
+                        .tablet_seats
+                        .iter()
+                        .find(|(_, tseat)| *tseat == *tablet_seat)
+                        .map(|(wseat, _)| wseat.clone());
+                    match wlSeat {
+                        Some(wseat) => {
+                            (&mut *cb.borrow_mut())(
+                                wseat,
+                                TabletDeviceEvent::ToolAdded { tool: tablet_tool.clone().into() },
+                                ddata.reborrow(),
+                            );
+                            true
+                        }
+                        None => false,
+                    }
+                } else {
+                    false
+                }
+            });
+        }
+        zwp_tablet_tool_v2::Event::Removed => {
+            //emit tool removed event
+        }
+        _ => todo!(),
     }
 }
 
