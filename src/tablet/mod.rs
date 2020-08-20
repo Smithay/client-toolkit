@@ -283,3 +283,14 @@ impl environment::GlobalHandler<zwp_tablet_manager_v2::ZwpTabletManagerV2> for T
         self.inner.borrow().get_mgr()
     }
 }
+
+impl<E: TabletHandling> crate::environment::Environment<E> {
+    pub fn listen_for_tablets<
+        F: FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static,
+    >(
+        &self,
+        f: F,
+    ) -> std::result::Result<TabletDeviceListener, ()> {
+        self.with_inner(move |inner| TabletHandling::listen(inner, f))
+    }
+}
