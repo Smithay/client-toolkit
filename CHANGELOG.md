@@ -10,6 +10,8 @@
 
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
+- `ConceptFrame` is now hiding decorations for `State::Fullscreen`
+- Restore original size of fullscreeened window on unfullscreen
 
 ## 0.10.0 -- 2020-07-10
 

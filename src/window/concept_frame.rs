@@ -209,6 +209,7 @@ struct Inner {
     resizable: bool,
     implem: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     maximized: bool,
+    fullscreened: bool,
     buttons: (bool, bool, bool),
 }
 
@@ -340,6 +341,7 @@ impl Frame for ConceptFrame {
             resizable: true,
             implem: implementation,
             maximized: false,
+            fullscreened: false,
             buttons: (true, true, true),
         }));
 
@@ -468,7 +470,8 @@ impl Frame for ConceptFrame {
     fn set_states(&mut self, states: &[State]) -> bool {
         let mut inner = self.inner.borrow_mut();
         let mut need_redraw = false;
-        // process active
+
+        // Process active.
         let new_active = if states.contains(&State::Activated) {
             WindowState::Active
         } else {
@@ -476,10 +479,16 @@ impl Frame for ConceptFrame {
         };
         need_redraw |= new_active != self.active;
         self.active = new_active;
-        // process maximized
+
+        // Process maximized.
         let new_maximized = states.contains(&State::Maximized);
         need_redraw |= new_maximized != inner.maximized;
         inner.maximized = new_maximized;
+
+        // Process fullscreened.
+        let new_fullscreened = states.contains(&State::Fullscreen);
+        need_redraw |= new_fullscreened != inner.fullscreened;
+        inner.fullscreened = new_fullscreened;
 
         need_redraw
     }
@@ -499,7 +508,8 @@ impl Frame for ConceptFrame {
     fn redraw(&mut self) {
         let inner = self.inner.borrow_mut();
 
-        if self.hidden {
+        // Don't draw borders if the frame explicitly hidden or fullscreened.
+        if self.hidden || inner.fullscreened {
             // don't draw the borders
             for p in &inner.parts {
                 p.surface.attach(None, 0, 0);
@@ -815,7 +825,7 @@ impl Frame for ConceptFrame {
     }
 
     fn subtract_borders(&self, width: i32, height: i32) -> (i32, i32) {
-        if self.hidden {
+        if self.hidden || self.inner.borrow().fullscreened {
             (width, height)
         } else {
             (width, height - HEADER_SIZE as i32)
@@ -823,7 +833,7 @@ impl Frame for ConceptFrame {
     }
 
     fn add_borders(&self, width: i32, height: i32) -> (i32, i32) {
-        if self.hidden {
+        if self.hidden || self.inner.borrow().fullscreened {
             (width, height)
         } else {
             (width, height + HEADER_SIZE as i32)
@@ -831,7 +841,7 @@ impl Frame for ConceptFrame {
     }
 
     fn location(&self) -> (i32, i32) {
-        if self.hidden {
+        if self.hidden || self.inner.borrow().fullscreened {
             (0, 0)
         } else {
             (0, -(HEADER_SIZE as i32))
