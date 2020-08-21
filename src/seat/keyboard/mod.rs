@@ -33,6 +33,7 @@ pub mod keysyms;
 use self::state::KbState;
 pub use self::state::{ModifiersState, RMLVO};
 
+#[cfg(feature = "calloop")]
 const MICROS_IN_SECOND: u32 = 1000000;
 
 /// Possible kinds of key repetition
