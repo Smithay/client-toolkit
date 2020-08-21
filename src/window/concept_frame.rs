@@ -307,11 +307,15 @@ fn find_button(x: f64, y: f64, w: u32, buttons: (bool, bool, bool)) -> Location 
     }
 }
 
-/// A clean, modern and stylish set of decorations
+/// A clean, modern and stylish set of decorations.
 ///
 /// This class draws clean and modern decorations with
 /// buttons inspired by breeze, material hover shade and
-/// a white header background
+/// a white header background.
+///
+/// `ConceptFrame` is hiding its `ClientSide` decorations
+/// in a `Fullscreen` state and brings them back if those are
+/// visible when unsetting `Fullscreen` state.
 pub struct ConceptFrame {
     inner: Rc<RefCell<Inner>>,
     pools: DoubleMemPool,

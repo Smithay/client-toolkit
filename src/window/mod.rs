@@ -560,8 +560,8 @@ impl<F: Frame + 'static> Window<F> {
 
     /// Request the window to be set fullscreen
     ///
-    /// Note: you need to manually disable the decorations if you
-    /// want to hide them!
+    /// Note: The decorations hiding behavior is `Frame` dependant.
+    /// To check whether you need to hide them consult your frame documentation.
     pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
         self.shell_surface.set_fullscreen(output);
     }
