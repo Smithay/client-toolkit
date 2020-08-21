@@ -152,7 +152,6 @@ pub struct Window<F: Frame> {
     frame: Arc<Mutex<F>>,
     surface: wl_surface::WlSurface,
     decoration: Option<ZxdgToplevelDecorationV1>,
-    _decoration_mgr: Option<Attached<ZxdgDecorationManagerV1>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
     _seat_listener: crate::seat::SeatListener,
@@ -186,7 +185,6 @@ impl<F: Frame + 'static> Window<F> {
         let shell = env
             .get_shell()
             .expect("[SCTK] Cannot create a window if the compositor advertized no shell.");
-        let decoration_mgr = env.get_global::<ZxdgDecorationManagerV1>();
 
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
@@ -313,6 +311,7 @@ impl<F: Frame + 'static> Window<F> {
         });
 
         // Setup window decorations if applicable.
+        let decoration_mgr = env.get_global::<ZxdgDecorationManagerV1>();
         let decoration = Self::setup_decorations_handler(
             &decoration_mgr,
             &shell_surface,
@@ -324,7 +323,6 @@ impl<F: Frame + 'static> Window<F> {
             frame,
             shell_surface,
             decoration,
-            _decoration_mgr: decoration_mgr,
             surface,
             inner,
             _seat_listener: seat_listener,
