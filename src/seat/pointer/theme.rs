@@ -38,7 +38,8 @@ pub enum ThemeSpec<'a> {
 /// Is is also clone-able in case you need to handle several
 /// pointer theming from different places.
 ///
-/// Note that it is however not `Send` nor `Sync`
+/// Note that it is however neither `Send` nor `Sync`
+#[derive(Clone)]
 pub struct ThemeManager {
     themes: Rc<RefCell<ScaledThemeList>>,
     compositor: Attached<wl_compositor::WlCompositor>,
@@ -48,8 +49,6 @@ impl ThemeManager {
     /// Load a system pointer theme
     ///
     /// Will use the default theme of the system if name is `None`.
-    ///
-    /// Fails if `libwayland-cursor` is not available.
     pub fn init(
         theme: ThemeSpec,
         compositor: Attached<wl_compositor::WlCompositor>,
@@ -211,12 +210,11 @@ impl PointerInner {
 ///
 /// Just like `Proxy`, this is a `Rc`-like wrapper. You can clone it
 /// to have several handles to the same theming machinery of a pointer.
+#[derive(Clone)]
 pub struct ThemedPointer {
     pointer: wl_pointer::WlPointer,
     inner: Rc<RefCell<PointerInner>>,
 }
-
-// load_theme(name, 16, &shm)
 
 impl ThemedPointer {
     /// Change the cursor to the given cursor name
@@ -233,12 +231,6 @@ impl ThemedPointer {
         }
         inner.current_cursor = name.into();
         inner.update_cursor(&self.pointer)
-    }
-}
-
-impl Clone for ThemedPointer {
-    fn clone(&self) -> ThemedPointer {
-        ThemedPointer { pointer: self.pointer.clone(), inner: self.inner.clone() }
     }
 }
 

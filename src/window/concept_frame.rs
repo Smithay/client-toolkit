@@ -207,6 +207,7 @@ struct Inner {
     parts: Vec<Part>,
     size: (u32, u32),
     resizable: bool,
+    theme_over_surface: bool,
     implem: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     maximized: bool,
     fullscreened: bool,
@@ -337,13 +338,21 @@ impl Frame for ConceptFrame {
         compositor: &Attached<wl_compositor::WlCompositor>,
         subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
         shm: &Attached<wl_shm::WlShm>,
+        theme_manager: Option<ThemeManager>,
         implementation: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     ) -> Result<ConceptFrame, ::std::io::Error> {
+        let (themer, theme_over_surface) = if let Some(theme_manager) = theme_manager {
+            (theme_manager, false)
+        } else {
+            (ThemeManager::init(ThemeSpec::System, compositor.clone(), shm.clone()), true)
+        };
+
         let inner = Rc::new(RefCell::new(Inner {
             parts: vec![],
             size: (1, 1),
             resizable: true,
             implem: implementation,
+            theme_over_surface,
             maximized: false,
             fullscreened: false,
             buttons: (true, true, true),
@@ -363,13 +372,14 @@ impl Frame for ConceptFrame {
         let pools = DoubleMemPool::new(shm.clone(), move |ddata| {
             (&mut my_inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
         })?;
+
         Ok(ConceptFrame {
             inner,
             pools,
             active: WindowState::Inactive,
             hidden: false,
             pointers: Vec::new(),
-            themer: ThemeManager::init(ThemeSpec::System, compositor.clone(), shm.clone()),
+            themer,
             surface_version: compositor.as_ref().version(),
             config: ConceptConfig::default(),
             title: None,
@@ -396,13 +406,11 @@ impl Frame for ConceptFrame {
                             inner.buttons,
                         );
                         data.position = (surface_x, surface_y);
-                        if inner.resizable {
-                            change_pointer(&pointer, data.location, Some(serial))
-                        }
+                        change_pointer(&pointer, &inner, data.location, Some(serial))
                     }
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
-                        change_pointer(&pointer, data.location, Some(serial));
+                        change_pointer(&pointer, &inner, data.location, Some(serial));
                         (&mut inner.implem)(FrameRequest::Refresh, 0, ddata);
                     }
                     Event::Motion { surface_x, surface_y, .. } => {
@@ -425,9 +433,7 @@ impl Frame for ConceptFrame {
                             // we changed of part of the decoration, pointer image
                             // may need to be changed
                             data.location = newpos;
-                            if inner.resizable {
-                                change_pointer(&pointer, data.location, None)
-                            }
+                            change_pointer(&pointer, &inner, data.location, None)
                         }
                     }
                     Event::Button { serial, button, state, .. } => {
@@ -882,8 +888,15 @@ impl Drop for ConceptFrame {
     }
 }
 
-fn change_pointer(pointer: &ThemedPointer, location: Location, serial: Option<u32>) {
+fn change_pointer(pointer: &ThemedPointer, inner: &Inner, location: Location, serial: Option<u32>) {
+    // Prevent theming of the surface if it was requested.
+    if !inner.theme_over_surface && location == Location::None {
+        return;
+    }
+
     let name = match location {
+        // If we can't resize a frame we shouldn't show resize cursors.
+        _ if !inner.resizable => "left_ptr",
         Location::Top => "top_side",
         Location::TopRight => "top_right_corner",
         Location::Right => "right_side",
@@ -894,6 +907,7 @@ fn change_pointer(pointer: &ThemedPointer, location: Location, serial: Option<u3
         Location::TopLeft => "top_left_corner",
         _ => "left_ptr",
     };
+
     if pointer.set_cursor(name, serial).is_err() {
         log::error!("Failed to set cursor");
     }

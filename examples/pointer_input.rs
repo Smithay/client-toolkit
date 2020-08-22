@@ -80,6 +80,7 @@ fn main() {
     let mut window = env
         .create_window::<ConceptFrame, _>(
             surface,
+            None,
             window_config.dimensions(),
             move |event, mut dispatch_data| {
                 let mut config = dispatch_data.get::<WindowConfig>().unwrap();

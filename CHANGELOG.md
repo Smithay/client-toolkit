@@ -7,11 +7,14 @@
 - `window.set_decorate` is now taking mutable reference
 - Added `show_window_menu` on a `Frame` trait to request a window menu for a window.
 - `ShowMenu` enum variant to `FrameRequest`
+- `create_window` now also takes `Option<ThemeManager>`
+- `Frame::init` now also takes `Option<ThemeManager>` to reuse users' `ThemeManager`
 
 #### Additions
 
 - `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
 - A window menu could be shown on right click on decorations for `ConceptFrame`
+- `ConceptFrame` will no longer change cursor over base surface if `ThemeManager` was provided
 
 #### Changes
 
@@ -29,6 +32,7 @@
 
 - Toggling between `ServerSide` and `None` decorations raising protocol error
 - Precision in a rate of key repeat events
+- `ThemeManager` not being clone-able even if it was stated in docs
 
 ## 0.10.0 -- 2020-07-10
 

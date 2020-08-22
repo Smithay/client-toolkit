@@ -67,6 +67,7 @@ fn main() {
     let mut window = env
         .create_window::<ConceptFrame, _>(
             surface,            // the wl_surface that serves as the basis of this window
+            None,               // None for theme_manager, since we don't theme pointer outself
             image.dimensions(), // the initial internal dimensions of the window
             move |evt, mut dispatch_data| {
                 // This is the closure that process the Window events.
