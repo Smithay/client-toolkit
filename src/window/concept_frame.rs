@@ -425,16 +425,21 @@ impl Frame for ConceptFrame {
                         }
                     }
                     Event::Button { serial, button, state, .. } => {
-                        if state == wl_pointer::ButtonState::Pressed && button == 0x110 {
-                            // left click
-                            let req = request_for_location(
-                                data.location,
-                                &data.seat,
-                                inner.maximized,
-                                inner.resizable,
-                            );
-                            if let Some(req) = req {
-                                (&mut inner.implem)(req, serial, ddata);
+                        if state == wl_pointer::ButtonState::Pressed {
+                            let request = match button {
+                                // Left mouse button.
+                                0x110 => request_for_location_on_lmb(
+                                    &data,
+                                    inner.maximized,
+                                    inner.resizable,
+                                ),
+                                // Right mouse button.
+                                0x111 => request_for_location_on_rmb(&data),
+                                _ => None,
+                            };
+
+                            if let Some(request) = request {
+                                (&mut inner.implem)(request, serial, ddata);
                             }
                         }
                     }
@@ -880,33 +885,38 @@ fn change_pointer(pointer: &ThemedPointer, location: Location, serial: Option<u3
     }
 }
 
-fn request_for_location(
-    location: Location,
-    seat: &wl_seat::WlSeat,
+fn request_for_location_on_lmb(
+    pointer_data: &PointerUserData,
     maximized: bool,
     resizable: bool,
 ) -> Option<FrameRequest> {
     use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
-    match location {
-        Location::Top if resizable => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Top)),
-        Location::TopLeft if resizable => {
-            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopLeft))
+    match pointer_data.location {
+        Location::Top if resizable => {
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::Top))
         }
-        Location::Left if resizable => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Left)),
+        Location::TopLeft if resizable => {
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::TopLeft))
+        }
+        Location::Left if resizable => {
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::Left))
+        }
         Location::BottomLeft if resizable => {
-            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::BottomLeft))
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::BottomLeft))
         }
         Location::Bottom if resizable => {
-            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Bottom))
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::Bottom))
         }
         Location::BottomRight if resizable => {
-            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::BottomRight))
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::BottomRight))
         }
-        Location::Right if resizable => Some(FrameRequest::Resize(seat.clone(), ResizeEdge::Right)),
+        Location::Right if resizable => {
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::Right))
+        }
         Location::TopRight if resizable => {
-            Some(FrameRequest::Resize(seat.clone(), ResizeEdge::TopRight))
+            Some(FrameRequest::Resize(pointer_data.seat.clone(), ResizeEdge::TopRight))
         }
-        Location::Head => Some(FrameRequest::Move(seat.clone())),
+        Location::Head => Some(FrameRequest::Move(pointer_data.seat.clone())),
         Location::Button(UIButton::Close) => Some(FrameRequest::Close),
         Location::Button(UIButton::Maximize) => {
             if maximized {
@@ -916,6 +926,18 @@ fn request_for_location(
             }
         }
         Location::Button(UIButton::Minimize) => Some(FrameRequest::Minimize),
+        _ => None,
+    }
+}
+
+fn request_for_location_on_rmb(pointer_data: &PointerUserData) -> Option<FrameRequest> {
+    match pointer_data.location {
+        Location::Head | Location::Button(_) => Some(FrameRequest::ShowMenu(
+            pointer_data.seat.clone(),
+            pointer_data.position.0 as i32,
+            // We must offset it by header size for precise position.
+            pointer_data.position.1 as i32 - HEADER_SIZE as i32,
+        )),
         _ => None,
     }
 }
