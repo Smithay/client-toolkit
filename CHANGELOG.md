@@ -33,6 +33,7 @@
 - Toggling between `ServerSide` and `None` decorations raising protocol error
 - Precision in a rate of key repeat events
 - `ThemeManager` not being clone-able even if it was stated in docs
+- Repeat rate not being disabled when receiving zero for `rate`  in `wl_keyboard.repeat_info`
 
 ## 0.10.0 -- 2020-07-10
 
