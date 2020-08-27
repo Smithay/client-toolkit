@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- `window.set_decorate` is now taking mutable reference
+- Added `show_window_menu` on a `Frame` trait to request a window menu for a window.
+- `ShowMenu` enum variant to `FrameRequest`
+
 #### Additions
 
 - `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
@@ -11,14 +17,15 @@
 
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
-
-#### Breaking Changes
-
-- Added `show_window_menu` on a `Frame` trait to request a window menu for a window.
-- `ShowMenu` enum variant to `FrameRequest`
+- Explicitly setting `ClientSide` decorations will result in `ServerSide` ones being destroyed
+- Requesting `ServerSide` decorations in `set_decorate` will now fallback to `ClientSide`
+  if the former are not available
+- Requesting `None` decorations if `ServerSide` are presented will result in setting
+  `ClientSide` decorations with hidden frame
 
 #### Bugfixes
 
+- Toggling between `ServerSide` and `None` decorations raising protocol error
 - Precision in a rate of key repeat events
 
 ## 0.10.0 -- 2020-07-10

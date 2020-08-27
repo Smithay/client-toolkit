@@ -10,7 +10,8 @@ use wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge;
 pub use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
 
 use wayland_protocols::unstable::xdg_decoration::v1::client::{
-    zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
+    zxdg_decoration_manager_v1::ZxdgDecorationManagerV1,
+    zxdg_toplevel_decoration_v1::{self, ZxdgToplevelDecorationV1},
 };
 
 use crate::{
@@ -109,6 +110,7 @@ pub enum Event {
 ///
 /// If you don't care about it, you should use `FollowServer` (which is the
 /// SCTK default). It'd be the most ergonomic for your users.
+#[derive(Debug, PartialEq, Eq)]
 pub enum Decorations {
     /// Request server-side decorations
     ServerSide,
@@ -149,8 +151,7 @@ struct WindowInner<F> {
 pub struct Window<F: Frame> {
     frame: Arc<Mutex<F>>,
     surface: wl_surface::WlSurface,
-    decoration: Mutex<Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
-    decoration_mgr: Option<Attached<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>>,
+    decoration: Option<ZxdgToplevelDecorationV1>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
     inner: Arc<Mutex<Option<WindowInner<F>>>>,
     _seat_listener: crate::seat::SeatListener,
@@ -175,7 +176,7 @@ impl<F: Frame + 'static> Window<F> {
             + GlobalHandler<wl_shm::WlShm>
             + crate::shell::ShellHandling
             + MultiGlobalHandler<wl_seat::WlSeat>
-            + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>
+            + GlobalHandler<ZxdgDecorationManagerV1>
             + crate::seat::SeatHandling,
     {
         let compositor = env.require_global::<wl_compositor::WlCompositor>();
@@ -184,8 +185,6 @@ impl<F: Frame + 'static> Window<F> {
         let shell = env
             .get_shell()
             .expect("[SCTK] Cannot create a window if the compositor advertized no shell.");
-        let decoration_mgr =
-            env.get_global::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>();
 
         let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
@@ -314,68 +313,65 @@ impl<F: Frame + 'static> Window<F> {
             decorated: true,
         });
 
+        // Setup window decorations if applicable.
+        let decoration_mgr = env.get_global::<ZxdgDecorationManagerV1>();
+        let decoration = Self::setup_decorations_handler(
+            &decoration_mgr,
+            &shell_surface,
+            frame.clone(),
+            inner.clone(),
+        );
+
         let window = Window {
             frame,
             shell_surface,
-            decoration: Mutex::new(None),
-            decoration_mgr,
+            decoration,
             surface,
             inner,
             _seat_listener: seat_listener,
         };
 
-        // init decoration if applicable
-        {
-            let mut decoration = window.decoration.lock().unwrap();
-            window.ensure_decoration(&mut decoration);
-        }
-
         Ok(window)
     }
 
-    fn ensure_decoration(
-        &self,
-        decoration: &mut Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
-    ) {
-        if self.decoration_mgr.is_none() {
-            return;
-        }
-
-        if let Some(ref decoration) = *decoration {
-            if decoration.as_ref().is_alive() {
-                return;
+    /// Setup handling for zxdg_toplevel_decoration_v1 in case protocol is available.
+    fn setup_decorations_handler(
+        decoration_mgr: &Option<Attached<ZxdgDecorationManagerV1>>,
+        shell_surface: &Arc<Box<dyn shell::ShellSurface>>,
+        decoration_frame: Arc<Mutex<F>>,
+        decoration_inner: Arc<Mutex<Option<WindowInner<F>>>>,
+    ) -> Option<ZxdgToplevelDecorationV1> {
+        let (toplevel, mgr) = match (shell_surface.get_xdg(), decoration_mgr) {
+            (Some(toplevel), Some(ref mgr)) => (toplevel, mgr),
+            _ => {
+                return None;
             }
-        }
-
-        let decoration_frame = self.frame.clone();
-        let decoration_inner = self.inner.clone();
-        *decoration = match (self.shell_surface.get_xdg(), &self.decoration_mgr) {
-            (Some(toplevel), &Some(ref mgr)) => {
-                use self::zxdg_toplevel_decoration_v1::{Event, Mode};
-                let decoration = mgr.get_toplevel_decoration(toplevel);
-                decoration.quick_assign(move |_, event, _| {
-                    if let Event::Configure { mode } = event {
-                        match mode {
-                            Mode::ServerSide => {
-                                decoration_frame.lock().unwrap().set_hidden(true);
-                            }
-                            Mode::ClientSide => {
-                                let want_decorate = decoration_inner
-                                    .lock()
-                                    .unwrap()
-                                    .as_ref()
-                                    .map(|inner| inner.decorated)
-                                    .unwrap_or(false);
-                                decoration_frame.lock().unwrap().set_hidden(!want_decorate);
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-                });
-                Some(decoration.detach())
-            }
-            _ => None,
         };
+
+        let decoration = mgr.get_toplevel_decoration(toplevel);
+
+        decoration.quick_assign(move |_, event, _| {
+            use self::zxdg_toplevel_decoration_v1::{Event, Mode};
+            let mode = if let Event::Configure { mode } = event { mode } else { unreachable!() };
+
+            match mode {
+                Mode::ServerSide => {
+                    decoration_frame.lock().unwrap().set_hidden(true);
+                }
+                Mode::ClientSide => {
+                    let want_decorate = decoration_inner
+                        .lock()
+                        .unwrap()
+                        .as_ref()
+                        .map(|inner| inner.decorated)
+                        .unwrap_or(false);
+                    decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                }
+                _ => unreachable!(),
+            }
+        });
+
+        Some(decoration.detach())
     }
 
     /// Access the surface wrapped in this Window
@@ -430,44 +426,72 @@ impl<F: Frame + 'static> Window<F> {
         self.shell_surface.set_app_id(app_id);
     }
 
-    /// Set whether the window should be decorated or not
+    /// Set whether the window should be decorated or not.
+    ///
+    /// If `zxdg_toplevel_decoration_v1` object is presented and alive, requesting `None`
+    /// decorations will result in setting `ClientSide` decorations with hidden frame, and if
+    /// `ClientSide` decorations were requested, it'll result in destroying
+    /// `zxdg_toplevel_decoration_v1` object, meaning that you won't be able to get `ServerSide`
+    /// decorations back.
+    ///
+    /// In case `zxdg_toplevel_decoration_v1` is not available or the corresponding object is not
+    /// alive anymore, `decorate` with `ServerSide` or `FollowServer` values will always result in
+    /// `ClientSide` decorations being used.
     ///
     /// You need to call `refresh()` afterwards for this to properly
     /// take effect.
-    pub fn set_decorate(&self, decorate: Decorations) {
+    pub fn set_decorate(&mut self, decorate: Decorations) {
         use self::zxdg_toplevel_decoration_v1::Mode;
-        let mut decoration_guard = self.decoration.lock().unwrap();
 
-        if let Decorations::ClientSide = decorate {
-            self.frame.lock().unwrap().set_hidden(false);
-        } else {
-            self.frame.lock().unwrap().set_hidden(true);
-        }
-
-        if let Some(ref mut inner) = *self.inner.lock().unwrap() {
-            if let Decorations::None = decorate {
+        // Update inner.decorated state.
+        if let Some(inner) = self.inner.lock().unwrap().as_mut() {
+            if Decorations::None == decorate {
                 inner.decorated = false;
             } else {
                 inner.decorated = true;
             }
         }
 
-        // destroy the decoration object, so that the server does not
-        // decorate us if we don't want to
-        if let Decorations::None | Decorations::ClientSide = decorate {
-            if let Some(ref dec) = decoration_guard.take() {
-                dec.destroy();
+        match self.decoration.as_ref() {
+            // Server side decorations are there.
+            Some(decoration) => {
+                match decorate {
+                    Decorations::ClientSide => {
+                        // The user explicitly requested `ClientSide` decorations, we should destroy
+                        // the server side decorations if some are presented.
+                        decoration.destroy();
+                        self.decoration = None;
+                    }
+                    Decorations::ServerSide => {
+                        decoration.set_mode(Mode::ServerSide);
+                    }
+                    Decorations::FollowServer => {
+                        decoration.unset_mode();
+                    }
+                    Decorations::None => {
+                        // The user explicitly requested `None` decorations, however
+                        // since we can't destroy and recreate decoration object on the fly switch
+                        // them to `ClientSide` with the hidden frame. The server is free to ignore
+                        // us with such request, but not that we can do much about it.
+                        decoration.set_mode(Mode::ClientSide);
+                        self.frame.lock().unwrap().set_hidden(true);
+                    }
+                }
             }
-            return;
-        }
-
-        // We didn't early exit, so we need to deal with server-side decorations
-        self.ensure_decoration(&mut decoration_guard);
-        if let Some(ref dec) = *decoration_guard {
-            if let Decorations::ServerSide = decorate {
-                dec.set_mode(Mode::ServerSide);
-            } else {
-                dec.unset_mode();
+            // Server side decorations are not presented or were destroyed.
+            None => {
+                match decorate {
+                    // We map `ServerSide` and `FollowServer` decorations to `ClientSide`, since
+                    // server side decorations are no longer available.
+                    Decorations::ClientSide
+                    | Decorations::ServerSide
+                    | Decorations::FollowServer => {
+                        self.frame.lock().unwrap().set_hidden(false);
+                    }
+                    Decorations::None => {
+                        self.frame.lock().unwrap().set_hidden(true);
+                    }
+                }
             }
         }
     }
@@ -710,7 +734,7 @@ where
         + GlobalHandler<wl_shm::WlShm>
         + crate::shell::ShellHandling
         + MultiGlobalHandler<wl_seat::WlSeat>
-        + GlobalHandler<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>
+        + GlobalHandler<ZxdgDecorationManagerV1>
         + crate::seat::SeatHandling,
 {
     /// Create a new window wrapping given surface
