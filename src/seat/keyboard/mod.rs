@@ -38,6 +38,9 @@ pub mod keysyms;
 use self::state::KbState;
 pub use self::state::{ModifiersState, RMLVO};
 
+#[cfg(feature = "calloop")]
+const MICROS_IN_SECOND: u32 = 1000000;
+
 /// Possible kinds of key repetition
 pub enum RepeatKind {
     /// keys will be repeated at a set rate and delay
@@ -202,7 +205,7 @@ where
     let repeat = match repeatkind {
         RepeatKind::System => RepeatDetails { locked: false, gap: 100, delay: 300 },
         RepeatKind::Fixed { rate, delay } => {
-            RepeatDetails { locked: true, gap: 1000 / rate, delay }
+            RepeatDetails { locked: true, gap: MICROS_IN_SECOND / rate, delay }
         }
     };
 
@@ -252,7 +255,9 @@ type KbdCallback = dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client:
 #[cfg(feature = "calloop")]
 struct RepeatDetails {
     locked: bool,
+    /// Gap between key presses in microseconds.
     gap: u32,
+    /// Delay before starting key repeat in milliseconds.
     delay: u32,
 }
 
@@ -273,15 +278,15 @@ struct KbdRepeat {
 #[cfg(feature = "calloop")]
 impl KbdRepeat {
     fn start_repeat(&self, key: u32, keyboard: wl_keyboard::WlKeyboard, time: u32) {
-        // start a new repetition, overwriting the previous ones
+        // Start a new repetition, overwriting the previous ones
         self.timer_handle.cancel_all_timeouts();
         *self.current_repeat.borrow_mut() = Some(RepeatData {
             keyboard,
             keycode: key,
-            gap: self.details.gap,
-            time: time + self.details.delay,
+            gap: self.details.gap as u64,
+            time: (time + self.details.delay) as u64 * 1000,
         });
-        self.timer_handle.add_timeout(Duration::from_millis(self.details.delay as u64), ());
+        self.timer_handle.add_timeout(Duration::from_micros(self.details.delay as u64 * 1000), ());
     }
 
     fn stop_repeat(&self, key: u32) {
@@ -483,7 +488,7 @@ impl KbdHandler {
         {
             if let Some(ref mut repeat_handle) = self.repeat {
                 if !repeat_handle.details.locked {
-                    repeat_handle.details.gap = 1000 / (rate as u32);
+                    repeat_handle.details.gap = MICROS_IN_SECOND / (rate as u32);
                     repeat_handle.details.delay = delay as u32;
                 }
             }
@@ -499,10 +504,10 @@ impl KbdHandler {
 struct RepeatData {
     keyboard: wl_keyboard::WlKeyboard,
     keycode: u32,
-    // repeat gap, in ms
-    gap: u32,
-    // time of the last event, in ms
-    time: u32,
+    /// Gap between key presses in microseconds.
+    gap: u64,
+    /// Time of the last event in microseconds.
+    time: u64,
 }
 
 /// An event source managing the key repetition of a keyboard
@@ -546,15 +551,20 @@ impl calloop::EventSource for RepeatSource {
                 let keysym = state.get_one_sym_raw(data.keycode);
                 let utf8 = state.get_utf8_raw(data.keycode);
                 let new_time = data.gap + data.time;
-                // notify the callback
+                // Notify the callback.
                 callback(
-                    Event::Repeat { time: new_time, rawkey: data.keycode, keysym, utf8 },
+                    Event::Repeat {
+                        time: (new_time / 1000) as u32,
+                        rawkey: data.keycode,
+                        keysym,
+                        utf8,
+                    },
                     &mut data.keyboard,
                 );
-                // update the time of last event
+                // Update the time of last event.
                 data.time = new_time;
-                // schedule the next timeout
-                timer_handle.add_timeout(Duration::from_millis(data.gap as u64), ());
+                // Schedule the next timeout.
+                timer_handle.add_timeout(Duration::from_micros(data.gap), ());
             }
         })
     }

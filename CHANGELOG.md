@@ -17,6 +17,10 @@
 - Added `show_window_menu` on a `Frame` trait to request a window menu for a window.
 - `ShowMenu` enum variant to `FrameRequest`
 
+#### Bugfixes
+
+- Precision in a rate of key repeat events
+
 ## 0.10.0 -- 2020-07-10
 
 #### Breaking Changes
