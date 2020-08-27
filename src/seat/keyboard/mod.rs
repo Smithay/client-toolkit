@@ -13,6 +13,8 @@
 //! (but the rest of the functionnality will not be affected).
 
 #[cfg(feature = "calloop")]
+use std::num::NonZeroU32;
+#[cfg(feature = "calloop")]
 use std::time::Duration;
 use std::{
     cell::RefCell,
@@ -45,7 +47,7 @@ const MICROS_IN_SECOND: u32 = 1000000;
 pub enum RepeatKind {
     /// keys will be repeated at a set rate and delay
     Fixed {
-        /// the number of repetitions per second that should occur
+        /// The number of repetitions per second that should occur.
         rate: u32,
         /// delay (in milliseconds) between a key press and the start of repetition
         delay: u32,
@@ -203,13 +205,14 @@ where
     let callback = Rc::new(RefCell::new(callback));
 
     let repeat = match repeatkind {
-        RepeatKind::System => RepeatDetails { locked: false, gap: 100, delay: 300 },
+        RepeatKind::System => RepeatDetails { locked: false, gap: None, delay: 200 },
         RepeatKind::Fixed { rate, delay } => {
-            RepeatDetails { locked: true, gap: MICROS_IN_SECOND / rate, delay }
+            let gap = rate_to_gap(rate as i32);
+            RepeatDetails { locked: true, gap, delay }
         }
     };
 
-    // prepare the repetition handling
+    // Prepare the repetition handling.
     let (mut kbd_handler, source) = {
         let current_repeat = Rc::new(RefCell::new(None));
 
@@ -246,6 +249,17 @@ where
     Ok((keyboard.detach(), source))
 }
 
+#[cfg(feature = "calloop")]
+fn rate_to_gap(rate: i32) -> Option<NonZeroU32> {
+    if rate <= 0 {
+        None
+    } else if MICROS_IN_SECOND < rate as u32 {
+        NonZeroU32::new(1)
+    } else {
+        NonZeroU32::new(MICROS_IN_SECOND / rate as u32)
+    }
+}
+
 /*
  * Classic handling
  */
@@ -256,7 +270,9 @@ type KbdCallback = dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client:
 struct RepeatDetails {
     locked: bool,
     /// Gap between key presses in microseconds.
-    gap: u32,
+    ///
+    /// If the `gap` is `None`, it means that repeat is disabled.
+    gap: Option<NonZeroU32>,
     /// Delay before starting key repeat in milliseconds.
     delay: u32,
 }
@@ -280,10 +296,17 @@ impl KbdRepeat {
     fn start_repeat(&self, key: u32, keyboard: wl_keyboard::WlKeyboard, time: u32) {
         // Start a new repetition, overwriting the previous ones
         self.timer_handle.cancel_all_timeouts();
+
+        // Handle disabled repeat rate.
+        let gap = match self.details.gap {
+            Some(gap) => gap.get() as u64,
+            None => return,
+        };
+
         *self.current_repeat.borrow_mut() = Some(RepeatData {
             keyboard,
             keycode: key,
-            gap: self.details.gap as u64,
+            gap,
             time: (time + self.details.delay) as u64 * 1000,
         });
         self.timer_handle.add_timeout(Duration::from_micros(self.details.delay as u64 * 1000), ());
@@ -488,7 +511,7 @@ impl KbdHandler {
         {
             if let Some(ref mut repeat_handle) = self.repeat {
                 if !repeat_handle.details.locked {
-                    repeat_handle.details.gap = MICROS_IN_SECOND / (rate as u32);
+                    repeat_handle.details.gap = rate_to_gap(rate);
                     repeat_handle.details.delay = delay as u32;
                 }
             }
