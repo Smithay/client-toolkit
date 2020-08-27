@@ -1168,6 +1168,20 @@
 <span id="1168">1168</span>
 <span id="1169">1169</span>
 <span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
+<span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
+<span id="1180">1180</span>
+<span id="1181">1181</span>
+<span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>;
@@ -1380,6 +1394,7 @@
     <span class="ident">resizable</span>: <span class="ident">bool</span>,
     <span class="ident">implem</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">FrameRequest</span>, <span class="ident">u32</span>, <span class="ident">DispatchData</span>)<span class="op">&gt;</span>,
     <span class="ident">maximized</span>: <span class="ident">bool</span>,
+    <span class="ident">fullscreened</span>: <span class="ident">bool</span>,
     <span class="ident">buttons</span>: (<span class="ident">bool</span>, <span class="ident">bool</span>, <span class="ident">bool</span>),
 }
 
@@ -1477,11 +1492,15 @@
     }
 }
 
-<span class="doccomment">/// A clean, modern and stylish set of decorations</span>
+<span class="doccomment">/// A clean, modern and stylish set of decorations.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This class draws clean and modern decorations with</span>
 <span class="doccomment">/// buttons inspired by breeze, material hover shade and</span>
-<span class="doccomment">/// a white header background</span>
+<span class="doccomment">/// a white header background.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// `ConceptFrame` is hiding its `ClientSide` decorations</span>
+<span class="doccomment">/// in a `Fullscreen` state and brings them back if those are</span>
+<span class="doccomment">/// visible when unsetting `Fullscreen` state.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConceptFrame</span> {
     <span class="ident">inner</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">pools</span>: <span class="ident">DoubleMemPool</span>,
@@ -1511,6 +1530,7 @@
             <span class="ident">resizable</span>: <span class="bool-val">true</span>,
             <span class="ident">implem</span>: <span class="ident">implementation</span>,
             <span class="ident">maximized</span>: <span class="bool-val">false</span>,
+            <span class="ident">fullscreened</span>: <span class="bool-val">false</span>,
             <span class="ident">buttons</span>: (<span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>),
         }));
 
@@ -1644,7 +1664,8 @@
     <span class="kw">fn</span> <span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">states</span>: <span class="kw-2">&amp;</span>[<span class="ident">State</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">need_redraw</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="comment">// process active</span>
+
+        <span class="comment">// Process active.</span>
         <span class="kw">let</span> <span class="ident">new_active</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">states</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Activated</span>) {
             <span class="ident">WindowState</span>::<span class="ident">Active</span>
         } <span class="kw">else</span> {
@@ -1652,10 +1673,16 @@
         };
         <span class="ident">need_redraw</span> <span class="op">|</span><span class="op">=</span> <span class="ident">new_active</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">active</span>;
         <span class="self">self</span>.<span class="ident">active</span> <span class="op">=</span> <span class="ident">new_active</span>;
-        <span class="comment">// process maximized</span>
+
+        <span class="comment">// Process maximized.</span>
         <span class="kw">let</span> <span class="ident">new_maximized</span> <span class="op">=</span> <span class="ident">states</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Maximized</span>);
         <span class="ident">need_redraw</span> <span class="op">|</span><span class="op">=</span> <span class="ident">new_maximized</span> <span class="op">!</span><span class="op">=</span> <span class="ident">inner</span>.<span class="ident">maximized</span>;
         <span class="ident">inner</span>.<span class="ident">maximized</span> <span class="op">=</span> <span class="ident">new_maximized</span>;
+
+        <span class="comment">// Process fullscreened.</span>
+        <span class="kw">let</span> <span class="ident">new_fullscreened</span> <span class="op">=</span> <span class="ident">states</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Fullscreen</span>);
+        <span class="ident">need_redraw</span> <span class="op">|</span><span class="op">=</span> <span class="ident">new_fullscreened</span> <span class="op">!</span><span class="op">=</span> <span class="ident">inner</span>.<span class="ident">fullscreened</span>;
+        <span class="ident">inner</span>.<span class="ident">fullscreened</span> <span class="op">=</span> <span class="ident">new_fullscreened</span>;
 
         <span class="ident">need_redraw</span>
     }
@@ -1675,7 +1702,8 @@
     <span class="kw">fn</span> <span class="ident">redraw</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> {
+        <span class="comment">// Don&#39;t draw borders if the frame explicitly hidden or fullscreened.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">fullscreened</span> {
             <span class="comment">// don&#39;t draw the borders</span>
             <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">parts</span> {
                 <span class="ident">p</span>.<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">None</span>, <span class="number">0</span>, <span class="number">0</span>);
@@ -1991,7 +2019,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">subtract_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>().<span class="ident">fullscreened</span> {
             (<span class="ident">width</span>, <span class="ident">height</span>)
         } <span class="kw">else</span> {
             (<span class="ident">width</span>, <span class="ident">height</span> <span class="op">-</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>)
@@ -1999,7 +2027,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">add_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>().<span class="ident">fullscreened</span> {
             (<span class="ident">width</span>, <span class="ident">height</span>)
         } <span class="kw">else</span> {
             (<span class="ident">width</span>, <span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>)
@@ -2007,7 +2035,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">location</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>().<span class="ident">fullscreened</span> {
             (<span class="number">0</span>, <span class="number">0</span>)
         } <span class="kw">else</span> {
             (<span class="number">0</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>))

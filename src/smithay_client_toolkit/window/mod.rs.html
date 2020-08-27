@@ -853,6 +853,22 @@
 <span id="853">853</span>
 <span id="854">854</span>
 <span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
@@ -1075,49 +1091,65 @@
             <span class="kw-2">&amp;</span><span class="ident">shell</span>,
             <span class="kw-2">&amp;</span><span class="ident">surface</span>,
             <span class="kw">move</span> <span class="op">|</span><span class="ident">event</span>, <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">inner</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">frame_inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() {
-                    <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">shell</span>::<span class="ident">Event</span>::<span class="ident">Configure</span> { <span class="ident">states</span>, <span class="kw-2">mut</span> <span class="ident">new_size</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">frame</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                            <span class="comment">// clamp size</span>
-                            <span class="ident">new_size</span> <span class="op">=</span> <span class="ident">new_size</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">h</span>)<span class="op">|</span> {
-                                <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::{<span class="ident">max</span>, <span class="ident">min</span>};
-                                <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">w</span>, <span class="kw-2">mut</span> <span class="ident">h</span>) <span class="op">=</span> <span class="ident">frame</span>.<span class="ident">subtract_borders</span>(<span class="ident">w</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">h</span> <span class="kw">as</span> <span class="ident">i32</span>);
-                                <span class="kw">let</span> (<span class="ident">minw</span>, <span class="ident">minh</span>) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">min_size</span>;
-                                <span class="ident">w</span> <span class="op">=</span> <span class="ident">max</span>(<span class="ident">w</span>, <span class="ident">minw</span> <span class="kw">as</span> <span class="ident">i32</span>);
-                                <span class="ident">h</span> <span class="op">=</span> <span class="ident">max</span>(<span class="ident">h</span>, <span class="ident">minh</span> <span class="kw">as</span> <span class="ident">i32</span>);
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">maxw</span>, <span class="ident">maxh</span>)) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">max_size</span> {
-                                    <span class="ident">w</span> <span class="op">=</span> <span class="ident">min</span>(<span class="ident">w</span>, <span class="ident">maxw</span> <span class="kw">as</span> <span class="ident">i32</span>);
-                                    <span class="ident">h</span> <span class="op">=</span> <span class="ident">min</span>(<span class="ident">h</span>, <span class="ident">maxh</span> <span class="kw">as</span> <span class="ident">i32</span>);
-                                }
-                                (<span class="ident">max</span>(<span class="ident">w</span>, <span class="number">1</span>) <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">max</span>(<span class="ident">h</span>, <span class="number">1</span>) <span class="kw">as</span> <span class="ident">u32</span>)
-                            });
-                            <span class="comment">// compute frame changes</span>
-                            <span class="kw">let</span> <span class="ident">need_refresh</span> <span class="op">=</span> <span class="ident">frame</span>.<span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="ident">states</span>);
-                            <span class="comment">// check if the maximization state changed</span>
-                            <span class="kw">if</span> <span class="ident">states</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Maximized</span>) {
-                                <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">old_size</span>.<span class="ident">is_none</span>() {
-                                    <span class="comment">// we are getting maximized, store the size for restoration</span>
-                                    <span class="ident">inner</span>.<span class="ident">old_size</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>.<span class="ident">current_size</span>);
-                                }
-                            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">new_size</span>.<span class="ident">is_none</span>() {
-                                <span class="comment">// we are getting de-maximized, restore the size</span>
-                                <span class="comment">// if we were not previously maximized, old_size is None and this does nothing</span>
-                                <span class="ident">new_size</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">old_size</span>.<span class="ident">take</span>();
-                            } <span class="kw">else</span> {
-                                <span class="comment">// we are not maximized but are given a size, respect it</span>
-                                <span class="comment">// and forget about the old size</span>
-                                <span class="ident">inner</span>.<span class="ident">old_size</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-                            }
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">frame_inner</span> <span class="op">=</span> <span class="ident">frame_inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">frame_inner</span>.<span class="ident">as_mut</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>,
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,
+                };
 
-                            <span class="kw">if</span> <span class="ident">need_refresh</span> {
-                                (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Refresh</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>());
+                <span class="kw">match</span> <span class="ident">event</span> {
+                    <span class="ident">shell</span>::<span class="ident">Event</span>::<span class="ident">Configure</span> { <span class="ident">states</span>, <span class="kw-2">mut</span> <span class="ident">new_size</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">frame</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+
+                        <span class="comment">// Populate frame changes. We should do it before performing new_size</span>
+                        <span class="comment">// recalculation, since we should account for a fullscreen state.</span>
+                        <span class="kw">let</span> <span class="ident">need_refresh</span> <span class="op">=</span> <span class="ident">frame</span>.<span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="ident">states</span>);
+
+                        <span class="comment">// Clamp size.</span>
+                        <span class="ident">new_size</span> <span class="op">=</span> <span class="ident">new_size</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">h</span>)<span class="op">|</span> {
+                            <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::{<span class="ident">max</span>, <span class="ident">min</span>};
+                            <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">w</span>, <span class="kw-2">mut</span> <span class="ident">h</span>) <span class="op">=</span> <span class="ident">frame</span>.<span class="ident">subtract_borders</span>(<span class="ident">w</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">h</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                            <span class="kw">let</span> (<span class="ident">minw</span>, <span class="ident">minh</span>) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">min_size</span>;
+                            <span class="ident">w</span> <span class="op">=</span> <span class="ident">max</span>(<span class="ident">w</span>, <span class="ident">minw</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                            <span class="ident">h</span> <span class="op">=</span> <span class="ident">max</span>(<span class="ident">h</span>, <span class="ident">minh</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">maxw</span>, <span class="ident">maxh</span>)) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">max_size</span> {
+                                <span class="ident">w</span> <span class="op">=</span> <span class="ident">min</span>(<span class="ident">w</span>, <span class="ident">maxw</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                                <span class="ident">h</span> <span class="op">=</span> <span class="ident">min</span>(<span class="ident">h</span>, <span class="ident">maxh</span> <span class="kw">as</span> <span class="ident">i32</span>);
                             }
-                            (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Configure</span> { <span class="ident">states</span>, <span class="ident">new_size</span> }, <span class="ident">ddata</span>);
+                            (<span class="ident">max</span>(<span class="ident">w</span>, <span class="number">1</span>) <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">max</span>(<span class="ident">h</span>, <span class="number">1</span>) <span class="kw">as</span> <span class="ident">u32</span>)
+                        });
+
+                        <span class="comment">// Check whether we should save old size for later restoration.</span>
+                        <span class="kw">let</span> <span class="ident">should_stash_size</span> <span class="op">=</span> <span class="ident">states</span>
+                            .<span class="ident">iter</span>()
+                            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">s</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Maximized</span> <span class="op">|</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">s</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Fullscreen</span>)
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="bool-val">true</span>)
+                            .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+
+                        <span class="kw">if</span> <span class="ident">should_stash_size</span> {
+                            <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">old_size</span>.<span class="ident">is_none</span>() {
+                                <span class="comment">// We are getting maximized/fullscreened, store the size for</span>
+                                <span class="comment">// restoration.</span>
+                                <span class="ident">inner</span>.<span class="ident">old_size</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>.<span class="ident">current_size</span>);
+                            }
+                        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">new_size</span>.<span class="ident">is_none</span>() {
+                            <span class="comment">// We are getting de-maximized/de-fullscreened, restore the size</span>
+                            <span class="comment">// if we were not previously maximized/fullscreened, old_size is</span>
+                            <span class="comment">// None and this does nothing.</span>
+                            <span class="ident">new_size</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">old_size</span>.<span class="ident">take</span>();
+                        } <span class="kw">else</span> {
+                            <span class="comment">// We are neither maximized nor fullscreened, but are given a size,</span>
+                            <span class="comment">// respect it and forget about the old size.</span>
+                            <span class="ident">inner</span>.<span class="ident">old_size</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                         }
-                        <span class="ident">shell</span>::<span class="ident">Event</span>::<span class="ident">Close</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Close</span>, <span class="ident">ddata</span>);
+
+                        <span class="kw">if</span> <span class="ident">need_refresh</span> {
+                            (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Refresh</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>());
                         }
+                        (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Configure</span> { <span class="ident">states</span>, <span class="ident">new_size</span> }, <span class="ident">ddata</span>);
+                    }
+                    <span class="ident">shell</span>::<span class="ident">Event</span>::<span class="ident">Close</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Close</span>, <span class="ident">ddata</span>);
                     }
                 }
             },
@@ -1427,8 +1459,8 @@
 
     <span class="doccomment">/// Request the window to be set fullscreen</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Note: you need to manually disable the decorations if you</span>
-    <span class="doccomment">/// want to hide them!</span>
+    <span class="doccomment">/// Note: The decorations hiding behavior is `Frame` dependant.</span>
+    <span class="doccomment">/// To check whether you need to hide them consult your frame documentation.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">output</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">wl_output</span>::<span class="ident">WlOutput</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">shell_surface</span>.<span class="ident">set_fullscreen</span>(<span class="ident">output</span>);
     }
