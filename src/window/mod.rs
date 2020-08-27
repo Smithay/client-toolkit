@@ -1,5 +1,7 @@
 //! Window abstraction
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
 
 use wayland_client::protocol::{
     wl_compositor, wl_output, wl_seat, wl_shm, wl_subcompositor, wl_surface,
@@ -123,7 +125,7 @@ pub enum Decorations {
 }
 
 struct WindowInner<F> {
-    frame: Arc<Mutex<F>>,
+    frame: Rc<RefCell<F>>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
     user_impl: Box<dyn FnMut(Event, DispatchData)>,
     min_size: (u32, u32),
@@ -149,11 +151,11 @@ struct WindowInner<F> {
 /// parameter. A few are provided in this crate if the `frames` cargo feature
 /// is enabled, but any type implementing the `Frame` trait can do.
 pub struct Window<F: Frame> {
-    frame: Arc<Mutex<F>>,
+    frame: Rc<RefCell<F>>,
     surface: wl_surface::WlSurface,
     decoration: Option<ZxdgToplevelDecorationV1>,
     shell_surface: Arc<Box<dyn shell::ShellSurface>>,
-    inner: Arc<Mutex<Option<WindowInner<F>>>>,
+    inner: Rc<RefCell<Option<WindowInner<F>>>>,
     _seat_listener: crate::seat::SeatListener,
 }
 
@@ -186,7 +188,7 @@ impl<F: Frame + 'static> Window<F> {
             .get_shell()
             .expect("[SCTK] Cannot create a window if the compositor advertized no shell.");
 
-        let inner = Arc::new(Mutex::new(None::<WindowInner<F>>));
+        let inner = Rc::new(RefCell::new(None::<WindowInner<F>>));
         let frame_inner = inner.clone();
         let shell_inner = inner.clone();
         let mut frame = F::init(
@@ -195,7 +197,7 @@ impl<F: Frame + 'static> Window<F> {
             &subcompositor,
             &shm,
             Box::new(move |req, serial, ddata: DispatchData| {
-                if let Some(ref mut inner) = *shell_inner.lock().unwrap() {
+                if let Some(ref mut inner) = *shell_inner.borrow_mut() {
                     match req {
                         FrameRequest::Minimize => inner.shell_surface.set_minimized(),
                         FrameRequest::Maximize => inner.shell_surface.set_maximized(),
@@ -214,12 +216,12 @@ impl<F: Frame + 'static> Window<F> {
             }) as Box<_>,
         )?;
         frame.resize(initial_dims);
-        let frame = Arc::new(Mutex::new(frame));
+        let frame = Rc::new(RefCell::new(frame));
         let shell_surface = Arc::new(shell::create_shell_surface(
             &shell,
             &surface,
             move |event, mut ddata: DispatchData| {
-                let mut frame_inner = frame_inner.lock().unwrap();
+                let mut frame_inner = frame_inner.borrow_mut();
                 let mut inner = match frame_inner.as_mut() {
                     Some(inner) => inner,
                     None => return,
@@ -227,7 +229,7 @@ impl<F: Frame + 'static> Window<F> {
 
                 match event {
                     shell::Event::Configure { states, mut new_size } => {
-                        let mut frame = inner.frame.lock().unwrap();
+                        let mut frame = inner.frame.borrow_mut();
 
                         // Populate frame changes. We should do it before performing new_size
                         // recalculation, since we should account for a fullscreen state.
@@ -285,7 +287,7 @@ impl<F: Frame + 'static> Window<F> {
 
         // setup size and geometry
         {
-            let frame = frame.lock().unwrap();
+            let frame = frame.borrow_mut();
             let (minw, minh) =
                 frame.add_borders(MIN_WINDOW_SIZE.0 as i32, MIN_WINDOW_SIZE.1 as i32);
             shell_surface.set_min_size(Some((minw, minh)));
@@ -300,7 +302,7 @@ impl<F: Frame + 'static> Window<F> {
             crate::seat::with_seat_data(&seat, |seat_data| {
                 if seat_data.has_pointer && !seat_data.defunct {
                     seats.push(seat.detach());
-                    frame.lock().unwrap().new_seat(&seat);
+                    frame.borrow_mut().new_seat(&seat);
                 }
             });
         }
@@ -310,15 +312,15 @@ impl<F: Frame + 'static> Window<F> {
         let seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
             let is_known = seats.contains(&seat);
             if !is_known && seat_data.has_pointer && !seat_data.defunct {
-                seat_frame.lock().unwrap().new_seat(&seat);
+                seat_frame.borrow_mut().new_seat(&seat);
                 seats.push(seat.detach());
             } else if is_known && ((!seat_data.has_pointer) || seat_data.defunct) {
-                seat_frame.lock().unwrap().remove_seat(&seat);
+                seat_frame.borrow_mut().remove_seat(&seat);
                 seats.retain(|s| s != &*seat);
             }
         });
 
-        *(inner.lock().unwrap()) = Some(WindowInner {
+        *inner.borrow_mut() = Some(WindowInner {
             frame: frame.clone(),
             shell_surface: shell_surface.clone(),
             user_impl: Box::new(implementation) as Box<_>,
@@ -354,8 +356,8 @@ impl<F: Frame + 'static> Window<F> {
     fn setup_decorations_handler(
         decoration_mgr: &Option<Attached<ZxdgDecorationManagerV1>>,
         shell_surface: &Arc<Box<dyn shell::ShellSurface>>,
-        decoration_frame: Arc<Mutex<F>>,
-        decoration_inner: Arc<Mutex<Option<WindowInner<F>>>>,
+        decoration_frame: Rc<RefCell<F>>,
+        decoration_inner: Rc<RefCell<Option<WindowInner<F>>>>,
     ) -> Option<ZxdgToplevelDecorationV1> {
         let (toplevel, mgr) = match (shell_surface.get_xdg(), decoration_mgr) {
             (Some(toplevel), Some(ref mgr)) => (toplevel, mgr),
@@ -372,16 +374,15 @@ impl<F: Frame + 'static> Window<F> {
 
             match mode {
                 Mode::ServerSide => {
-                    decoration_frame.lock().unwrap().set_hidden(true);
+                    decoration_frame.borrow_mut().set_hidden(true);
                 }
                 Mode::ClientSide => {
                     let want_decorate = decoration_inner
-                        .lock()
-                        .unwrap()
+                        .borrow_mut()
                         .as_ref()
                         .map(|inner| inner.decorated)
                         .unwrap_or(false);
-                    decoration_frame.lock().unwrap().set_hidden(!want_decorate);
+                    decoration_frame.borrow_mut().set_hidden(!want_decorate);
                 }
                 _ => unreachable!(),
             }
@@ -407,7 +408,7 @@ impl<F: Frame + 'static> Window<F> {
     /// Your implementation will also receive `Refresh` events when the frame requests
     /// to be redrawn (to provide some frame animations for example).
     pub fn refresh(&mut self) {
-        self.frame.lock().unwrap().redraw();
+        self.frame.borrow_mut().redraw();
     }
 
     /// Set a short title for the window.
@@ -427,7 +428,7 @@ impl<F: Frame + 'static> Window<F> {
             }
             title.truncate(new_len);
         }
-        self.frame.lock().unwrap().set_title(title.clone());
+        self.frame.borrow_mut().set_title(title.clone());
         self.shell_surface.set_title(title);
     }
 
@@ -460,7 +461,7 @@ impl<F: Frame + 'static> Window<F> {
         use self::zxdg_toplevel_decoration_v1::Mode;
 
         // Update inner.decorated state.
-        if let Some(inner) = self.inner.lock().unwrap().as_mut() {
+        if let Some(inner) = self.inner.borrow_mut().as_mut() {
             if Decorations::None == decorate {
                 inner.decorated = false;
             } else {
@@ -490,7 +491,7 @@ impl<F: Frame + 'static> Window<F> {
                         // them to `ClientSide` with the hidden frame. The server is free to ignore
                         // us with such request, but not that we can do much about it.
                         decoration.set_mode(Mode::ClientSide);
-                        self.frame.lock().unwrap().set_hidden(true);
+                        self.frame.borrow_mut().set_hidden(true);
                     }
                 }
             }
@@ -502,10 +503,10 @@ impl<F: Frame + 'static> Window<F> {
                     Decorations::ClientSide
                     | Decorations::ServerSide
                     | Decorations::FollowServer => {
-                        self.frame.lock().unwrap().set_hidden(false);
+                        self.frame.borrow_mut().set_hidden(false);
                     }
                     Decorations::None => {
-                        self.frame.lock().unwrap().set_hidden(true);
+                        self.frame.borrow_mut().set_hidden(true);
                     }
                 }
             }
@@ -525,9 +526,9 @@ impl<F: Frame + 'static> Window<F> {
     /// When re-activating resizability, any previously set min/max
     /// sizes are restored.
     pub fn set_resizable(&self, resizable: bool) {
-        let mut frame = self.frame.lock().unwrap();
+        let mut frame = self.frame.borrow_mut();
         frame.set_resizable(resizable);
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.borrow_mut();
         if let Some(ref mut inner) = *inner {
             if resizable {
                 // restore the min/max sizes
@@ -538,7 +539,7 @@ impl<F: Frame + 'static> Window<F> {
                     inner.max_size.map(|(w, h)| frame.add_borders(w as i32, h as i32)),
                 );
             } else {
-                // lock the min/max sizes to current size
+                // Lock the min/max sizes to current size.
                 let (w, h) = inner.current_size;
                 self.shell_surface.set_min_size(Some(frame.add_borders(w as i32, h as i32)));
                 self.shell_surface.set_max_size(Some(frame.add_borders(w as i32, h as i32)));
@@ -560,10 +561,10 @@ impl<F: Frame + 'static> Window<F> {
         use std::cmp::max;
         let w = max(w, 1);
         let h = max(h, 1);
-        if let Some(ref mut inner) = *self.inner.lock().unwrap() {
+        if let Some(ref mut inner) = *self.inner.borrow_mut() {
             inner.current_size = (w, h);
         }
-        let mut frame = self.frame.lock().unwrap();
+        let mut frame = self.frame.borrow_mut();
         frame.resize((w, h));
         let (w, h) = frame.add_borders(w as i32, h as i32);
         let (x, y) = frame.location();
@@ -612,9 +613,9 @@ impl<F: Frame + 'static> Window<F> {
     /// in [`Event::Configure`](enum.Event.html).
     pub fn set_min_size(&mut self, size: Option<(u32, u32)>) {
         let (w, h) = size.unwrap_or(MIN_WINDOW_SIZE);
-        let (w, h) = self.frame.lock().unwrap().add_borders(w as i32, h as i32);
+        let (w, h) = self.frame.borrow_mut().add_borders(w as i32, h as i32);
         self.shell_surface.set_min_size(Some((w, h)));
-        if let Some(ref mut inner) = *(self.inner.lock().unwrap()) {
+        if let Some(ref mut inner) = *self.inner.borrow_mut() {
             inner.min_size = size.unwrap_or(MIN_WINDOW_SIZE)
         }
     }
@@ -632,10 +633,9 @@ impl<F: Frame + 'static> Window<F> {
     /// This size is expressed in logical pixels, like the one received
     /// in [`Event::Configure`](enum.Event.html).
     pub fn set_max_size(&mut self, size: Option<(u32, u32)>) {
-        let max_size =
-            size.map(|(w, h)| self.frame.lock().unwrap().add_borders(w as i32, h as i32));
+        let max_size = size.map(|(w, h)| self.frame.borrow_mut().add_borders(w as i32, h as i32));
         self.shell_surface.set_max_size(max_size);
-        if let Some(ref mut inner) = *(self.inner.lock().unwrap()) {
+        if let Some(ref mut inner) = *self.inner.borrow_mut() {
             inner.max_size = size.map(|(w, h)| (w as u32, h as u32));
         }
     }
@@ -646,13 +646,13 @@ impl<F: Frame + 'static> Window<F> {
     /// it. See the documentation of your `Frame` implementation for
     /// details about what configuration it supports.
     pub fn set_frame_config(&mut self, config: F::Config) {
-        self.frame.lock().unwrap().set_config(config)
+        self.frame.borrow_mut().set_config(config)
     }
 }
 
 impl<F: Frame> Drop for Window<F> {
     fn drop(&mut self) {
-        self.inner.lock().unwrap().take();
+        self.inner.borrow_mut().take();
     }
 }
 
