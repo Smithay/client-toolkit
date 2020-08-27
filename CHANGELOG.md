@@ -17,6 +17,8 @@
 
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
+- `ConceptFrame` is now hiding decorations for `State::Fullscreen`
+- Restore original size of fullscreeened window on unfullscreen
 - Explicitly setting `ClientSide` decorations will result in `ServerSide` ones being destroyed
 - Requesting `ServerSide` decorations in `set_decorate` will now fallback to `ClientSide`
   if the former are not available

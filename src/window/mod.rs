@@ -219,49 +219,65 @@ impl<F: Frame + 'static> Window<F> {
             &shell,
             &surface,
             move |event, mut ddata: DispatchData| {
-                if let Some(ref mut inner) = *frame_inner.lock().unwrap() {
-                    match event {
-                        shell::Event::Configure { states, mut new_size } => {
-                            let mut frame = inner.frame.lock().unwrap();
-                            // clamp size
-                            new_size = new_size.map(|(w, h)| {
-                                use std::cmp::{max, min};
-                                let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
-                                let (minw, minh) = inner.min_size;
-                                w = max(w, minw as i32);
-                                h = max(h, minh as i32);
-                                if let Some((maxw, maxh)) = inner.max_size {
-                                    w = min(w, maxw as i32);
-                                    h = min(h, maxh as i32);
-                                }
-                                (max(w, 1) as u32, max(h, 1) as u32)
-                            });
-                            // compute frame changes
-                            let need_refresh = frame.set_states(&states);
-                            // check if the maximization state changed
-                            if states.contains(&State::Maximized) {
-                                if inner.old_size.is_none() {
-                                    // we are getting maximized, store the size for restoration
-                                    inner.old_size = Some(inner.current_size);
-                                }
-                            } else if new_size.is_none() {
-                                // we are getting de-maximized, restore the size
-                                // if we were not previously maximized, old_size is None and this does nothing
-                                new_size = inner.old_size.take();
-                            } else {
-                                // we are not maximized but are given a size, respect it
-                                // and forget about the old size
-                                inner.old_size = None;
-                            }
+                let mut frame_inner = frame_inner.lock().unwrap();
+                let mut inner = match frame_inner.as_mut() {
+                    Some(inner) => inner,
+                    None => return,
+                };
 
-                            if need_refresh {
-                                (inner.user_impl)(Event::Refresh, ddata.reborrow());
+                match event {
+                    shell::Event::Configure { states, mut new_size } => {
+                        let mut frame = inner.frame.lock().unwrap();
+
+                        // Populate frame changes. We should do it before performing new_size
+                        // recalculation, since we should account for a fullscreen state.
+                        let need_refresh = frame.set_states(&states);
+
+                        // Clamp size.
+                        new_size = new_size.map(|(w, h)| {
+                            use std::cmp::{max, min};
+                            let (mut w, mut h) = frame.subtract_borders(w as i32, h as i32);
+                            let (minw, minh) = inner.min_size;
+                            w = max(w, minw as i32);
+                            h = max(h, minh as i32);
+                            if let Some((maxw, maxh)) = inner.max_size {
+                                w = min(w, maxw as i32);
+                                h = min(h, maxh as i32);
                             }
-                            (inner.user_impl)(Event::Configure { states, new_size }, ddata);
+                            (max(w, 1) as u32, max(h, 1) as u32)
+                        });
+
+                        // Check whether we should save old size for later restoration.
+                        let should_stash_size = states
+                            .iter()
+                            .find(|s| *s == &State::Maximized || *s == &State::Fullscreen)
+                            .map(|_| true)
+                            .unwrap_or(false);
+
+                        if should_stash_size {
+                            if inner.old_size.is_none() {
+                                // We are getting maximized/fullscreened, store the size for
+                                // restoration.
+                                inner.old_size = Some(inner.current_size);
+                            }
+                        } else if new_size.is_none() {
+                            // We are getting de-maximized/de-fullscreened, restore the size
+                            // if we were not previously maximized/fullscreened, old_size is
+                            // None and this does nothing.
+                            new_size = inner.old_size.take();
+                        } else {
+                            // We are neither maximized nor fullscreened, but are given a size,
+                            // respect it and forget about the old size.
+                            inner.old_size = None;
                         }
-                        shell::Event::Close => {
-                            (inner.user_impl)(Event::Close, ddata);
+
+                        if need_refresh {
+                            (inner.user_impl)(Event::Refresh, ddata.reborrow());
                         }
+                        (inner.user_impl)(Event::Configure { states, new_size }, ddata);
+                    }
+                    shell::Event::Close => {
+                        (inner.user_impl)(Event::Close, ddata);
                     }
                 }
             },
@@ -571,8 +587,8 @@ impl<F: Frame + 'static> Window<F> {
 
     /// Request the window to be set fullscreen
     ///
-    /// Note: you need to manually disable the decorations if you
-    /// want to hide them!
+    /// Note: The decorations hiding behavior is `Frame` dependant.
+    /// To check whether you need to hide them consult your frame documentation.
     pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
         self.shell_surface.set_fullscreen(output);
     }
