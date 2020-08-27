@@ -18,6 +18,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
 
 use crate::{
     environment::{Environment, GlobalHandler, MultiGlobalHandler},
+    seat::pointer::ThemeManager,
     shell,
 };
 
@@ -165,9 +166,13 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// It can fail if the initialization of the frame fails (for example if the
     /// frame class fails to initialize its SHM).
+    ///
+    /// Providing non `None` value for `theme_manager` should prevent theming pointer
+    /// over the `surface`.
     fn init_with_decorations<Impl, E>(
         env: &crate::environment::Environment<E>,
         surface: wl_surface::WlSurface,
+        theme_manager: Option<ThemeManager>,
         initial_dims: (u32, u32),
         implementation: Impl,
     ) -> Result<Window<F>, F::Error>
@@ -196,6 +201,7 @@ impl<F: Frame + 'static> Window<F> {
             &compositor,
             &subcompositor,
             &shm,
+            theme_manager,
             Box::new(move |req, serial, ddata: DispatchData| {
                 if let Some(ref mut inner) = *shell_inner.borrow_mut() {
                     match req {
@@ -689,12 +695,16 @@ pub trait Frame: Sized {
     type Error;
     /// Configuration for this frame
     type Config;
-    /// Initialize the Frame
+    /// Initialize the Frame.
+    ///
+    /// Providing non `None` to `theme_manager` should prevent `Frame` to theme pointer
+    /// over `base_surface` surface.
     fn init(
         base_surface: &wl_surface::WlSurface,
         compositor: &Attached<wl_compositor::WlCompositor>,
         subcompositor: &Attached<wl_subcompositor::WlSubcompositor>,
         shm: &Attached<wl_shm::WlShm>,
+        theme_manager: Option<ThemeManager>,
         callback: Box<dyn FnMut(FrameRequest, u32, DispatchData)>,
     ) -> Result<Self, Self::Error>;
     /// Set the Window XDG states for the frame
@@ -764,13 +774,14 @@ where
     pub fn create_window<F: Frame + 'static, CB>(
         &self,
         surface: wl_surface::WlSurface,
+        theme_manager: Option<ThemeManager>,
         initial_dims: (u32, u32),
         callback: CB,
     ) -> Result<Window<F>, F::Error>
     where
         CB: FnMut(Event, DispatchData) + 'static,
     {
-        Window::<F>::init_with_decorations(self, surface, initial_dims, callback)
+        Window::<F>::init_with_decorations(self, surface, theme_manager, initial_dims, callback)
     }
 }
 

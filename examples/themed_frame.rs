@@ -87,20 +87,25 @@ fn main() {
     let surface = env.create_surface().detach();
 
     let mut window = env
-        .create_window::<ConceptFrame, _>(surface, dimensions, move |evt, mut dispatch_data| {
-            let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
-            // Keep last event in priority order : Close > Configure > Refresh
-            let replace = match (&evt, &*next_action) {
-                (_, &None)
-                | (_, &Some(WEvent::Refresh))
-                | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-                | (&WEvent::Close, _) => true,
-                _ => false,
-            };
-            if replace {
-                *next_action = Some(evt);
-            }
-        })
+        .create_window::<ConceptFrame, _>(
+            surface,
+            None,
+            dimensions,
+            move |evt, mut dispatch_data| {
+                let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
+                // Keep last event in priority order : Close > Configure > Refresh
+                let replace = match (&evt, &*next_action) {
+                    (_, &None)
+                    | (_, &Some(WEvent::Refresh))
+                    | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+                    | (&WEvent::Close, _) => true,
+                    _ => false,
+                };
+                if replace {
+                    *next_action = Some(evt);
+                }
+            },
+        )
         .expect("Failed to create a window !");
 
     window.set_title("Themed frame".to_string());
