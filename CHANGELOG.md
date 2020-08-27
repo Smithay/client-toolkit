@@ -5,10 +5,13 @@
 #### Breaking Changes
 
 - `window.set_decorate` is now taking mutable reference
+- Added `show_window_menu` on a `Frame` trait to request a window menu for a window.
+- `ShowMenu` enum variant to `FrameRequest`
 
 #### Additions
 
-- `WaylandSource::queue` to access the `EventQueue` underlying a `WaylandSource`
+- `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
+- A window menu could be shown on right click on decorations for `ConceptFrame`
 
 #### Changes
 
@@ -23,6 +26,7 @@
 #### Bugfixes
 
 - Toggling between `ServerSide` and `None` decorations raising protocol error
+- Precision in a rate of key repeat events
 
 ## 0.10.0 -- 2020-07-10
 

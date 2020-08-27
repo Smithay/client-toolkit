@@ -129,6 +129,8 @@ pub trait ShellSurface: Send + Sync {
     fn set_min_size(&self, size: Option<(i32, i32)>);
     /// Set maximum surface size
     fn set_max_size(&self, size: Option<(i32, i32)>);
+    /// Show window menu.
+    fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, x: i32, y: i32);
     /// Retrive the `XdgToplevel` proxy if the underlying shell surface
     /// uses the `xdg_shell` protocol.
     ///
