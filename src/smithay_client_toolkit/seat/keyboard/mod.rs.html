@@ -569,6 +569,12 @@
 <span id="569">569</span>
 <span id="570">570</span>
 <span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Utilities for keymap interpretation of keyboard input</span>
 <span class="doccomment">//!</span>
@@ -586,7 +592,12 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cell</span>::<span class="ident">RefCell</span>, <span class="ident">os</span>::<span class="ident">unix</span>::<span class="ident">io</span>::<span class="ident">RawFd</span>, <span class="ident">rc</span>::<span class="ident">Rc</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">cell</span>::<span class="ident">RefCell</span>,
+    <span class="ident">fs</span>::<span class="ident">File</span>,
+    <span class="ident">os</span>::<span class="ident">unix</span>::<span class="ident">io</span>::{<span class="ident">FromRawFd</span>, <span class="ident">RawFd</span>},
+    <span class="ident">rc</span>::<span class="ident">Rc</span>,
+};
 
 <span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">ByteOrder</span>, <span class="ident">NativeEndian</span>};
 
@@ -900,6 +911,7 @@
         <span class="ident">fd</span>: <span class="ident">RawFd</span>,
         <span class="ident">size</span>: <span class="ident">u32</span>,
     ) {
+        <span class="kw">let</span> <span class="ident">fd</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">File</span>::<span class="ident">from_raw_fd</span>(<span class="ident">fd</span>) };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">if</span> <span class="ident">state</span>.<span class="ident">locked</span>() {
             <span class="comment">// state is locked, ignore keymap updates</span>
