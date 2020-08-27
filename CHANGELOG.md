@@ -5,11 +5,17 @@
 #### Additions
 
 - `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
+- A window menu could be shown on right click on decorations for `ConceptFrame`
 
 #### Changes
 
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
+
+#### Breaking Changes
+
+- Added `show_window_menu` on a `Frame` trait to request a window menu for a window.
+- `ShowMenu` enum variant to `FrameRequest`
 
 #### Bugfixes
 

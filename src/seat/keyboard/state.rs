@@ -1,16 +1,5 @@
-use std::{
-    env,
-    ffi::CString,
-    fs::File,
-    os::raw::c_char,
-    os::unix::{
-        ffi::OsStringExt,
-        io::{FromRawFd, RawFd},
-    },
-    ptr,
-};
-
 use memmap::MmapOptions;
+use std::{env, ffi::CString, fs::File, os::raw::c_char, os::unix::ffi::OsStringExt, ptr};
 
 use super::ffi::{self, xkb_state_component, XKBCOMMON_HANDLE as XKBH};
 use super::Error;
@@ -327,8 +316,8 @@ impl KbState {
         self.xkb_keymap = ptr::null_mut();
     }
 
-    pub(crate) unsafe fn init_with_fd(&mut self, fd: RawFd, size: usize) {
-        let map = MmapOptions::new().len(size).map(&File::from_raw_fd(fd)).unwrap();
+    pub(crate) unsafe fn init_with_fd(&mut self, fd: File, size: usize) {
+        let map = MmapOptions::new().len(size).map(&fd).unwrap();
 
         let xkb_keymap = (XKBH.xkb_keymap_new_from_string)(
             self.xkb_context,

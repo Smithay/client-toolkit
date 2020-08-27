@@ -113,6 +113,10 @@ impl ShellSurface for Zxdg {
         self.toplevel.set_minimized();
     }
 
+    fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, x: i32, y: i32) {
+        self.toplevel.show_window_menu(seat, serial, x, y);
+    }
+
     fn set_geometry(&self, x: i32, y: i32, width: i32, height: i32) {
         self.surface.set_window_geometry(x, y, width, height);
     }

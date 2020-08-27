@@ -205,6 +205,9 @@ impl<F: Frame + 'static> Window<F> {
                         FrameRequest::Resize(seat, edges) => {
                             inner.shell_surface.resize(&seat, serial, edges)
                         }
+                        FrameRequest::ShowMenu(seat, x, y) => {
+                            inner.shell_surface.show_window_menu(&seat, serial, x, y)
+                        }
                         FrameRequest::Close => (inner.user_impl)(Event::Close, ddata),
                         FrameRequest::Refresh => (inner.user_impl)(Event::Refresh, ddata),
                     }
@@ -630,6 +633,8 @@ pub enum FrameRequest {
     Move(wl_seat::WlSeat),
     /// An interactive resize should be started
     Resize(wl_seat::WlSeat, ResizeEdge),
+    /// Show window menu.
+    ShowMenu(wl_seat::WlSeat, i32, i32),
     /// The frame requests to be refreshed
     Refresh,
 }

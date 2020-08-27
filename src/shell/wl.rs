@@ -89,6 +89,10 @@ impl ShellSurface for Wl {
         self.shell_surface.set_toplevel();
     }
 
+    fn show_window_menu(&self, _: &wl_seat::WlSeat, _: u32, _: i32, _: i32) {
+        /* not available */
+    }
+
     fn set_minimized(&self) {
         /* not available */
     }
