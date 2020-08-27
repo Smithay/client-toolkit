@@ -1182,6 +1182,20 @@
 <span id="1182">1182</span>
 <span id="1183">1183</span>
 <span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>;
@@ -1392,6 +1406,7 @@
     <span class="ident">parts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Part</span><span class="op">&gt;</span>,
     <span class="ident">size</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>),
     <span class="ident">resizable</span>: <span class="ident">bool</span>,
+    <span class="ident">theme_over_surface</span>: <span class="ident">bool</span>,
     <span class="ident">implem</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">FrameRequest</span>, <span class="ident">u32</span>, <span class="ident">DispatchData</span>)<span class="op">&gt;</span>,
     <span class="ident">maximized</span>: <span class="ident">bool</span>,
     <span class="ident">fullscreened</span>: <span class="ident">bool</span>,
@@ -1522,13 +1537,21 @@
         <span class="ident">compositor</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span>,
         <span class="ident">subcompositor</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_subcompositor</span>::<span class="ident">WlSubcompositor</span><span class="op">&gt;</span>,
         <span class="ident">shm</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm</span>::<span class="ident">WlShm</span><span class="op">&gt;</span>,
+        <span class="ident">theme_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ThemeManager</span><span class="op">&gt;</span>,
         <span class="ident">implementation</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">FrameRequest</span>, <span class="ident">u32</span>, <span class="ident">DispatchData</span>)<span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConceptFrame</span>, ::<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> (<span class="ident">themer</span>, <span class="ident">theme_over_surface</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">theme_manager</span>) <span class="op">=</span> <span class="ident">theme_manager</span> {
+            (<span class="ident">theme_manager</span>, <span class="bool-val">false</span>)
+        } <span class="kw">else</span> {
+            (<span class="ident">ThemeManager</span>::<span class="ident">init</span>(<span class="ident">ThemeSpec</span>::<span class="ident">System</span>, <span class="ident">compositor</span>.<span class="ident">clone</span>(), <span class="ident">shm</span>.<span class="ident">clone</span>()), <span class="bool-val">true</span>)
+        };
+
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">Inner</span> {
             <span class="ident">parts</span>: <span class="macro">vec</span><span class="macro">!</span>[],
             <span class="ident">size</span>: (<span class="number">1</span>, <span class="number">1</span>),
             <span class="ident">resizable</span>: <span class="bool-val">true</span>,
             <span class="ident">implem</span>: <span class="ident">implementation</span>,
+            <span class="ident">theme_over_surface</span>,
             <span class="ident">maximized</span>: <span class="bool-val">false</span>,
             <span class="ident">fullscreened</span>: <span class="bool-val">false</span>,
             <span class="ident">buttons</span>: (<span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>),
@@ -1548,13 +1571,14 @@
         <span class="kw">let</span> <span class="ident">pools</span> <span class="op">=</span> <span class="ident">DoubleMemPool</span>::<span class="ident">new</span>(<span class="ident">shm</span>.<span class="ident">clone</span>(), <span class="kw">move</span> <span class="op">|</span><span class="ident">ddata</span><span class="op">|</span> {
             (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">my_inner</span>.<span class="ident">borrow_mut</span>().<span class="ident">implem</span>)(<span class="ident">FrameRequest</span>::<span class="ident">Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
         })<span class="question-mark">?</span>;
+
         <span class="prelude-val">Ok</span>(<span class="ident">ConceptFrame</span> {
             <span class="ident">inner</span>,
             <span class="ident">pools</span>,
             <span class="ident">active</span>: <span class="ident">WindowState</span>::<span class="ident">Inactive</span>,
             <span class="ident">hidden</span>: <span class="bool-val">false</span>,
             <span class="ident">pointers</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
-            <span class="ident">themer</span>: <span class="ident">ThemeManager</span>::<span class="ident">init</span>(<span class="ident">ThemeSpec</span>::<span class="ident">System</span>, <span class="ident">compositor</span>.<span class="ident">clone</span>(), <span class="ident">shm</span>.<span class="ident">clone</span>()),
+            <span class="ident">themer</span>,
             <span class="ident">surface_version</span>: <span class="ident">compositor</span>.<span class="ident">as_ref</span>().<span class="ident">version</span>(),
             <span class="ident">config</span>: <span class="ident">ConceptConfig</span>::<span class="ident">default</span>(),
             <span class="ident">title</span>: <span class="prelude-val">None</span>,
@@ -1581,13 +1605,11 @@
                             <span class="ident">inner</span>.<span class="ident">buttons</span>,
                         );
                         <span class="ident">data</span>.<span class="ident">position</span> <span class="op">=</span> (<span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
-                        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">resizable</span> {
-                            <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>))
-                        }
+                        <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">inner</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>))
                     }
                     <span class="ident">Event</span>::<span class="ident">Leave</span> { <span class="ident">serial</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">data</span>.<span class="ident">location</span> <span class="op">=</span> <span class="ident">Location</span>::<span class="prelude-val">None</span>;
-                        <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>));
+                        <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">inner</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>));
                         (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>.<span class="ident">implem</span>)(<span class="ident">FrameRequest</span>::<span class="ident">Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
                     }
                     <span class="ident">Event</span>::<span class="ident">Motion</span> { <span class="ident">surface_x</span>, <span class="ident">surface_y</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
@@ -1610,9 +1632,7 @@
                             <span class="comment">// we changed of part of the decoration, pointer image</span>
                             <span class="comment">// may need to be changed</span>
                             <span class="ident">data</span>.<span class="ident">location</span> <span class="op">=</span> <span class="ident">newpos</span>;
-                            <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">resizable</span> {
-                                <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">None</span>)
-                            }
+                            <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">inner</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">None</span>)
                         }
                     }
                     <span class="ident">Event</span>::<span class="ident">Button</span> { <span class="ident">serial</span>, <span class="ident">button</span>, <span class="ident">state</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
@@ -2067,8 +2087,15 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">change_pointer</span>(<span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">ThemedPointer</span>, <span class="ident">location</span>: <span class="ident">Location</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) {
+<span class="kw">fn</span> <span class="ident">change_pointer</span>(<span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">ThemedPointer</span>, <span class="ident">inner</span>: <span class="kw-2">&amp;</span><span class="ident">Inner</span>, <span class="ident">location</span>: <span class="ident">Location</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) {
+    <span class="comment">// Prevent theming of the surface if it was requested.</span>
+    <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">theme_over_surface</span> <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">location</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location</span>::<span class="prelude-val">None</span> {
+        <span class="kw">return</span>;
+    }
+
     <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">location</span> {
+        <span class="comment">// If we can&#39;t resize a frame we shouldn&#39;t show resize cursors.</span>
+        <span class="kw">_</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;left_ptr&quot;</span>,
         <span class="ident">Location</span>::<span class="ident">Top</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_side&quot;</span>,
         <span class="ident">Location</span>::<span class="ident">TopRight</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_right_corner&quot;</span>,
         <span class="ident">Location</span>::<span class="ident">Right</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;right_side&quot;</span>,
@@ -2079,6 +2106,7 @@
         <span class="ident">Location</span>::<span class="ident">TopLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_left_corner&quot;</span>,
         <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;left_ptr&quot;</span>,
     };
+
     <span class="kw">if</span> <span class="ident">pointer</span>.<span class="ident">set_cursor</span>(<span class="ident">name</span>, <span class="ident">serial</span>).<span class="ident">is_err</span>() {
         <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Failed to set cursor&quot;</span>);
     }
