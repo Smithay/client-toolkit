@@ -829,6 +829,30 @@
 <span id="829">829</span>
 <span id="830">830</span>
 <span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
@@ -842,7 +866,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">wayland_protocols</span>::<span class="ident">xdg_shell</span>::<span class="ident">client</span>::<span class="ident">xdg_toplevel</span>::<span class="ident">State</span>;
 
 <span class="kw">use</span> <span class="ident">wayland_protocols</span>::<span class="ident">unstable</span>::<span class="ident">xdg_decoration</span>::<span class="ident">v1</span>::<span class="ident">client</span>::{
-    <span class="ident">zxdg_decoration_manager_v1</span>, <span class="ident">zxdg_toplevel_decoration_v1</span>,
+    <span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span>,
+    <span class="ident">zxdg_toplevel_decoration_v1</span>::{<span class="self">self</span>, <span class="ident">ZxdgToplevelDecorationV1</span>},
 };
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -941,6 +966,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// If you don&#39;t care about it, you should use `FollowServer` (which is the</span>
 <span class="doccomment">/// SCTK default). It&#39;d be the most ergonomic for your users.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Decorations</span> {
     <span class="doccomment">/// Request server-side decorations</span>
     <span class="ident">ServerSide</span>,
@@ -981,8 +1007,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Window</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Frame</span><span class="op">&gt;</span> {
     <span class="ident">frame</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">surface</span>: <span class="ident">wl_surface</span>::<span class="ident">WlSurface</span>,
-    <span class="ident">decoration</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">zxdg_toplevel_decoration_v1</span>::<span class="ident">ZxdgToplevelDecorationV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">decoration_mgr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">decoration</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ZxdgToplevelDecorationV1</span><span class="op">&gt;</span>,
     <span class="ident">shell_surface</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">shell</span>::<span class="ident">ShellSurface</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">_seat_listener</span>: <span class="kw">crate</span>::<span class="ident">seat</span>::<span class="ident">SeatListener</span>,
@@ -1007,7 +1032,7 @@
             <span class="op">+</span> <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_shm</span>::<span class="ident">WlShm</span><span class="op">&gt;</span>
             <span class="op">+</span> <span class="kw">crate</span>::<span class="ident">shell</span>::<span class="ident">ShellHandling</span>
             <span class="op">+</span> <span class="ident">MultiGlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_seat</span>::<span class="ident">WlSeat</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>
+            <span class="op">+</span> <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>
             <span class="op">+</span> <span class="kw">crate</span>::<span class="ident">seat</span>::<span class="ident">SeatHandling</span>,
     {
         <span class="kw">let</span> <span class="ident">compositor</span> <span class="op">=</span> <span class="ident">env</span>.<span class="ident">require_global</span>::<span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span>();
@@ -1016,8 +1041,6 @@
         <span class="kw">let</span> <span class="ident">shell</span> <span class="op">=</span> <span class="ident">env</span>
             .<span class="ident">get_shell</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;[SCTK] Cannot create a window if the compositor advertized no shell.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">decoration_mgr</span> <span class="op">=</span>
-            <span class="ident">env</span>.<span class="ident">get_global</span>::<span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>();
 
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>::<span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>));
         <span class="kw">let</span> <span class="ident">frame_inner</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">clone</span>();
@@ -1146,68 +1169,65 @@
             <span class="ident">decorated</span>: <span class="bool-val">true</span>,
         });
 
+        <span class="comment">// Setup window decorations if applicable.</span>
+        <span class="kw">let</span> <span class="ident">decoration_mgr</span> <span class="op">=</span> <span class="ident">env</span>.<span class="ident">get_global</span>::<span class="op">&lt;</span><span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>();
+        <span class="kw">let</span> <span class="ident">decoration</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">setup_decorations_handler</span>(
+            <span class="kw-2">&amp;</span><span class="ident">decoration_mgr</span>,
+            <span class="kw-2">&amp;</span><span class="ident">shell_surface</span>,
+            <span class="ident">frame</span>.<span class="ident">clone</span>(),
+            <span class="ident">inner</span>.<span class="ident">clone</span>(),
+        );
+
         <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">Window</span> {
             <span class="ident">frame</span>,
             <span class="ident">shell_surface</span>,
-            <span class="ident">decoration</span>: <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>),
-            <span class="ident">decoration_mgr</span>,
+            <span class="ident">decoration</span>,
             <span class="ident">surface</span>,
             <span class="ident">inner</span>,
             <span class="ident">_seat_listener</span>: <span class="ident">seat_listener</span>,
         };
 
-        <span class="comment">// init decoration if applicable</span>
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decoration</span> <span class="op">=</span> <span class="ident">window</span>.<span class="ident">decoration</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-            <span class="ident">window</span>.<span class="ident">ensure_decoration</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">decoration</span>);
-        }
-
         <span class="prelude-val">Ok</span>(<span class="ident">window</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">ensure_decoration</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">decoration</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">zxdg_toplevel_decoration_v1</span>::<span class="ident">ZxdgToplevelDecorationV1</span><span class="op">&gt;</span>,
-    ) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">decoration_mgr</span>.<span class="ident">is_none</span>() {
-            <span class="kw">return</span>;
-        }
-
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">decoration</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">decoration</span> {
-            <span class="kw">if</span> <span class="ident">decoration</span>.<span class="ident">as_ref</span>().<span class="ident">is_alive</span>() {
-                <span class="kw">return</span>;
+    <span class="doccomment">/// Setup handling for zxdg_toplevel_decoration_v1 in case protocol is available.</span>
+    <span class="kw">fn</span> <span class="ident">setup_decorations_handler</span>(
+        <span class="ident">decoration_mgr</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">shell_surface</span>: <span class="kw-2">&amp;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">shell</span>::<span class="ident">ShellSurface</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">decoration_frame</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">decoration_inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ZxdgToplevelDecorationV1</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> (<span class="ident">toplevel</span>, <span class="ident">mgr</span>) <span class="op">=</span> <span class="kw">match</span> (<span class="ident">shell_surface</span>.<span class="ident">get_xdg</span>(), <span class="ident">decoration_mgr</span>) {
+            (<span class="prelude-val">Some</span>(<span class="ident">toplevel</span>), <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">mgr</span>)) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">toplevel</span>, <span class="ident">mgr</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">return</span> <span class="prelude-val">None</span>;
             }
-        }
-
-        <span class="kw">let</span> <span class="ident">decoration_frame</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">decoration_inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">clone</span>();
-        <span class="kw-2">*</span><span class="ident">decoration</span> <span class="op">=</span> <span class="kw">match</span> (<span class="self">self</span>.<span class="ident">shell_surface</span>.<span class="ident">get_xdg</span>(), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">decoration_mgr</span>) {
-            (<span class="prelude-val">Some</span>(<span class="ident">toplevel</span>), <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">mgr</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">use</span> <span class="self">self</span>::<span class="ident">zxdg_toplevel_decoration_v1</span>::{<span class="ident">Event</span>, <span class="ident">Mode</span>};
-                <span class="kw">let</span> <span class="ident">decoration</span> <span class="op">=</span> <span class="ident">mgr</span>.<span class="ident">get_toplevel_decoration</span>(<span class="ident">toplevel</span>);
-                <span class="ident">decoration</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Event</span>::<span class="ident">Configure</span> { <span class="ident">mode</span> } <span class="op">=</span> <span class="ident">event</span> {
-                        <span class="kw">match</span> <span class="ident">mode</span> {
-                            <span class="ident">Mode</span>::<span class="ident">ServerSide</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                <span class="ident">decoration_frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
-                            }
-                            <span class="ident">Mode</span>::<span class="ident">ClientSide</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                <span class="kw">let</span> <span class="ident">want_decorate</span> <span class="op">=</span> <span class="ident">decoration_inner</span>
-                                    .<span class="ident">lock</span>()
-                                    .<span class="ident">unwrap</span>()
-                                    .<span class="ident">as_ref</span>()
-                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">decorated</span>)
-                                    .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
-                                <span class="ident">decoration_frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="op">!</span><span class="ident">want_decorate</span>);
-                            }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
-                        }
-                    }
-                });
-                <span class="prelude-val">Some</span>(<span class="ident">decoration</span>.<span class="ident">detach</span>())
-            }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         };
+
+        <span class="kw">let</span> <span class="ident">decoration</span> <span class="op">=</span> <span class="ident">mgr</span>.<span class="ident">get_toplevel_decoration</span>(<span class="ident">toplevel</span>);
+
+        <span class="ident">decoration</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> {
+            <span class="kw">use</span> <span class="self">self</span>::<span class="ident">zxdg_toplevel_decoration_v1</span>::{<span class="ident">Event</span>, <span class="ident">Mode</span>};
+            <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Event</span>::<span class="ident">Configure</span> { <span class="ident">mode</span> } <span class="op">=</span> <span class="ident">event</span> { <span class="ident">mode</span> } <span class="kw">else</span> { <span class="macro">unreachable</span><span class="macro">!</span>() };
+
+            <span class="kw">match</span> <span class="ident">mode</span> {
+                <span class="ident">Mode</span>::<span class="ident">ServerSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">decoration_frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
+                }
+                <span class="ident">Mode</span>::<span class="ident">ClientSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">let</span> <span class="ident">want_decorate</span> <span class="op">=</span> <span class="ident">decoration_inner</span>
+                        .<span class="ident">lock</span>()
+                        .<span class="ident">unwrap</span>()
+                        .<span class="ident">as_ref</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">decorated</span>)
+                        .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+                    <span class="ident">decoration_frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="op">!</span><span class="ident">want_decorate</span>);
+                }
+                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+            }
+        });
+
+        <span class="prelude-val">Some</span>(<span class="ident">decoration</span>.<span class="ident">detach</span>())
     }
 
     <span class="doccomment">/// Access the surface wrapped in this Window</span>
@@ -1262,44 +1282,72 @@
         <span class="self">self</span>.<span class="ident">shell_surface</span>.<span class="ident">set_app_id</span>(<span class="ident">app_id</span>);
     }
 
-    <span class="doccomment">/// Set whether the window should be decorated or not</span>
+    <span class="doccomment">/// Set whether the window should be decorated or not.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// If `zxdg_toplevel_decoration_v1` object is presented and alive, requesting `None`</span>
+    <span class="doccomment">/// decorations will result in setting `ClientSide` decorations with hidden frame, and if</span>
+    <span class="doccomment">/// `ClientSide` decorations were requested, it&#39;ll result in destroying</span>
+    <span class="doccomment">/// `zxdg_toplevel_decoration_v1` object, meaning that you won&#39;t be able to get `ServerSide`</span>
+    <span class="doccomment">/// decorations back.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// In case `zxdg_toplevel_decoration_v1` is not available or the corresponding object is not</span>
+    <span class="doccomment">/// alive anymore, `decorate` with `ServerSide` or `FollowServer` values will always result in</span>
+    <span class="doccomment">/// `ClientSide` decorations being used.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// You need to call `refresh()` afterwards for this to properly</span>
     <span class="doccomment">/// take effect.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_decorate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">decorate</span>: <span class="ident">Decorations</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_decorate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">decorate</span>: <span class="ident">Decorations</span>) {
         <span class="kw">use</span> <span class="self">self</span>::<span class="ident">zxdg_toplevel_decoration_v1</span>::<span class="ident">Mode</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decoration_guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">decoration</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Decorations</span>::<span class="ident">ClientSide</span> <span class="op">=</span> <span class="ident">decorate</span> {
-            <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">false</span>);
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
-        }
-
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">inner</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Decorations</span>::<span class="prelude-val">None</span> <span class="op">=</span> <span class="ident">decorate</span> {
+        <span class="comment">// Update inner.decorated state.</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">as_mut</span>() {
+            <span class="kw">if</span> <span class="ident">Decorations</span>::<span class="prelude-val">None</span> <span class="op">=</span><span class="op">=</span> <span class="ident">decorate</span> {
                 <span class="ident">inner</span>.<span class="ident">decorated</span> <span class="op">=</span> <span class="bool-val">false</span>;
             } <span class="kw">else</span> {
                 <span class="ident">inner</span>.<span class="ident">decorated</span> <span class="op">=</span> <span class="bool-val">true</span>;
             }
         }
 
-        <span class="comment">// destroy the decoration object, so that the server does not</span>
-        <span class="comment">// decorate us if we don&#39;t want to</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Decorations</span>::<span class="prelude-val">None</span> <span class="op">|</span> <span class="ident">Decorations</span>::<span class="ident">ClientSide</span> <span class="op">=</span> <span class="ident">decorate</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">dec</span>) <span class="op">=</span> <span class="ident">decoration_guard</span>.<span class="ident">take</span>() {
-                <span class="ident">dec</span>.<span class="ident">destroy</span>();
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">decoration</span>.<span class="ident">as_ref</span>() {
+            <span class="comment">// Server side decorations are there.</span>
+            <span class="prelude-val">Some</span>(<span class="ident">decoration</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">decorate</span> {
+                    <span class="ident">Decorations</span>::<span class="ident">ClientSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// The user explicitly requested `ClientSide` decorations, we should destroy</span>
+                        <span class="comment">// the server side decorations if some are presented.</span>
+                        <span class="ident">decoration</span>.<span class="ident">destroy</span>();
+                        <span class="self">self</span>.<span class="ident">decoration</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                    }
+                    <span class="ident">Decorations</span>::<span class="ident">ServerSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">decoration</span>.<span class="ident">set_mode</span>(<span class="ident">Mode</span>::<span class="ident">ServerSide</span>);
+                    }
+                    <span class="ident">Decorations</span>::<span class="ident">FollowServer</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">decoration</span>.<span class="ident">unset_mode</span>();
+                    }
+                    <span class="ident">Decorations</span>::<span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// The user explicitly requested `None` decorations, however</span>
+                        <span class="comment">// since we can&#39;t destroy and recreate decoration object on the fly switch</span>
+                        <span class="comment">// them to `ClientSide` with the hidden frame. The server is free to ignore</span>
+                        <span class="comment">// us with such request, but not that we can do much about it.</span>
+                        <span class="ident">decoration</span>.<span class="ident">set_mode</span>(<span class="ident">Mode</span>::<span class="ident">ClientSide</span>);
+                        <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
+                    }
+                }
             }
-            <span class="kw">return</span>;
-        }
-
-        <span class="comment">// We didn&#39;t early exit, so we need to deal with server-side decorations</span>
-        <span class="self">self</span>.<span class="ident">ensure_decoration</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">decoration_guard</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">dec</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">decoration_guard</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Decorations</span>::<span class="ident">ServerSide</span> <span class="op">=</span> <span class="ident">decorate</span> {
-                <span class="ident">dec</span>.<span class="ident">set_mode</span>(<span class="ident">Mode</span>::<span class="ident">ServerSide</span>);
-            } <span class="kw">else</span> {
-                <span class="ident">dec</span>.<span class="ident">unset_mode</span>();
+            <span class="comment">// Server side decorations are not presented or were destroyed.</span>
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">decorate</span> {
+                    <span class="comment">// We map `ServerSide` and `FollowServer` decorations to `ClientSide`, since</span>
+                    <span class="comment">// server side decorations are no longer available.</span>
+                    <span class="ident">Decorations</span>::<span class="ident">ClientSide</span>
+                    <span class="op">|</span> <span class="ident">Decorations</span>::<span class="ident">ServerSide</span>
+                    <span class="op">|</span> <span class="ident">Decorations</span>::<span class="ident">FollowServer</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">false</span>);
+                    }
+                    <span class="ident">Decorations</span>::<span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
+                    }
+                }
             }
         }
     }
@@ -1542,7 +1590,7 @@
         <span class="op">+</span> <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_shm</span>::<span class="ident">WlShm</span><span class="op">&gt;</span>
         <span class="op">+</span> <span class="kw">crate</span>::<span class="ident">shell</span>::<span class="ident">ShellHandling</span>
         <span class="op">+</span> <span class="ident">MultiGlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_seat</span>::<span class="ident">WlSeat</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>
         <span class="op">+</span> <span class="kw">crate</span>::<span class="ident">seat</span>::<span class="ident">SeatHandling</span>,
 {
     <span class="doccomment">/// Create a new window wrapping given surface</span>
