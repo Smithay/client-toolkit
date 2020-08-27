@@ -824,6 +824,11 @@
 <span id="824">824</span>
 <span id="825">825</span>
 <span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
@@ -1031,6 +1036,9 @@
                         <span class="ident">FrameRequest</span>::<span class="ident">Move</span>(<span class="ident">seat</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">move_</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>),
                         <span class="ident">FrameRequest</span>::<span class="ident">Resize</span>(<span class="ident">seat</span>, <span class="ident">edges</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">resize</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">edges</span>)
+                        }
+                        <span class="ident">FrameRequest</span>::<span class="ident">ShowMenu</span>(<span class="ident">seat</span>, <span class="ident">x</span>, <span class="ident">y</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">show_window_menu</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">x</span>, <span class="ident">y</span>)
                         }
                         <span class="ident">FrameRequest</span>::<span class="ident">Close</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Close</span>, <span class="ident">ddata</span>),
                         <span class="ident">FrameRequest</span>::<span class="ident">Refresh</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event</span>::<span class="ident">Refresh</span>, <span class="ident">ddata</span>),
@@ -1457,6 +1465,8 @@
     <span class="ident">Move</span>(<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>),
     <span class="doccomment">/// An interactive resize should be started</span>
     <span class="ident">Resize</span>(<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>, <span class="ident">ResizeEdge</span>),
+    <span class="doccomment">/// Show window menu.</span>
+    <span class="ident">ShowMenu</span>(<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>, <span class="ident">i32</span>, <span class="ident">i32</span>),
     <span class="doccomment">/// The frame requests to be refreshed</span>
     <span class="ident">Refresh</span>,
 }
