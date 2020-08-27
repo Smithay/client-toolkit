@@ -221,6 +221,14 @@ impl<F: Frame + 'static> Window<F> {
                 }
             }) as Box<_>,
         )?;
+
+        let decoration_mgr = env.get_global::<ZxdgDecorationManagerV1>();
+        if decoration_mgr.is_none() {
+            // We don't have ServerSide decorations, so we'll be using CSD, and so should
+            // mark frame as not hidden.
+            frame.set_hidden(false);
+        }
+
         frame.resize(initial_dims);
         let frame = Rc::new(RefCell::new(frame));
         let shell_surface = Arc::new(shell::create_shell_surface(
@@ -338,7 +346,6 @@ impl<F: Frame + 'static> Window<F> {
         });
 
         // Setup window decorations if applicable.
-        let decoration_mgr = env.get_global::<ZxdgDecorationManagerV1>();
         let decoration = Self::setup_decorations_handler(
             &decoration_mgr,
             &shell_surface,
