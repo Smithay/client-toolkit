@@ -12,7 +12,7 @@
 
 #### Additions
 
-- `WaylandSource::queue` to access the `EventQueue` unserlying a `WaylandSource`
+- `WaylandSource::queue` to access the `EventQueue` underlying a `WaylandSource`
 - A window menu could be shown on right click on decorations for `ConceptFrame`
 - `ConceptFrame` will no longer change cursor over base surface if `ThemeManager` was provided
 
@@ -21,12 +21,13 @@
 - `Window::set_title` now truncates the provided string to 1024 bytes, to avoid blowing up
   the Wayland connection
 - `ConceptFrame` is now hiding decorations for `State::Fullscreen`
-- Restore original size of fullscreeened window on unfullscreen
+- Restore original size of fullscreened window on unfullscreen
 - Explicitly setting `ClientSide` decorations will result in `ServerSide` ones being destroyed
 - Requesting `ServerSide` decorations in `set_decorate` will now fallback to `ClientSide`
   if the former are not available
 - Requesting `None` decorations if `ServerSide` are presented will result in setting
   `ClientSide` decorations with hidden frame
+- `ConceptFrame` will use `Disabled` style for maximized button for non-resizeable frame
 
 #### Bugfixes
 
