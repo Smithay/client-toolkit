@@ -593,7 +593,7 @@ impl Frame for ConceptFrame {
                         &mut header_canvas,
                         width,
                         header_scale,
-                        true,
+                        inner.resizable,
                         self.active,
                         &self
                             .pointers
