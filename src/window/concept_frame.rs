@@ -204,7 +204,7 @@ struct PointerUserData {
  */
 
 struct Inner {
-    parts: Option<Vec<Part>>,
+    parts: Vec<Part>,
     size: (u32, u32),
     resizable: bool,
     theme_over_surface: bool,
@@ -216,19 +216,19 @@ struct Inner {
 
 impl Inner {
     fn find_surface(&self, surface: &wl_surface::WlSurface) -> Location {
-        let parts = match self.parts.as_ref() {
-            Some(parts) => parts,
-            None => return Location::None,
-        };
-        if surface.as_ref().equals(&parts[HEAD].surface.as_ref()) {
+        if self.parts.is_empty() {
+            return Location::None;
+        }
+
+        if surface.as_ref().equals(self.parts[HEAD].surface.as_ref()) {
             Location::Head
-        } else if surface.as_ref().equals(&parts[TOP].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[TOP].surface.as_ref()) {
             Location::Top
-        } else if surface.as_ref().equals(&parts[BOTTOM].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[BOTTOM].surface.as_ref()) {
             Location::Bottom
-        } else if surface.as_ref().equals(&parts[LEFT].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[LEFT].surface.as_ref()) {
             Location::Left
-        } else if surface.as_ref().equals(&parts[RIGHT].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[RIGHT].surface.as_ref()) {
             Location::Right
         } else {
             Location::None
@@ -355,7 +355,7 @@ impl Frame for ConceptFrame {
         };
 
         let inner = Rc::new(RefCell::new(Inner {
-            parts: None,
+            parts: vec![],
             size: (1, 1),
             resizable: true,
             implem: implementation,
@@ -514,8 +514,8 @@ impl Frame for ConceptFrame {
         self.hidden = hidden;
         let mut inner = self.inner.borrow_mut();
         if !self.hidden {
-            if inner.parts.is_none() {
-                inner.parts = Some(vec![
+            if inner.parts.is_empty() {
+                inner.parts = vec![
                     Part::new(
                         &self.base_surface,
                         &self.compositor,
@@ -526,10 +526,10 @@ impl Frame for ConceptFrame {
                     Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
                     Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
                     Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
-                ]);
+                ];
             }
         } else {
-            inner.parts = None;
+            inner.parts.clear();
         }
     }
 
@@ -547,18 +547,16 @@ impl Frame for ConceptFrame {
         // Don't draw borders if the frame explicitly hidden or fullscreened.
         if self.hidden || inner.fullscreened {
             // Don't draw the borders.
-            if let Some(parts) = inner.parts.as_ref() {
-                for p in parts {
-                    p.surface.attach(None, 0, 0);
-                    p.surface.commit();
-                }
+            for p in inner.parts.iter() {
+                p.surface.attach(None, 0, 0);
+                p.surface.commit();
             }
             return;
         }
 
-        // `parts` can't be `None` here, since the initial state for `self.hidden` is true, and
+        // `parts` can't be empty here, since the initial state for `self.hidden` is true, and
         // they will be created once `self.hidden` will become `false`.
-        let parts = inner.parts.as_ref().unwrap();
+        let parts = &inner.parts;
 
         let scales: Vec<u32> = parts
             .iter()
