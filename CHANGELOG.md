@@ -28,6 +28,7 @@
 - Requesting `None` decorations if `ServerSide` are presented will result in setting
   `ClientSide` decorations with hidden frame
 - `ConceptFrame` will use `Disabled` style for maximized button for non-resizeable frame
+- `Window` will restore original size after being tiled
 
 #### Bugfixes
 
