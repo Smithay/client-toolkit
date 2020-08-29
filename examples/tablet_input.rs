@@ -10,16 +10,28 @@ use sctk::reexports::calloop;
 use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
-use sctk::window::{ConceptFrame, Event as WEvent};
+use sctk::{
+    environment::SimpleGlobal,
+    window::{ConceptFrame, Event as WEvent},
+};
+use wayland_protocols::unstable::tablet::v2::client::*;
 
-sctk::default_environment!(KbdInputExample, desktop);
+sctk::default_environment!(TabletExample, fields = [
+tablet_manager: SimpleGlobal<zwp_tablet_manager_v2::ZwpTabletManagerV2>,
+],
+singles = [
+    zwp_tablet_manager_v2::ZwpTabletManagerV2 => tablet_manager
+]);
 
 fn main() {
     /*
      * Initial setup
      */
-    let (env, display, queue) = sctk::init_default_environment!(KbdInputExample, desktop)
-        .expect("Unable to connect to a Wayland compositor");
+    let (env, display, queue) = sctk::init_default_environment!(
+        TabletExample,
+        fields = [tablet_manager: SimpleGlobal::new(),]
+    )
+    .expect("Unable to connect to a Wayland compositor");
 
     /*
      * Prepare a calloop event loop to handle key repetion
