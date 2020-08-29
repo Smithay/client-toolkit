@@ -585,6 +585,29 @@
 <span id="585">585</span>
 <span id="586">586</span>
 <span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Utilities for keymap interpretation of keyboard input</span>
 <span class="doccomment">//!</span>
@@ -600,6 +623,8 @@
 <span class="doccomment">//! calloop event loop. Not doing so will prevent key repetition to work</span>
 <span class="doccomment">//! (but the rest of the functionnality will not be affected).</span>
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">num</span>::<span class="ident">NonZeroU32</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -633,7 +658,7 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RepeatKind</span> {
     <span class="doccomment">/// keys will be repeated at a set rate and delay</span>
     <span class="ident">Fixed</span> {
-        <span class="doccomment">/// the number of repetitions per second that should occur</span>
+        <span class="doccomment">/// The number of repetitions per second that should occur.</span>
         <span class="ident">rate</span>: <span class="ident">u32</span>,
         <span class="doccomment">/// delay (in milliseconds) between a key press and the start of repetition</span>
         <span class="ident">delay</span>: <span class="ident">u32</span>,
@@ -791,13 +816,14 @@
     <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">callback</span>));
 
     <span class="kw">let</span> <span class="ident">repeat</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">repeatkind</span> {
-        <span class="ident">RepeatKind</span>::<span class="ident">System</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">RepeatDetails</span> { <span class="ident">locked</span>: <span class="bool-val">false</span>, <span class="ident">gap</span>: <span class="number">100</span>, <span class="ident">delay</span>: <span class="number">300</span> },
+        <span class="ident">RepeatKind</span>::<span class="ident">System</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">RepeatDetails</span> { <span class="ident">locked</span>: <span class="bool-val">false</span>, <span class="ident">gap</span>: <span class="prelude-val">None</span>, <span class="ident">delay</span>: <span class="number">200</span> },
         <span class="ident">RepeatKind</span>::<span class="ident">Fixed</span> { <span class="ident">rate</span>, <span class="ident">delay</span> } <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="ident">RepeatDetails</span> { <span class="ident">locked</span>: <span class="bool-val">true</span>, <span class="ident">gap</span>: <span class="ident">MICROS_IN_SECOND</span> <span class="op">/</span> <span class="ident">rate</span>, <span class="ident">delay</span> }
+            <span class="kw">let</span> <span class="ident">gap</span> <span class="op">=</span> <span class="ident">rate_to_gap</span>(<span class="ident">rate</span> <span class="kw">as</span> <span class="ident">i32</span>);
+            <span class="ident">RepeatDetails</span> { <span class="ident">locked</span>: <span class="bool-val">true</span>, <span class="ident">gap</span>, <span class="ident">delay</span> }
         }
     };
 
-    <span class="comment">// prepare the repetition handling</span>
+    <span class="comment">// Prepare the repetition handling.</span>
     <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">kbd_handler</span>, <span class="ident">source</span>) <span class="op">=</span> {
         <span class="kw">let</span> <span class="ident">current_repeat</span> <span class="op">=</span> <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>));
 
@@ -834,6 +860,17 @@
     <span class="prelude-val">Ok</span>((<span class="ident">keyboard</span>.<span class="ident">detach</span>(), <span class="ident">source</span>))
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
+<span class="kw">fn</span> <span class="ident">rate_to_gap</span>(<span class="ident">rate</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NonZeroU32</span><span class="op">&gt;</span> {
+    <span class="kw">if</span> <span class="ident">rate</span> <span class="op">&lt;</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="prelude-val">None</span>
+    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">MICROS_IN_SECOND</span> <span class="op">&lt;</span> <span class="ident">rate</span> <span class="kw">as</span> <span class="ident">u32</span> {
+        <span class="ident">NonZeroU32</span>::<span class="ident">new</span>(<span class="number">1</span>)
+    } <span class="kw">else</span> {
+        <span class="ident">NonZeroU32</span>::<span class="ident">new</span>(<span class="ident">MICROS_IN_SECOND</span> <span class="op">/</span> <span class="ident">rate</span> <span class="kw">as</span> <span class="ident">u32</span>)
+    }
+}
+
 <span class="comment">/*
  * Classic handling
  */</span>
@@ -844,7 +881,9 @@
 <span class="kw">struct</span> <span class="ident">RepeatDetails</span> {
     <span class="ident">locked</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Gap between key presses in microseconds.</span>
-    <span class="ident">gap</span>: <span class="ident">u32</span>,
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// If the `gap` is `None`, it means that repeat is disabled.</span>
+    <span class="ident">gap</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NonZeroU32</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Delay before starting key repeat in milliseconds.</span>
     <span class="ident">delay</span>: <span class="ident">u32</span>,
 }
@@ -868,10 +907,17 @@
     <span class="kw">fn</span> <span class="ident">start_repeat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="ident">u32</span>, <span class="ident">keyboard</span>: <span class="ident">wl_keyboard</span>::<span class="ident">WlKeyboard</span>, <span class="ident">time</span>: <span class="ident">u32</span>) {
         <span class="comment">// Start a new repetition, overwriting the previous ones</span>
         <span class="self">self</span>.<span class="ident">timer_handle</span>.<span class="ident">cancel_all_timeouts</span>();
+
+        <span class="comment">// Handle disabled repeat rate.</span>
+        <span class="kw">let</span> <span class="ident">gap</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">details</span>.<span class="ident">gap</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">gap</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">gap</span>.<span class="ident">get</span>() <span class="kw">as</span> <span class="ident">u64</span>,
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,
+        };
+
         <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">current_repeat</span>.<span class="ident">borrow_mut</span>() <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">RepeatData</span> {
             <span class="ident">keyboard</span>,
             <span class="ident">keycode</span>: <span class="ident">key</span>,
-            <span class="ident">gap</span>: <span class="self">self</span>.<span class="ident">details</span>.<span class="ident">gap</span> <span class="kw">as</span> <span class="ident">u64</span>,
+            <span class="ident">gap</span>,
             <span class="ident">time</span>: (<span class="ident">time</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">details</span>.<span class="ident">delay</span>) <span class="kw">as</span> <span class="ident">u64</span> <span class="op">*</span> <span class="number">1000</span>,
         });
         <span class="self">self</span>.<span class="ident">timer_handle</span>.<span class="ident">add_timeout</span>(<span class="ident">Duration</span>::<span class="ident">from_micros</span>(<span class="self">self</span>.<span class="ident">details</span>.<span class="ident">delay</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">*</span> <span class="number">1000</span>), ());
@@ -1076,7 +1122,7 @@
         {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">repeat_handle</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">repeat</span> {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">repeat_handle</span>.<span class="ident">details</span>.<span class="ident">locked</span> {
-                    <span class="ident">repeat_handle</span>.<span class="ident">details</span>.<span class="ident">gap</span> <span class="op">=</span> <span class="ident">MICROS_IN_SECOND</span> <span class="op">/</span> (<span class="ident">rate</span> <span class="kw">as</span> <span class="ident">u32</span>);
+                    <span class="ident">repeat_handle</span>.<span class="ident">details</span>.<span class="ident">gap</span> <span class="op">=</span> <span class="ident">rate_to_gap</span>(<span class="ident">rate</span>);
                     <span class="ident">repeat_handle</span>.<span class="ident">details</span>.<span class="ident">delay</span> <span class="op">=</span> <span class="ident">delay</span> <span class="kw">as</span> <span class="ident">u32</span>;
                 }
             }
