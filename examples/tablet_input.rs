@@ -7,20 +7,18 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::calloop;
-use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface, wl_seat};
+use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent};
-use sctk::tablet::{TabletDeviceListener,TabletDeviceEvent};
-use sctk::reexports::client::{Attached,DispatchData};
 
-sctk::default_environment!(TabletInputExample, desktop);
+sctk::default_environment!(KbdInputExample, desktop);
 
 fn main() {
     /*
      * Initial setup
      */
-    let (env, display, queue) = sctk::init_default_environment!(TabletInputExample, desktop)
+    let (env, display, queue) = sctk::init_default_environment!(KbdInputExample, desktop)
         .expect("Unable to connect to a Wayland compositor");
 
     /*

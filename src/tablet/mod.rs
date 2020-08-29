@@ -12,6 +12,8 @@ use wayland_client::{
     Attached, DispatchData, Main,
 };
 
+mod tablet;
+
 /// Callback to get informed about new devices being added to a seat
 type TabletDeviceCallback =
     dyn FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static;
