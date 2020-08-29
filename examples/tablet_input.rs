@@ -7,21 +7,37 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::calloop;
-use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_keyboard, wl_seat, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::{
     environment::SimpleGlobal,
+    tablet::TabletHandling,
     window::{ConceptFrame, Event as WEvent},
 };
 use wayland_protocols::unstable::tablet::v2::client::*;
 
-sctk::default_environment!(TabletExample, fields = [
-tablet_manager: SimpleGlobal<zwp_tablet_manager_v2::ZwpTabletManagerV2>,
-],
-singles = [
-    zwp_tablet_manager_v2::ZwpTabletManagerV2 => tablet_manager
-]);
+sctk::default_environment!(TabletExample, desktop, fields = [
+        tablet_manager: SimpleGlobal<zwp_tablet_manager_v2::ZwpTabletManagerV2>,
+    ],
+    singles = [
+        zwp_tablet_manager_v2::ZwpTabletManagerV2 => tablet_manager
+    ]);
+
+impl TabletHandling for TabletExample {
+    fn listen<
+        F: FnMut(
+                wayland_client::Attached<wl_seat::WlSeat>,
+                sctk::tablet::TabletDeviceEvent,
+                wayland_client::DispatchData,
+            ) + 'static,
+    >(
+        &mut self,
+        callback: F,
+    ) -> Result<sctk::tablet::TabletDeviceListener, ()> {
+        self.tablet_manager.listen(callback)
+    }
+}
 
 fn main() {
     /*
@@ -29,6 +45,7 @@ fn main() {
      */
     let (env, display, queue) = sctk::init_default_environment!(
         TabletExample,
+        desktop,
         fields = [tablet_manager: SimpleGlobal::new(),]
     )
     .expect("Unable to connect to a Wayland compositor");
