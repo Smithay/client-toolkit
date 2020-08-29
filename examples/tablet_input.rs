@@ -7,11 +7,10 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::calloop;
-use sctk::reexports::client::protocol::{wl_keyboard, wl_seat, wl_shm, wl_surface};
+use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::{
-    environment::SimpleGlobal,
     window::{ConceptFrame, Event as WEvent},
 };
 
@@ -66,79 +65,21 @@ fn main() {
     let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
 
     /*
-     * Keyboard initialization
+     * Tablet initialization
      */
 
-    let mut seats = Vec::<(String, Option<(wl_keyboard::WlKeyboard, calloop::Source<_>)>)>::new();
-
-    // first process already existing seats
-    for seat in env.get_all_seats() {
-        if let Some((has_kbd, name)) = sctk::seat::with_seat_data(&seat, |seat_data| {
-            (seat_data.has_keyboard && !seat_data.defunct, seat_data.name.clone())
-        }) {
-            if has_kbd {
-                let seat_name = name.clone();
-                match map_keyboard_repeat(
-                    event_loop.handle(),
-                    &seat,
-                    None,
-                    RepeatKind::System,
-                    move |event, _, _| print_keyboard_event(event, &seat_name),
-                ) {
-                    Ok((kbd, repeat_source)) => {
-                        seats.push((name, Some((kbd, repeat_source))));
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to map keyboard on seat {} : {:?}.", name, e);
-                        seats.push((name, None));
-                    }
-                }
-            } else {
-                seats.push((name, None));
+    let result = env.listen_for_tablets(|seat, event, _|{
+        match event
+        {
+            sctk::tablet::TabletDeviceEvent::ToolAdded { tool } => {
+                println!("Tool added")
+            }
+            sctk::tablet::TabletDeviceEvent::ToolRemoved { tool } => {
+                println!("Tool removed")
             }
         }
-    }
-
-    // then setup a listener for changes
-    let loop_handle = event_loop.handle();
-    let _seat_listener = env.listen_for_seats(move |seat, seat_data, _| {
-        // find the seat in the vec of seats, or insert it if it is unknown
-        let idx = seats.iter().position(|(name, _)| name == &seat_data.name);
-        let idx = idx.unwrap_or_else(|| {
-            seats.push((seat_data.name.clone(), None));
-            seats.len() - 1
-        });
-
-        let (_, ref mut opt_kbd) = &mut seats[idx];
-        // we should map a keyboard if the seat has the capability & is not defunct
-        if seat_data.has_keyboard && !seat_data.defunct {
-            if opt_kbd.is_none() {
-                // we should initalize a keyboard
-                let seat_name = seat_data.name.clone();
-                match map_keyboard_repeat(
-                    loop_handle.clone(),
-                    &seat,
-                    None,
-                    RepeatKind::System,
-                    move |event, _, _| print_keyboard_event(event, &seat_name),
-                ) {
-                    Ok((kbd, repeat_source)) => {
-                        *opt_kbd = Some((kbd, repeat_source));
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to map keyboard on seat {} : {:?}.", seat_data.name, e)
-                    }
-                }
-            }
-        } else {
-            if let Some((kbd, source)) = opt_kbd.take() {
-                // the keyboard has been removed, cleanup
-                kbd.release();
-                loop_handle.remove(source);
-            }
-        }
-    });
-
+    }); 
+    
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {
