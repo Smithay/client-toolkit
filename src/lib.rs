@@ -168,6 +168,8 @@ macro_rules! default_environment {
             sctk_data_device_manager: $crate::data_device::DataDeviceHandler,
             // primary selection
             sctk_primary_selection_manager: $crate::primary_selection::PrimarySelectionHandler,
+            // tablet
+            sctk_tablet_manager: $crate::tablet::TabletHandler,
             // user added
             $($(
                 $fname : $fty,
@@ -245,6 +247,21 @@ macro_rules! default_environment {
             }
         }
 
+        // Tablet handling
+        impl $crate::tablet::TabletHandling for $env_name {
+            fn listen<F: FnMut(
+                    $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>,
+                    $crate::tablet::TabletDeviceEvent,
+                    $crate::reexports::client::DispatchData,
+                    ) + 'static,
+            >(
+                &mut self,
+                callback: F,
+            ) -> Result<$crate::tablet::TabletDeviceListener, ()> {
+                self.sctk_tablet_manager.listen(callback)
+            }
+        }
+
         //
         // Final macro delegation
         //
@@ -260,6 +277,7 @@ macro_rules! default_environment {
                 // primary selection
                 $crate::reexports::protocols::unstable::primary_selection::v1::client::zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1 => sctk_primary_selection_manager,
                 $crate::reexports::protocols::misc::gtk_primary_selection::client::gtk_primary_selection_device_manager::GtkPrimarySelectionDeviceManager => sctk_primary_selection_manager,
+                $crate::reexports::protocols::unstable::tablet::v2::client::zwp_tablet_manager_v2::ZwpTabletManagerV2 => sctk_tablet_manager,
                 // user added
                 $($($sty => $sname),*)?
             ],
@@ -348,6 +366,8 @@ macro_rules! init_default_environment {
             let mut sctk_seats = $crate::seat::SeatHandler::new();
             let sctk_data_device_manager = $crate::data_device::DataDeviceHandler::init(&mut sctk_seats);
             let sctk_primary_selection_manager = $crate::primary_selection::PrimarySelectionHandler::init(&mut sctk_seats);
+            let sctk_tablet_manager = $crate::tablet::TabletHandler::init(&mut sctk_seats);
+
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
             let env = $crate::environment::Environment::init(&display.attach($queue.token()), $env_name {
@@ -358,6 +378,7 @@ macro_rules! init_default_environment {
                 sctk_seats,
                 sctk_data_device_manager,
                 sctk_primary_selection_manager,
+                sctk_tablet_manager,
                 $($(
                     $fname: $fval,
                 )*)?

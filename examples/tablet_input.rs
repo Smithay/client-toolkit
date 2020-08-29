@@ -12,43 +12,18 @@ use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
 use sctk::{
     environment::SimpleGlobal,
-    tablet::TabletHandling,
     window::{ConceptFrame, Event as WEvent},
 };
-use wayland_protocols::unstable::tablet::v2::client::*;
 
-sctk::default_environment!(TabletExample, desktop, fields = [
-        tablet_manager: SimpleGlobal<zwp_tablet_manager_v2::ZwpTabletManagerV2>,
-    ],
-    singles = [
-        zwp_tablet_manager_v2::ZwpTabletManagerV2 => tablet_manager
-    ]);
-
-impl TabletHandling for TabletExample {
-    fn listen<
-        F: FnMut(
-                wayland_client::Attached<wl_seat::WlSeat>,
-                sctk::tablet::TabletDeviceEvent,
-                wayland_client::DispatchData,
-            ) + 'static,
-    >(
-        &mut self,
-        callback: F,
-    ) -> Result<sctk::tablet::TabletDeviceListener, ()> {
-        self.tablet_manager.listen(callback)
-    }
-}
+sctk::default_environment!(TabletExample, desktop);
 
 fn main() {
     /*
      * Initial setup
      */
-    let (env, display, queue) = sctk::init_default_environment!(
-        TabletExample,
-        desktop,
-        fields = [tablet_manager: SimpleGlobal::new(),]
-    )
-    .expect("Unable to connect to a Wayland compositor");
+
+    let (env, display, queue) = sctk::init_default_environment!(TabletExample,desktop)
+        .expect("Unable to connect to a Wayland compositor");
 
     /*
      * Prepare a calloop event loop to handle key repetion
