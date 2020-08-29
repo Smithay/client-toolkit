@@ -258,7 +258,15 @@ impl<F: Frame + 'static> Window<F> {
                         // Check whether we should save old size for later restoration.
                         let should_stash_size = states
                             .iter()
-                            .find(|s| *s == &State::Maximized || *s == &State::Fullscreen)
+                            .find(|s| match *s {
+                                State::Maximized
+                                | State::Fullscreen
+                                | State::TiledTop
+                                | State::TiledRight
+                                | State::TiledBottom
+                                | State::TiledLeft => true,
+                                _ => false,
+                            })
                             .map(|_| true)
                             .unwrap_or(false);
 
@@ -269,8 +277,8 @@ impl<F: Frame + 'static> Window<F> {
                                 inner.old_size = Some(inner.current_size);
                             }
                         } else if new_size.is_none() {
-                            // We are getting de-maximized/de-fullscreened, restore the size
-                            // if we were not previously maximized/fullscreened, old_size is
+                            // We are getting de-maximized/de-fullscreened/un-tiled, restore the
+                            // size, if we were not previously maximized/fullscreened, old_size is
                             // None and this does nothing.
                             new_size = inner.old_size.take();
                         } else {
