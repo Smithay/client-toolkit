@@ -880,6 +880,14 @@
 <span id="880">880</span>
 <span id="881">881</span>
 <span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
@@ -1141,7 +1149,15 @@
                         <span class="comment">// Check whether we should save old size for later restoration.</span>
                         <span class="kw">let</span> <span class="ident">should_stash_size</span> <span class="op">=</span> <span class="ident">states</span>
                             .<span class="ident">iter</span>()
-                            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">s</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Maximized</span> <span class="op">|</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">s</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">State</span>::<span class="ident">Fullscreen</span>)
+                            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">s</span> {
+                                <span class="ident">State</span>::<span class="ident">Maximized</span>
+                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">Fullscreen</span>
+                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledTop</span>
+                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledRight</span>
+                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledBottom</span>
+                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
+                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+                            })
                             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="bool-val">true</span>)
                             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
@@ -1152,8 +1168,8 @@
                                 <span class="ident">inner</span>.<span class="ident">old_size</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>.<span class="ident">current_size</span>);
                             }
                         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">new_size</span>.<span class="ident">is_none</span>() {
-                            <span class="comment">// We are getting de-maximized/de-fullscreened, restore the size</span>
-                            <span class="comment">// if we were not previously maximized/fullscreened, old_size is</span>
+                            <span class="comment">// We are getting de-maximized/de-fullscreened/un-tiled, restore the</span>
+                            <span class="comment">// size, if we were not previously maximized/fullscreened, old_size is</span>
                             <span class="comment">// None and this does nothing.</span>
                             <span class="ident">new_size</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">old_size</span>.<span class="ident">take</span>();
                         } <span class="kw">else</span> {
