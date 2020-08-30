@@ -29,6 +29,7 @@
   `ClientSide` decorations with hidden frame
 - `ConceptFrame` will use `Disabled` style for maximized button for non-resizeable frame
 - `ConceptFrame` will create subsurfaces for client side decorations only if a frame is visible
+- `Window` will restore original size after being tiled
 
 #### Bugfixes
 
