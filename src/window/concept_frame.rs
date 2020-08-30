@@ -216,15 +216,19 @@ struct Inner {
 
 impl Inner {
     fn find_surface(&self, surface: &wl_surface::WlSurface) -> Location {
-        if surface.as_ref().equals(&self.parts[HEAD].surface.as_ref()) {
+        if self.parts.is_empty() {
+            return Location::None;
+        }
+
+        if surface.as_ref().equals(self.parts[HEAD].surface.as_ref()) {
             Location::Head
-        } else if surface.as_ref().equals(&self.parts[TOP].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[TOP].surface.as_ref()) {
             Location::Top
-        } else if surface.as_ref().equals(&self.parts[BOTTOM].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[BOTTOM].surface.as_ref()) {
             Location::Bottom
-        } else if surface.as_ref().equals(&self.parts[LEFT].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[LEFT].surface.as_ref()) {
             Location::Left
-        } else if surface.as_ref().equals(&self.parts[RIGHT].surface.as_ref()) {
+        } else if surface.as_ref().equals(self.parts[RIGHT].surface.as_ref()) {
             Location::Right
         } else {
             Location::None
@@ -318,6 +322,9 @@ fn find_button(x: f64, y: f64, w: u32, buttons: (bool, bool, bool)) -> Location 
 /// in a `Fullscreen` state and brings them back if those are
 /// visible when unsetting `Fullscreen` state.
 pub struct ConceptFrame {
+    base_surface: wl_surface::WlSurface,
+    compositor: Attached<wl_compositor::WlCompositor>,
+    subcompositor: Attached<wl_subcompositor::WlSubcompositor>,
     inner: Rc<RefCell<Inner>>,
     pools: DoubleMemPool,
     active: WindowState,
@@ -358,14 +365,6 @@ impl Frame for ConceptFrame {
             buttons: (true, true, true),
         }));
 
-        inner.borrow_mut().parts = vec![
-            Part::new(base_surface, compositor, subcompositor, Some(Rc::clone(&inner))),
-            Part::new(base_surface, compositor, subcompositor, None),
-            Part::new(base_surface, compositor, subcompositor, None),
-            Part::new(base_surface, compositor, subcompositor, None),
-            Part::new(base_surface, compositor, subcompositor, None),
-        ];
-
         let my_inner = inner.clone();
         // Send a Refresh request on callback from DoubleMemPool as it will be fired when
         // None was previously returned from `pool()` and the draw was postponed
@@ -374,10 +373,13 @@ impl Frame for ConceptFrame {
         })?;
 
         Ok(ConceptFrame {
+            base_surface: base_surface.clone(),
+            compositor: compositor.clone(),
+            subcompositor: subcompositor.clone(),
             inner,
             pools,
             active: WindowState::Inactive,
-            hidden: false,
+            hidden: true,
             pointers: Vec::new(),
             themer,
             surface_version: compositor.as_ref().version(),
@@ -510,6 +512,25 @@ impl Frame for ConceptFrame {
 
     fn set_hidden(&mut self, hidden: bool) {
         self.hidden = hidden;
+        let mut inner = self.inner.borrow_mut();
+        if !self.hidden {
+            if inner.parts.is_empty() {
+                inner.parts = vec![
+                    Part::new(
+                        &self.base_surface,
+                        &self.compositor,
+                        &self.subcompositor,
+                        Some(Rc::clone(&self.inner)),
+                    ),
+                    Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
+                    Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
+                    Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
+                    Part::new(&self.base_surface, &self.compositor, &self.subcompositor, None),
+                ];
+            }
+        } else {
+            inner.parts.clear();
+        }
     }
 
     fn set_resizable(&mut self, resizable: bool) {
@@ -525,16 +546,19 @@ impl Frame for ConceptFrame {
 
         // Don't draw borders if the frame explicitly hidden or fullscreened.
         if self.hidden || inner.fullscreened {
-            // don't draw the borders
-            for p in &inner.parts {
+            // Don't draw the borders.
+            for p in inner.parts.iter() {
                 p.surface.attach(None, 0, 0);
                 p.surface.commit();
             }
             return;
         }
 
-        let scales: Vec<u32> = inner
-            .parts
+        // `parts` can't be empty here, since the initial state for `self.hidden` is true, and
+        // they will be created once `self.hidden` will become `false`.
+        let parts = &inner.parts;
+
+        let scales: Vec<u32> = parts
             .iter()
             .map(|part| crate::surface::get_surface_scale_factor(&part.surface) as u32)
             .collect();
@@ -703,10 +727,10 @@ impl Frame for ConceptFrame {
                 4 * scaled_header_width as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[HEAD].subsurface.set_position(0, -(HEADER_SIZE as i32));
-            inner.parts[HEAD].surface.attach(Some(&buffer), 0, 0);
+            parts[HEAD].subsurface.set_position(0, -(HEADER_SIZE as i32));
+            parts[HEAD].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                inner.parts[HEAD].surface.damage_buffer(
+                parts[HEAD].surface.damage_buffer(
                     0,
                     0,
                     scaled_header_width as i32,
@@ -715,9 +739,9 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                inner.parts[HEAD].surface.damage(0, 0, width as i32, HEADER_SIZE as i32);
+                parts[HEAD].surface.damage(0, 0, width as i32, HEADER_SIZE as i32);
             }
-            inner.parts[HEAD].surface.commit();
+            parts[HEAD].surface.commit();
 
             // -> top-subsurface
             let buffer = pool.buffer(
@@ -727,12 +751,12 @@ impl Frame for ConceptFrame {
                 (4 * scales[TOP] * (width + 2 * BORDER_SIZE)) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[TOP]
+            parts[TOP]
                 .subsurface
                 .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32 + BORDER_SIZE as i32));
-            inner.parts[TOP].surface.attach(Some(&buffer), 0, 0);
+            parts[TOP].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                inner.parts[TOP].surface.damage_buffer(
+                parts[TOP].surface.damage_buffer(
                     0,
                     0,
                     ((width + 2 * BORDER_SIZE) * scales[TOP]) as i32,
@@ -741,14 +765,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                inner.parts[TOP].surface.damage(
+                parts[TOP].surface.damage(
                     0,
                     0,
                     (width + 2 * BORDER_SIZE) as i32,
                     BORDER_SIZE as i32,
                 );
             }
-            inner.parts[TOP].surface.commit();
+            parts[TOP].surface.commit();
 
             // -> bottom-subsurface
             let buffer = pool.buffer(
@@ -758,10 +782,10 @@ impl Frame for ConceptFrame {
                 (4 * scales[BOTTOM] * (width + 2 * BORDER_SIZE)) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[BOTTOM].subsurface.set_position(-(BORDER_SIZE as i32), height as i32);
-            inner.parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
+            parts[BOTTOM].subsurface.set_position(-(BORDER_SIZE as i32), height as i32);
+            parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                inner.parts[BOTTOM].surface.damage_buffer(
+                parts[BOTTOM].surface.damage_buffer(
                     0,
                     0,
                     ((width + 2 * BORDER_SIZE) * scales[BOTTOM]) as i32,
@@ -770,14 +794,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                inner.parts[BOTTOM].surface.damage(
+                parts[BOTTOM].surface.damage(
                     0,
                     0,
                     (width + 2 * BORDER_SIZE) as i32,
                     BORDER_SIZE as i32,
                 );
             }
-            inner.parts[BOTTOM].surface.commit();
+            parts[BOTTOM].surface.commit();
 
             // -> left-subsurface
             let buffer = pool.buffer(
@@ -787,10 +811,10 @@ impl Frame for ConceptFrame {
                 4 * (BORDER_SIZE * scales[LEFT]) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[LEFT].subsurface.set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
-            inner.parts[LEFT].surface.attach(Some(&buffer), 0, 0);
+            parts[LEFT].subsurface.set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
+            parts[LEFT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                inner.parts[LEFT].surface.damage_buffer(
+                parts[LEFT].surface.damage_buffer(
                     0,
                     0,
                     (BORDER_SIZE * scales[LEFT]) as i32,
@@ -799,14 +823,9 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                inner.parts[LEFT].surface.damage(
-                    0,
-                    0,
-                    BORDER_SIZE as i32,
-                    (height + HEADER_SIZE) as i32,
-                );
+                parts[LEFT].surface.damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
             }
-            inner.parts[LEFT].surface.commit();
+            parts[LEFT].surface.commit();
 
             // -> right-subsurface
             let buffer = pool.buffer(
@@ -816,10 +835,10 @@ impl Frame for ConceptFrame {
                 4 * (BORDER_SIZE * scales[RIGHT]) as i32,
                 wl_shm::Format::Argb8888,
             );
-            inner.parts[RIGHT].subsurface.set_position(width as i32, -(HEADER_SIZE as i32));
-            inner.parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
+            parts[RIGHT].subsurface.set_position(width as i32, -(HEADER_SIZE as i32));
+            parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
             if self.surface_version >= 4 {
-                inner.parts[RIGHT].surface.damage_buffer(
+                parts[RIGHT].surface.damage_buffer(
                     0,
                     0,
                     (BORDER_SIZE * scales[RIGHT]) as i32,
@@ -828,14 +847,14 @@ impl Frame for ConceptFrame {
             } else {
                 // surface is old and does not support damage_buffer, so we damage
                 // in surface coordinates and hope it is not rescaled
-                inner.parts[RIGHT].surface.damage(
+                parts[RIGHT].surface.damage(
                     0,
                     0,
                     BORDER_SIZE as i32,
                     (height + HEADER_SIZE) as i32,
                 );
             }
-            inner.parts[RIGHT].surface.commit();
+            parts[RIGHT].surface.commit();
         }
     }
 
