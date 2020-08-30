@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 -- 2020-08-30
+
 #### Breaking Changes
 
 - `window.set_decorate` is now taking mutable reference
