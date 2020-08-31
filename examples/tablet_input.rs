@@ -68,7 +68,7 @@ fn main() {
      * Tablet initialization
      */
 
-    let result = env.listen_for_tablets(|seat, event, _|{
+    let _result = env.listen_for_tablets(|seat, event, _|{
         match event
         {
             sctk::tablet::TabletDeviceEvent::ToolAdded { tool } => {

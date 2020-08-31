@@ -176,9 +176,40 @@ fn tablet_seat_cb(
                 );
             })
         }
-        _ => {
-            todo!();
+        zwp_tablet_seat_v2::Event::TabletAdded { id } => {
+            id.quick_assign(move |tablet, event, ddata| {
+                tablet_tablet_cb(
+                    tablet_seat.clone().into(),
+                    tablet,
+                    handler_data.clone(),
+                    event,
+                    ddata,
+                )
+            })
         }
+        zwp_tablet_seat_v2::Event::PadAdded { id } => {
+
+        }
+        _ => {
+            println!("Some other event - ignoring");
+        }
+    }
+}
+
+fn tablet_tablet_cb(
+    tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
+    tablet_device: Main<zwp_tablet_v2::ZwpTabletV2>,
+    handler_data: Rc<RefCell<SharedData>>,
+    event: zwp_tablet_v2::Event,
+    mut ddata: DispatchData,
+)
+{
+    match event {
+        zwp_tablet_v2::Event::Name { name } => {
+            println!("Tablet name: {}", name)
+        }
+        zwp_tablet_v2::Event::Path { path}=> {}
+        _ => {}
     }
 }
 
@@ -189,11 +220,13 @@ fn tablet_tool_cb(
     event: zwp_tablet_tool_v2::Event,
     mut ddata: DispatchData,
 ) {
+    println!("Tablet tool event");
     match event {
         zwp_tablet_tool_v2::Event::Type { tool_type } => {
             let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
             let mut guard = tool_data.lock().unwrap();
             guard.tool_type = tool_type;
+            println!("Tool type")
         }
         zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
             let hw_id = HardwareSerial { hardware_serial_hi, hardware_serial_lo };
@@ -241,7 +274,7 @@ fn tablet_tool_cb(
         zwp_tablet_tool_v2::Event::Removed => {
             //emit tool removed event
         }
-        _ => todo!(),
+        _ => println!("ignoring boring"),
     }
 }
 
