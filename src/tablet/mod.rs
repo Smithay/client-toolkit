@@ -167,7 +167,7 @@ fn tablet_seat_cb(
     match event {
         zwp_tablet_seat_v2::Event::ToolAdded { id } => {
             // set callback for tool events
-            id.as_ref().user_data().set(|| {
+            /*id.as_ref().user_data().set(|| {
                 Mutex::new(ToolMetaData {
                     capabilities: Vec::new(),
                     hardware_id_wacom: HardwareIdWacom { hardware_id_hi: 0, hardware_id_lo: 0 },
@@ -177,7 +177,7 @@ fn tablet_seat_cb(
                     },
                     tool_type: zwp_tablet_tool_v2::Type::Pen {},
                 })
-            });
+            });*/
             id.quick_assign(move |tool, event, ddata| {
                 tablet_tool_cb(
                     tablet_seat.clone().into(),
@@ -230,13 +230,13 @@ fn tablet_tool_cb(
     println!("Tablet tool event");
     match event {
         zwp_tablet_tool_v2::Event::Type { tool_type } => {
-            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
+            /*let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
             let mut guard = tool_data.lock().unwrap();
-            guard.tool_type = tool_type;
+            guard.tool_type = tool_type;*/
             println!("Tool type")
         }
         zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
-            let hw_id = HardwareSerial { hardware_serial_hi, hardware_serial_lo };
+            /*let hw_id = HardwareSerial { hardware_serial_hi, hardware_serial_lo };
             let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
             let mut guard = tool_data.lock().unwrap();
             guard.hardware_serial = hw_id;
@@ -254,7 +254,7 @@ fn tablet_tool_cb(
         }
         zwp_tablet_tool_v2::Event::Done => {
             //emit tool added event
-            /*
+            
             handler_data.borrow_mut().listeners.retain(|lst| {
                 if let Some(cb) = Weak::upgrade(lst) {
                     let wl_seat = handler_data
