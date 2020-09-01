@@ -10,9 +10,7 @@ use sctk::reexports::calloop;
 use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
-use sctk::{
-    window::{ConceptFrame, Event as WEvent},
-};
+use sctk::window::{ConceptFrame, Event as WEvent};
 
 sctk::default_environment!(TabletExample, desktop);
 
@@ -21,7 +19,7 @@ fn main() {
      * Initial setup
      */
 
-    let (env, display, queue) = sctk::init_default_environment!(TabletExample,desktop)
+    let (env, display, queue) = sctk::init_default_environment!(TabletExample, desktop)
         .expect("Unable to connect to a Wayland compositor");
 
     /*
@@ -68,18 +66,11 @@ fn main() {
      * Tablet initialization
      */
 
-    let _result = env.listen_for_tablets(|seat, event, _|{
-        match event
-        {
-            sctk::tablet::TabletDeviceEvent::ToolAdded { tool } => {
-                println!("Tool added")
-            }
-            sctk::tablet::TabletDeviceEvent::ToolRemoved { tool } => {
-                println!("Tool removed")
-            }
-        }
-    }); 
-    
+    let _result = env.listen_for_tablets(|seat, event, _| match event {
+        sctk::tablet::TabletDeviceEvent::ToolAdded { tool } => println!("Tool added"),
+        sctk::tablet::TabletDeviceEvent::ToolRemoved { tool } => println!("Tool removed"),
+    });
+
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
         if let Some(pool) = pools.pool() {

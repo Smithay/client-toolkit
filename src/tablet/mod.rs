@@ -163,9 +163,21 @@ fn tablet_seat_cb(
     handler_data: Rc<RefCell<SharedData>>,
     event: zwp_tablet_seat_v2::Event,
 ) {
+    println!("Seat event");
     match event {
         zwp_tablet_seat_v2::Event::ToolAdded { id } => {
             // set callback for tool events
+            id.as_ref().user_data().set(|| {
+                Mutex::new(ToolMetaData {
+                    capabilities: Vec::new(),
+                    hardware_id_wacom: HardwareIdWacom { hardware_id_hi: 0, hardware_id_lo: 0 },
+                    hardware_serial: HardwareSerial {
+                        hardware_serial_hi: 0,
+                        hardware_serial_lo: 0,
+                    },
+                    tool_type: zwp_tablet_tool_v2::Type::Pen {},
+                })
+            });
             id.quick_assign(move |tool, event, ddata| {
                 tablet_tool_cb(
                     tablet_seat.clone().into(),
@@ -187,9 +199,7 @@ fn tablet_seat_cb(
                 )
             })
         }
-        zwp_tablet_seat_v2::Event::PadAdded { id } => {
-
-        }
+        zwp_tablet_seat_v2::Event::PadAdded { id } => {}
         _ => {
             println!("Some other event - ignoring");
         }
@@ -202,13 +212,10 @@ fn tablet_tablet_cb(
     handler_data: Rc<RefCell<SharedData>>,
     event: zwp_tablet_v2::Event,
     mut ddata: DispatchData,
-)
-{
+) {
     match event {
-        zwp_tablet_v2::Event::Name { name } => {
-            println!("Tablet name: {}", name)
-        }
-        zwp_tablet_v2::Event::Path { path}=> {}
+        zwp_tablet_v2::Event::Name { name } => println!("Tablet name: {}", name),
+        zwp_tablet_v2::Event::Path { path } => {}
         _ => {}
     }
 }
@@ -247,6 +254,7 @@ fn tablet_tool_cb(
         }
         zwp_tablet_tool_v2::Event::Done => {
             //emit tool added event
+            /*
             handler_data.borrow_mut().listeners.retain(|lst| {
                 if let Some(cb) = Weak::upgrade(lst) {
                     let wl_seat = handler_data
@@ -269,7 +277,7 @@ fn tablet_tool_cb(
                 } else {
                     false
                 }
-            });
+            });*/
         }
         zwp_tablet_tool_v2::Event::Removed => {
             //emit tool removed event
