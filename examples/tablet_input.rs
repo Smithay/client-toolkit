@@ -7,8 +7,7 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::calloop;
-use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
-use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
+use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::shm::MemPool;
 use sctk::window::{ConceptFrame, Event as WEvent};
 
@@ -42,20 +41,25 @@ fn main() {
     let surface = env.create_surface().detach();
 
     let mut window = env
-        .create_window::<ConceptFrame, _>(surface, None,dimensions, move |evt, mut dispatch_data| {
-            let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
-            // Keep last event in priority order : Close > Configure > Refresh
-            let replace = match (&evt, &*next_action) {
-                (_, &None)
-                | (_, &Some(WEvent::Refresh))
-                | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-                | (&WEvent::Close, _) => true,
-                _ => false,
-            };
-            if replace {
-                *next_action = Some(evt);
-            }
-        })
+        .create_window::<ConceptFrame, _>(
+            surface,
+            None,
+            dimensions,
+            move |evt, mut dispatch_data| {
+                let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
+                // Keep last event in priority order : Close > Configure > Refresh
+                let replace = match (&evt, &*next_action) {
+                    (_, &None)
+                    | (_, &Some(WEvent::Refresh))
+                    | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+                    | (&WEvent::Close, _) => true,
+                    _ => false,
+                };
+                if replace {
+                    *next_action = Some(evt);
+                }
+            },
+        )
         .expect("Failed to create a window !");
 
     window.set_title("Kbd Input".to_string());
@@ -108,32 +112,6 @@ fn main() {
         display.flush().unwrap();
 
         event_loop.dispatch(None, &mut next_action).unwrap();
-    }
-}
-
-fn print_keyboard_event(event: KbEvent, seat_name: &str) {
-    match event {
-        KbEvent::Enter { keysyms, .. } => {
-            println!("Gained focus on seat '{}' while {} keys pressed.", seat_name, keysyms.len(),);
-        }
-        KbEvent::Leave { .. } => {
-            println!("Lost focus on seat '{}'.", seat_name);
-        }
-        KbEvent::Key { keysym, state, utf8, .. } => {
-            println!("Key {:?}: {:x} on seat '{}'.", state, keysym, seat_name);
-            if let Some(txt) = utf8 {
-                println!(" -> Received text \"{}\".", txt);
-            }
-        }
-        KbEvent::Modifiers { modifiers } => {
-            println!("Modifiers changed to {:?} on seat '{}'.", modifiers, seat_name);
-        }
-        KbEvent::Repeat { keysym, utf8, .. } => {
-            println!("Key repetition {:x} on seat '{}'.", keysym, seat_name);
-            if let Some(txt) = utf8 {
-                println!(" -> Received text \"{}\".", txt);
-            }
-        }
     }
 }
 
