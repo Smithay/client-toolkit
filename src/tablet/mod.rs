@@ -79,6 +79,13 @@ impl<C: ?Sized> Listeners<C> {
     pub(super) fn new() -> Self {
         Self { callbacks: Vec::new() }
     }
+
+    pub(super) fn invoke_all<F>(&mut self, f: F)
+    where
+        F: FnMut(&Rc<RefCell<C>>),
+    {
+        self.update().iter().for_each(f)
+    }
 }
 
 impl TabletHandling for TabletHandler {
@@ -110,8 +117,12 @@ impl ListenerData {
     fn lookup(
         &self,
         tablet_seat: &zwp_tablet_seat_v2::ZwpTabletSeatV2,
-    ) -> Option<&Attached<wl_seat::WlSeat>> {
-        self.tablet_seats.iter().find(|(_, tseat)| *tseat == *tablet_seat).map(|(wseat, _)| wseat)
+    ) -> &Attached<wl_seat::WlSeat> {
+        self.tablet_seats
+            .iter()
+            .find(|(_, tseat)| *tseat == *tablet_seat)
+            .map(|(wseat, _)| wseat)
+            .expect("Tablet seat not found in mapping")
     }
 }
 

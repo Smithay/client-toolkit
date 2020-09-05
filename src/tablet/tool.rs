@@ -1,4 +1,4 @@
-use super::{ListenerData, TabletDeviceEvent, TabletInner};
+use super::{devices::notify_devices, ListenerData, TabletDeviceEvent, TabletInner};
 use std::{
     cell::RefCell,
     rc::{Rc, Weak},
@@ -29,6 +29,7 @@ pub struct ToolMetaData {
     pub tool_type: zwp_tablet_tool_v2::Type,
 }
 
+#[derive(Clone)]
 pub enum ToolEvent {
     ProximityIn { serial: u32, tablet: zwp_tablet_v2::ZwpTabletV2, surface: wl_surface::WlSurface },
     ProximityOut,
@@ -61,7 +62,7 @@ pub(super) fn tablet_tool_cb(
     tablet_tool: Main<zwp_tablet_tool_v2::ZwpTabletToolV2>,
     listener_data: Rc<RefCell<ListenerData>>,
     event: zwp_tablet_tool_v2::Event,
-    mut ddata: DispatchData,
+    ddata: DispatchData,
 ) {
     println!("Tablet tool event {:?}", event);
     match event {
@@ -89,39 +90,81 @@ pub(super) fn tablet_tool_cb(
         }
         zwp_tablet_tool_v2::Event::Done => {
             //emit tool added event
-            let mut shared_data = listener_data.borrow_mut();
-            let wl_seat = shared_data.lookup(&*tablet_seat).map(Attached::clone);
-            match wl_seat {
-                Some(wseat) => {
-                    shared_data.device_listeners.update().iter().for_each(|cb| {
-                        (&mut *cb.borrow_mut())(
-                            wseat.clone(),
-                            TabletDeviceEvent::ToolAdded { tool: tablet_tool.clone().into() },
-                            ddata.reborrow(),
-                        );
-                    });
-                }
-                None => {}
-            }
+            notify_devices(
+                &listener_data,
+                TabletDeviceEvent::ToolAdded { tool: tablet_tool.clone().into() },
+                ddata,
+                &tablet_seat,
+            )
         }
         zwp_tablet_tool_v2::Event::Removed => {
             //emit tool removed event
-            let mut shared_data = listener_data.borrow_mut();
-            let wl_seat = shared_data.lookup(&*tablet_seat).map(Attached::clone);
-            match wl_seat {
-                Some(wseat) => {
-                    shared_data.device_listeners.update().iter().for_each(|cb| {
-                        (&mut *cb.borrow_mut())(
-                            wseat.clone(),
-                            TabletDeviceEvent::ToolRemoved { tool: tablet_tool.detach() },
-                            ddata.reborrow(),
-                        );
-                    });
-                }
-                None => {}
-            }
+            notify_devices(
+                &listener_data,
+                TabletDeviceEvent::ToolRemoved { tool: tablet_tool.detach() },
+                ddata,
+                &tablet_seat,
+            )
         }
-        zwp_tablet_tool_v2::Event::ProximityIn { serial, tablet, surface } => {}
-        _ => {}
+        zwp_tablet_tool_v2::Event::ProximityIn { serial, tablet, surface } => notify_tools(
+            &listener_data,
+            ToolEvent::ProximityIn { serial, tablet, surface },
+            ddata,
+            &tablet_tool,
+        ),
+        zwp_tablet_tool_v2::Event::ProximityOut {} => {
+            notify_tools(&listener_data, ToolEvent::ProximityOut, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Up {} => {
+            notify_tools(&listener_data, ToolEvent::Up, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Down { serial } => {
+            notify_tools(&listener_data, ToolEvent::Down { serial }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Motion { x, y } => {
+            notify_tools(&listener_data, ToolEvent::Motion { x, y }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Pressure { pressure } => {
+            notify_tools(&listener_data, ToolEvent::Pressure { pressure }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Distance { distance } => {
+            notify_tools(&listener_data, ToolEvent::Distance { distance }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Tilt { tilt_x, tilt_y } => {
+            notify_tools(&listener_data, ToolEvent::Tilt { tilt_x, tilt_y }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Rotation { degrees } => {
+            notify_tools(&listener_data, ToolEvent::Rotation { degrees }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Slider { position } => {
+            notify_tools(&listener_data, ToolEvent::Slider { position }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Wheel { degrees, clicks } => {
+            notify_tools(&listener_data, ToolEvent::Wheel { degrees, clicks }, ddata, &tablet_tool)
+        }
+        zwp_tablet_tool_v2::Event::Button { serial, button, state } => notify_tools(
+            &listener_data,
+            ToolEvent::Button { serial, button, state },
+            ddata,
+            &tablet_tool,
+        ),
+        zwp_tablet_tool_v2::Event::Frame { time } => {
+            notify_tools(&listener_data, ToolEvent::Frame { time }, ddata, &tablet_tool)
+        }
+        _ => {
+            println!("Tool event not recognized");
+        }
     }
+}
+
+fn notify_tools(
+    listener_data: &Rc<RefCell<ListenerData>>,
+    event: ToolEvent,
+    mut ddata: DispatchData,
+    tablet_tool: &Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+) {
+    let mut shared_data = listener_data.borrow_mut();
+    shared_data.tool_listeners.invoke_all(move |cb| {
+        (&mut *cb.borrow_mut())(tablet_tool.clone(), event.clone(), ddata.reborrow());
+    });
 }

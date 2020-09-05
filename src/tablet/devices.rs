@@ -22,7 +22,7 @@ pub struct TabletMetaData {
     pub pid: u32,
     pub path: String,
 }
-
+#[derive(Clone)]
 pub enum TabletDeviceEvent {
     ToolAdded { tool: Attached<zwp_tablet_tool_v2::ZwpTabletToolV2> },
     ToolRemoved { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
@@ -83,7 +83,7 @@ fn tablet_tablet_cb(
     tablet_device: Main<zwp_tablet_v2::ZwpTabletV2>,
     listener_data: Rc<RefCell<ListenerData>>,
     event: zwp_tablet_v2::Event,
-    mut ddata: DispatchData,
+    ddata: DispatchData,
 ) {
     match event {
         zwp_tablet_v2::Event::Name { name } => {
@@ -105,38 +105,31 @@ fn tablet_tablet_cb(
             guard.vid = vid;
             guard.pid = pid;
         }
-        zwp_tablet_v2::Event::Done => {
-            let mut shared_data = listener_data.borrow_mut();
-            let wl_seat = shared_data.lookup(&*tablet_seat).map(Attached::clone);
-            match wl_seat {
-                Some(wseat) => {
-                    shared_data.device_listeners.update().iter().for_each(|cb| {
-                        (&mut *cb.borrow_mut())(
-                            wseat.clone(),
-                            TabletDeviceEvent::TabletAdded { tablet: tablet_device.clone().into() },
-                            ddata.reborrow(),
-                        );
-                    });
-                }
-                None => {}
-            }
-        }
-        zwp_tablet_v2::Event::Removed => {
-            let mut shared_data = listener_data.borrow_mut();
-            let wl_seat = shared_data.lookup(&*tablet_seat).map(Attached::clone);
-            match wl_seat {
-                Some(wseat) => {
-                    shared_data.device_listeners.update().iter().for_each(|cb| {
-                        (&mut *cb.borrow_mut())(
-                            wseat.clone(),
-                            TabletDeviceEvent::TabletRemoved { tablet: tablet_device.detach() },
-                            ddata.reborrow(),
-                        );
-                    });
-                }
-                None => {}
-            }
-        }
+        zwp_tablet_v2::Event::Done => notify_devices(
+            &listener_data,
+            TabletDeviceEvent::TabletAdded { tablet: tablet_device.clone().into() },
+            ddata,
+            &tablet_seat,
+        ),
+        zwp_tablet_v2::Event::Removed => notify_devices(
+            &listener_data,
+            TabletDeviceEvent::TabletRemoved { tablet: tablet_device.detach() },
+            ddata,
+            &tablet_seat,
+        ),
         _ => {}
     }
+}
+
+pub(super) fn notify_devices(
+    listener_data: &Rc<RefCell<ListenerData>>,
+    event: TabletDeviceEvent,
+    mut ddata: DispatchData,
+    tablet_seat: &Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
+) {
+    let mut shared_data = listener_data.borrow_mut();
+    let wl_seat = shared_data.lookup(&tablet_seat).clone();
+    shared_data.device_listeners.invoke_all(move |cb| {
+        (&mut *cb.borrow_mut())(wl_seat.clone(), event.clone(), ddata.reborrow());
+    });
 }
