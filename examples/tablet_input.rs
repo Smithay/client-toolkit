@@ -71,8 +71,12 @@ fn main() {
      */
 
     let _result = env.listen_for_tablets(|seat, event, _| match event {
-        sctk::tablet::TabletDeviceEvent::ToolAdded { tool } => println!("Tool added"),
-        sctk::tablet::TabletDeviceEvent::ToolRemoved { tool } => println!("Tool removed"),
+        sctk::tablet::devices::TabletDeviceEvent::ToolAdded { tool } => println!("Tool added"),
+        sctk::tablet::devices::TabletDeviceEvent::ToolRemoved { tool } => println!("Tool removed"),
+        sctk::tablet::devices::TabletDeviceEvent::PadAdded { pad } => {}
+        sctk::tablet::devices::TabletDeviceEvent::PadRemoved { pad } => {}
+        sctk::tablet::devices::TabletDeviceEvent::TabletAdded { tablet } => {}
+        sctk::tablet::devices::TabletDeviceEvent::TabletRemoved { tablet } => {}
     });
 
     if !env.get_shell().unwrap().needs_configure() {

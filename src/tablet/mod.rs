@@ -1,22 +1,22 @@
 use wayland_protocols::unstable::tablet::v2::client::*;
 
 use crate::environment;
+use devices::{tablet_seat_cb, Listeners, SharedData, TabletDeviceCallback, TabletDeviceEvent};
 use std::{
     cell::RefCell,
     cmp,
     rc::{Rc, Weak},
     sync::Mutex,
 };
+use tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolMetaData};
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
     Attached, DispatchData, Main,
 };
 
-/// Callback to get informed about new devices being added to a seat
-type TabletDeviceCallback =
-    dyn FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static;
-
-type TabletListeners = Vec<Weak<RefCell<TabletDeviceCallback>>>;
+pub mod devices;
+pub mod pad;
+pub mod tool;
 
 pub struct TabletDeviceListener {
     _cb: Rc<RefCell<TabletDeviceCallback>>,
@@ -33,40 +33,10 @@ enum TabletInner {
     },
 }
 
-struct SharedData {
-    tablet_seats: Vec<(Attached<wl_seat::WlSeat>, zwp_tablet_seat_v2::ZwpTabletSeatV2)>,
-    /// Global callback for new tablet devices
-    listeners: TabletListeners,
-    tools: Vec<(zwp_tablet_tool_v2::ZwpTabletToolV2, ToolMetaData)>,
-}
-
 /// Handles tablet device added/removed events
 pub struct TabletHandler {
     inner: Rc<RefCell<TabletInner>>,
     _listener: crate::seat::SeatListener,
-}
-
-pub enum TabletDeviceEvent {
-    ToolAdded { tool: Attached<zwp_tablet_tool_v2::ZwpTabletToolV2> },
-    ToolRemoved { tool: zwp_tablet_tool_v2::ZwpTabletToolV2 },
-}
-#[derive(Clone)]
-pub struct HardwareIdWacom {
-    hardware_id_hi: u32,
-    hardware_id_lo: u32,
-}
-#[derive(Clone)]
-pub struct HardwareSerial {
-    hardware_serial_hi: u32,
-    hardware_serial_lo: u32,
-}
-
-#[derive(Clone)]
-pub struct ToolMetaData {
-    pub capabilities: Vec<zwp_tablet_tool_v2::Capability>,
-    pub hardware_id_wacom: HardwareIdWacom,
-    pub hardware_serial: HardwareSerial,
-    pub tool_type: zwp_tablet_tool_v2::Type,
 }
 
 pub trait TabletHandling {
@@ -86,7 +56,7 @@ impl TabletHandling for TabletHandler {
         let ref mut inner = *self.inner.borrow_mut();
         match inner {
             TabletInner::Ready { data, .. } => {
-                data.borrow_mut().listeners.push(Rc::downgrade(&rc));
+                data.borrow_mut().listeners.push(&rc);
                 Ok(TabletDeviceListener { _cb: rc })
             }
             TabletInner::Pending { .. } => Err(()),
@@ -104,9 +74,8 @@ impl TabletInner {
         };
 
         let tablet_seats = Vec::new();
-        let listeners = Vec::new();
 
-        let data = Rc::new(RefCell::new(SharedData { tablet_seats, listeners, tools: Vec::new() }));
+        let data = Rc::new(RefCell::new(SharedData { tablet_seats, listeners: Listeners::new() }));
         for seat in seats {
             let tablet_seat = mgr.get_tablet_seat(&seat);
             // attach tablet seat to global callback for new devices
@@ -155,133 +124,6 @@ impl TabletInner {
             Self::Ready { data, .. } => data.borrow_mut().tablet_seats.retain(|(s, _)| s != seat),
             Self::Pending { seats } => seats.retain(|s| s != seat),
         }
-    }
-}
-
-fn tablet_seat_cb(
-    tablet_seat: Main<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
-    handler_data: Rc<RefCell<SharedData>>,
-    event: zwp_tablet_seat_v2::Event,
-) {
-    match event {
-        zwp_tablet_seat_v2::Event::ToolAdded { id } => {
-            // set callback for tool events
-            println!("Tool added {:?}", id);
-            id.as_ref().user_data().set(|| {
-                Mutex::new(ToolMetaData {
-                    capabilities: Vec::new(),
-                    hardware_id_wacom: HardwareIdWacom { hardware_id_hi: 0, hardware_id_lo: 0 },
-                    hardware_serial: HardwareSerial {
-                        hardware_serial_hi: 0,
-                        hardware_serial_lo: 0,
-                    },
-                    tool_type: zwp_tablet_tool_v2::Type::Pen {},
-                })
-            });
-            id.quick_assign(move |tool, event, ddata| {
-                tablet_tool_cb(
-                    tablet_seat.clone().into(),
-                    tool,
-                    handler_data.clone(),
-                    event,
-                    ddata,
-                );
-            })
-        }
-        zwp_tablet_seat_v2::Event::TabletAdded { id } => {
-            println!("Tablet added {:?}", id);
-            id.quick_assign(move |tablet, event, ddata| {
-                tablet_tablet_cb(
-                    tablet_seat.clone().into(),
-                    tablet,
-                    handler_data.clone(),
-                    event,
-                    ddata,
-                )
-            })
-        }
-        zwp_tablet_seat_v2::Event::PadAdded { id } => {
-            println!("Pad added {:?}", id);
-        }
-        _ => {}
-    }
-}
-
-fn tablet_tablet_cb(
-    tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
-    tablet_device: Main<zwp_tablet_v2::ZwpTabletV2>,
-    handler_data: Rc<RefCell<SharedData>>,
-    event: zwp_tablet_v2::Event,
-    mut ddata: DispatchData,
-) {
-    match event {
-        zwp_tablet_v2::Event::Name { name } => println!("Tablet name: {}", name),
-        zwp_tablet_v2::Event::Path { path } => {}
-        _ => {}
-    }
-}
-
-fn tablet_tool_cb(
-    tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
-    tablet_tool: Main<zwp_tablet_tool_v2::ZwpTabletToolV2>,
-    handler_data: Rc<RefCell<SharedData>>,
-    event: zwp_tablet_tool_v2::Event,
-    mut ddata: DispatchData,
-) {
-    println!("Tablet tool event {:?}", event);
-    match event {
-        zwp_tablet_tool_v2::Event::Type { tool_type } => {
-            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
-            let mut guard = tool_data.lock().unwrap();
-            guard.tool_type = tool_type;
-        }
-        zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
-            let hw_id = HardwareSerial { hardware_serial_hi, hardware_serial_lo };
-            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
-            let mut guard = tool_data.lock().unwrap();
-            guard.hardware_serial = hw_id;
-        }
-        zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => {
-            let hw_id = HardwareIdWacom { hardware_id_hi, hardware_id_lo };
-            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
-            let mut guard = tool_data.lock().unwrap();
-            guard.hardware_id_wacom = hw_id;
-        }
-        zwp_tablet_tool_v2::Event::Capability { capability } => {
-            let tool_data = tablet_tool.as_ref().user_data().get::<Mutex<ToolMetaData>>().unwrap();
-            let mut guard = tool_data.lock().unwrap();
-            guard.capabilities.push(capability);
-        }
-        zwp_tablet_tool_v2::Event::Done => {
-            //emit tool added event
-            let mut shared_data = handler_data.borrow_mut();
-            let seats = shared_data.tablet_seats.clone();
-            shared_data.listeners.retain(|lst| {
-                if let Some(cb) = Weak::upgrade(lst) {
-                    let wl_seat = seats
-                        .iter()
-                        .find(|(_, tseat)| *tseat == *tablet_seat)
-                        .map(|(wseat, _)| wseat.clone());
-                    match wl_seat {
-                        Some(wseat) => {
-                            (&mut *cb.borrow_mut())(
-                                wseat,
-                                TabletDeviceEvent::ToolAdded { tool: tablet_tool.clone().into() },
-                                ddata.reborrow(),
-                            );
-                            true
-                        }
-                        None => false,
-                    }
-                } else {
-                    false
-                }
-            });
-        }
-        zwp_tablet_tool_v2::Event::Removed => {
-            //emit tool removed event
-        }
-        _ => {}
     }
 }
 

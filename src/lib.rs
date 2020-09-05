@@ -251,7 +251,7 @@ macro_rules! default_environment {
         impl $crate::tablet::TabletHandling for $env_name {
             fn listen<F: FnMut(
                     $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>,
-                    $crate::tablet::TabletDeviceEvent,
+                    $crate::tablet::devices::TabletDeviceEvent,
                     $crate::reexports::client::DispatchData,
                     ) + 'static,
             >(
