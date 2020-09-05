@@ -1,14 +1,15 @@
 use wayland_protocols::unstable::tablet::v2::client::*;
 
 use crate::environment;
-use devices::{tablet_seat_cb, Listeners, SharedData, TabletDeviceCallback, TabletDeviceEvent};
+use devices::{tablet_seat_cb, DeviceCallback, TabletDeviceEvent};
+use pad::PadCallback;
 use std::{
     cell::RefCell,
     cmp,
     rc::{Rc, Weak},
     sync::Mutex,
 };
-use tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolMetaData};
+use tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolCallback, ToolMetaData};
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
     Attached, DispatchData, Main,
@@ -18,19 +19,29 @@ pub mod devices;
 pub mod pad;
 pub mod tool;
 
+pub(crate) struct Listeners<C: ?Sized> {
+    callbacks: Vec<Weak<RefCell<C>>>,
+}
+
 pub struct TabletDeviceListener {
-    _cb: Rc<RefCell<TabletDeviceCallback>>,
+    _cb: Rc<RefCell<DeviceCallback>>,
 }
 
 /// Contains TabletManager mapping seats to tablet seats
 enum TabletInner {
     Ready {
         mgr: Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>,
-        data: Rc<RefCell<SharedData>>,
+        listener_data: Rc<RefCell<ListenerData>>,
     },
     Pending {
         seats: Vec<Attached<wl_seat::WlSeat>>,
     },
+}
+struct ListenerData {
+    tablet_seats: Vec<(Attached<wl_seat::WlSeat>, zwp_tablet_seat_v2::ZwpTabletSeatV2)>,
+    device_listeners: Listeners<DeviceCallback>,
+    tool_listeners: Listeners<ToolCallback>,
+    pad_listeners: Listeners<PadCallback>,
 }
 
 /// Handles tablet device added/removed events
@@ -47,6 +58,29 @@ pub trait TabletHandling {
     ) -> Result<TabletDeviceListener, ()>;
 }
 
+impl<C: ?Sized> Listeners<C> {
+    pub(super) fn update(&mut self) -> Vec<Rc<RefCell<C>>> {
+        let mut vector = Vec::new();
+        self.callbacks.retain(|lst| {
+            if let Some(cb) = Weak::upgrade(lst) {
+                vector.push(cb);
+                true
+            } else {
+                false
+            }
+        });
+        vector
+    }
+
+    pub(super) fn push(&mut self, callback: &Rc<RefCell<C>>) {
+        self.callbacks.push(Rc::downgrade(callback))
+    }
+
+    pub(super) fn new() -> Self {
+        Self { callbacks: Vec::new() }
+    }
+}
+
 impl TabletHandling for TabletHandler {
     fn listen<F: FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static>(
         &mut self,
@@ -55,12 +89,29 @@ impl TabletHandling for TabletHandler {
         let rc = Rc::new(RefCell::new(callback)) as Rc<_>;
         let ref mut inner = *self.inner.borrow_mut();
         match inner {
-            TabletInner::Ready { data, .. } => {
-                data.borrow_mut().listeners.push(&rc);
+            TabletInner::Ready { listener_data, .. } => {
+                listener_data.borrow_mut().device_listeners.push(&rc);
                 Ok(TabletDeviceListener { _cb: rc })
             }
             TabletInner::Pending { .. } => Err(()),
         }
+    }
+}
+
+impl ListenerData {
+    fn new() -> Self {
+        let tablet_seats = Vec::new();
+        let device_listeners = Listeners::new();
+        let tool_listeners = Listeners::new();
+        let pad_listeners = Listeners::new();
+        Self { tablet_seats, device_listeners, tool_listeners, pad_listeners }
+    }
+
+    fn lookup(
+        &self,
+        tablet_seat: &zwp_tablet_seat_v2::ZwpTabletSeatV2,
+    ) -> Option<&Attached<wl_seat::WlSeat>> {
+        self.tablet_seats.iter().find(|(_, tseat)| *tseat == *tablet_seat).map(|(wseat, _)| wseat)
     }
 }
 
@@ -73,20 +124,19 @@ impl TabletInner {
             return;
         };
 
-        let tablet_seats = Vec::new();
+        let listener_data = Rc::new(RefCell::new(ListenerData::new()));
 
-        let data = Rc::new(RefCell::new(SharedData { tablet_seats, listeners: Listeners::new() }));
         for seat in seats {
             let tablet_seat = mgr.get_tablet_seat(&seat);
             // attach tablet seat to global callback for new devices
-            let dclone = data.clone();
+            let dclone = listener_data.clone();
             tablet_seat.quick_assign(move |t_seat, evt, _| {
                 tablet_seat_cb(t_seat, dclone.clone(), evt);
             });
-            data.borrow_mut().tablet_seats.push((seat, tablet_seat.detach()));
+            listener_data.borrow_mut().tablet_seats.push((seat, tablet_seat.detach()));
         }
 
-        *self = TabletInner::Ready { mgr, data };
+        *self = Self::Ready { mgr, listener_data };
     }
     fn get_mgr(&self) -> Option<Attached<zwp_tablet_manager_v2::ZwpTabletManagerV2>> {
         match self {
@@ -99,8 +149,8 @@ impl TabletInner {
     // should do nothing if the seat is already known
     fn new_seat(&mut self, seat: &Attached<wl_seat::WlSeat>) {
         match self {
-            Self::Ready { mgr, data, .. } => {
-                let mut datamut = data.borrow_mut();
+            Self::Ready { mgr, listener_data } => {
+                let mut datamut = listener_data.borrow_mut();
                 if datamut.tablet_seats.iter().any(|(s, _)| *s == *seat) {
                     // the seat already exists, nothing to do
                     return;
@@ -108,7 +158,7 @@ impl TabletInner {
                 let tablet_seat = mgr.get_tablet_seat(seat);
                 datamut.tablet_seats.push((seat.clone(), tablet_seat.detach()));
                 // attach tablet seat to global callback for new devices
-                let dclone = data.clone();
+                let dclone = listener_data.clone();
                 tablet_seat.quick_assign(move |t_seat, evt, ddata| {
                     tablet_seat_cb(t_seat, dclone.clone(), evt)
                 });
@@ -121,7 +171,9 @@ impl TabletInner {
 
     fn remove_seat(&mut self, seat: &Attached<wl_seat::WlSeat>) {
         match self {
-            Self::Ready { data, .. } => data.borrow_mut().tablet_seats.retain(|(s, _)| s != seat),
+            Self::Ready { listener_data, .. } => {
+                listener_data.borrow_mut().tablet_seats.retain(|(s, _)| s != seat)
+            }
             Self::Pending { seats } => seats.retain(|s| s != seat),
         }
     }

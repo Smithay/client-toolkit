@@ -1,11 +1,14 @@
-use super::{SharedData, TabletDeviceEvent};
+use super::{ListenerData, TabletDeviceEvent, TabletInner};
 use std::{
     cell::RefCell,
     rc::{Rc, Weak},
     sync::Mutex,
 };
-use wayland_client::{Attached, DispatchData, Main};
+use wayland_client::{protocol::wl_surface, Attached, DispatchData, Main};
 use wayland_protocols::unstable::tablet::v2::client::*;
+
+pub(super) type ToolCallback =
+    dyn FnMut(Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>, ToolEvent, DispatchData) + 'static;
 
 #[derive(Clone)]
 pub struct HardwareIdWacom {
@@ -26,6 +29,22 @@ pub struct ToolMetaData {
     pub tool_type: zwp_tablet_tool_v2::Type,
 }
 
+pub enum ToolEvent {
+    ProximityIn { serial: u32, tablet: zwp_tablet_v2::ZwpTabletV2, surface: wl_surface::WlSurface },
+    ProximityOut,
+    Down { serial: u32 },
+    Up,
+    Motion { x: f64, y: f64 },
+    Pressure { pressure: u32 },
+    Distance { distance: u32 },
+    Tilt { tilt_x: f64, tilt_y: f64 },
+    Rotation { degrees: f64 },
+    Slider { position: i32 },
+    Wheel { degrees: f64, clicks: i32 },
+    Button { serial: u32, button: u32, state: zwp_tablet_tool_v2::ButtonState },
+    Frame { time: u32 },
+}
+
 impl Default for ToolMetaData {
     fn default() -> Self {
         ToolMetaData {
@@ -40,7 +59,7 @@ impl Default for ToolMetaData {
 pub(super) fn tablet_tool_cb(
     tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
     tablet_tool: Main<zwp_tablet_tool_v2::ZwpTabletToolV2>,
-    handler_data: Rc<RefCell<SharedData>>,
+    listener_data: Rc<RefCell<ListenerData>>,
     event: zwp_tablet_tool_v2::Event,
     mut ddata: DispatchData,
 ) {
@@ -70,11 +89,11 @@ pub(super) fn tablet_tool_cb(
         }
         zwp_tablet_tool_v2::Event::Done => {
             //emit tool added event
-            let mut shared_data = handler_data.borrow_mut();
+            let mut shared_data = listener_data.borrow_mut();
             let wl_seat = shared_data.lookup(&*tablet_seat).map(Attached::clone);
             match wl_seat {
                 Some(wseat) => {
-                    shared_data.listeners.update().iter().for_each(|cb| {
+                    shared_data.device_listeners.update().iter().for_each(|cb| {
                         (&mut *cb.borrow_mut())(
                             wseat.clone(),
                             TabletDeviceEvent::ToolAdded { tool: tablet_tool.clone().into() },
@@ -87,11 +106,11 @@ pub(super) fn tablet_tool_cb(
         }
         zwp_tablet_tool_v2::Event::Removed => {
             //emit tool removed event
-            let mut shared_data = handler_data.borrow_mut();
+            let mut shared_data = listener_data.borrow_mut();
             let wl_seat = shared_data.lookup(&*tablet_seat).map(Attached::clone);
             match wl_seat {
                 Some(wseat) => {
-                    shared_data.listeners.update().iter().for_each(|cb| {
+                    shared_data.device_listeners.update().iter().for_each(|cb| {
                         (&mut *cb.borrow_mut())(
                             wseat.clone(),
                             TabletDeviceEvent::ToolRemoved { tool: tablet_tool.detach() },
@@ -102,6 +121,7 @@ pub(super) fn tablet_tool_cb(
                 None => {}
             }
         }
+        zwp_tablet_tool_v2::Event::ProximityIn { serial, tablet, surface } => {}
         _ => {}
     }
 }
