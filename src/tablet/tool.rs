@@ -1,10 +1,18 @@
 use super::{devices::notify_devices, ListenerData, TabletDeviceEvent};
 use std::{cell::RefCell, rc::Rc, sync::Mutex};
-use wayland_client::{protocol::wl_surface, Attached, DispatchData, Main};
+use wayland_client::{protocol::wl_seat, protocol::wl_surface, Attached, DispatchData, Main};
 use wayland_protocols::unstable::tablet::v2::client::*;
 
-pub(super) type ToolCallback =
-    dyn FnMut(Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>, ToolEvent, DispatchData) + 'static;
+pub(super) type ToolCallback = dyn FnMut(
+        Attached<wl_seat::WlSeat>,
+        Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+        ToolEvent,
+        DispatchData,
+    ) + 'static;
+
+pub struct ToolListener {
+    pub(super) _cb: Rc<RefCell<ToolCallback>>,
+}
 
 #[derive(Clone)]
 pub struct HardwareIdWacom {
@@ -107,46 +115,84 @@ pub(super) fn tablet_tool_cb(
             ToolEvent::ProximityIn { serial, tablet, surface },
             ddata,
             &tablet_tool,
+            &tablet_seat,
         ),
         zwp_tablet_tool_v2::Event::ProximityOut {} => {
-            notify_tools(&listener_data, ToolEvent::ProximityOut, ddata, &tablet_tool)
+            notify_tools(&listener_data, ToolEvent::ProximityOut, ddata, &tablet_tool, &tablet_seat)
         }
         zwp_tablet_tool_v2::Event::Up {} => {
-            notify_tools(&listener_data, ToolEvent::Up, ddata, &tablet_tool)
+            notify_tools(&listener_data, ToolEvent::Up, ddata, &tablet_tool, &tablet_seat)
         }
-        zwp_tablet_tool_v2::Event::Down { serial } => {
-            notify_tools(&listener_data, ToolEvent::Down { serial }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Motion { x, y } => {
-            notify_tools(&listener_data, ToolEvent::Motion { x, y }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Pressure { pressure } => {
-            notify_tools(&listener_data, ToolEvent::Pressure { pressure }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Distance { distance } => {
-            notify_tools(&listener_data, ToolEvent::Distance { distance }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Tilt { tilt_x, tilt_y } => {
-            notify_tools(&listener_data, ToolEvent::Tilt { tilt_x, tilt_y }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Rotation { degrees } => {
-            notify_tools(&listener_data, ToolEvent::Rotation { degrees }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Slider { position } => {
-            notify_tools(&listener_data, ToolEvent::Slider { position }, ddata, &tablet_tool)
-        }
-        zwp_tablet_tool_v2::Event::Wheel { degrees, clicks } => {
-            notify_tools(&listener_data, ToolEvent::Wheel { degrees, clicks }, ddata, &tablet_tool)
-        }
+        zwp_tablet_tool_v2::Event::Down { serial } => notify_tools(
+            &listener_data,
+            ToolEvent::Down { serial },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Motion { x, y } => notify_tools(
+            &listener_data,
+            ToolEvent::Motion { x, y },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Pressure { pressure } => notify_tools(
+            &listener_data,
+            ToolEvent::Pressure { pressure },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Distance { distance } => notify_tools(
+            &listener_data,
+            ToolEvent::Distance { distance },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Tilt { tilt_x, tilt_y } => notify_tools(
+            &listener_data,
+            ToolEvent::Tilt { tilt_x, tilt_y },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Rotation { degrees } => notify_tools(
+            &listener_data,
+            ToolEvent::Rotation { degrees },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Slider { position } => notify_tools(
+            &listener_data,
+            ToolEvent::Slider { position },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
+        zwp_tablet_tool_v2::Event::Wheel { degrees, clicks } => notify_tools(
+            &listener_data,
+            ToolEvent::Wheel { degrees, clicks },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
         zwp_tablet_tool_v2::Event::Button { serial, button, state } => notify_tools(
             &listener_data,
             ToolEvent::Button { serial, button, state },
             ddata,
             &tablet_tool,
+            &tablet_seat,
         ),
-        zwp_tablet_tool_v2::Event::Frame { time } => {
-            notify_tools(&listener_data, ToolEvent::Frame { time }, ddata, &tablet_tool)
-        }
+        zwp_tablet_tool_v2::Event::Frame { time } => notify_tools(
+            &listener_data,
+            ToolEvent::Frame { time },
+            ddata,
+            &tablet_tool,
+            &tablet_seat,
+        ),
         _ => {
             println!("Tool event not recognized");
         }
@@ -158,10 +204,12 @@ fn notify_tools(
     event: ToolEvent,
     mut ddata: DispatchData,
     tablet_tool: &Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+    tablet_seat: &Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
 ) {
     let mut shared_data = listener_data.borrow_mut();
+    let seat = shared_data.lookup(tablet_seat).clone();
     shared_data.tool_listeners.invoke_all(move |cb| {
-        (&mut *cb.borrow_mut())(tablet_tool.clone(), event.clone(), ddata.reborrow());
+        (&mut *cb.borrow_mut())(seat.clone(), tablet_tool.clone(), event.clone(), ddata.reborrow());
     });
 }
 

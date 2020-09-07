@@ -7,9 +7,13 @@ use std::{
     cell::RefCell,
     cmp,
     rc::{Rc, Weak},
+    result::Result,
     sync::Mutex,
 };
-use tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolCallback, ToolMetaData};
+use tool::{
+    tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolCallback, ToolEvent, ToolListener,
+    ToolMetaData,
+};
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
     Attached, DispatchData, Main,
@@ -56,6 +60,17 @@ pub trait TabletHandling {
         &mut self,
         callback: F,
     ) -> Result<TabletDeviceListener, ()>;
+    fn process_tool_events<
+        F: FnMut(
+                Attached<wl_seat::WlSeat>,
+                Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+                ToolEvent,
+                DispatchData,
+            ) + 'static,
+    >(
+        &mut self,
+        f: F,
+    ) -> Result<ToolListener, ()>;
 }
 
 impl<C: ?Sized> Listeners<C> {
@@ -99,6 +114,27 @@ impl TabletHandling for TabletHandler {
             TabletInner::Ready { listener_data, .. } => {
                 listener_data.borrow_mut().device_listeners.push(&rc);
                 Ok(TabletDeviceListener { _cb: rc })
+            }
+            TabletInner::Pending { .. } => Err(()),
+        }
+    }
+    fn process_tool_events<
+        F: FnMut(
+                Attached<wl_seat::WlSeat>,
+                Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+                ToolEvent,
+                DispatchData,
+            ) + 'static,
+    >(
+        &mut self,
+        f: F,
+    ) -> Result<ToolListener, ()> {
+        let rc = Rc::new(RefCell::new(f)) as Rc<_>;
+        let ref mut inner = *self.inner.borrow_mut();
+        match inner {
+            TabletInner::Ready { listener_data, .. } => {
+                listener_data.borrow_mut().tool_listeners.push(&rc);
+                Ok(ToolListener { _cb: rc })
             }
             TabletInner::Pending { .. } => Err(()),
         }
@@ -233,7 +269,20 @@ impl<E: TabletHandling> crate::environment::Environment<E> {
     >(
         &self,
         f: F,
-    ) -> std::result::Result<TabletDeviceListener, ()> {
+    ) -> Result<TabletDeviceListener, ()> {
         self.with_inner(move |inner| TabletHandling::listen(inner, f))
+    }
+    pub fn process_tool_events<
+        F: FnMut(
+                Attached<wl_seat::WlSeat>,
+                Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+                ToolEvent,
+                DispatchData,
+            ) + 'static,
+    >(
+        &self,
+        f: F,
+    ) -> Result<ToolListener, ()> {
+        self.with_inner(move |inner| TabletHandling::process_tool_events(inner, f))
     }
 }
