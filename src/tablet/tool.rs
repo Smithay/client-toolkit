@@ -1,9 +1,5 @@
-use super::{devices::notify_devices, ListenerData, TabletDeviceEvent, TabletInner};
-use std::{
-    cell::RefCell,
-    rc::{Rc, Weak},
-    sync::Mutex,
-};
+use super::{devices::notify_devices, ListenerData, TabletDeviceEvent};
+use std::{cell::RefCell, rc::Rc, sync::Mutex};
 use wayland_client::{protocol::wl_surface, Attached, DispatchData, Main};
 use wayland_protocols::unstable::tablet::v2::client::*;
 
@@ -167,4 +163,25 @@ fn notify_tools(
     shared_data.tool_listeners.invoke_all(move |cb| {
         (&mut *cb.borrow_mut())(tablet_tool.clone(), event.clone(), ddata.reborrow());
     });
+}
+
+pub fn clone_tool_data(tablet: &zwp_tablet_tool_v2::ZwpTabletToolV2) -> Option<ToolMetaData> {
+    if let Some(ref udata_mutex) = tablet.as_ref().user_data().get::<Mutex<ToolMetaData>>() {
+        let udata = udata_mutex.lock().unwrap();
+        Some(udata.clone())
+    } else {
+        None
+    }
+}
+
+pub fn with_tool_data<T, F: FnOnce(&ToolMetaData) -> T>(
+    seat: &zwp_tablet_v2::ZwpTabletV2,
+    f: F,
+) -> Option<T> {
+    if let Some(ref udata_mutex) = seat.as_ref().user_data().get::<Mutex<ToolMetaData>>() {
+        let udata = udata_mutex.lock().unwrap();
+        Some(f(&*udata))
+    } else {
+        None
+    }
 }

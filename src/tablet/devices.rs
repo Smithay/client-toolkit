@@ -1,4 +1,5 @@
 use super::{
+    pad::{tablet_pad_cb, PadMetaData},
     tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolMetaData},
     ListenerData, TabletInner,
 };
@@ -73,6 +74,10 @@ pub(super) fn tablet_seat_cb(
         }
         zwp_tablet_seat_v2::Event::PadAdded { id } => {
             println!("Pad added {:?}", id);
+            id.as_ref().user_data().set(|| Mutex::new(PadMetaData::default()));
+            id.quick_assign(move |pad, event, ddata| {
+                tablet_pad_cb(tablet_seat.clone().into(), pad, listener_data.clone(), event, ddata)
+            })
         }
         _ => {}
     }
@@ -132,4 +137,25 @@ pub(super) fn notify_devices(
     shared_data.device_listeners.invoke_all(move |cb| {
         (&mut *cb.borrow_mut())(wl_seat.clone(), event.clone(), ddata.reborrow());
     });
+}
+
+pub fn clone_tablet_data(tablet: &zwp_tablet_v2::ZwpTabletV2) -> Option<TabletMetaData> {
+    if let Some(ref udata_mutex) = tablet.as_ref().user_data().get::<Mutex<TabletMetaData>>() {
+        let udata = udata_mutex.lock().unwrap();
+        Some(udata.clone())
+    } else {
+        None
+    }
+}
+
+pub fn with_tablet_data<T, F: FnOnce(&TabletMetaData) -> T>(
+    seat: &zwp_tablet_v2::ZwpTabletV2,
+    f: F,
+) -> Option<T> {
+    if let Some(ref udata_mutex) = seat.as_ref().user_data().get::<Mutex<TabletMetaData>>() {
+        let udata = udata_mutex.lock().unwrap();
+        Some(f(&*udata))
+    } else {
+        None
+    }
 }
