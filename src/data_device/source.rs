@@ -91,9 +91,7 @@ fn data_source_impl<Impl>(
         Event::Send { mime_type, fd } => {
             DataSourceEvent::Send { mime_type, pipe: unsafe { FromRawFd::from_raw_fd(fd) } }
         }
-        Event::Action { dnd_action } => DataSourceEvent::Action {
-            action: dnd_action,
-        },
+        Event::Action { dnd_action } => DataSourceEvent::Action { action: dnd_action },
         Event::Cancelled => {
             source.destroy();
             DataSourceEvent::Cancelled
