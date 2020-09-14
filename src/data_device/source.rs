@@ -92,7 +92,7 @@ fn data_source_impl<Impl>(
             DataSourceEvent::Send { mime_type, pipe: unsafe { FromRawFd::from_raw_fd(fd) } }
         }
         Event::Action { dnd_action } => DataSourceEvent::Action {
-            action: wl_data_device_manager::DndAction::from_bits_truncate(dnd_action),
+            action: dnd_action,
         },
         Event::Cancelled => {
             source.destroy();

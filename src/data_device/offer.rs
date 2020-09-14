@@ -39,10 +39,10 @@ impl DataOffer {
                     inner.mime_types.push(mime_type);
                 }
                 Event::SourceActions { source_actions } => {
-                    inner.actions = DndAction::from_bits_truncate(source_actions);
+                    inner.actions = source_actions;
                 }
                 Event::Action { dnd_action } => {
-                    inner.current_action = DndAction::from_bits_truncate(dnd_action);
+                    inner.current_action = dnd_action;
                 }
                 _ => unreachable!(),
             }
@@ -109,7 +109,7 @@ impl DataOffer {
     /// You need to provide the set of supported actions, as well as
     /// a single preferred action.
     pub fn set_actions(&self, supported: DndAction, preferred: DndAction) {
-        self.offer.set_actions(supported.to_raw(), preferred.to_raw());
+        self.offer.set_actions(supported, preferred);
     }
 
     /// Notify that you are finished with this offer, and will no longer

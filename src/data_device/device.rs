@@ -187,7 +187,7 @@ impl DataDevice {
         serial: u32,
     ) {
         if let Some(source) = source {
-            source.source.set_actions(actions.to_raw());
+            source.source.set_actions(actions);
             self.device.start_drag(Some(&source.source), origin, icon, serial);
         } else {
             self.device.start_drag(None, origin, icon, serial);
