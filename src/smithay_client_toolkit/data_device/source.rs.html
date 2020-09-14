@@ -262,7 +262,7 @@
             <span class="ident">DataSourceEvent</span>::<span class="ident">Send</span> { <span class="ident">mime_type</span>, <span class="ident">pipe</span>: <span class="kw">unsafe</span> { <span class="ident">FromRawFd</span>::<span class="ident">from_raw_fd</span>(<span class="ident">fd</span>) } }
         }
         <span class="ident">Event</span>::<span class="ident">Action</span> { <span class="ident">dnd_action</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DataSourceEvent</span>::<span class="ident">Action</span> {
-            <span class="ident">action</span>: <span class="ident">wl_data_device_manager</span>::<span class="ident">DndAction</span>::<span class="ident">from_bits_truncate</span>(<span class="ident">dnd_action</span>),
+            <span class="ident">action</span>: <span class="ident">dnd_action</span>,
         },
         <span class="ident">Event</span>::<span class="ident">Cancelled</span> <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">source</span>.<span class="ident">destroy</span>();
