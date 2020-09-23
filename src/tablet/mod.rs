@@ -2,7 +2,7 @@ use wayland_protocols::unstable::tablet::v2::client::*;
 
 use crate::environment;
 use devices::{tablet_seat_cb, DeviceCallback, TabletDeviceEvent};
-use pad::PadCallback;
+//use pad::PadCallback;
 use std::{
     cell::RefCell,
     cmp,
@@ -20,7 +20,7 @@ use wayland_client::{
 };
 
 pub mod devices;
-pub mod pad;
+//pub mod pad;
 pub mod tool;
 
 pub(crate) struct Listeners<C: ?Sized> {
@@ -45,7 +45,7 @@ struct ListenerData {
     tablet_seats: Vec<(Attached<wl_seat::WlSeat>, zwp_tablet_seat_v2::ZwpTabletSeatV2)>,
     device_listeners: Listeners<DeviceCallback>,
     tool_listeners: Listeners<ToolCallback>,
-    pad_listeners: Listeners<PadCallback>,
+    //pad_listeners: Listeners<PadCallback>,
 }
 
 /// Handles tablet device added/removed events
@@ -61,14 +61,10 @@ pub trait TabletHandling {
         callback: F,
     ) -> Result<TabletDeviceListener, ()>;
     fn process_tool_events<
-        F: FnMut(
-                Attached<wl_seat::WlSeat>,
-                Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
-                ToolEvent,
-                DispatchData,
-            ) + 'static,
+        F: FnMut(Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>, ToolEvent, DispatchData) + 'static,
     >(
         &mut self,
+        seat: Attached<wl_seat::WlSeat>,
         f: F,
     ) -> Result<ToolListener, ()>;
 }
@@ -119,17 +115,18 @@ impl TabletHandling for TabletHandler {
         }
     }
     fn process_tool_events<
-        F: FnMut(
-                Attached<wl_seat::WlSeat>,
-                Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
-                ToolEvent,
-                DispatchData,
-            ) + 'static,
+        F: FnMut(Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>, ToolEvent, DispatchData) + 'static,
     >(
         &mut self,
+        seat: Attached<wl_seat::WlSeat>,
         f: F,
     ) -> Result<ToolListener, ()> {
-        let rc = Rc::new(RefCell::new(f)) as Rc<_>;
+        let mut closure = move |wseat: Attached<wl_seat::WlSeat>, tool, tool_event, ddata| {
+            if (seat == wseat) {
+                f(tool, tool_event, ddata);
+            }
+        };
+        let rc = Rc::new(RefCell::new(closure as ToolCallback)) as Rc<_>;
         let ref mut inner = *self.inner.borrow_mut();
         match inner {
             TabletInner::Ready { listener_data, .. } => {
@@ -146,8 +143,8 @@ impl ListenerData {
         let tablet_seats = Vec::new();
         let device_listeners = Listeners::new();
         let tool_listeners = Listeners::new();
-        let pad_listeners = Listeners::new();
-        Self { tablet_seats, device_listeners, tool_listeners, pad_listeners }
+        //let pad_listeners = Listeners::new();
+        Self { tablet_seats, device_listeners, tool_listeners /*, pad_listeners */ }
     }
 
     fn lookup(
@@ -281,8 +278,28 @@ impl<E: TabletHandling> crate::environment::Environment<E> {
             ) + 'static,
     >(
         &self,
+        seat: wl_seat::WlSeat,
         f: F,
     ) -> Result<ToolListener, ()> {
         self.with_inner(move |inner| TabletHandling::process_tool_events(inner, f))
+    }
+}
+
+fn map_function<
+    A: FnMut(
+            Attached<wl_seat::WlSeat>,
+            Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+            ToolEvent,
+            DispatchData,
+        ) + 'static,
+    B: FnMut(Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>, ToolEvent, DispatchData) + 'static,
+>(
+    seat: wl_seat::WlSeat,
+    f: B,
+) -> A {
+    move |wseat, device, event, ddata| {
+        if seat == *wseat {
+            f(device, event, ddata);
+        }
     }
 }

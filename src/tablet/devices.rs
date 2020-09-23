@@ -1,7 +1,8 @@
 use super::{
-    pad::{tablet_pad_cb, PadMetaData},
+    //pad::{tablet_pad_cb, PadMetaData},
     tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolMetaData},
-    ListenerData, TabletInner,
+    ListenerData,
+    TabletInner,
 };
 use std::{
     cell::RefCell,
@@ -74,10 +75,10 @@ pub(super) fn tablet_seat_cb(
         }
         zwp_tablet_seat_v2::Event::PadAdded { id } => {
             println!("Pad added {:?}", id);
-            id.as_ref().user_data().set(|| Mutex::new(PadMetaData::default()));
+            /*id.as_ref().user_data().set(|| Mutex::new(PadMetaData::default()));
             id.quick_assign(move |pad, event, ddata| {
                 tablet_pad_cb(tablet_seat.clone().into(), pad, listener_data.clone(), event, ddata)
-            })
+            })*/
         }
         _ => {}
     }

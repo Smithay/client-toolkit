@@ -260,6 +260,18 @@ macro_rules! default_environment {
             ) -> Result<$crate::tablet::TabletDeviceListener, ()> {
                 self.sctk_tablet_manager.listen(callback)
             }
+            fn process_tool_events<F: FnMut(
+                    $crate::reexports::client::Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+                    $crate::tablet::tool::ToolEvent,
+                    $crate::reexports::client::DispatchData,
+            ) + 'static,
+            >(
+                &mut self,
+                seat: $crate::reexports::client::Attached<wl_seat::WlSeat>,
+                f: F,
+            ) -> Result<$crate::tablet::tool::ToolListener, ()> {
+                self.sctk_tablet_manager.process_tool_events()
+            }
         }
 
         //

@@ -62,7 +62,7 @@ fn main() {
         )
         .expect("Failed to create a window !");
 
-    window.set_title("Kbd Input".to_string());
+    window.set_title("Tablet Input".to_string());
 
     let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
 
@@ -77,6 +77,22 @@ fn main() {
         sctk::tablet::devices::TabletDeviceEvent::PadRemoved { pad } => {}
         sctk::tablet::devices::TabletDeviceEvent::TabletAdded { tablet } => {}
         sctk::tablet::devices::TabletDeviceEvent::TabletRemoved { tablet } => {}
+    });
+
+    let _result = env.process_tool_events(|seat, tool, event, _| match event {
+        sctk::tablet::tool::ToolEvent::ProximityIn { serial, tablet, surface } => {}
+        sctk::tablet::tool::ToolEvent::ProximityOut => {}
+        sctk::tablet::tool::ToolEvent::Down { serial } => {}
+        sctk::tablet::tool::ToolEvent::Up => {}
+        sctk::tablet::tool::ToolEvent::Motion { x, y } => {}
+        sctk::tablet::tool::ToolEvent::Pressure { pressure } => {}
+        sctk::tablet::tool::ToolEvent::Distance { distance } => {}
+        sctk::tablet::tool::ToolEvent::Tilt { tilt_x, tilt_y } => {}
+        sctk::tablet::tool::ToolEvent::Rotation { degrees } => {}
+        sctk::tablet::tool::ToolEvent::Slider { position } => {}
+        sctk::tablet::tool::ToolEvent::Wheel { degrees, clicks } => {}
+        sctk::tablet::tool::ToolEvent::Button { serial, button, state } => {}
+        sctk::tablet::tool::ToolEvent::Frame { time } => {}
     });
 
     if !env.get_shell().unwrap().needs_configure() {
