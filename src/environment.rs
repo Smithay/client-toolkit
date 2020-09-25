@@ -105,7 +105,7 @@ impl<E: InnerEnv + 'static> Environment<E> {
     /// to initialize your `Environment` using the
     /// [`init_default_environment!`](../macro.init_default_environment.html) macro.
     ///
-    /// You will need to do two roundtrips of the event queue afterward to filly initialize the environment.
+    /// You will need to do two roundtrips of the event queue afterward to fully initialize the environment.
     pub fn init(display: &Attached<wl_display::WlDisplay>, env: E) -> Environment<E> {
         let inner = Rc::new(RefCell::new(env));
 
