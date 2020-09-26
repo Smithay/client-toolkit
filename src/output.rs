@@ -424,6 +424,7 @@ impl<E: OutputHandling> crate::environment::Environment<E> {
     ///
     /// The returned [`OutputStatusListener`](../output/struct.OutputStatusListener.hmtl) keeps your
     /// callback alive, dropping it will disable it.
+    #[must_use = "the returned OutputStatusListener keeps your callback alive, dropping it will disable it"]
     pub fn listen_for_outputs<F: FnMut(WlOutput, &OutputInfo, DispatchData) + 'static>(
         &self,
         f: F,
