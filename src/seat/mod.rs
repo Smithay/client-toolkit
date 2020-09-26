@@ -272,6 +272,7 @@ impl<E: SeatHandling> crate::environment::Environment<E> {
     ///
     /// The returned [`SeatListener`](../seat/struct.SeatListener.hmtl) keeps your callback alive,
     /// dropping it will disable it.
+    #[must_use = "the returned SeatListener keeps your callback alive, dropping it will disable it"]
     pub fn listen_for_seats<
         F: FnMut(Attached<wl_seat::WlSeat>, &SeatData, DispatchData) + 'static,
     >(
