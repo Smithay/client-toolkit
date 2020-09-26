@@ -108,8 +108,9 @@ impl<E: InnerEnv + 'static> Environment<E> {
     /// [`new_default_environment!`](../macro.new_default_environment.html) macro.
     ///
     /// `std::io::Error` could be returned if initial roundtrips to the server failed.
-    /// This call may block when doing initial roundtrips, but those blocks could only be due to
-    /// server bugs.
+    ///
+    /// If this call indefinitely blocks when doing initial roundtrips this can only be
+    /// caused by server bugs.
     pub fn new(
         display: &Attached<wl_display::WlDisplay>,
         queue: &mut EventQueue,
@@ -135,7 +136,7 @@ impl<E: InnerEnv + 'static> Environment<E> {
     /// [`new_default_environment!`](../macro.new_default_environment.html) macro.
     ///
     /// You should prefer to use `Environment::new`, unless you want to control initialization
-    /// manually or you create additional environement meaning that the initialization may be fine
+    /// manually or you create additional environment meaning that the initialization may be fine
     /// with just `dispatch_pending` of the event queue, instead of two roundtrips to
     /// fully initialize environment. If you manually initialize your environment two sync
     /// roundtrips are required.
