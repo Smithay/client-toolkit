@@ -187,7 +187,7 @@ struct ShellInner {
 ///     }
 /// }
 ///
-/// let env = Environment::init(&attached_display, MyEnv {
+/// let env = Environment::new(&attached_display, &mut queue, MyEnv {
 ///     my_shell: ShellHandler::new()
 /// });
 /// ```

@@ -59,7 +59,7 @@ fn main() {
     /*
      * Initial setup
      */
-    let (env, _display, mut queue) = sctk::init_default_environment!(PtrInputExample, desktop)
+    let (env, _display, mut queue) = sctk::new_default_environment!(PtrInputExample, desktop)
         .expect("Unable to connect to a Wayland compositor");
 
     /*

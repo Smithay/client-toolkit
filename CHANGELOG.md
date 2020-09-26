@@ -5,6 +5,12 @@
 #### Breaking Changes
 
 - Update `wayland-client` to version 0.28
+- `Environment::init` was renamed to `Environment::new_pending`
+- `init_default_environment!` marco was renamed to `new_default_environment!`
+
+#### Additions
+
+- `Environment::new` method to properly bootstrap environment
 
 ## 0.11.0 -- 2020-08-30
 

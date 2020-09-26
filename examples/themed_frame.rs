@@ -72,7 +72,7 @@ fn main() {
     /*
      * Initial setup
      */
-    let (env, _display, mut queue) = sctk::init_default_environment!(ThemedFrameExample, desktop)
+    let (env, _display, mut queue) = sctk::new_default_environment!(ThemedFrameExample, desktop)
         .expect("Unable to connect to a Wayland compositor");
     /*
      * Create a buffer with window contents

@@ -60,7 +60,7 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 ///
 /// Similar to the [`environment!`](macro.environment.html) macro, but creates the type for you and
 /// includes all the handlers provided by SCTK, for use with the rest of the library. Its sister
-/// macro [`init_default_environment!`](macro.init_default_environment.html) needs to be used to
+/// macro [`new_default_environment!`](macro.new_default_environment.html) needs to be used to
 /// initialize it.
 ///
 /// This includes handlers for the following globals:
@@ -290,9 +290,9 @@ macro_rules! default_environment {
 /// if the connection failed.
 ///
 /// ```no_run
-/// # use smithay_client_toolkit::{default_environment, init_default_environment};
+/// # use smithay_client_toolkit::{default_environment, new_default_environment};
 /// # default_environment!(MyEnv, desktop, fields=[somefield: u32, otherfield: String]);
-/// let (env, display, queue) = init_default_environment!(MyEnv,
+/// let (env, display, queue) = new_default_environment!(MyEnv,
 ///     desktop,           // the optional preset
 ///     /* initializers for your extra fields if any, can be ommited if no fields are added */
 ///     fields=[
@@ -308,11 +308,11 @@ macro_rules! default_environment {
 /// during the initial roundtrips.
 ///
 /// ```no_run
-/// # use smithay_client_toolkit::{default_environment, init_default_environment};
+/// # use smithay_client_toolkit::{default_environment, new_default_environment};
 /// # default_environment!(MyEnv, desktop, fields=[somefield: u32, otherfield: String]);
 /// # let display = smithay_client_toolkit::reexports::client::Display::connect_to_env().unwrap();
 /// # let mut queue = display.create_event_queue();
-/// let env = init_default_environment!(MyEnv,
+/// let env = new_default_environment!(MyEnv,
 ///     desktop,                 // the optional preset
 ///     with=(display, queue),   // the display and event queue to use
 ///     /* initializers for your extra fields if any, can be ommited if no fields are added */
@@ -320,15 +320,15 @@ macro_rules! default_environment {
 ///         somefield: 42,
 ///         otherfield: String::from("Hello World"),
 ///     ]
-/// ).expect("Initial roundtrip failed!");
+/// ).expect("Initial roundtrips failed!");
 /// ```
-macro_rules! init_default_environment {
+macro_rules! new_default_environment {
     ($env_name:ident, desktop
         $(, with=($display:expr, $queue:expr))?
         $(,fields = [$($fname:ident : $fval:expr),* $(,)?])?
         $(,)?
     ) => {
-        $crate::init_default_environment!($env_name,
+        $crate::new_default_environment!($env_name,
             $(with=($display, $queue),)?
             fields = [
                 sctk_shell: $crate::shell::ShellHandler::new(),
@@ -349,7 +349,7 @@ macro_rules! init_default_environment {
             let sctk_primary_selection_manager = $crate::primary_selection::PrimarySelectionHandler::init(&mut sctk_seats);
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
-            let env = $crate::environment::Environment::init(&display.attach($queue.token()), $env_name {
+            let env = $crate::environment::Environment::new_pending(&display.attach($queue.token()), $env_name {
                 sctk_compositor: $crate::environment::SimpleGlobal::new(),
                 sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
                 sctk_shm: $crate::shm::ShmHandler::new(),
@@ -362,11 +362,11 @@ macro_rules! init_default_environment {
                 )*)?
             });
 
-            // two roundtrips to init the environment
+            // Two roundtrips to init the environment.
             let ret = $queue .sync_roundtrip(&mut (), |_, _, _| unreachable!());
             let ret = ret.and_then(|_| $queue.sync_roundtrip(&mut (), |_, _, _| unreachable!()));
 
-            // Bind primary selection manager
+            // Bind primary selection manager.
             let _psm = env.get_primary_selection_manager();
 
             ret.map(|_| env)
@@ -378,7 +378,7 @@ macro_rules! init_default_environment {
     ) => {
         $crate::reexports::client::Display::connect_to_env().and_then(|display| {
             let mut queue = display.create_event_queue();
-            let ret = $crate::init_default_environment!(
+            let ret = $crate::new_default_environment!(
                 $env_name,
                 with=(display, queue),
                 fields=[$($($fname: $fval),*)?],

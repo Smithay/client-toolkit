@@ -4,7 +4,7 @@
 //! [`OutputHandler`](struct.OutputHandler.html) type, which is a
 //! [`MultiGlobalHandler`](../environment/trait.MultiGlobalHandler.html) for
 //! use with the [`init_environment!`](../macro.init_environment.html) macro. It is automatically
-//! included if you use the [`init_default_environment!`](../macro.init_default_environment.html).
+//! included if you use the [`new_default_environment!`](../macro.new_default_environment.html).
 //!
 //! The second is the [`with_output_info`](fn.with_output_info.html) with allows you to
 //! access the information associated to this output, as an [`OutputInfo`](struct.OutputInfo.html).
@@ -113,7 +113,7 @@ type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo, DispatchData) + 'st
 ///
 /// This handler can be used for managing `wl_output` in the
 /// [`init_environment!`](../macro.init_environment.html) macro, and is automatically
-/// included in [`init_default_environment!`](../macro.init_default_environment.html).
+/// included in [`new_default_environment!`](../macro.new_default_environment.html).
 ///
 /// It aggregates the output information and makes it available via the
 /// [`with_output_info`](fn.with_output_info.html) function.

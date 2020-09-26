@@ -32,11 +32,13 @@
 //! [`default_environment!`](../macro.default_environment.html) macro to quickly setup things and bring
 //! in all SCTK modules.
 
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::io::Result;
+use std::rc::Rc;
 
 use wayland_client::{
     protocol::{wl_display, wl_registry},
-    Attached, DispatchData, GlobalEvent, GlobalManager, Interface, Proxy,
+    Attached, DispatchData, EventQueue, GlobalEvent, GlobalManager, Interface, Proxy,
 };
 
 /*
@@ -95,7 +97,34 @@ pub struct Environment<E> {
 }
 
 impl<E: InnerEnv + 'static> Environment<E> {
-    /// Initialize the `Environment`
+    /// Create new `Environment`
+    ///
+    /// This requires access to a `wl_display` attached to the `event_queue`.
+    /// You also need to provide an instance of the inner environment type declared
+    /// using the [`environment!`](../macro.environment.html) macro.
+    ///
+    /// If you instead used the [`default_environment!`](../macro.default_environment.html), then
+    /// you need to initialize your `Environment` using the
+    /// [`new_default_environment!`](../macro.new_default_environment.html) macro.
+    ///
+    /// `std::io::Error` could be returned if initial roundtrips to the server failed.
+    /// This call may block when doing initial roundtrips, but those blocks could only be due to
+    /// server bugs.
+    pub fn new(
+        display: &Attached<wl_display::WlDisplay>,
+        queue: &mut EventQueue,
+        env: E,
+    ) -> Result<Environment<E>> {
+        let environment = Self::new_pending(display, env);
+
+        // Fully initialize the environment.
+        queue.sync_roundtrip(&mut (), |_, _, _| unreachable!())?;
+        queue.sync_roundtrip(&mut (), |_, _, _| unreachable!())?;
+
+        Ok(environment)
+    }
+
+    /// Create new pending `Environment`
     ///
     /// This requires access to a `wl_display` attached to an event queue (on which the main SCTK logic
     /// will be attached). You also need to provide an instance of the inner environment type declared
@@ -103,10 +132,14 @@ impl<E: InnerEnv + 'static> Environment<E> {
     ///
     /// If you instead used the [`default_environment!`](../macro.default_environment.html), then you need
     /// to initialize your `Environment` using the
-    /// [`init_default_environment!`](../macro.init_default_environment.html) macro.
+    /// [`new_default_environment!`](../macro.new_default_environment.html) macro.
     ///
-    /// You will need to do two roundtrips of the event queue afterward to fully initialize the environment.
-    pub fn init(display: &Attached<wl_display::WlDisplay>, env: E) -> Environment<E> {
+    /// You should prefer to use `Environment::new`, unless you want to control initialization
+    /// manually or you create additional environement meaning that the initialization may be fine
+    /// with just `dispatch_pending` of the event queue, instead of two roundtrips to
+    /// fully initialize environment. If you manually initialize your environment two sync
+    /// roundtrips are required.
+    pub fn new_pending(display: &Attached<wl_display::WlDisplay>, env: E) -> Environment<E> {
         let inner = Rc::new(RefCell::new(env));
 
         let my_inner = inner.clone();
@@ -117,7 +150,7 @@ impl<E: InnerEnv + 'static> Environment<E> {
 
         let manager = GlobalManager::new_with_cb(&display, my_cb);
 
-        Environment { manager, inner }
+        Self { manager, inner }
     }
 }
 

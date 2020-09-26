@@ -1,7 +1,7 @@
 use smithay_client_toolkit::{
     default_environment,
     environment::SimpleGlobal,
-    init_default_environment,
+    new_default_environment,
     output::{with_output_info, OutputInfo},
     reexports::{
         calloop,
@@ -144,7 +144,7 @@ impl Drop for Surface {
 
 fn main() {
     let (env, display, queue) =
-        init_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(),])
+        new_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(),])
             .expect("Initial roundtrip failed!");
 
     let surfaces = Rc::new(RefCell::new(Vec::new()));

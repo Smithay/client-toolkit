@@ -18,7 +18,7 @@ fn main() {
     /*
      * Initial setup
      */
-    let (env, display, queue) = sctk::init_default_environment!(KbdInputExample, desktop)
+    let (env, display, queue) = sctk::new_default_environment!(KbdInputExample, desktop)
         .expect("Unable to connect to a Wayland compositor");
 
     /*

@@ -38,7 +38,7 @@ fn main() {
     /*
      * Initalize the wayland connection
      */
-    let (env, _display, mut queue) = sctk::init_default_environment!(ImViewerExample, desktop)
+    let (env, _display, mut queue) = sctk::new_default_environment!(ImViewerExample, desktop)
         .expect("Unable to connect to a Wayland compositor");
 
     // Use the compositor global to create a new surface
