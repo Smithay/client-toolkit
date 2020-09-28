@@ -349,7 +349,7 @@ macro_rules! new_default_environment {
             let sctk_primary_selection_manager = $crate::primary_selection::PrimarySelectionHandler::init(&mut sctk_seats);
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
-            let env = $crate::environment::Environment::new_pending(&display.attach($queue.token()), $env_name {
+            let env = $crate::environment::Environment::new(&display.attach($queue.token()), &mut $queue,$env_name {
                 sctk_compositor: $crate::environment::SimpleGlobal::new(),
                 sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
                 sctk_shm: $crate::shm::ShmHandler::new(),
@@ -362,14 +362,12 @@ macro_rules! new_default_environment {
                 )*)?
             });
 
-            // Two roundtrips to init the environment.
-            let ret = $queue .sync_roundtrip(&mut (), |_, _, _| unreachable!());
-            let ret = ret.and_then(|_| $queue.sync_roundtrip(&mut (), |_, _, _| unreachable!()));
+            if let Ok(env) = env.as_ref() {
+                // Bind primary selection manager.
+                let _psm = env.get_primary_selection_manager();
+            }
 
-            // Bind primary selection manager.
-            let _psm = env.get_primary_selection_manager();
-
-            ret.map(|_| env)
+            env
         }
     };
     ($env_name:ident
