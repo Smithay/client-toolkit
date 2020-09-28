@@ -290,6 +290,7 @@
 <span id="290">290</span>
 <span id="291">291</span>
 <span id="292">292</span>
+<span id="293">293</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types for automatically handling seats</span>
 <span class="doccomment">//!</span>
@@ -565,6 +566,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The returned [`SeatListener`](../seat/struct.SeatListener.hmtl) keeps your callback alive,</span>
     <span class="doccomment">/// dropping it will disable it.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;the returned SeatListener keeps your callback alive, dropping it will disable it&quot;</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">listen_for_seats</span><span class="op">&lt;</span>
         <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat</span>::<span class="ident">WlSeat</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">SeatData</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     <span class="op">&gt;</span>(

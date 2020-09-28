@@ -438,6 +438,7 @@
 <span id="438">438</span>
 <span id="439">439</span>
 <span id="440">440</span>
+<span id="441">441</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types and functions related to graphical outputs</span>
 <span class="doccomment">//!</span>
@@ -865,6 +866,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The returned [`OutputStatusListener`](../output/struct.OutputStatusListener.hmtl) keeps your</span>
     <span class="doccomment">/// callback alive, dropping it will disable it.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;the returned OutputStatusListener keeps your callback alive, dropping it will disable it&quot;</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">listen_for_outputs</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
