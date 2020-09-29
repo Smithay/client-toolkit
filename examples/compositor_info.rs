@@ -8,7 +8,7 @@ use sctk::shell::Shell;
 sctk::default_environment!(CompInfo, desktop);
 
 fn main() -> Result<(), ()> {
-    let (env, _display, _queue) = sctk::init_default_environment!(CompInfo, desktop)
+    let (env, _display, _queue) = sctk::new_default_environment!(CompInfo, desktop)
         .expect("Unable to connect to a Wayland compositor");
 
     println!("== Smithay's compositor info tool ==\n");
