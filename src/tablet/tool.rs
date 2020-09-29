@@ -1,18 +1,32 @@
-use super::{devices::notify_devices, ListenerData, TabletDeviceEvent};
+//use super::{devices::notify_devices,  TabletDeviceEvent};
 use std::{cell::RefCell, rc::Rc, sync::Mutex};
 use wayland_client::{protocol::wl_seat, protocol::wl_surface, Attached, DispatchData, Main};
 use wayland_protocols::unstable::tablet::v2::client::*;
 
-pub(super) type ToolCallback = dyn FnMut(
-        Attached<wl_seat::WlSeat>,
-        Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
-        ToolEvent,
-        DispatchData,
-    ) + 'static;
-
-pub struct ToolListener {
-    pub(super) _cb: Rc<RefCell<ToolCallback>>,
+pub trait ToolCallback: 'static {
+    fn callback(
+        &mut self,
+        tool: Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+        event: ToolEvent,
+        dispatch_data: DispatchData,
+    );
 }
+
+impl<F: 'static> ToolCallback for F
+where
+    F: FnMut(Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>, ToolEvent, DispatchData),
+{
+    fn callback(
+        &mut self,
+        tool: Attached<zwp_tablet_tool_v2::ZwpTabletToolV2>,
+        event: ToolEvent,
+        dispatch_data: DispatchData,
+    ) {
+        (*self)(tool, event, dispatch_data);
+    }
+}
+
+pub(super) type ToolCb = dyn ToolCallback;
 
 #[derive(Clone)]
 pub struct HardwareIdWacom {
@@ -60,7 +74,7 @@ impl Default for ToolMetaData {
         }
     }
 }
-
+/*
 pub(super) fn tablet_tool_cb(
     tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
     tablet_tool: Main<zwp_tablet_tool_v2::ZwpTabletToolV2>,
@@ -233,3 +247,4 @@ pub fn with_tool_data<T, F: FnOnce(&ToolMetaData) -> T>(
         None
     }
 }
+*/

@@ -1,8 +1,6 @@
 use super::{
     //pad::{tablet_pad_cb, PadMetaData},
-    tool::{tablet_tool_cb, HardwareIdWacom, HardwareSerial, ToolMetaData},
-    ListenerData,
-    TabletInner,
+    tool::{HardwareIdWacom, HardwareSerial, ToolMetaData}, TabletSeat, ListenerData,
 };
 use std::{
     cell::RefCell,
@@ -13,9 +11,29 @@ use wayland_client::{protocol::wl_seat, Main};
 use wayland_client::{Attached, DispatchData};
 use wayland_protocols::unstable::tablet::v2::client::*;
 
-/// Callback to get informed about new devices being added to a seat
-pub type DeviceCallback =
-    dyn FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData) + 'static;
+pub trait DeviceCallback: 'static {
+    fn callback(
+        &mut self,
+        event: TabletDeviceEvent,
+        dispatch_data: DispatchData,
+    );
+}
+
+impl<F: 'static> DeviceCallback for F
+where
+    F: FnMut(TabletDeviceEvent, DispatchData),
+{
+    fn callback(
+        &mut self,
+        event: TabletDeviceEvent,
+        dispatch_data: DispatchData,
+    ) {
+        (*self)(event, dispatch_data);
+    }
+}
+
+pub(super) type DeviceCb = dyn FnMut(Attached<wl_seat::WlSeat>, TabletDeviceEvent, DispatchData);
+
 
 #[derive(Clone)]
 pub struct TabletMetaData {
@@ -41,7 +59,7 @@ impl Default for TabletMetaData {
 }
 
 pub(super) fn tablet_seat_cb(
-    tablet_seat: Main<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
+    zwp_tablet_seat: Main<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
     listener_data: Rc<RefCell<ListenerData>>,
     event: zwp_tablet_seat_v2::Event,
 ) {
@@ -51,26 +69,26 @@ pub(super) fn tablet_seat_cb(
             println!("Tool added {:?}", id);
             id.as_ref().user_data().set(|| Mutex::new(ToolMetaData::default()));
             id.quick_assign(move |tool, event, ddata| {
-                tablet_tool_cb(
+                /*tablet_tool_cb(
                     tablet_seat.clone().into(),
                     tool,
                     listener_data.clone(),
                     event,
                     ddata,
-                );
+                );*/
             })
         }
         zwp_tablet_seat_v2::Event::TabletAdded { id } => {
             println!("Tablet added {:?}", id);
             id.as_ref().user_data().set(|| Mutex::new(TabletMetaData::default()));
             id.quick_assign(move |tablet, event, ddata| {
-                tablet_tablet_cb(
+               /* tablet_tablet_cb(
                     tablet_seat.clone().into(),
                     tablet,
                     listener_data.clone(),
                     event,
                     ddata,
-                )
+                )*/
             })
         }
         zwp_tablet_seat_v2::Event::PadAdded { id } => {
@@ -83,7 +101,7 @@ pub(super) fn tablet_seat_cb(
         _ => {}
     }
 }
-
+/*
 fn tablet_tablet_cb(
     tablet_seat: Attached<zwp_tablet_seat_v2::ZwpTabletSeatV2>,
     tablet_device: Main<zwp_tablet_v2::ZwpTabletV2>,
@@ -160,3 +178,4 @@ pub fn with_tablet_data<T, F: FnOnce(&TabletMetaData) -> T>(
         None
     }
 }
+*/

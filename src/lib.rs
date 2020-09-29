@@ -35,6 +35,7 @@ pub mod reexports {
     pub use calloop;
     pub use wayland_client as client;
     pub use wayland_protocols as protocols;
+    pub use std as std;
 }
 
 pub mod data_device;
@@ -249,6 +250,7 @@ macro_rules! default_environment {
 
         // Tablet handling
         impl $crate::tablet::TabletHandling for $env_name {
+            fn get_tablet_seat(&self, seat: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>) -> $crate::reexports::std::
             fn listen<F: FnMut(
                     $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_seat::WlSeat>,
                     $crate::tablet::devices::TabletDeviceEvent,
@@ -378,8 +380,6 @@ macro_rules! init_default_environment {
             let mut sctk_seats = $crate::seat::SeatHandler::new();
             let sctk_data_device_manager = $crate::data_device::DataDeviceHandler::init(&mut sctk_seats);
             let sctk_primary_selection_manager = $crate::primary_selection::PrimarySelectionHandler::init(&mut sctk_seats);
-            let sctk_tablet_manager = $crate::tablet::TabletHandler::init(&mut sctk_seats);
-
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
             let env = $crate::environment::Environment::init(&display.attach($queue.token()), $env_name {
@@ -390,7 +390,7 @@ macro_rules! init_default_environment {
                 sctk_seats,
                 sctk_data_device_manager,
                 sctk_primary_selection_manager,
-                sctk_tablet_manager,
+                sctk_tablet_manager: $crate::tablet::TabletHandler::new(),
                 $($(
                     $fname: $fval,
                 )*)?
