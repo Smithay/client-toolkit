@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.0 -- 2020-09-30
+
 #### Breaking Changes
 
 - Update `wayland-client` to version 0.28
