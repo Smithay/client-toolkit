@@ -24,6 +24,7 @@ wayland-protocols = { version = "0.28" , features = ["client", "unstable_protoco
 wayland-cursor = "0.28"
 calloop = { version = "0.6.1", optional = true }
 byteorder = "1.0"
+smallvec = "1"
 
 [features]
 default = ["frames", "calloop"]
