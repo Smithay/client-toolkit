@@ -1,4 +1,4 @@
-use memmap::MmapOptions;
+use mapr::MmapOptions;
 use std::{env, ffi::CString, fs::File, os::raw::c_char, os::unix::ffi::OsStringExt, ptr};
 
 use super::ffi::{self, xkb_state_component, XKBCOMMON_HANDLE as XKBH};
