@@ -18,7 +18,7 @@ use nix::{
     unistd,
 };
 
-use memmap::MmapMut;
+use memmap2::MmapMut;
 
 use wayland_client::{
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
@@ -212,7 +212,7 @@ impl MemPool {
         (*buffer).clone().detach()
     }
 
-    /// Uses the memmap crate to map the underlying shared memory file
+    /// Uses the memmap2 crate to map the underlying shared memory file
     pub fn mmap(&mut self) -> &mut MmapMut {
         &mut self.mmap
     }

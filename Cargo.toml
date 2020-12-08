@@ -16,7 +16,7 @@ bitflags = "1.0"
 nix = "0.18"
 dlib = "0.4"
 lazy_static = "1.0"
-memmap = "0.7"
+memmap2 = "0.1.0"
 andrew = { version = "0.3.0", optional = true }
 log = "0.4"
 wayland-client = "0.28"
