@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.12.1 -- 2020-12-08
+
+#### Changes
+
+- Unmaintained `memmap` dependency is replaced with `memmap2`
+
 ## 0.12.0 -- 2020-09-30
 
 #### Breaking Changes
