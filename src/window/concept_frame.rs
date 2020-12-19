@@ -641,41 +641,20 @@ impl Frame for ConceptFrame {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
-                                match fontconfig::FontConfig::new() {
-                                    Ok(font_config) => match font_config
-                                        .get_regular_family_fonts(&font_face)
-                                    {
-                                        Ok(regular_family_fonts) => match regular_family_fonts
-                                            .iter()
-                                            .find(|p| {
-                                                p.extension().map(|e| e == "ttf").unwrap_or(false)
-                                            }) {
-                                            Some(font) => {
-                                                let mut font_data = Vec::new();
-                                                match std::fs::File::open(font) {
-                                                    Ok(mut file) => match file
-                                                        .read_to_end(&mut font_data)
-                                                    {
-                                                        Ok(_) => self.font_data = Some(font_data),
-                                                        Err(err) => error!(
-                                                            "Could not read font file: {}",
-                                                            err
-                                                        ),
-                                                    },
-                                                    Err(err) => {
-                                                        error!("Could not open font file: {}", err)
-                                                    }
-                                                }
-                                            }
-                                            None => error!("No ttf font found"),
-                                        },
-                                        Err(err) => {
-                                            error!("No regular sans font family found: {}", err)
-                                        }
-                                    },
-                                    Err(_) => {
-                                        error!("Could not load font config file")
-                                    }
+                                let font_bytes: Option<Vec<u8>> = fontconfig::FontConfig::new()
+                                    .and_then(|font_config: fontconfig::FontConfig| {
+                                        font_config.get_regular_family_fonts(&font_face)
+                                    })
+                                    .ok()
+                                    .and_then(|regular_family_fonts: Vec<std::path::PathBuf>| {
+                                        regular_family_fonts.iter().find(|p| {
+                                            p.extension().map(|e| e == "ttf").unwrap_or(false)
+                                        })
+                                    })
+                                    .and_then(|font: std::path::PathBuf| std::fs::read(font).ok());
+                                match font_bytes {
+                                    Some(bytes) => self.font_data = bytes,
+                                    None => error!("No font could be found"),
                                 }
                             }
 
