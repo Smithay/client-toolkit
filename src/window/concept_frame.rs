@@ -652,6 +652,7 @@ impl Frame for ConceptFrame {
                                             p.extension().map(|e| e == "ttf").unwrap_or(false)
                                         })
                                     })
+                                    .flatten()
                                     .map(|font: &std::path::PathBuf| std::fs::read(font).ok())
                                     .flatten();
                                 match font_bytes {
