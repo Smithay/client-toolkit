@@ -647,12 +647,10 @@ impl Frame for ConceptFrame {
                                             .map_err(|_| ())
                                     })
                                     .ok()
-                                    .map(|regular_family_fonts: &Vec<std::path::PathBuf>| {
-                                        regular_family_fonts.iter().find(
-                                            |ref p: &std::path::PathBuf| {
-                                                p.extension().map(|e| e == "ttf").unwrap_or(false)
-                                            },
-                                        )
+                                    .map(|regular_family_fonts: Vec<std::path::PathBuf>| {
+                                        regular_family_fonts.iter().find(|&&p| {
+                                            p.extension().map(|e| e == "ttf").unwrap_or(false)
+                                        })
                                     })
                                     .map(|font: &std::path::PathBuf| std::fs::read(font).ok())
                                     .flatten();
