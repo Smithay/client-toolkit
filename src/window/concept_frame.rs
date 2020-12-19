@@ -648,7 +648,7 @@ impl Frame for ConceptFrame {
                                     })
                                     .ok()
                                     .map(|regular_family_fonts: Vec<std::path::PathBuf>| {
-                                        regular_family_fonts.iter().find(|&&p| {
+                                        regular_family_fonts.iter().find(|&p| {
                                             p.extension().map(|e| e == "ttf").unwrap_or(false)
                                         })
                                     })
