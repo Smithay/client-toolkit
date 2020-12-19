@@ -673,8 +673,8 @@ impl Frame for ConceptFrame {
                                             error!("No regular sans font family found: {}", err)
                                         }
                                     },
-                                    Err(err) => {
-                                        error!("Could not load font config file: {}", err)
+                                    Err(_) => {
+                                        error!("Could not load font config file")
                                     }
                                 }
                             }
