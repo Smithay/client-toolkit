@@ -643,7 +643,7 @@ impl Frame for ConceptFrame {
                             if self.font_data.is_none() {
                                 let font_bytes: Option<Vec<u8>> = fontconfig::FontConfig::new()
                                     .and_then(|font_config: fontconfig::FontConfig| {
-                                        font_config.get_regular_family_fonts(&font_face)
+                                        Ok(font_config.get_regular_family_fonts(&font_face))
                                     })
                                     .ok()
                                     .and_then(|regular_family_fonts: Vec<std::path::PathBuf>| {
@@ -651,9 +651,9 @@ impl Frame for ConceptFrame {
                                             p.extension().map(|e| e == "ttf").unwrap_or(false)
                                         })
                                     })
-                                    .and_then(|font: std::path::PathBuf| std::fs::read(font).ok());
+                                    .and_then(|font: &std::path::PathBuf| std::fs::read(font).ok());
                                 match font_bytes {
-                                    Some(bytes) => self.font_data = bytes,
+                                    Some(bytes) => self.font_data = Some(bytes),
                                     None => error!("No font could be found"),
                                 }
                             }
