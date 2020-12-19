@@ -648,7 +648,7 @@ impl Frame for ConceptFrame {
                                     regular_family_fonts
                                         .iter()
                                         .cloned()
-                                        .find(|&p| p.extension().map_or(false, |e| e == "ttf"))
+                                        .find(|p| p.extension().map_or(false, |e| e == "ttf"))
                                 });
                                 let font_bytes = font.and_then(|font| std::fs::read(font).ok());
                                 match font_bytes {
