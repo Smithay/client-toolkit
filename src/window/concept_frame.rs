@@ -640,21 +640,20 @@ impl Frame for ConceptFrame {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
-                                let font_bytes: Option<Vec<u8>> = fontconfig::FontConfig::new()
-                                    .and_then(|font_config: fontconfig::FontConfig| {
-                                        font_config
-                                            .get_regular_family_fonts(&font_face)
-                                            .map_err(|_| ())
+                                let font_config = fontconfig::FontConfig::new().ok();
+                                let fonts = font_config.and_then(|font_config| {
+                                    font_config.get_regular_family_fonts(&font_face).ok()
+                                });
+                                let font = fonts.and_then(|regular_family_fonts| {
+                                    regular_family_fonts.iter().find(|&p| {
+                                        if let Some(e) = p.extension() {
+                                            e == "ttf"
+                                        } else {
+                                            false
+                                        }
                                     })
-                                    .ok()
-                                    .map(|regular_family_fonts: Vec<std::path::PathBuf>| {
-                                        regular_family_fonts.iter().find(|&p| {
-                                            p.extension().map(|e| e == "ttf").unwrap_or(false)
-                                        })
-                                    })
-                                    .flatten()
-                                    .map(|font: &std::path::PathBuf| std::fs::read(font).ok())
-                                    .flatten();
+                                });
+                                let font_bytes = font.and_then(|font| std::fs::read(font).ok());
                                 match font_bytes {
                                     Some(bytes) => self.font_data = Some(bytes),
                                     None => error!("No font could be found"),
