@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::cmp::max;
-use std::io::Read;
 use std::rc::Rc;
 
 use andrew::line;
@@ -642,16 +641,16 @@ impl Frame for ConceptFrame {
                             // store it
                             if self.font_data.is_none() {
                                 let font_bytes: Option<Vec<u8>> = fontconfig::FontConfig::new()
-                                    .and_then(|font_config: fontconfig::FontConfig| {
-                                        Ok(font_config.get_regular_family_fonts(&font_face))
+                                    .map(|font_config| {
+                                        font_config.get_regular_family_fonts(&font_face)
                                     })
                                     .ok()
-                                    .and_then(|regular_family_fonts: Vec<std::path::PathBuf>| {
+                                    .map(|regular_family_fonts| {
                                         regular_family_fonts.iter().find(|p| {
                                             p.extension().map(|e| e == "ttf").unwrap_or(false)
                                         })
                                     })
-                                    .and_then(|font: &std::path::PathBuf| std::fs::read(font).ok());
+                                    .map(|font| std::fs::read(font).ok());
                                 match font_bytes {
                                     Some(bytes) => self.font_data = Some(bytes),
                                     None => error!("No font could be found"),
