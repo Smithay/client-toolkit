@@ -14,6 +14,8 @@ use wayland_client::protocol::{
 };
 use wayland_client::{Attached, DispatchData};
 
+use log::error;
+
 use super::{
     ARGBColor, ButtonColorSpec, ButtonState, ColorSpec, Frame, FrameRequest, State, WindowState,
 };
@@ -639,21 +641,40 @@ impl Frame for ConceptFrame {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
-                                if let Some(font) = fontconfig::FontConfig::new()
-                                    .unwrap()
-                                    .get_regular_family_fonts(&font_face)
-                                    .unwrap()
-                                    .iter()
-                                    .find(|p| p.extension().map(|e| e == "ttf").unwrap_or(false))
-                                {
-                                    let mut font_data = Vec::new();
-                                    if let Ok(mut file) = ::std::fs::File::open(font) {
-                                        match file.read_to_end(&mut font_data) {
-                                            Ok(_) => self.font_data = Some(font_data),
-                                            Err(err) => {
-                                                log::error!("Could not read font file: {}", err)
+                                match fontconfig::FontConfig::new() {
+                                    Ok(font_config) => match font_config
+                                        .get_regular_family_fonts(&font_face)
+                                    {
+                                        Ok(regular_family_fonts) => match regular_family_fonts
+                                            .iter()
+                                            .find(|p| {
+                                                p.extension().map(|e| e == "ttf").unwrap_or(false)
+                                            }) {
+                                            Some(font) => {
+                                                let mut font_data = Vec::new();
+                                                match std::fs::File::open(font) {
+                                                    Ok(mut file) => match file
+                                                        .read_to_end(&mut font_data)
+                                                    {
+                                                        Ok(_) => self.font_data = Some(font_data),
+                                                        Err(err) => error!(
+                                                            "Could not read font file: {}",
+                                                            err
+                                                        ),
+                                                    },
+                                                    Err(err) => {
+                                                        error!("Could not open font file: {}", err)
+                                                    }
+                                                }
                                             }
+                                            None => error!("No ttf font found"),
+                                        },
+                                        Err(err) => {
+                                            error!("No regular sans font family found: {}", err)
                                         }
+                                    },
+                                    Err(err) => {
+                                        error!("Could not load font config file: {}", err)
                                     }
                                 }
                             }
@@ -714,7 +735,7 @@ impl Frame for ConceptFrame {
                     }
                 }
                 if let Err(err) = mmap.flush() {
-                    log::error!("Failed to flush frame memory map: {}", err);
+                    error!("Failed to flush frame memory map: {}", err);
                 }
             }
 
@@ -928,7 +949,7 @@ fn change_pointer(pointer: &ThemedPointer, inner: &Inner, location: Location, se
     };
 
     if pointer.set_cursor(name, serial).is_err() {
-        log::error!("Failed to set cursor");
+        error!("Failed to set cursor");
     }
 }
 
