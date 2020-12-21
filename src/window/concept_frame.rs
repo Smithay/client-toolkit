@@ -335,7 +335,7 @@ pub struct ConceptFrame {
     surface_version: u32,
     config: ConceptConfig,
     title: Option<String>,
-    font_data: Option<Vec<u8>>,
+    font_data: Option<Result<Vec<u8>, ()>>,
 }
 
 impl Frame for ConceptFrame {
@@ -640,25 +640,29 @@ impl Frame for ConceptFrame {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
-                                let font_config = fontconfig::FontConfig::new().ok();
-                                let fonts = font_config.and_then(|font_config| {
-                                    font_config.get_regular_family_fonts(&font_face).ok()
-                                });
-                                let font = fonts.and_then(|regular_family_fonts| {
-                                    regular_family_fonts
-                                        .iter()
-                                        .cloned()
-                                        .find(|p| p.extension().map_or(false, |e| e == "ttf"))
-                                });
-                                let font_bytes = font.and_then(|font| std::fs::read(font).ok());
+                                let font_bytes = fontconfig::FontConfig::new()
+                                    .ok()
+                                    .and_then(|font_config| {
+                                        font_config.get_regular_family_fonts(&font_face).ok()
+                                    })
+                                    .and_then(|regular_family_fonts| {
+                                        regular_family_fonts
+                                            .iter()
+                                            .cloned()
+                                            .find(|p| p.extension().map_or(false, |e| e == "ttf"))
+                                    })
+                                    .and_then(|font| std::fs::read(font).ok());
                                 match font_bytes {
-                                    Some(bytes) => self.font_data = Some(bytes),
-                                    None => error!("No font could be found"),
+                                    Some(bytes) => self.font_data = Some(Ok(bytes)),
+                                    None => {
+                                        error!("No font could be found");
+                                        self.font_data = Some(Err(()))
+                                    }
                                 }
                             }
 
                             // Create text from stored title and font data
-                            if let Some(ref font_data) = self.font_data {
+                            if let Some(Ok(ref font_data)) = self.font_data {
                                 let title_color = self.config.title_color.get_for(self.active);
                                 let mut title_text = text::Text::new(
                                     (
