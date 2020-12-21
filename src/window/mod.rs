@@ -169,7 +169,6 @@ impl<F: Frame + 'static> Window<F> {
     ///
     /// Providing non `None` value for `theme_manager` should prevent theming pointer
     /// over the `surface`.
-    #[allow(clippy::match_like_matches_macro)]
     fn init_with_decorations<Impl, E>(
         env: &crate::environment::Environment<E>,
         surface: wl_surface::WlSurface,
