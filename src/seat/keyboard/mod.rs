@@ -24,6 +24,7 @@ use std::{
 };
 
 use byteorder::{ByteOrder, NativeEndian};
+use smallvec::SmallVec;
 
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::{
@@ -70,7 +71,7 @@ pub enum Error {
 }
 
 /// Events received from a mapped keyboard
-pub enum Event<'a> {
+pub enum Event {
     /// The keyboard focus has entered a surface
     Enter {
         /// serial number of the event
@@ -78,9 +79,9 @@ pub enum Event<'a> {
         /// surface that was entered
         surface: wl_surface::WlSurface,
         /// raw values of the currently pressed keys
-        rawkeys: &'a [u32],
+        rawkeys: SmallVec<[u32; 2]>,
         /// interpreted symbols of the currently pressed keys
-        keysyms: &'a [u32],
+        keysyms: SmallVec<[u32; 2]>,
     },
     /// The keyboard focus has left a surface
     Leave {
@@ -142,7 +143,7 @@ pub fn map_keyboard<F>(
     callback: F,
 ) -> Result<wl_keyboard::WlKeyboard, Error>
 where
-    F: FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
+    F: FnMut(Event, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
 {
     let has_kbd = super::with_seat_data(seat, |data| data.has_keyboard).unwrap_or(false);
     let keyboard = if has_kbd {
@@ -191,7 +192,7 @@ pub fn map_keyboard_repeat<F, Data: 'static>(
     callback: F,
 ) -> Result<(wl_keyboard::WlKeyboard, calloop::Source<RepeatSource>), Error>
 where
-    F: FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
+    F: FnMut(Event, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
 {
     let has_kbd = super::with_seat_data(seat, |data| data.has_keyboard).unwrap_or(false);
     let keyboard = if has_kbd {
@@ -264,7 +265,7 @@ fn rate_to_gap(rate: i32) -> Option<NonZeroU32> {
  * Classic handling
  */
 
-type KbdCallback = dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>);
+type KbdCallback = dyn FnMut(Event, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>);
 
 #[cfg(feature = "calloop")]
 struct RepeatDetails {
@@ -393,10 +394,10 @@ impl KbdHandler {
         dispatch_data: wayland_client::DispatchData,
     ) {
         let mut state = self.state.borrow_mut();
-        let rawkeys = keys.chunks_exact(4).map(NativeEndian::read_u32).collect::<Vec<_>>();
-        let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
+        let rawkeys = keys.chunks_exact(4).map(NativeEndian::read_u32).collect::<SmallVec<_>>();
+        let keysyms = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
         (&mut *self.callback.borrow_mut())(
-            Event::Enter { serial, surface, rawkeys: &rawkeys, keysyms: &keys },
+            Event::Enter { serial, surface, rawkeys, keysyms },
             object,
             dispatch_data,
         );
@@ -552,7 +553,7 @@ pub struct RepeatSource {
 
 #[cfg(feature = "calloop")]
 impl calloop::EventSource for RepeatSource {
-    type Event = Event<'static>;
+    type Event = Event;
     type Metadata = wl_keyboard::WlKeyboard;
     type Ret = ();
 
@@ -563,7 +564,7 @@ impl calloop::EventSource for RepeatSource {
         mut callback: F,
     ) -> std::io::Result<()>
     where
-        F: FnMut(Event<'static>, &mut wl_keyboard::WlKeyboard),
+        F: FnMut(Event, &mut wl_keyboard::WlKeyboard),
     {
         let current_repeat = &self.current_repeat;
         let state = &self.state;
