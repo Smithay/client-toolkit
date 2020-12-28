@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Changes
+
+- Dependency on `byteorder` was replaced with `u32::from_ne_bytes()`
+
 ## 0.12.1 -- 2020-12-08
 
 #### Changes
