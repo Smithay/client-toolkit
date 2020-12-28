@@ -392,7 +392,10 @@ impl KbdHandler {
         dispatch_data: wayland_client::DispatchData,
     ) {
         let mut state = self.state.borrow_mut();
-        let rawkeys = keys.chunks_exact(4).map(|c| u32::from_ne_bytes(c.try_into().unwrap())).collect::<Vec<_>>();
+        let rawkeys = keys
+            .chunks_exact(4)
+            .map(|c| u32::from_ne_bytes(c.try_into().unwrap()))
+            .collect::<Vec<_>>();
         let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
         (&mut *self.callback.borrow_mut())(
             Event::Enter { serial, surface, rawkeys: &rawkeys, keysyms: &keys },
