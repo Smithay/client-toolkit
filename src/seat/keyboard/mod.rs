@@ -18,12 +18,11 @@ use std::num::NonZeroU32;
 use std::time::Duration;
 use std::{
     cell::RefCell,
+    convert::TryInto,
     fs::File,
     os::unix::io::{FromRawFd, RawFd},
     rc::Rc,
 };
-
-use byteorder::{ByteOrder, NativeEndian};
 
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::{
@@ -393,7 +392,7 @@ impl KbdHandler {
         dispatch_data: wayland_client::DispatchData,
     ) {
         let mut state = self.state.borrow_mut();
-        let rawkeys = keys.chunks_exact(4).map(NativeEndian::read_u32).collect::<Vec<_>>();
+        let rawkeys = keys.chunks_exact(4).map(|c| u32::from_ne_bytes(c.try_into().unwrap())).collect::<Vec<_>>();
         let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
         (&mut *self.callback.borrow_mut())(
             Event::Enter { serial, surface, rawkeys: &rawkeys, keysyms: &keys },
