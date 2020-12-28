@@ -1,11 +1,8 @@
-extern crate byteorder;
 extern crate image;
 extern crate smithay_client_toolkit as sctk;
 
 use std::env;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-
-use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::shm::MemPool;
@@ -288,14 +285,15 @@ fn redraw(
                 let g = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * g) / 0xFF);
                 let b = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * b) / 0xFF);
                 // write the pixel
-                // We use byteorder, as the wayland protocol explicitly specifies
+                // The wayland protocol explicitly specifies
                 // that the pixels must be written in native endianness
-                writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b)?;
+                let pixel: u32 = (0xFF << 24) + (r << 16) + (g << 8) + b;
+                writer.write_all(&pixel.to_ne_bytes())?;
             }
         } else {
             // We do not have any image to draw, so we draw black contents
             for _ in 0..(buf_x * buf_y) {
-                writer.write_u32::<NativeEndian>(0xFF000000)?;
+                writer.write_all(&0xFF000000u32.to_ne_bytes())?;
             }
         }
         // Don't forget to flush the writer, to make sure all the contents are

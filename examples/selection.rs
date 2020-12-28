@@ -1,9 +1,6 @@
-extern crate byteorder;
 extern crate smithay_client_toolkit as sctk;
 
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
-
-use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::{
     data_device::{DataSourceEvent, ReadPipe},
@@ -344,7 +341,7 @@ fn redraw(
     {
         let mut writer = BufWriter::new(&mut *pool);
         for _ in 0..(buf_x * buf_y) {
-            writer.write_u32::<NativeEndian>(0xFF000000)?;
+            writer.write(&0xFF000000u32.to_ne_bytes())?;
         }
         writer.flush()?;
     }
