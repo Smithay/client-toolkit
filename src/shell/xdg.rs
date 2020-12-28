@@ -1,6 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
-
-use byteorder::{ByteOrder, NativeEndian};
+use std::{cell::RefCell, convert::TryInto, rc::Rc};
 
 use wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
@@ -59,7 +57,7 @@ impl Xdg {
                     };
                     let translated_states = states
                         .chunks_exact(4)
-                        .map(NativeEndian::read_u32)
+                        .map(|c| u32::from_ne_bytes(c.try_into().unwrap()))
                         .flat_map(xdg_toplevel::State::from_raw)
                         .collect::<Vec<_>>();
 
