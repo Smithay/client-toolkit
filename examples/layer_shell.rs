@@ -15,8 +15,6 @@ use smithay_client_toolkit::{
     WaylandSource,
 };
 
-use byteorder::{NativeEndian, WriteBytesExt};
-
 use std::cell::{Cell, RefCell};
 use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::rc::Rc;
@@ -121,7 +119,7 @@ impl Surface {
         {
             let mut writer = BufWriter::new(&mut *pool);
             for _ in 0..(width * height) {
-                writer.write_u32::<NativeEndian>(0xff00ff00).unwrap();
+                writer.write_all(&0xff00ff00u32.to_ne_bytes()).unwrap();
             }
             writer.flush().unwrap();
         }

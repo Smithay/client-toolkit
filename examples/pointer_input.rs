@@ -1,10 +1,7 @@
-extern crate byteorder;
 extern crate smithay_client_toolkit as sctk;
 
 use std::cmp::min;
 use std::io::{BufWriter, Seek, SeekFrom, Write};
-
-use byteorder::{NativeEndian, WriteBytesExt};
 
 use sctk::reexports::client::protocol::{wl_pointer, wl_shm, wl_surface};
 use sctk::shm::MemPool;
@@ -211,7 +208,8 @@ fn redraw(
             let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
             let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
             let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
-            writer.write_u32::<NativeEndian>((0xFF << 24) + (r << 16) + (g << 8) + b)?;
+            let pixel = (0xFF << 24) + (r << 16) + (g << 8) + b;
+            writer.write_all(&pixel.to_ne_bytes())?;
         }
         writer.flush()?;
     }
