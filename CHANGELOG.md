@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+## 0.12.2 -- 2020-12-30
+
 #### Changes
 
 - Dependency on `byteorder` was replaced with `u32::from_ne_bytes()`
+
+#### Bugfixes
+
+- Don't crash when the font cannot be loaded to draw decorations
 
 ## 0.12.1 -- 2020-12-08
 
