@@ -250,9 +250,18 @@ fn create_shm_fd() -> io::Result<RawFd> {
     loop {
         match memfd::memfd_create(
             CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap(),
-            memfd::MemFdCreateFlag::MFD_CLOEXEC,
+            memfd::MemFdCreateFlag::MFD_CLOEXEC | memfd::MemFdCreateFlag::MFD_ALLOW_SEALING,
         ) {
-            Ok(fd) => return Ok(fd),
+            Ok(fd) => {
+                // this is only an optimization, so ignore errors
+                let _ = fcntl::fcntl(
+                    fd,
+                    fcntl::F_ADD_SEALS(
+                        fcntl::SealFlag::F_SEAL_SHRINK | fcntl::SealFlag::F_SEAL_SEAL,
+                    ),
+                );
+                return Ok(fd);
+            }
             Err(nix::Error::Sys(Errno::EINTR)) => continue,
             Err(nix::Error::Sys(Errno::ENOSYS)) => break,
             Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
