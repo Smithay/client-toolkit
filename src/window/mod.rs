@@ -669,6 +669,20 @@ impl<F: Frame + 'static> Window<F> {
     pub fn set_frame_config(&mut self, config: F::Config) {
         self.frame.borrow_mut().set_config(config)
     }
+
+    /// Start an interactive, user-driven move of the surface
+    ///
+    /// This request must be used in response to some sort of user action
+    /// like a button press, key press, or touch down event. The passed
+    /// serial is used to determine the type of interactive move (touch,
+    /// pointer, etc).
+    ///
+    /// The server may ignore move requests depending on the state of
+    /// the surface (e.g. fullscreen or maximized), or if the passed serial
+    /// is no longer valid.
+    pub fn start_interactive_move(&self, seat: &wl_seat::WlSeat, serial: u32) {
+        self.shell_surface.move_(seat, serial);
+    }
 }
 
 impl<F: Frame> Drop for Window<F> {

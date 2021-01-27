@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Additions
+
+- `Window::start_interactive_move` to enable dragging the window with a user action
+
 ## 0.12.2 -- 2020-12-30
 
 #### Changes
