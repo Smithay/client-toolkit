@@ -680,12 +680,6 @@ impl<F: Frame + 'static> Window<F> {
     /// The server may ignore move requests depending on the state of
     /// the surface (e.g. fullscreen or maximized), or if the passed serial
     /// is no longer valid.
-    ///
-    /// If triggered, the surface will lose the focus of the device
-    /// (wl_pointer, wl_touch, etc) used for the move. It is up to the
-    /// compositor to visually indicate that the move is taking place, such as
-    /// updating a pointer cursor, during the move. There is no guarantee
-    /// that the device focus will return when the move is completed.
     pub fn start_interactive_move(&self, seat: &wl_seat::WlSeat, serial: u32) {
         self.shell_surface.move_(seat, serial);
     }
