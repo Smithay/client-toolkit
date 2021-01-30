@@ -4,6 +4,7 @@
 
 - Batch output information updates instead of potentially making multiple
   callbacks for one logical change
+- Add name and description fields to OutputInfo.
 
 #### Breaking Changes
 
