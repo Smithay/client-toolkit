@@ -23,6 +23,11 @@ use wayland_client::{
     Attached, DispatchData, Main,
 };
 
+use wayland_protocols::unstable::xdg_output::v1::client::{
+    zxdg_output_manager_v1::ZxdgOutputManagerV1,
+    zxdg_output_v1::{self, ZxdgOutputV1},
+};
+
 pub use wayland_client::protocol::wl_output::{Subpixel, Transform};
 
 /// A possible mode for an output
@@ -50,6 +55,34 @@ pub struct OutputInfo {
     pub model: String,
     /// The make name of this output as advertised by the server
     pub make: String,
+    /// The name of this output as advertised by the server
+    ///
+    /// Each name is unique among all wl_output globals, but if a wl_output
+    /// global is destroyed the same name may be reused later. The names will
+    /// also remain consistent across sessions with the same hardware and
+    /// software configuration.
+    ///
+    /// Examples of names include 'HDMI-A-1', 'WL-1', 'X11-1', etc. However, do
+    /// not assume that the name is a reflection of an underlying DRM connector,
+    /// X11 connection, etc.
+    ///
+    /// Note that this is not filled in by version 3 of the wl_output protocol,
+    /// but it has been proposed for inclusion in version 4.  Until then, it is
+    /// only filled in if your environment has an [XdgOutputHandler] global
+    /// handler for [ZxdgOutputManagerV1].
+    pub name: String,
+    /// The description of this output as advertised by the server
+    ///
+    /// The description is a UTF-8 string with no convention defined for its
+    /// contents. The description is not guaranteed to be unique among all
+    /// wl_output globals. Examples might include 'Foocorp 11" Display' or
+    /// 'Virtual X11 output via :1'.
+    ///
+    /// Note that this is not filled in by version 3 of the wl_output protocol,
+    /// but it has been proposed for inclusion in version 4.  Until then, it is
+    /// only filled in if your environment has an [XdgOutputHandler] global
+    /// handler for [ZxdgOutputManagerV1].
+    pub description: String,
     /// Location of the top-left corner of this output in compositor
     /// space
     ///
@@ -90,6 +123,8 @@ impl OutputInfo {
             id,
             model: String::new(),
             make: String::new(),
+            name: String::new(),
+            description: String::new(),
             location: (0, 0),
             physical_size: (0, 0),
             subpixel: Subpixel::Unknown,
@@ -104,8 +139,20 @@ impl OutputInfo {
 type OutputCallback = dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync;
 
 enum OutputData {
-    Ready { info: OutputInfo, callbacks: Vec<sync::Weak<OutputCallback>> },
-    Pending { id: u32, events: Vec<Event>, callbacks: Vec<sync::Weak<OutputCallback>> },
+    Ready {
+        info: OutputInfo,
+        callbacks: Vec<sync::Weak<OutputCallback>>,
+    },
+    Pending {
+        id: u32,
+        has_xdg: bool,
+        events: Vec<Event>,
+        callbacks: Vec<sync::Weak<OutputCallback>>,
+    },
+    PendingXDG {
+        info: OutputInfo,
+        callbacks: Vec<sync::Weak<OutputCallback>>,
+    },
 }
 
 type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo, DispatchData) + 'static;
@@ -121,12 +168,17 @@ type OutputStatusCallback = dyn FnMut(WlOutput, &OutputInfo, DispatchData) + 'st
 pub struct OutputHandler {
     outputs: Vec<(u32, Attached<WlOutput>)>,
     status_listeners: Rc<RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>>,
+    xdg_listener: Option<rc::Weak<RefCell<XdgOutputHandlerInner>>>,
 }
 
 impl OutputHandler {
     /// Create a new instance of this handler
     pub fn new() -> OutputHandler {
-        OutputHandler { outputs: Vec::new(), status_listeners: Rc::new(RefCell::new(Vec::new())) }
+        OutputHandler {
+            outputs: Vec::new(),
+            status_listeners: Rc::new(RefCell::new(Vec::new())),
+            xdg_listener: None,
+        }
     }
 }
 
@@ -141,11 +193,17 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
         // We currently support wl_output up to version 3
         let version = std::cmp::min(version, 3);
         let output = registry.bind::<WlOutput>(version, id);
+        let has_xdg;
+        if let Some(xdg) = self.xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
+            has_xdg = xdg.borrow_mut().new_xdg_output(&output, &self.status_listeners);
+        } else {
+            has_xdg = false;
+        }
         if version > 1 {
             // wl_output.done event was only added at version 2
             // In case of an old version 1, we just behave as if it was send at the start
             output.as_ref().user_data().set_threadsafe(|| {
-                Mutex::new(OutputData::Pending { id, events: vec![], callbacks: vec![] })
+                Mutex::new(OutputData::Pending { id, has_xdg, events: vec![], callbacks: vec![] })
             });
         } else {
             output.as_ref().user_data().set_threadsafe(|| {
@@ -153,18 +211,26 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
             });
         }
         let status_listeners_handle = self.status_listeners.clone();
+        let xdg_listener_handle = self.xdg_listener.clone();
         output.quick_assign(move |output, event, ddata| {
-            process_output_event(output, event, ddata, &status_listeners_handle)
+            process_output_event(
+                output,
+                event,
+                ddata,
+                &status_listeners_handle,
+                &xdg_listener_handle,
+            )
         });
         self.outputs.push((id, (*output).clone()));
     }
     fn removed(&mut self, id: u32, mut ddata: DispatchData) {
-        let status_listeners_handle = self.status_listeners.clone();
+        let status_listeners_handle = &self.status_listeners;
+        let xdg_listener_handle = &self.xdg_listener;
         self.outputs.retain(|(i, o)| {
             if *i != id {
                 true
             } else {
-                make_obsolete(o, ddata.reborrow(), &status_listeners_handle);
+                make_obsolete(o, ddata.reborrow(), &status_listeners_handle, &xdg_listener_handle);
                 false
             }
         });
@@ -178,7 +244,8 @@ fn process_output_event(
     output: Main<WlOutput>,
     event: Event,
     mut ddata: DispatchData,
-    listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
+    listeners: &Rc<RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>>,
+    xdg_listener: &Option<rc::Weak<RefCell<XdgOutputHandlerInner>>>,
 ) {
     let udata_mutex = output
         .as_ref()
@@ -187,9 +254,17 @@ fn process_output_event(
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
     if let Event::Done = event {
-        let (id, pending_events, mut callbacks) = match *udata {
-            OutputData::Pending { id, events: ref mut v, callbacks: ref mut cb } => {
-                (id, std::mem::replace(v, vec![]), std::mem::replace(cb, vec![]))
+        let (id, has_xdg, pending_events, mut callbacks) = match *udata {
+            OutputData::Pending { id, has_xdg, events: ref mut v, callbacks: ref mut cb } => {
+                (id, has_xdg, std::mem::replace(v, vec![]), std::mem::replace(cb, vec![]))
+            }
+            OutputData::PendingXDG { ref mut info, ref mut callbacks } => {
+                notify(&output, info, ddata.reborrow(), callbacks);
+                notify_status_listeners(&output, &info, ddata, listeners);
+                let info = info.clone();
+                let callbacks = std::mem::replace(callbacks, vec![]);
+                *udata = OutputData::Ready { info, callbacks };
+                return;
             }
             OutputData::Ready { ref mut info, ref mut callbacks } => {
                 // a Done event on an output that is already ready was due to a
@@ -203,12 +278,19 @@ fn process_output_event(
             merge_event(&mut info, evt);
         }
         notify(&output, &info, ddata.reborrow(), &mut callbacks);
+        if let Some(xdg) = xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
+            if has_xdg || xdg.borrow_mut().new_xdg_output(&output, listeners) {
+                *udata = OutputData::PendingXDG { info, callbacks };
+                return;
+            }
+        }
         notify_status_listeners(&output, &info, ddata, listeners);
         *udata = OutputData::Ready { info, callbacks };
     } else {
         match *udata {
             OutputData::Pending { events: ref mut v, .. } => v.push(event),
-            OutputData::Ready { ref mut info, .. } => {
+            OutputData::PendingXDG { ref mut info, .. }
+            | OutputData::Ready { ref mut info, .. } => {
                 merge_event(info, event);
             }
         }
@@ -219,6 +301,7 @@ fn make_obsolete(
     output: &Attached<WlOutput>,
     mut ddata: DispatchData,
     listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
+    xdg_listener: &Option<rc::Weak<RefCell<XdgOutputHandlerInner>>>,
 ) {
     let udata_mutex = output
         .as_ref()
@@ -226,8 +309,12 @@ fn make_obsolete(
         .get::<Mutex<OutputData>>()
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
+    if let Some(xdg) = xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
+        xdg.borrow_mut().destroy_xdg_output(&output);
+    }
     let (id, mut callbacks) = match *udata {
-        OutputData::Ready { ref mut info, ref mut callbacks } => {
+        OutputData::PendingXDG { ref mut info, ref mut callbacks }
+        | OutputData::Ready { ref mut info, ref mut callbacks } => {
             info.obsolete = true;
             notify(output, info, ddata.reborrow(), callbacks);
             notify_status_listeners(&output, info, ddata, listeners);
@@ -310,7 +397,7 @@ fn notify(
 }
 
 fn notify_status_listeners(
-    output: &Attached<WlOutput>,
+    output: &WlOutput,
     info: &OutputInfo,
     mut ddata: DispatchData,
     listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
@@ -318,7 +405,7 @@ fn notify_status_listeners(
     // Notify the callbacks listening for new outputs
     listeners.borrow_mut().retain(|lst| {
         if let Some(cb) = rc::Weak::upgrade(lst) {
-            (&mut *cb.borrow_mut())(output.detach(), info, ddata.reborrow());
+            (&mut *cb.borrow_mut())(output.clone(), info, ddata.reborrow());
             true
         } else {
             false
@@ -340,7 +427,9 @@ pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(output: &WlOutput, f: F)
     if let Some(ref udata_mutex) = output.as_ref().user_data().get::<Mutex<OutputData>>() {
         let udata = udata_mutex.lock().unwrap();
         match *udata {
-            OutputData::Ready { ref info, .. } => Some(f(info)),
+            OutputData::PendingXDG { ref info, .. } | OutputData::Ready { ref info, .. } => {
+                Some(f(info))
+            }
             OutputData::Pending { .. } => None,
         }
     } else {
@@ -366,10 +455,9 @@ pub fn add_output_listener<F: Fn(WlOutput, &OutputInfo, DispatchData) + Send + S
         let mut udata = udata_mutex.lock().unwrap();
 
         match *udata {
-            OutputData::Pending { ref mut callbacks, .. } => {
-                callbacks.push(Arc::downgrade(&arc));
-            }
-            OutputData::Ready { ref mut callbacks, .. } => {
+            OutputData::Pending { ref mut callbacks, .. }
+            | OutputData::PendingXDG { ref mut callbacks, .. }
+            | OutputData::Ready { ref mut callbacks, .. } => {
                 callbacks.push(Arc::downgrade(&arc));
             }
         }
@@ -441,5 +529,142 @@ impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::En
     /// Shorthand method to retrieve the list of outputs
     pub fn get_all_outputs(&self) -> Vec<WlOutput> {
         self.get_all_globals::<WlOutput>().into_iter().map(|o| o.detach()).collect()
+    }
+}
+
+/// A handler for `zxdg_output_manager_v1`
+///
+/// This handler adds additional information to the OutputInfo struct that is
+/// available through the xdg_output interface.  Because this requires binding
+/// the two handlers together when they are being created, it does not work with
+/// [`new_default_environment!`](../macro.new_default_environment.html); you
+/// must use [`default_environment!`](../macro.default_environment.html) and
+/// create the [OutputHandler] outside the constructor.
+///
+/// ```no_compile
+///  let (sctk_outputs, sctk_xdg_out) = smithay_client_toolkit::output::XdgOutputHandler::new_output_handlers();
+///
+///  let env = smithay_client_toolkit::environment::Environment::new(&wl_display, &mut wl_queue, Globals {
+///      sctk_compositor: SimpleGlobal::new(),
+///      sctk_shm: smithay_client_toolkit::shm::ShmHandler::new(),
+///      sctk_seats : smithay_client_toolkit::seat::SeatHandler::new(),
+///      sctk_shell : smithay_client_toolkit::shell::ShellHandler::new(),
+///      sctk_outputs,
+///      sctk_xdg_out,
+///      // ...
+///  })?;
+///
+/// ```
+pub struct XdgOutputHandler {
+    inner: Rc<RefCell<XdgOutputHandlerInner>>,
+}
+
+struct XdgOutputHandlerInner {
+    xdg_manager: Option<Attached<ZxdgOutputManagerV1>>,
+    outputs: Vec<(WlOutput, Attached<ZxdgOutputV1>)>,
+}
+
+impl XdgOutputHandler {
+    /// Create a new instance of this handler bound to the given OutputHandler.
+    pub fn new(output_handler: &mut OutputHandler) -> Self {
+        let inner =
+            Rc::new(RefCell::new(XdgOutputHandlerInner { xdg_manager: None, outputs: Vec::new() }));
+        output_handler.xdg_listener = Some(Rc::downgrade(&inner));
+        XdgOutputHandler { inner }
+    }
+
+    /// Helper function to create a bound pair of OutputHandler and XdgOutputHandler.
+    pub fn new_output_handlers() -> (OutputHandler, Self) {
+        let mut oh = OutputHandler::new();
+        let xh = XdgOutputHandler::new(&mut oh);
+        (oh, xh)
+    }
+}
+
+impl XdgOutputHandlerInner {
+    fn new_xdg_output(
+        &mut self,
+        output: &WlOutput,
+        listeners: &Rc<RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>>,
+    ) -> bool {
+        if let Some(xdg_manager) = &self.xdg_manager {
+            let xdg_main = xdg_manager.get_xdg_output(&output);
+            let wl_out = output.clone();
+            let listeners = listeners.clone();
+            xdg_main.quick_assign(move |_xdg_out, event, ddata| {
+                process_xdg_event(&wl_out, event, ddata, &listeners)
+            });
+            self.outputs.push((output.clone(), xdg_main.into()));
+            true
+        } else {
+            false
+        }
+    }
+    fn destroy_xdg_output(&mut self, output: &WlOutput) {
+        self.outputs.retain(|(out, xdg_out)| {
+            if out.as_ref().is_alive() && out != output {
+                true
+            } else {
+                xdg_out.destroy();
+                false
+            }
+        });
+    }
+}
+
+fn process_xdg_event(
+    wl_out: &WlOutput,
+    event: zxdg_output_v1::Event,
+    mut ddata: DispatchData,
+    listeners: &RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>,
+) {
+    use zxdg_output_v1::Event;
+    let udata_mutex = wl_out
+        .as_ref()
+        .user_data()
+        .get::<Mutex<OutputData>>()
+        .expect("SCTK: wl_output has invalid UserData");
+    let mut udata = udata_mutex.lock().unwrap();
+    let (info, callbacks, pending) = match &mut *udata {
+        OutputData::Ready { info, callbacks } => (info, callbacks, false),
+        OutputData::PendingXDG { info, callbacks } => (info, callbacks, true),
+        OutputData::Pending { .. } => unreachable!(),
+    };
+    match event {
+        Event::Name { name } => {
+            info.name = name;
+        }
+        Event::Description { description } => {
+            info.description = description;
+        }
+        Event::Done => {
+            notify(wl_out, info, ddata.reborrow(), callbacks);
+            if pending {
+                notify_status_listeners(wl_out, &info, ddata, listeners);
+                let info = info.clone();
+                let callbacks = std::mem::replace(callbacks, vec![]);
+                *udata = OutputData::Ready { info, callbacks };
+            }
+        }
+        _ => (),
+    }
+}
+
+impl crate::environment::GlobalHandler<ZxdgOutputManagerV1> for XdgOutputHandler {
+    fn created(
+        &mut self,
+        registry: Attached<wl_registry::WlRegistry>,
+        id: u32,
+        version: u32,
+        _: DispatchData,
+    ) {
+        let version = std::cmp::min(version, 3);
+        let mut inner = self.inner.borrow_mut();
+        let xdg_manager: Main<ZxdgOutputManagerV1> = registry.bind(version, id);
+        inner.xdg_manager = Some(xdg_manager.into());
+    }
+    fn get(&self) -> Option<Attached<ZxdgOutputManagerV1>> {
+        let inner = self.inner.borrow();
+        inner.xdg_manager.clone()
     }
 }
