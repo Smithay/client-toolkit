@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Batch output information updates instead of potentially making multiple
+  callbacks for one logical change
+
 #### Additions
 
 - `Window::start_interactive_move` to enable dragging the window with a user action
