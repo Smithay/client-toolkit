@@ -186,13 +186,17 @@ fn process_output_event(
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
     if let Event::Done = event {
-        let (id, pending_events, mut callbacks) =
-            if let OutputData::Pending { id, events: ref mut v, callbacks: ref mut cb } = *udata {
+        let (id, pending_events, mut callbacks) = match *udata {
+            OutputData::Pending { id, events: ref mut v, callbacks: ref mut cb } => {
                 (id, std::mem::replace(v, vec![]), std::mem::replace(cb, vec![]))
-            } else {
-                // a Done event on an output that is already ready => nothing to do
+            }
+            OutputData::Ready { ref mut info, ref mut callbacks } => {
+                // a Done event on an output that is already ready was due to a
+                // status change (which was already merged)
+                notify(&output, info, ddata, callbacks);
                 return;
-            };
+            }
+        };
         let mut info = OutputInfo::new(id);
         for evt in pending_events {
             merge_event(&mut info, evt);
@@ -203,9 +207,8 @@ fn process_output_event(
     } else {
         match *udata {
             OutputData::Pending { events: ref mut v, .. } => v.push(event),
-            OutputData::Ready { ref mut info, ref mut callbacks } => {
+            OutputData::Ready { ref mut info, .. } => {
                 merge_event(info, event);
-                notify(&output, info, ddata, callbacks);
             }
         }
     }
