@@ -30,7 +30,7 @@ fn main() {
         }
     };
     // We'll need the image in RGBA for drawing it
-    let image = image.to_rgba();
+    let image = image.to_rgba8();
 
     /*
      * Initalize the wayland connection
