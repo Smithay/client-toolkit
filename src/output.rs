@@ -41,6 +41,7 @@ pub struct Mode {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 /// Compiled information about an output
 pub struct OutputInfo {
     /// The ID of this output as a global
