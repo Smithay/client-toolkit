@@ -174,7 +174,7 @@ bitflags::bitflags!(
     }
 );
 
-dlopen_external_library!(XkbCommon,
+external_library!(XkbCommon, "xkbcommon",
 functions:
     fn xkb_keysym_get_name(xkb_keysym_t, *mut c_char, usize) -> c_int,
     fn xkb_keysym_from_name(*const c_char, xkb_keysym_flags) -> xkb_keysym_t,
@@ -253,8 +253,9 @@ functions:
     fn xkb_compose_state_get_one_sym(*mut xkb_compose_state) -> xkb_keysym_t,
 );
 
+#[cfg(feature = "dlopen")]
 lazy_static::lazy_static!(
-    pub static ref XKBCOMMON_OPTION: Option<XkbCommon> = {
+    pub static ref XKBCOMMON_OPTION: Option<XkbCommon> = unsafe {
         XkbCommon::open("libxkbcommon.so.0")
             .or_else(|_| XkbCommon::open("libxkbcommon.so"))
             .ok()
