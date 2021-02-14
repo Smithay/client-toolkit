@@ -31,6 +31,9 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
+      - name: Install libxkbcommon
+        run: sudo apt-get install libxkbcommon-dev
+
       - name: Test lib no features
         uses: actions-rs/cargo@v1
         with:
