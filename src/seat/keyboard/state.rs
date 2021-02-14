@@ -1,7 +1,11 @@
 use memmap2::MmapOptions;
 use std::{env, ffi::CString, fs::File, os::raw::c_char, os::unix::ffi::OsStringExt, ptr};
 
-use super::ffi::{self, xkb_state_component, XKBCOMMON_HANDLE as XKBH};
+#[cfg(feature = "dlopen")]
+use super::ffi::XKBCOMMON_HANDLE as XKBH;
+#[cfg(not(feature = "dlopen"))]
+use super::ffi::*;
+use super::ffi::{self, xkb_state_component};
 use super::Error;
 
 pub(crate) struct KbState {
@@ -65,45 +69,57 @@ impl ModifiersState {
 
     fn update_with(&mut self, state: *mut ffi::xkb_state) {
         self.ctrl = unsafe {
-            (XKBH.xkb_state_mod_name_is_active)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_mod_name_is_active,
                 state,
                 ffi::XKB_MOD_NAME_CTRL.as_ptr() as *const c_char,
-                xkb_state_component::XKB_STATE_MODS_EFFECTIVE,
+                xkb_state_component::XKB_STATE_MODS_EFFECTIVE
             ) > 0
         };
         self.alt = unsafe {
-            (XKBH.xkb_state_mod_name_is_active)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_mod_name_is_active,
                 state,
                 ffi::XKB_MOD_NAME_ALT.as_ptr() as *const c_char,
-                xkb_state_component::XKB_STATE_MODS_EFFECTIVE,
+                xkb_state_component::XKB_STATE_MODS_EFFECTIVE
             ) > 0
         };
         self.shift = unsafe {
-            (XKBH.xkb_state_mod_name_is_active)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_mod_name_is_active,
                 state,
                 ffi::XKB_MOD_NAME_SHIFT.as_ptr() as *const c_char,
-                xkb_state_component::XKB_STATE_MODS_EFFECTIVE,
+                xkb_state_component::XKB_STATE_MODS_EFFECTIVE
             ) > 0
         };
         self.caps_lock = unsafe {
-            (XKBH.xkb_state_mod_name_is_active)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_mod_name_is_active,
                 state,
                 ffi::XKB_MOD_NAME_CAPS.as_ptr() as *const c_char,
-                xkb_state_component::XKB_STATE_MODS_EFFECTIVE,
+                xkb_state_component::XKB_STATE_MODS_EFFECTIVE
             ) > 0
         };
         self.logo = unsafe {
-            (XKBH.xkb_state_mod_name_is_active)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_mod_name_is_active,
                 state,
                 ffi::XKB_MOD_NAME_LOGO.as_ptr() as *const c_char,
-                xkb_state_component::XKB_STATE_MODS_EFFECTIVE,
+                xkb_state_component::XKB_STATE_MODS_EFFECTIVE
             ) > 0
         };
         self.num_lock = unsafe {
-            (XKBH.xkb_state_mod_name_is_active)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_mod_name_is_active,
                 state,
                 ffi::XKB_MOD_NAME_NUM.as_ptr() as *const c_char,
-                xkb_state_component::XKB_STATE_MODS_EFFECTIVE,
+                xkb_state_component::XKB_STATE_MODS_EFFECTIVE
             ) > 0
         };
     }
@@ -121,14 +137,16 @@ impl KbState {
             return;
         }
         let mask = unsafe {
-            (XKBH.xkb_state_update_mask)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_update_mask,
                 self.xkb_state,
                 mods_depressed,
                 mods_latched,
                 mods_locked,
                 0,
                 0,
-                group,
+                group
             )
         };
         if mask.contains(xkb_state_component::XKB_STATE_MODS_EFFECTIVE) {
@@ -141,7 +159,7 @@ impl KbState {
         if !self.ready() {
             return 0;
         }
-        unsafe { (XKBH.xkb_state_key_get_one_sym)(self.xkb_state, keycode + 8) }
+        unsafe { ffi_dispatch!(XKBH, xkb_state_key_get_one_sym, self.xkb_state, keycode + 8) }
     }
 
     pub(crate) fn get_utf8_raw(&mut self, keycode: u32) -> Option<String> {
@@ -149,7 +167,14 @@ impl KbState {
             return None;
         }
         let size = unsafe {
-            (XKBH.xkb_state_key_get_utf8)(self.xkb_state, keycode + 8, ptr::null_mut(), 0)
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_key_get_utf8,
+                self.xkb_state,
+                keycode + 8,
+                ptr::null_mut(),
+                0
+            )
         } + 1;
         if size <= 1 {
             return None;
@@ -157,11 +182,13 @@ impl KbState {
         let mut buffer = Vec::with_capacity(size as usize);
         unsafe {
             buffer.set_len(size as usize);
-            (XKBH.xkb_state_key_get_utf8)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_state_key_get_utf8,
                 self.xkb_state,
                 keycode + 8,
                 buffer.as_mut_ptr() as *mut _,
-                size as usize,
+                size as usize
             );
         };
         // remove the final `\0`
@@ -174,14 +201,14 @@ impl KbState {
         if !self.ready() || self.xkb_compose_state.is_null() {
             return None;
         }
-        Some(unsafe { (XKBH.xkb_compose_state_feed)(self.xkb_compose_state, keysym) })
+        Some(unsafe { ffi_dispatch!(XKBH, xkb_compose_state_feed, self.xkb_compose_state, keysym) })
     }
 
     pub(crate) fn compose_status(&mut self) -> Option<ffi::xkb_compose_status> {
         if !self.ready() || self.xkb_compose_state.is_null() {
             return None;
         }
-        Some(unsafe { (XKBH.xkb_compose_state_get_status)(self.xkb_compose_state) })
+        Some(unsafe { ffi_dispatch!(XKBH, xkb_compose_state_get_status, self.xkb_compose_state) })
     }
 
     pub(crate) fn compose_get_utf8(&mut self) -> Option<String> {
@@ -189,7 +216,13 @@ impl KbState {
             return None;
         }
         let size = unsafe {
-            (XKBH.xkb_compose_state_get_utf8)(self.xkb_compose_state, ptr::null_mut(), 0)
+            ffi_dispatch!(
+                XKBH,
+                xkb_compose_state_get_utf8,
+                self.xkb_compose_state,
+                ptr::null_mut(),
+                0
+            )
         } + 1;
         if size <= 1 {
             return None;
@@ -197,10 +230,12 @@ impl KbState {
         let mut buffer = Vec::with_capacity(size as usize);
         unsafe {
             buffer.set_len(size as usize);
-            (XKBH.xkb_compose_state_get_utf8)(
+            ffi_dispatch!(
+                XKBH,
+                xkb_compose_state_get_utf8,
                 self.xkb_compose_state,
                 buffer.as_mut_ptr() as *mut _,
-                size as usize,
+                size as usize
             );
         };
         // remove the final `\0`
@@ -210,18 +245,21 @@ impl KbState {
     }
 
     pub(crate) fn new() -> Result<KbState, Error> {
-        let xkbh = match ffi::XKBCOMMON_OPTION.as_ref() {
-            Some(h) => h,
-            None => return Err(Error::XKBNotFound),
+        #[cfg(feature = "dlopen")]
+        {
+            if ffi::XKBCOMMON_OPTION.as_ref().is_none() {
+                return Err(Error::XKBNotFound);
+            }
+        }
+        let context = unsafe {
+            ffi_dispatch!(XKBH, xkb_context_new, ffi::xkb_context_flags::XKB_CONTEXT_NO_FLAGS)
         };
-        let xkb_context =
-            unsafe { (xkbh.xkb_context_new)(ffi::xkb_context_flags::XKB_CONTEXT_NO_FLAGS) };
-        if xkb_context.is_null() {
+        if context.is_null() {
             return Err(Error::XKBNotFound);
         }
 
         let mut me = KbState {
-            xkb_context,
+            xkb_context: context,
             xkb_keymap: ptr::null_mut(),
             xkb_state: ptr::null_mut(),
             xkb_compose_table: ptr::null_mut(),
@@ -276,10 +314,12 @@ impl KbState {
             .unwrap_or_else(|| "C".into());
         let locale = CString::new(locale.into_vec()).unwrap();
 
-        let compose_table = (XKBH.xkb_compose_table_new_from_locale)(
+        let compose_table = ffi_dispatch!(
+            XKBH,
+            xkb_compose_table_new_from_locale,
             self.xkb_context,
             locale.as_ptr(),
-            ffi::xkb_compose_compile_flags::XKB_COMPOSE_COMPILE_NO_FLAGS,
+            ffi::xkb_compose_compile_flags::XKB_COMPOSE_COMPILE_NO_FLAGS
         );
 
         if compose_table.is_null() {
@@ -287,14 +327,16 @@ impl KbState {
             return;
         }
 
-        let compose_state = (XKBH.xkb_compose_state_new)(
+        let compose_state = ffi_dispatch!(
+            XKBH,
+            xkb_compose_state_new,
             compose_table,
-            ffi::xkb_compose_state_flags::XKB_COMPOSE_STATE_NO_FLAGS,
+            ffi::xkb_compose_state_flags::XKB_COMPOSE_STATE_NO_FLAGS
         );
 
         if compose_state.is_null() {
             // init of compose state failed, continue without compose
-            (XKBH.xkb_compose_table_unref)(compose_table);
+            ffi_dispatch!(XKBH, xkb_compose_table_unref, compose_table);
             return;
         }
 
@@ -302,58 +344,62 @@ impl KbState {
         self.xkb_compose_state = compose_state;
     }
 
-    pub(crate) unsafe fn post_init(&mut self, xkb_keymap: *mut ffi::xkb_keymap) {
-        let xkb_state = (XKBH.xkb_state_new)(xkb_keymap);
-        self.xkb_keymap = xkb_keymap;
-        self.xkb_state = xkb_state;
-        self.mods_state.update_with(xkb_state);
+    pub(crate) unsafe fn post_init(&mut self, keymap: *mut ffi::xkb_keymap) {
+        let state = ffi_dispatch!(XKBH, xkb_state_new, keymap);
+        self.xkb_keymap = keymap;
+        self.xkb_state = state;
+        self.mods_state.update_with(state);
     }
 
     pub(crate) unsafe fn de_init(&mut self) {
-        (XKBH.xkb_state_unref)(self.xkb_state);
+        ffi_dispatch!(XKBH, xkb_state_unref, self.xkb_state);
         self.xkb_state = ptr::null_mut();
-        (XKBH.xkb_keymap_unref)(self.xkb_keymap);
+        ffi_dispatch!(XKBH, xkb_keymap_unref, self.xkb_keymap);
         self.xkb_keymap = ptr::null_mut();
     }
 
     pub(crate) unsafe fn init_with_fd(&mut self, fd: File, size: usize) {
         let map = MmapOptions::new().len(size).map(&fd).unwrap();
 
-        let xkb_keymap = (XKBH.xkb_keymap_new_from_string)(
+        let keymap = ffi_dispatch!(
+            XKBH,
+            xkb_keymap_new_from_string,
             self.xkb_context,
             map.as_ptr() as *const _,
             ffi::xkb_keymap_format::XKB_KEYMAP_FORMAT_TEXT_V1,
-            ffi::xkb_keymap_compile_flags::XKB_KEYMAP_COMPILE_NO_FLAGS,
+            ffi::xkb_keymap_compile_flags::XKB_KEYMAP_COMPILE_NO_FLAGS
         );
 
-        if xkb_keymap.is_null() {
+        if keymap.is_null() {
             panic!("Received invalid keymap from compositor.");
         }
 
-        self.post_init(xkb_keymap);
+        self.post_init(keymap);
     }
 
     pub(crate) unsafe fn init_with_rmlvo(
         &mut self,
         names: ffi::xkb_rule_names,
     ) -> Result<(), Error> {
-        let xkb_keymap = (XKBH.xkb_keymap_new_from_names)(
+        let keymap = ffi_dispatch!(
+            XKBH,
+            xkb_keymap_new_from_names,
             self.xkb_context,
             &names,
-            ffi::xkb_keymap_compile_flags::XKB_KEYMAP_COMPILE_NO_FLAGS,
+            ffi::xkb_keymap_compile_flags::XKB_KEYMAP_COMPILE_NO_FLAGS
         );
 
-        if xkb_keymap.is_null() {
+        if keymap.is_null() {
             return Err(Error::BadNames);
         }
 
-        self.post_init(xkb_keymap);
+        self.post_init(keymap);
 
         Ok(())
     }
 
     pub(crate) unsafe fn key_repeats(&mut self, xkb_keycode_t: ffi::xkb_keycode_t) -> bool {
-        (XKBH.xkb_keymap_key_repeats)(self.xkb_keymap, xkb_keycode_t) == 1
+        ffi_dispatch!(XKBH, xkb_keymap_key_repeats, self.xkb_keymap, xkb_keycode_t) == 1
     }
 
     #[inline]
@@ -375,11 +421,11 @@ impl KbState {
 impl Drop for KbState {
     fn drop(&mut self) {
         unsafe {
-            (XKBH.xkb_compose_state_unref)(self.xkb_compose_state);
-            (XKBH.xkb_compose_table_unref)(self.xkb_compose_table);
-            (XKBH.xkb_state_unref)(self.xkb_state);
-            (XKBH.xkb_keymap_unref)(self.xkb_keymap);
-            (XKBH.xkb_context_unref)(self.xkb_context);
+            ffi_dispatch!(XKBH, xkb_compose_state_unref, self.xkb_compose_state);
+            ffi_dispatch!(XKBH, xkb_compose_table_unref, self.xkb_compose_table);
+            ffi_dispatch!(XKBH, xkb_state_unref, self.xkb_state);
+            ffi_dispatch!(XKBH, xkb_keymap_unref, self.xkb_keymap);
+            ffi_dispatch!(XKBH, xkb_context_unref, self.xkb_context);
         }
     }
 }
