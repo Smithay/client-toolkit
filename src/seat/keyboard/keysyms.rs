@@ -1315,7 +1315,7 @@ pub const XKB_KEY_Greek_switch                  :u32 = 0xff7e;  /* Alias for mod
 
 /*
  * Technical
- * (from the DEC VT330/VT420 Technical Character Set, https://vt100.net/charsets/technical.html)
+ * (from the DEC VT330/VT420 Technical Character Set, http://vt100.net/charsets/technical.html)
  * Byte 3 = 8
  */
 
@@ -2361,8 +2361,8 @@ pub const XKB_KEY_braille_dots_2345678       :u32 = 0x10028fe;  /* U+28fe BRAILL
 pub const XKB_KEY_braille_dots_12345678      :u32 = 0x10028ff;  /* U+28ff BRAILLE PATTERN DOTS-12345678 */
 
 /*
- * Sinhala (https://unicode.org/charts/PDF/U0D80.pdf)
- * https://www.nongnu.org/sinhala/doc/transliteration/sinhala-transliteration_6.html
+ * Sinhala (http://unicode.org/charts/PDF/U0D80.pdf)
+ * http://www.nongnu.org/sinhala/doc/transliteration/sinhala-transliteration_6.html
  */
 
 pub const XKB_KEY_Sinh_ng            :u32 = 0x1000d82;  /* U+0D82 SINHALA ANUSVARAYA */
