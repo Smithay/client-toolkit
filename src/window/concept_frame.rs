@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::cmp::max;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use andrew::line;
 use andrew::shapes::rectangle;
 use andrew::text;
-use andrew::text::fontconfig;
 use andrew::{Canvas, Endian};
 
 use wayland_client::protocol::{
@@ -640,18 +640,8 @@ impl Frame for ConceptFrame {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
-                                let font_bytes = fontconfig::FontConfig::new()
-                                    .ok()
-                                    .and_then(|font_config| {
-                                        font_config.get_regular_family_fonts(&font_face).ok()
-                                    })
-                                    .and_then(|regular_family_fonts| {
-                                        regular_family_fonts
-                                            .iter()
-                                            .cloned()
-                                            .find(|p| p.extension().map_or(false, |e| e == "ttf"))
-                                    })
-                                    .and_then(|font| std::fs::read(font).ok());
+                                let font_bytes =
+                                    find_font(&font_face).and_then(|font| std::fs::read(font).ok());
                                 match font_bytes {
                                     Some(bytes) => self.font_data = Some(Ok(bytes)),
                                     None => {
@@ -1216,5 +1206,41 @@ fn draw_icon(
                 ));
             }
         }
+    }
+}
+
+fn find_font(family: &str) -> Option<PathBuf> {
+    use fontconfig::fontconfig::*;
+    use std::ffi::{CStr, CString};
+
+    unsafe {
+        let fc = FcInitLoadConfigAndFonts();
+
+        let name = CString::new(family.as_bytes()).unwrap();
+        let pattern = FcNameParse(name.as_ptr() as *const _);
+        // regular font
+        FcPatternAddInteger(pattern, b"weight\0".as_ptr() as *const _, 80);
+        FcPatternAddInteger(pattern, b"slant\0".as_ptr() as *const _, 0);
+        FcConfigSubstitute(fc, pattern, FcMatchPattern);
+        FcDefaultSubstitute(pattern);
+
+        let mut result = FcResultNoMatch;
+        let font_pat = FcFontMatch(fc, pattern, &mut result);
+
+        let ret = if font_pat.is_null() {
+            None
+        } else {
+            let mut filename_ptr = std::ptr::null_mut();
+            FcPatternGetString(font_pat, b"file\0".as_ptr() as *const _, 0, &mut filename_ptr);
+            let path = PathBuf::from(
+                CStr::from_ptr(filename_ptr as *const _).to_string_lossy().into_owned(),
+            );
+            FcPatternDestroy(font_pat);
+            Some(path)
+        };
+
+        FcConfigDestroy(fc);
+
+        ret
     }
 }
