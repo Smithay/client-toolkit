@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::cmp::max;
 use std::rc::Rc;
 
+use font_loader::system_fonts::{FontPropertyBuilder, get};
+
 use andrew::line;
 use andrew::shapes::rectangle;
 use andrew::text;
-use andrew::text::fontconfig;
 use andrew::{Canvas, Endian};
 
 use wayland_client::protocol::{
@@ -335,7 +336,7 @@ pub struct ConceptFrame {
     surface_version: u32,
     config: ConceptConfig,
     title: Option<String>,
-    font_data: Option<Result<Vec<u8>, ()>>,
+    font_data: Option<Result<(Vec<u8>, i32), ()>>,
 }
 
 impl Frame for ConceptFrame {
@@ -640,20 +641,10 @@ impl Frame for ConceptFrame {
                             // If theres no stored font data, find the first ttf regular sans font and
                             // store it
                             if self.font_data.is_none() {
-                                let font_bytes = fontconfig::FontConfig::new()
-                                    .ok()
-                                    .and_then(|font_config| {
-                                        font_config.get_regular_family_fonts(&font_face).ok()
-                                    })
-                                    .and_then(|regular_family_fonts| {
-                                        regular_family_fonts
-                                            .iter()
-                                            .cloned()
-                                            .find(|p| p.extension().map_or(false, |e| e == "ttf"))
-                                    })
-                                    .and_then(|font| std::fs::read(font).ok());
+                                let property = FontPropertyBuilder::new().build();
+                                let font_bytes = get(&property);
                                 match font_bytes {
-                                    Some(bytes) => self.font_data = Some(Ok(bytes)),
+                                    Some((bytes, index)) => self.font_data = Some(Ok((bytes, index))),
                                     None => {
                                         error!("No font could be found");
                                         self.font_data = Some(Err(()))
@@ -672,7 +663,7 @@ impl Frame for ConceptFrame {
                                             * header_scale as usize,
                                     ),
                                     title_color.into(),
-                                    font_data,
+                                    &font_data.0,
                                     font_size * header_scale as f32,
                                     1.0,
                                     title,
