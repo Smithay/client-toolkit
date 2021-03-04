@@ -2,18 +2,23 @@
 
 ## Unreleased
 
-- Batch output information updates instead of potentially making multiple
-  callbacks for one logical change
-- Add name and description fields to OutputInfo.
+## 0.13.0 - 2021-03-04
 
 #### Breaking Changes
 
 - Mark OutputInfo as `#[non_exhaustive]` to allow future expansion without
   breaking API.
+- Batch output information updates instead of potentially making multiple
+  callbacks for one logical change
+- Add name and description fields to OutputInfo.
 
 #### Additions
 
 - `Window::start_interactive_move` to enable dragging the window with a user action
+
+#### Bugfixes
+
+- `ConceptFrame` now correctly loads fonts using fontconfig
 
 ## 0.12.2 -- 2020-12-30
 
