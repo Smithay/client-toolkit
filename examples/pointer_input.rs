@@ -5,7 +5,7 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 
 use sctk::reexports::client::protocol::{wl_pointer, wl_shm, wl_surface};
 use sctk::shm::MemPool;
-use sctk::window::{ConceptFrame, Event as WEvent};
+use sctk::window::{Event as WEvent, FallbackFrame};
 
 #[derive(Debug)]
 enum NextAction {
@@ -75,7 +75,7 @@ fn main() {
         .detach();
 
     let mut window = env
-        .create_window::<ConceptFrame, _>(
+        .create_window::<FallbackFrame, _>(
             surface,
             None,
             window_config.dimensions(),

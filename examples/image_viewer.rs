@@ -6,7 +6,7 @@ use std::io::{BufWriter, Seek, SeekFrom, Write};
 
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
 use sctk::shm::MemPool;
-use sctk::window::{ConceptFrame, Event as WEvent, State};
+use sctk::window::{Event as WEvent, FallbackFrame, State};
 
 sctk::default_environment!(ImViewerExample, desktop);
 
@@ -62,7 +62,7 @@ fn main() {
     // specifies the type we want to use to draw the borders. To create your own
     // decorations you just need an object to implement the `Frame` trait.
     let mut window = env
-        .create_window::<ConceptFrame, _>(
+        .create_window::<FallbackFrame, _>(
             surface,            // the wl_surface that serves as the basis of this window
             None,               // None for theme_manager, since we don't theme pointer outself
             image.dimensions(), // the initial internal dimensions of the window

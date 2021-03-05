@@ -22,10 +22,8 @@ use crate::{
     shell,
 };
 
-#[cfg(feature = "frames")]
-mod concept_frame;
-#[cfg(feature = "frames")]
-pub use self::concept_frame::{ConceptConfig, ConceptFrame};
+mod fallback_frame;
+pub use self::fallback_frame::FallbackFrame;
 
 // Defines the minimum window size. Minimum width is set to 2 pixels to circumvent
 // a bug in mutter - https://gitlab.gnome.org/GNOME/mutter/issues/259
@@ -499,6 +497,7 @@ impl<F: Frame + 'static> Window<F> {
                         // the server side decorations if some are presented.
                         decoration.destroy();
                         self.decoration = None;
+                        self.frame.borrow_mut().set_hidden(false);
                     }
                     Decorations::ServerSide => {
                         decoration.set_mode(Mode::ServerSide);
@@ -811,101 +810,5 @@ where
         CB: FnMut(Event, DispatchData) + 'static,
     {
         Window::<F>::init_with_decorations(self, surface, theme_manager, initial_dims, callback)
-    }
-}
-
-//
-// Some helpers for Frame configuration
-//
-
-/// Color specification to be used in Frame configuration
-///
-/// It regroups two colors, one for when the window is active and
-/// one for when it is not.
-#[derive(Copy, Clone, Debug)]
-pub struct ColorSpec {
-    /// The active color
-    pub active: ARGBColor,
-    /// The inactive color
-    pub inactive: ARGBColor,
-}
-
-impl ColorSpec {
-    /// Access the color associated with a certain window state
-    #[inline]
-    pub fn get_for(self, state: WindowState) -> ARGBColor {
-        match state {
-            WindowState::Active => self.active,
-            WindowState::Inactive => self.inactive,
-        }
-    }
-
-    /// Create a ColorSpec that is always the same color
-    #[inline]
-    pub const fn identical(color: ARGBColor) -> ColorSpec {
-        ColorSpec { active: color, inactive: color }
-    }
-
-    /// Create a ColorSpec corresponding to an always invisible color
-    #[inline]
-    pub const fn invisible() -> ColorSpec {
-        ColorSpec::identical(ARGBColor::zero())
-    }
-}
-
-/// A color specification associated with a button
-///
-/// It regroups 3 color specifications depending on the state of the
-/// button: idle, hovered, or disabled.
-#[derive(Copy, Clone, Debug)]
-pub struct ButtonColorSpec {
-    /// ColorSpec for an idle button
-    pub idle: ColorSpec,
-    /// ColorSpec for an hovered button
-    pub hovered: ColorSpec,
-    /// ColorSpec for a disabled button
-    pub disabled: ColorSpec,
-}
-
-impl ButtonColorSpec {
-    /// Get the ColorSpec associated with a given button state
-    pub fn get_for(&self, state: ButtonState) -> ColorSpec {
-        match state {
-            ButtonState::Idle => self.idle,
-            ButtonState::Hovered => self.hovered,
-            ButtonState::Disabled => self.disabled,
-        }
-    }
-}
-
-/// Unambiguous representation of an ARGB color
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct ARGBColor {
-    /// Alpha channel
-    pub a: u8,
-    /// Red channel
-    pub r: u8,
-    /// Green channel
-    pub g: u8,
-    /// Blue channel
-    pub b: u8,
-}
-
-impl ARGBColor {
-    /// The invisible `#00000000` color
-    pub const fn zero() -> ARGBColor {
-        ARGBColor { a: 0, r: 0, g: 0, b: 0 }
-    }
-}
-
-impl From<ARGBColor> for [u8; 4] {
-    fn from(color: ARGBColor) -> [u8; 4] {
-        [color.a, color.r, color.g, color.b]
-    }
-}
-
-impl From<[u8; 4]> for ARGBColor {
-    fn from(array: [u8; 4]) -> ARGBColor {
-        ARGBColor { a: array[0], r: array[1], g: array[2], b: array[3] }
     }
 }
