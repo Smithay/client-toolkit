@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- `ConceptFrame` is removed, as well as the `frames` cargo feature, and replaced by a more minimalistic
+  `FallbackFrame`. Dependency on `andrew` and `fontconfig` is dropped in the process. If fancier
+  decorations are needed, they should be implemented using the `Frame` trait.
+
 ## 0.13.0 - 2021-03-04
 
 #### Breaking Changes

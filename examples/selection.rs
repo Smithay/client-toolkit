@@ -8,7 +8,7 @@ use sctk::{
     primary_selection::PrimarySelectionSourceEvent,
     seat::keyboard::{map_keyboard_repeat, Event as KbEvent, KeyState, RepeatKind},
     shm::MemPool,
-    window::{ConceptFrame, Event as WEvent},
+    window::{Event as WEvent, FallbackFrame},
 };
 
 use sctk::reexports::{
@@ -42,7 +42,7 @@ fn main() {
     let surface = env.create_surface().detach();
 
     let mut window = env
-        .create_window::<ConceptFrame, _>(
+        .create_window::<FallbackFrame, _>(
             surface,
             None,
             dimensions,

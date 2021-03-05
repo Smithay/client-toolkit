@@ -7,7 +7,7 @@ use sctk::reexports::calloop;
 use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
 use sctk::shm::MemPool;
-use sctk::window::{ConceptFrame, Event as WEvent};
+use sctk::window::{Event as WEvent, FallbackFrame};
 
 sctk::default_environment!(KbdInputExample, desktop);
 
@@ -38,7 +38,7 @@ fn main() {
     let surface = env.create_surface().detach();
 
     let mut window = env
-        .create_window::<ConceptFrame, _>(
+        .create_window::<FallbackFrame, _>(
             surface,
             None,
             dimensions,
