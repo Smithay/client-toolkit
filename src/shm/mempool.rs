@@ -109,13 +109,13 @@ impl Inner {
     fn new(shm: Attached<wl_shm::WlShm>) -> io::Result<Self> {
         let mem_fd = create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(mem_fd) };
-        mem_file.set_len(128)?;
+        mem_file.set_len(4096)?;
 
-        let pool = shm.create_pool(mem_fd, 128);
+        let pool = shm.create_pool(mem_fd, 4096);
 
         let mmap = unsafe { MmapMut::map_mut(&mem_file).unwrap() };
 
-        Ok(Inner { file: mem_file, len: 128, pool, mmap })
+        Ok(Inner { file: mem_file, len: 4096, pool, mmap })
     }
 
     fn resize(&mut self, newsize: usize) -> io::Result<()> {
