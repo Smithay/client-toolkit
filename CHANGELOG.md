@@ -8,6 +8,10 @@
   `FallbackFrame`. Dependency on `andrew` and `fontconfig` is dropped in the process. If fancier
   decorations are needed, they should be implemented using the `Frame` trait.
 
+#### Additions
+
+- `AutoMemPool` added as an alternative to the existing SHM pools
+
 ## 0.13.0 - 2021-03-04
 
 #### Breaking Changes

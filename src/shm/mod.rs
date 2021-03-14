@@ -9,7 +9,7 @@ use wayland_client::{
 
 mod mempool;
 
-pub use self::mempool::{DoubleMemPool, MemPool};
+pub use self::mempool::{AutoMemPool, DoubleMemPool, MemPool};
 pub use wl_shm::Format;
 
 /// A handler for the `wl_shm` global
