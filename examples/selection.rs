@@ -7,7 +7,7 @@ use sctk::{
     environment::Environment,
     primary_selection::PrimarySelectionSourceEvent,
     seat::keyboard::{map_keyboard_repeat, Event as KbEvent, KeyState, RepeatKind},
-    shm::MemPool,
+    shm::AutoMemPool,
     window::{Event as WEvent, FallbackFrame},
 };
 
@@ -66,7 +66,7 @@ fn main() {
 
     println!("Press c/C p/P to copy/paste from selection/primary clipboard respectively.");
 
-    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
+    let mut pool = env.create_auto_pool().expect("Failed to create a memory pool !");
 
     let mut seats = Vec::<(String, Option<wl_keyboard::WlKeyboard>)>::new();
 
@@ -141,9 +141,7 @@ fn main() {
 
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
-        if let Some(pool) = pools.pool() {
-            redraw(pool, window.surface(), dimensions).expect("Failed to draw")
-        }
+        redraw(&mut pool, window.surface(), dimensions).expect("Failed to draw");
         window.refresh();
     }
 
@@ -165,9 +163,7 @@ fn main() {
                     dimensions = (w, h)
                 }
                 window.refresh();
-                if let Some(pool) = pools.pool() {
-                    redraw(pool, window.surface(), dimensions).expect("Failed to draw")
-                }
+                redraw(&mut pool, window.surface(), dimensions).expect("Failed to draw");
             }
             None => {}
         }
@@ -330,25 +326,24 @@ fn process_keyboard_event(
 }
 
 fn redraw(
-    pool: &mut MemPool,
+    pool: &mut AutoMemPool,
     surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
-    // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
-    // write the contents, a nice color gradient =)
-    pool.seek(SeekFrom::Start(0))?;
-    {
-        let mut writer = BufWriter::new(&mut *pool);
-        for _ in 0..(buf_x * buf_y) {
-            writer.write(&0xFF000000u32.to_ne_bytes())?;
-        }
-        writer.flush()?;
+    let (canvas, new_buffer) =
+        pool.buffer(buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888)?;
+    for dst_pixel in canvas.chunks_exact_mut(4) {
+        dst_pixel[0] = 0x00;
+        dst_pixel[1] = 0x00;
+        dst_pixel[2] = 0x00;
+        dst_pixel[3] = 0xFF;
     }
-    // get a buffer and attach it
-    let new_buffer =
-        pool.buffer(0, buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888);
     surface.attach(Some(&new_buffer), 0, 0);
+    if surface.as_ref().version() >= 4 {
+        surface.damage_buffer(0, 0, buf_x as i32, buf_y as i32);
+    } else {
+        surface.damage(0, 0, buf_x as i32, buf_y as i32);
+    }
     surface.commit();
     Ok(())
 }

@@ -11,12 +11,11 @@ use smithay_client_toolkit::{
             zwlr_layer_shell_v1, zwlr_layer_surface_v1,
         },
     },
-    shm::DoubleMemPool,
+    shm::AutoMemPool,
     WaylandSource,
 };
 
 use std::cell::{Cell, RefCell};
-use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::rc::Rc;
 
 default_environment!(Env,
@@ -38,7 +37,7 @@ struct Surface {
     surface: wl_surface::WlSurface,
     layer_surface: Main<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1>,
     next_render_event: Rc<Cell<Option<RenderEvent>>>,
-    pools: DoubleMemPool,
+    pool: AutoMemPool,
     dimensions: (u32, u32),
 }
 
@@ -47,7 +46,7 @@ impl Surface {
         output: &wl_output::WlOutput,
         surface: wl_surface::WlSurface,
         layer_shell: &Attached<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
-        pools: DoubleMemPool,
+        pool: AutoMemPool,
     ) -> Self {
         let layer_surface = layer_shell.get_layer_surface(
             &surface,
@@ -81,7 +80,7 @@ impl Surface {
         // Commit so that the server will send a configure event
         surface.commit();
 
-        Self { surface, layer_surface, next_render_event, pools, dimensions: (0, 0) }
+        Self { surface, layer_surface, next_render_event, pool, dimensions: (0, 0) }
     }
 
     /// Handles any events that have occurred since the last call, redrawing if needed.
@@ -99,29 +98,22 @@ impl Surface {
     }
 
     fn draw(&mut self) {
-        // Note: unwrap() is only used here in the interest of simplicity of the example.
-        // A "real" application should handle the case where both pools are still in use by the
-        // compositor.
-        let pool = self.pools.pool().unwrap();
-
         let stride = 4 * self.dimensions.0 as i32;
         let width = self.dimensions.0 as i32;
         let height = self.dimensions.1 as i32;
 
-        // First make sure the pool is the right size
-        pool.resize((stride * height) as usize).unwrap();
+        // Note: unwrap() is only used here in the interest of simplicity of the example.
+        // A "real" application should handle the case where both pools are still in use by the
+        // compositor.
+        let (canvas, buffer) =
+            self.pool.buffer(width, height, stride, wl_shm::Format::Argb8888).unwrap();
 
-        // Create a new buffer from the pool
-        let buffer = pool.buffer(0, width, height, stride, wl_shm::Format::Argb8888);
-
-        // Write the color to all bytes of the pool
-        pool.seek(SeekFrom::Start(0)).unwrap();
-        {
-            let mut writer = BufWriter::new(&mut *pool);
-            for _ in 0..(width * height) {
-                writer.write_all(&0xff00ff00u32.to_ne_bytes()).unwrap();
-            }
-            writer.flush().unwrap();
+        for dst_pixel in canvas.chunks_exact_mut(4) {
+            let pixel = 0xff00ff00u32.to_ne_bytes();
+            dst_pixel[0] = pixel[0];
+            dst_pixel[1] = pixel[1];
+            dst_pixel[2] = pixel[2];
+            dst_pixel[3] = pixel[3];
         }
 
         // Attach the buffer to the surface and mark the entire surface as damaged
@@ -159,10 +151,9 @@ fn main() {
         } else {
             // an output has been created, construct a surface for it
             let surface = env_handle.create_surface().detach();
-            let pools =
-                env_handle.create_double_pool(|_| {}).expect("Failed to create a memory pool!");
+            let pool = env_handle.create_auto_pool().expect("Failed to create a memory pool!");
             (*surfaces_handle.borrow_mut())
-                .push((info.id, Surface::new(&output, surface, &layer_shell.clone(), pools)));
+                .push((info.id, Surface::new(&output, surface, &layer_shell.clone(), pool)));
         }
     };
 

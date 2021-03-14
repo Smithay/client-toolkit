@@ -1,12 +1,11 @@
 extern crate smithay_client_toolkit as sctk;
 
 use std::cmp::min;
-use std::io::{BufWriter, Seek, SeekFrom, Write};
 
 use sctk::reexports::calloop;
 use sctk::reexports::client::protocol::{wl_keyboard, wl_shm, wl_surface};
 use sctk::seat::keyboard::{map_keyboard_repeat, Event as KbEvent, RepeatKind};
-use sctk::shm::MemPool;
+use sctk::shm::AutoMemPool;
 use sctk::window::{Event as WEvent, FallbackFrame};
 
 sctk::default_environment!(KbdInputExample, desktop);
@@ -61,7 +60,7 @@ fn main() {
 
     window.set_title("Kbd Input".to_string());
 
-    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create a memory pool !");
+    let mut pool = env.create_auto_pool().expect("Failed to create a memory pool !");
 
     /*
      * Keyboard initialization
@@ -139,9 +138,7 @@ fn main() {
 
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
-        if let Some(pool) = pools.pool() {
-            redraw(pool, window.surface(), dimensions).expect("Failed to draw")
-        }
+        redraw(&mut pool, window.surface(), dimensions).expect("Failed to draw");
         window.refresh();
     }
 
@@ -163,9 +160,7 @@ fn main() {
                 }
                 println!("Window states: {:?}", states);
                 window.refresh();
-                if let Some(pool) = pools.pool() {
-                    redraw(pool, window.surface(), dimensions).expect("Failed to draw")
-                }
+                redraw(&mut pool, window.surface(), dimensions).expect("Failed to draw");
             }
             None => {}
         }
@@ -204,31 +199,30 @@ fn print_keyboard_event(event: KbEvent, seat_name: &str) {
 }
 
 fn redraw(
-    pool: &mut MemPool,
+    pool: &mut AutoMemPool,
     surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
 ) -> Result<(), ::std::io::Error> {
-    // resize the pool if relevant
-    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
-    // write the contents, a nice color gradient =)
-    pool.seek(SeekFrom::Start(0))?;
-    {
-        let mut writer = BufWriter::new(&mut *pool);
-        for i in 0..(buf_x * buf_y) {
-            let x = (i % buf_x) as u32;
-            let y = (i / buf_x) as u32;
-            let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-            let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
-            let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
-            let pixel: u32 = (0xFF << 24) + (r << 16) + (g << 8) + b;
-            writer.write_all(&pixel.to_ne_bytes())?;
-        }
-        writer.flush()?;
+    let (canvas, new_buffer) =
+        pool.buffer(buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888)?;
+    for (i, dst_pixel) in canvas.chunks_exact_mut(4).enumerate() {
+        let x = i as u32 % buf_x;
+        let y = i as u32 / buf_x;
+        let r: u32 = min(((buf_x - x) * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
+        let g: u32 = min((x * 0xFF) / buf_x, ((buf_y - y) * 0xFF) / buf_y);
+        let b: u32 = min(((buf_x - x) * 0xFF) / buf_x, (y * 0xFF) / buf_y);
+        let pixel: [u8; 4] = ((0xFF << 24) + (r << 16) + (g << 8) + b).to_ne_bytes();
+        dst_pixel[0] = pixel[0];
+        dst_pixel[1] = pixel[1];
+        dst_pixel[2] = pixel[2];
+        dst_pixel[3] = pixel[3];
     }
-    // get a buffer and attach it
-    let new_buffer =
-        pool.buffer(0, buf_x as i32, buf_y as i32, 4 * buf_x as i32, wl_shm::Format::Argb8888);
     surface.attach(Some(&new_buffer), 0, 0);
+    if surface.as_ref().version() >= 4 {
+        surface.damage_buffer(0, 0, buf_x as i32, buf_y as i32);
+    } else {
+        surface.damage(0, 0, buf_x as i32, buf_y as i32);
+    }
     surface.commit();
     Ok(())
 }

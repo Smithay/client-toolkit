@@ -2,10 +2,9 @@ extern crate image;
 extern crate smithay_client_toolkit as sctk;
 
 use std::env;
-use std::io::{BufWriter, Seek, SeekFrom, Write};
 
 use sctk::reexports::client::protocol::{wl_shm, wl_surface};
-use sctk::shm::MemPool;
+use sctk::shm::AutoMemPool;
 use sctk::window::{Event as WEvent, FallbackFrame, State};
 
 sctk::default_environment!(ImViewerExample, desktop);
@@ -115,7 +114,7 @@ fn main() {
     /*
      * Initialization of the memory pool
      */
-    let mut pools = env.create_double_pool(|_| {}).expect("Failed to create the memory pools.");
+    let mut pool = env.create_auto_pool().expect("Failed to create the memory pool.");
 
     /*
      * Event Loop preparation and running
@@ -140,10 +139,8 @@ fn main() {
     // never receive a configure event if we don't draw something...
     if !env.get_shell().unwrap().needs_configure() {
         // initial draw to bootstrap on wl_shell
-        if let Some(pool) = pools.pool() {
-            redraw(pool, window.surface(), dimensions, if resizing { None } else { Some(&image) })
-                .expect("Failed to draw")
-        }
+        redraw(&mut pool, window.surface(), dimensions, if resizing { None } else { Some(&image) })
+            .expect("Failed to draw");
         window.refresh();
     }
 
@@ -189,25 +186,15 @@ fn main() {
         }
 
         if need_redraw {
-            // We need to redraw, but can only do it if at least one of the
-            // memory pools is not currently used by the server. If both are
-            // used, we'll keep the `need_redraw` flag to `true` and try again
-            // at next iteration of the loop.
-            // Draw the contents in the pool and retrieve the buffer
-            match pools.pool() {
-                Some(pool) => {
-                    // We don't need to redraw or refresh anymore =)
-                    need_redraw = false;
-                    redraw(
-                        pool,
-                        window.surface(),
-                        dimensions,
-                        if resizing { None } else { Some(&image) },
-                    )
-                    .expect("Failed to draw")
-                }
-                None => {}
-            }
+            // We don't need to redraw or refresh anymore =)
+            need_redraw = false;
+            redraw(
+                &mut pool,
+                window.surface(),
+                dimensions,
+                if resizing { None } else { Some(&image) },
+            )
+            .expect("Failed to draw")
         }
 
         // Finally, dispatch the event queue. This method blocks until a message
@@ -228,88 +215,67 @@ fn main() {
 // image is costly and long. So during an interactive resize of the window we'll
 // just draw black contents to not feel laggy.
 fn redraw(
-    pool: &mut MemPool,
+    pool: &mut AutoMemPool,
     surface: &wl_surface::WlSurface,
     (buf_x, buf_y): (u32, u32),
     base_image: Option<&image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
 ) -> Result<(), ::std::io::Error> {
-    // First of all, we make sure the pool is big enough to hold our
-    // image. We'll write in ARGB8888 format, meaning 4 bytes per pixel.
-    // This resize method will only resize the pool if the requested size is bigger
-    // than the current size, as wayland SHM pools are not allowed to shrink.
-    //
-    // While writing on the file will automatically grow it, we need to advertise the
-    // server of its new size, so the call to this method is necessary.
-    pool.resize((4 * buf_x * buf_y) as usize).expect("Failed to resize the memory pool.");
-
-    // Now, we can write the contents. MemPool implement the `Seek` and `Write` traits,
-    // so we use it directly as a file to write on.
-
-    // First, seek to the beginning, to overwrite our previous content.
-    pool.seek(SeekFrom::Start(0))?;
-    {
-        // A sub-scope to limit our borrow of the pool by this BufWriter.
-        // This BufWrite will significantly improve our drawing performance,
-        // by reducing the number of syscalls we do. =)
-        let mut writer = BufWriter::new(&mut *pool);
-        if let Some(base_image) = base_image {
-            // We have an image to draw
-
-            // first, resize it to the requested size. We just use the function provided
-            // by the image crate here.
-            let image = image::imageops::resize(
-                base_image,
-                buf_x,
-                buf_y,
-                image::imageops::FilterType::Nearest,
-            );
-
-            // Now, we'll write the pixels of the image to the MemPool.
-            //
-            // We do this in an horribly inefficient manner, for the sake of simplicity.
-            // We'll send pixels to the server in ARGB8888 format (this is one of the only
-            // formats that are guaranteed to be supported), but image provides it in
-            // RGBA8888, so we need to do the conversion.
-            //
-            // Additionally, if the image has some transparent parts, we'll blend them into
-            // a white background, otherwise the server will draw our window with a
-            // transparent background!
-            for pixel in image.pixels() {
-                // retrieve the pixel values
-                let r = pixel.0[0] as u32;
-                let g = pixel.0[1] as u32;
-                let b = pixel.0[2] as u32;
-                let a = pixel.0[3] as u32;
-                // blend them
-                let r = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * r) / 0xFF);
-                let g = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * g) / 0xFF);
-                let b = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * b) / 0xFF);
-                // write the pixel
-                // The wayland protocol explicitly specifies
-                // that the pixels must be written in native endianness
-                let pixel: u32 = (0xFF << 24) + (r << 16) + (g << 8) + b;
-                writer.write_all(&pixel.to_ne_bytes())?;
-            }
-        } else {
-            // We do not have any image to draw, so we draw black contents
-            for _ in 0..(buf_x * buf_y) {
-                writer.write_all(&0xFF000000u32.to_ne_bytes())?;
-            }
-        }
-        // Don't forget to flush the writer, to make sure all the contents are
-        // indeed written to the file.
-        writer.flush()?;
-    }
-    // Now, we create a buffer to the memory pool pointing to the contents
-    // we just wrote
-    let new_buffer = pool.buffer(
-        0,                // initial offset of the buffer in the pool
+    // We allocate a new buffer from the memory pool with the appropriate dimensions
+    // This function automatically finds an unused space of the correct size in the memory
+    // pool and returns it as a `&mut [u8]`, as well as a `wl_buffer` matching it.
+    let (canvas, new_buffer) = pool.buffer(
         buf_x as i32,     // width of the buffer, in pixels
         buf_y as i32,     // height of the buffer, in pixels
         4 * buf_x as i32, // stride: number of bytes between the start of two
         //   consecutive rows of pixels
         wl_shm::Format::Argb8888, // the pixel format we wrote in
-    );
+    )?;
+
+    if let Some(base_image) = base_image {
+        // We have an image to draw
+
+        // first, resize it to the requested size. We just use the function provided
+        // by the image crate here.
+        let image =
+            image::imageops::resize(base_image, buf_x, buf_y, image::imageops::FilterType::Nearest);
+
+        // Now, we'll write the pixels of the image to the MemPool.
+        //
+        // We do this in an horribly inefficient manner, for the sake of simplicity.
+        // We'll send pixels to the server in ARGB8888 format (this is one of the only
+        // formats that are guaranteed to be supported), but image provides it in
+        // RGBA8888, so we need to do the conversion.
+        //
+        // Additionally, if the image has some transparent parts, we'll blend them into
+        // a white background, otherwise the server will draw our window with a
+        // transparent background!
+        for (src_pixel, dst_pixel) in image.pixels().zip(canvas.chunks_exact_mut(4)) {
+            // retrieve the pixel values
+            let r = src_pixel.0[0] as u32;
+            let g = src_pixel.0[1] as u32;
+            let b = src_pixel.0[2] as u32;
+            let a = src_pixel.0[3] as u32;
+            // blend them
+            let r = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * r) / 0xFF);
+            let g = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * g) / 0xFF);
+            let b = ::std::cmp::min(0xFF, (0xFF * (0xFF - a) + a * b) / 0xFF);
+            // write the pixel
+            let pixel: [u8; 4] = ((0xFF << 24) + (r << 16) + (g << 8) + b).to_ne_bytes();
+            dst_pixel[0] = pixel[0];
+            dst_pixel[1] = pixel[1];
+            dst_pixel[2] = pixel[2];
+            dst_pixel[3] = pixel[3];
+        }
+    } else {
+        // We do not have any image to draw, so we draw black contents
+        for dst_pixel in canvas.chunks_exact_mut(4) {
+            dst_pixel[0] = 0x00;
+            dst_pixel[1] = 0x00;
+            dst_pixel[2] = 0x00;
+            dst_pixel[3] = 0xFF;
+        }
+    }
+
     surface.attach(Some(&new_buffer), 0, 0);
     // damage the surface so that the compositor knows it needs to redraw it
     if surface.as_ref().version() >= 4 {
