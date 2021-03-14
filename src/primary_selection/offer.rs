@@ -12,7 +12,7 @@ use wayland_protocols::{
     },
 };
 
-use crate::data_device::ReadPipe;
+use crate::data_device::{no_nix_err, ReadPipe};
 
 /// A primary selection offer for receiving data through copy/paste.
 pub struct PrimarySelectionOffer {
@@ -34,11 +34,11 @@ impl PrimarySelectionOffer {
     ///
     /// Note that you should **not** read the contents right away in a blocking way,
     /// as you may deadlock your application.
-    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, ()> {
+    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, std::io::Error> {
         use nix::fcntl::OFlag;
         use nix::unistd::{close, pipe2};
         // create a pipe
-        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(|_| ())?;
+        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(no_nix_err)?;
 
         match &self.offer {
             PrimarySelectionOfferImpl::Zwp(offer) => {

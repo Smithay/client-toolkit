@@ -13,9 +13,9 @@ use wayland_client::{
     Attached, DispatchData,
 };
 
-use crate::environment::GlobalHandler;
 use crate::lazy_global::LazyGlobal;
 use crate::seat::{SeatHandling, SeatListener};
+use crate::{environment::GlobalHandler, MissingGlobal};
 
 mod device;
 mod offer;
@@ -80,13 +80,13 @@ pub trait PrimarySelectionHandling {
     /// Access the primary selection associated with a seat.
     ///
     /// Returns an error if the seat is not found (for example if it has since been removed by
-    /// the server) of if the `zwp_primary_selection_device_manager_v1` or
+    /// the server) or if the `zwp_primary_selection_device_manager_v1` or
     /// `gtk_primary_selection_device_manager` globals are missing.
     fn with_primary_selection<F: FnOnce(&PrimarySelectionDevice)>(
         &self,
         seat: &WlSeat,
         f: F,
-    ) -> Result<(), ()>;
+    ) -> Result<(), MissingGlobal>;
 
     /// Get the best available primary selection device manager protocol.
     ///
@@ -111,7 +111,7 @@ impl<E: PrimarySelectionHandling> crate::environment::Environment<E> {
         &self,
         seat: &WlSeat,
         f: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         self.with_inner(|inner| inner.with_primary_selection(seat, f))
     }
 
@@ -163,7 +163,7 @@ impl PrimarySelectionHandling for PrimarySelectionHandler {
         &self,
         seat: &WlSeat,
         f: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         self.inner.borrow().with_primary_selection(seat, f)
     }
 }
@@ -247,9 +247,9 @@ impl PrimarySelectionDeviceManagerInner {
         &self,
         seat: &WlSeat,
         f: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         match &self.state {
-            PrimarySelectionDeviceManagerInitState::Pending { .. } => Err(()),
+            PrimarySelectionDeviceManagerInitState::Pending { .. } => Err(MissingGlobal),
             PrimarySelectionDeviceManagerInitState::Ready { devices, .. } => {
                 for (s, device) in devices {
                     if s == seat {
@@ -258,7 +258,7 @@ impl PrimarySelectionDeviceManagerInner {
                     }
                 }
 
-                Err(())
+                Err(MissingGlobal)
             }
         }
     }

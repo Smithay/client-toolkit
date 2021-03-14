@@ -208,7 +208,7 @@ macro_rules! default_environment {
 
         // Data device utility
         impl $crate::data_device::DataDeviceHandling for $env_name {
-            fn set_callback<F>(&mut self, callback: F) -> Result<(), ()>
+            fn set_callback<F>(&mut self, callback: F) -> Result<(), $crate::MissingGlobal>
             where F: FnMut(
                 $crate::reexports::client::protocol::wl_seat::WlSeat,
                 $crate::data_device::DndEvent,
@@ -222,7 +222,7 @@ macro_rules! default_environment {
                 &self,
                 seat: &$crate::reexports::client::protocol::wl_seat::WlSeat,
                 f: F
-            ) -> Result<(), ()> {
+            ) -> Result<(), $crate::MissingGlobal> {
                 self.sctk_data_device_manager.with_device(seat, f)
             }
         }
@@ -233,7 +233,7 @@ macro_rules! default_environment {
                 &self,
                 seat: &$crate::reexports::client::protocol::wl_seat::WlSeat,
                 f: F,
-            ) -> Result<(), ()>
+            ) -> Result<(), $crate::MissingGlobal>
             where F: FnOnce(&$crate::primary_selection::PrimarySelectionDevice)
             {
                 self.sctk_primary_selection_manager.with_primary_selection(seat, f)
@@ -396,4 +396,16 @@ macro_rules! new_default_environment {
             }
         })
     };
+}
+
+/// An error representing the fact that a required global was missing
+#[derive(Debug, Copy, Clone)]
+pub struct MissingGlobal;
+
+impl std::error::Error for MissingGlobal {}
+
+impl std::fmt::Display for MissingGlobal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("missing global")
+    }
 }

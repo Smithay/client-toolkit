@@ -176,10 +176,10 @@ struct PointerInner {
 }
 
 impl PointerInner {
-    fn update_cursor(&self, pointer: &wl_pointer::WlPointer) -> Result<(), ()> {
+    fn update_cursor(&self, pointer: &wl_pointer::WlPointer) -> Result<(), CursorNotFound> {
         let mut themes = self.themes.borrow_mut();
         let scale = self.scale_factor as u32;
-        let cursor = themes.get_cursor(&self.current_cursor, scale).ok_or(())?;
+        let cursor = themes.get_cursor(&self.current_cursor, scale).ok_or(CursorNotFound)?;
         let image = &cursor[0];
         let (w, h) = image.dimensions();
         let (hx, hy) = image.hotspot();
@@ -220,11 +220,11 @@ impl ThemedPointer {
     /// Change the cursor to the given cursor name
     ///
     /// Possible names depend on the theme. Does nothing and returns
-    /// `Err(())` if given name is not available.
+    /// `Err` if given name is not available.
     ///
     /// If this is done as an answer to an input event, you need to provide
     /// the associated serial otherwise the server may ignore the request.
-    pub fn set_cursor(&self, name: &str, serial: Option<u32>) -> Result<(), ()> {
+    pub fn set_cursor(&self, name: &str, serial: Option<u32>) -> Result<(), CursorNotFound> {
         let mut inner = self.inner.borrow_mut();
         if let Some(s) = serial {
             inner.last_serial = s;
@@ -244,5 +244,17 @@ impl Deref for ThemedPointer {
 impl Drop for PointerInner {
     fn drop(&mut self) {
         self.surface.destroy();
+    }
+}
+
+/// An error representing the fact that the required cursor was not found
+#[derive(Debug, Copy, Clone)]
+pub struct CursorNotFound;
+
+impl std::error::Error for CursorNotFound {}
+
+impl std::fmt::Display for CursorNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("cursor not found")
     }
 }
