@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::cmp::max;
 use std::rc::Rc;
 
 use wayland_client::protocol::{
@@ -11,7 +10,7 @@ use log::error;
 
 use super::{ButtonState, Frame, FrameRequest, State, WindowState};
 use crate::seat::pointer::{ThemeManager, ThemeSpec, ThemedPointer};
-use crate::shm::DoubleMemPool;
+use crate::shm::AutoMemPool;
 
 /*
  * Drawing theme definitions
@@ -218,7 +217,7 @@ pub struct FallbackFrame {
     compositor: Attached<wl_compositor::WlCompositor>,
     subcompositor: Attached<wl_subcompositor::WlSubcompositor>,
     inner: Rc<RefCell<Inner>>,
-    pools: DoubleMemPool,
+    pool: AutoMemPool,
     active: WindowState,
     hidden: bool,
     pointers: Vec<ThemedPointer>,
@@ -253,19 +252,14 @@ impl Frame for FallbackFrame {
             fullscreened: false,
         }));
 
-        let my_inner = inner.clone();
-        // Send a Refresh request on callback from DoubleMemPool as it will be fired when
-        // None was previously returned from `pool()` and the draw was postponed
-        let pools = DoubleMemPool::new(shm.clone(), move |ddata| {
-            (&mut my_inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
-        })?;
+        let pool = AutoMemPool::new(shm.clone())?;
 
         Ok(FallbackFrame {
             base_surface: base_surface.clone(),
             compositor: compositor.clone(),
             subcompositor: subcompositor.clone(),
             inner,
-            pools,
+            pool,
             active: WindowState::Inactive,
             hidden: true,
             pointers: Vec::new(),
@@ -451,215 +445,207 @@ impl Frame for FallbackFrame {
         let scaled_header_width = width * header_scale;
 
         {
-            // grab the current pool
-            let pool = match self.pools.pool() {
-                Some(pool) => pool,
-                None => return,
+            // Create the buffers and draw
+            let color = if self.active == WindowState::Active {
+                PRIMARY_COLOR_ACTIVE.to_ne_bytes()
+            } else {
+                PRIMARY_COLOR_INACTIVE.to_ne_bytes()
             };
-            let lr_surfaces_scale = max(scales[LEFT], scales[RIGHT]);
-            let tp_surfaces_scale = max(scales[TOP], scales[BOTTOM]);
 
-            // resize the pool as appropriate
-            let pxcount = (scaled_header_height * scaled_header_width)
-                + max(
-                    (width + 2 * BORDER_SIZE) * BORDER_SIZE * tp_surfaces_scale * tp_surfaces_scale,
-                    (height + HEADER_SIZE) * BORDER_SIZE * lr_surfaces_scale * lr_surfaces_scale,
-                );
-
-            pool.resize(4 * pxcount as usize).expect("I/O Error while redrawing the borders");
-
-            // draw the white header bar
-            {
-                let mmap = pool.mmap();
-                {
-                    let canvas = &mut mmap
-                        [0..scaled_header_height as usize * scaled_header_width as usize * 4];
-                    let color = if self.active == WindowState::Active {
-                        PRIMARY_COLOR_ACTIVE.to_ne_bytes()
-                    } else {
-                        PRIMARY_COLOR_INACTIVE.to_ne_bytes()
-                    };
-
-                    for pixel in canvas.chunks_exact_mut(4) {
-                        pixel[0] = color[0];
-                        pixel[1] = color[1];
-                        pixel[2] = color[2];
-                        pixel[3] = color[3];
-                    }
-
-                    draw_buttons(
-                        canvas,
-                        width,
-                        header_scale,
-                        inner.resizable,
-                        self.active,
-                        &self
-                            .pointers
-                            .iter()
-                            .flat_map(|p| {
-                                if p.as_ref().is_alive() {
-                                    let data: &RefCell<PointerUserData> =
-                                        p.as_ref().user_data().get().unwrap();
-                                    Some(data.borrow().location)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<Location>>(),
-                    );
-
-                    // For each pixel in borders
-                    let border_canvas = &mut mmap
-                        [scaled_header_height as usize * scaled_header_width as usize * 4..];
-                    for pixel in border_canvas.chunks_exact_mut(4) {
-                        pixel[0] = color[0];
-                        pixel[1] = color[1];
-                        pixel[2] = color[2];
-                        pixel[3] = color[3];
-                    }
-                }
-                if let Err(err) = mmap.flush() {
-                    error!("Failed to flush frame memory map: {}", err);
-                }
-            }
-
-            // Create the buffers
             // -> head-subsurface
-            let buffer = pool.buffer(
-                0,
+            if let Ok((canvas, buffer)) = self.pool.buffer(
                 scaled_header_width as i32,
                 scaled_header_height as i32,
                 4 * scaled_header_width as i32,
                 wl_shm::Format::Argb8888,
-            );
-            parts[HEAD].subsurface.set_position(0, -(HEADER_SIZE as i32));
-            parts[HEAD].surface.attach(Some(&buffer), 0, 0);
-            if self.surface_version >= 4 {
-                parts[HEAD].surface.damage_buffer(
-                    0,
-                    0,
-                    scaled_header_width as i32,
-                    scaled_header_height as i32,
+            ) {
+                for pixel in canvas.chunks_exact_mut(4) {
+                    pixel[0] = color[0];
+                    pixel[1] = color[1];
+                    pixel[2] = color[2];
+                    pixel[3] = color[3];
+                }
+
+                draw_buttons(
+                    canvas,
+                    width,
+                    header_scale,
+                    inner.resizable,
+                    self.active,
+                    &self
+                        .pointers
+                        .iter()
+                        .flat_map(|p| {
+                            if p.as_ref().is_alive() {
+                                let data: &RefCell<PointerUserData> =
+                                    p.as_ref().user_data().get().unwrap();
+                                Some(data.borrow().location)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<Location>>(),
                 );
-            } else {
-                // surface is old and does not support damage_buffer, so we damage
-                // in surface coordinates and hope it is not rescaled
-                parts[HEAD].surface.damage(0, 0, width as i32, HEADER_SIZE as i32);
+
+                parts[HEAD].subsurface.set_position(0, -(HEADER_SIZE as i32));
+                parts[HEAD].surface.attach(Some(&buffer), 0, 0);
+                if self.surface_version >= 4 {
+                    parts[HEAD].surface.damage_buffer(
+                        0,
+                        0,
+                        scaled_header_width as i32,
+                        scaled_header_height as i32,
+                    );
+                } else {
+                    // surface is old and does not support damage_buffer, so we damage
+                    // in surface coordinates and hope it is not rescaled
+                    parts[HEAD].surface.damage(0, 0, width as i32, HEADER_SIZE as i32);
+                }
+                parts[HEAD].surface.commit();
             }
-            parts[HEAD].surface.commit();
 
             // -> top-subsurface
-            let buffer = pool.buffer(
-                4 * (scaled_header_width * scaled_header_height) as i32,
+            if let Ok((canvas, buffer)) = self.pool.buffer(
                 ((width + 2 * BORDER_SIZE) * scales[TOP]) as i32,
                 (BORDER_SIZE * scales[TOP]) as i32,
                 (4 * scales[TOP] * (width + 2 * BORDER_SIZE)) as i32,
                 wl_shm::Format::Argb8888,
-            );
-            parts[TOP]
-                .subsurface
-                .set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32 + BORDER_SIZE as i32));
-            parts[TOP].surface.attach(Some(&buffer), 0, 0);
-            if self.surface_version >= 4 {
-                parts[TOP].surface.damage_buffer(
-                    0,
-                    0,
-                    ((width + 2 * BORDER_SIZE) * scales[TOP]) as i32,
-                    (BORDER_SIZE * scales[TOP]) as i32,
+            ) {
+                for pixel in canvas.chunks_exact_mut(4) {
+                    pixel[0] = color[0];
+                    pixel[1] = color[1];
+                    pixel[2] = color[2];
+                    pixel[3] = color[3];
+                }
+                parts[TOP].subsurface.set_position(
+                    -(BORDER_SIZE as i32),
+                    -(HEADER_SIZE as i32 + BORDER_SIZE as i32),
                 );
-            } else {
-                // surface is old and does not support damage_buffer, so we damage
-                // in surface coordinates and hope it is not rescaled
-                parts[TOP].surface.damage(
-                    0,
-                    0,
-                    (width + 2 * BORDER_SIZE) as i32,
-                    BORDER_SIZE as i32,
-                );
+                parts[TOP].surface.attach(Some(&buffer), 0, 0);
+                if self.surface_version >= 4 {
+                    parts[TOP].surface.damage_buffer(
+                        0,
+                        0,
+                        ((width + 2 * BORDER_SIZE) * scales[TOP]) as i32,
+                        (BORDER_SIZE * scales[TOP]) as i32,
+                    );
+                } else {
+                    // surface is old and does not support damage_buffer, so we damage
+                    // in surface coordinates and hope it is not rescaled
+                    parts[TOP].surface.damage(
+                        0,
+                        0,
+                        (width + 2 * BORDER_SIZE) as i32,
+                        BORDER_SIZE as i32,
+                    );
+                }
+                parts[TOP].surface.commit();
             }
-            parts[TOP].surface.commit();
 
             // -> bottom-subsurface
-            let buffer = pool.buffer(
-                4 * (scaled_header_width * scaled_header_height) as i32,
+            if let Ok((canvas, buffer)) = self.pool.buffer(
                 ((width + 2 * BORDER_SIZE) * scales[BOTTOM]) as i32,
                 (BORDER_SIZE * scales[BOTTOM]) as i32,
                 (4 * scales[BOTTOM] * (width + 2 * BORDER_SIZE)) as i32,
                 wl_shm::Format::Argb8888,
-            );
-            parts[BOTTOM].subsurface.set_position(-(BORDER_SIZE as i32), height as i32);
-            parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
-            if self.surface_version >= 4 {
-                parts[BOTTOM].surface.damage_buffer(
-                    0,
-                    0,
-                    ((width + 2 * BORDER_SIZE) * scales[BOTTOM]) as i32,
-                    (BORDER_SIZE * scales[BOTTOM]) as i32,
-                );
-            } else {
-                // surface is old and does not support damage_buffer, so we damage
-                // in surface coordinates and hope it is not rescaled
-                parts[BOTTOM].surface.damage(
-                    0,
-                    0,
-                    (width + 2 * BORDER_SIZE) as i32,
-                    BORDER_SIZE as i32,
-                );
+            ) {
+                for pixel in canvas.chunks_exact_mut(4) {
+                    pixel[0] = color[0];
+                    pixel[1] = color[1];
+                    pixel[2] = color[2];
+                    pixel[3] = color[3];
+                }
+                parts[BOTTOM].subsurface.set_position(-(BORDER_SIZE as i32), height as i32);
+                parts[BOTTOM].surface.attach(Some(&buffer), 0, 0);
+                if self.surface_version >= 4 {
+                    parts[BOTTOM].surface.damage_buffer(
+                        0,
+                        0,
+                        ((width + 2 * BORDER_SIZE) * scales[BOTTOM]) as i32,
+                        (BORDER_SIZE * scales[BOTTOM]) as i32,
+                    );
+                } else {
+                    // surface is old and does not support damage_buffer, so we damage
+                    // in surface coordinates and hope it is not rescaled
+                    parts[BOTTOM].surface.damage(
+                        0,
+                        0,
+                        (width + 2 * BORDER_SIZE) as i32,
+                        BORDER_SIZE as i32,
+                    );
+                }
+                parts[BOTTOM].surface.commit();
             }
-            parts[BOTTOM].surface.commit();
 
             // -> left-subsurface
-            let buffer = pool.buffer(
-                4 * (scaled_header_width * scaled_header_height) as i32,
+            if let Ok((canvas, buffer)) = self.pool.buffer(
                 (BORDER_SIZE * scales[LEFT]) as i32,
                 ((height + HEADER_SIZE) * scales[LEFT]) as i32,
                 4 * (BORDER_SIZE * scales[LEFT]) as i32,
                 wl_shm::Format::Argb8888,
-            );
-            parts[LEFT].subsurface.set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
-            parts[LEFT].surface.attach(Some(&buffer), 0, 0);
-            if self.surface_version >= 4 {
-                parts[LEFT].surface.damage_buffer(
-                    0,
-                    0,
-                    (BORDER_SIZE * scales[LEFT]) as i32,
-                    ((height + HEADER_SIZE) * scales[LEFT]) as i32,
-                );
-            } else {
-                // surface is old and does not support damage_buffer, so we damage
-                // in surface coordinates and hope it is not rescaled
-                parts[LEFT].surface.damage(0, 0, BORDER_SIZE as i32, (height + HEADER_SIZE) as i32);
+            ) {
+                for pixel in canvas.chunks_exact_mut(4) {
+                    pixel[0] = color[0];
+                    pixel[1] = color[1];
+                    pixel[2] = color[2];
+                    pixel[3] = color[3];
+                }
+                parts[LEFT].subsurface.set_position(-(BORDER_SIZE as i32), -(HEADER_SIZE as i32));
+                parts[LEFT].surface.attach(Some(&buffer), 0, 0);
+                if self.surface_version >= 4 {
+                    parts[LEFT].surface.damage_buffer(
+                        0,
+                        0,
+                        (BORDER_SIZE * scales[LEFT]) as i32,
+                        ((height + HEADER_SIZE) * scales[LEFT]) as i32,
+                    );
+                } else {
+                    // surface is old and does not support damage_buffer, so we damage
+                    // in surface coordinates and hope it is not rescaled
+                    parts[LEFT].surface.damage(
+                        0,
+                        0,
+                        BORDER_SIZE as i32,
+                        (height + HEADER_SIZE) as i32,
+                    );
+                }
+                parts[LEFT].surface.commit();
             }
-            parts[LEFT].surface.commit();
 
             // -> right-subsurface
-            let buffer = pool.buffer(
-                4 * (scaled_header_width * scaled_header_height) as i32,
+            if let Ok((canvas, buffer)) = self.pool.buffer(
                 (BORDER_SIZE * scales[RIGHT]) as i32,
                 ((height + HEADER_SIZE) * scales[RIGHT]) as i32,
                 4 * (BORDER_SIZE * scales[RIGHT]) as i32,
                 wl_shm::Format::Argb8888,
-            );
-            parts[RIGHT].subsurface.set_position(width as i32, -(HEADER_SIZE as i32));
-            parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
-            if self.surface_version >= 4 {
-                parts[RIGHT].surface.damage_buffer(
-                    0,
-                    0,
-                    (BORDER_SIZE * scales[RIGHT]) as i32,
-                    ((height + HEADER_SIZE) * scales[RIGHT]) as i32,
-                );
-            } else {
-                // surface is old and does not support damage_buffer, so we damage
-                // in surface coordinates and hope it is not rescaled
-                parts[RIGHT].surface.damage(
-                    0,
-                    0,
-                    BORDER_SIZE as i32,
-                    (height + HEADER_SIZE) as i32,
-                );
+            ) {
+                for pixel in canvas.chunks_exact_mut(4) {
+                    pixel[0] = color[0];
+                    pixel[1] = color[1];
+                    pixel[2] = color[2];
+                    pixel[3] = color[3];
+                }
+                parts[RIGHT].subsurface.set_position(width as i32, -(HEADER_SIZE as i32));
+                parts[RIGHT].surface.attach(Some(&buffer), 0, 0);
+                if self.surface_version >= 4 {
+                    parts[RIGHT].surface.damage_buffer(
+                        0,
+                        0,
+                        (BORDER_SIZE * scales[RIGHT]) as i32,
+                        ((height + HEADER_SIZE) * scales[RIGHT]) as i32,
+                    );
+                } else {
+                    // surface is old and does not support damage_buffer, so we damage
+                    // in surface coordinates and hope it is not rescaled
+                    parts[RIGHT].surface.damage(
+                        0,
+                        0,
+                        BORDER_SIZE as i32,
+                        (height + HEADER_SIZE) as i32,
+                    );
+                }
+                parts[RIGHT].surface.commit();
             }
-            parts[RIGHT].surface.commit();
         }
     }
 
