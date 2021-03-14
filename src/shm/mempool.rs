@@ -98,6 +98,43 @@ impl DoubleMemPool {
     }
 }
 
+struct Inner {
+    file: File,
+    len: usize,
+    pool: Main<wl_shm_pool::WlShmPool>,
+    mmap: MmapMut,
+}
+
+impl Inner {
+    fn new(shm: Attached<wl_shm::WlShm>) -> io::Result<Self> {
+        let mem_fd = create_shm_fd()?;
+        let mem_file = unsafe { File::from_raw_fd(mem_fd) };
+        mem_file.set_len(128)?;
+
+        let pool = shm.create_pool(mem_fd, 128);
+
+        let mmap = unsafe { MmapMut::map_mut(&mem_file).unwrap() };
+
+        Ok(Inner { file: mem_file, len: 128, pool, mmap })
+    }
+
+    fn resize(&mut self, newsize: usize) -> io::Result<()> {
+        if newsize > self.len {
+            self.file.set_len(newsize as u64)?;
+            self.pool.resize(newsize as i32);
+            self.len = newsize;
+            self.mmap = unsafe { MmapMut::map_mut(&self.file).unwrap() };
+        }
+        Ok(())
+    }
+}
+
+impl Drop for Inner {
+    fn drop(&mut self) {
+        self.pool.destroy();
+    }
+}
+
 /// A wrapper handling an SHM memory pool backed by a shared memory file
 ///
 /// This wrapper handles for you the creation of the shared memory file and its synchronization
@@ -116,11 +153,8 @@ impl DoubleMemPool {
 /// Mempool requires a callback that will be called when the pool becomes free, this
 /// happens when all the pools buffers are released by the server.
 pub struct MemPool {
-    file: File,
-    len: usize,
-    pool: Main<wl_shm_pool::WlShmPool>,
+    inner: Inner,
     buffer_count: Rc<RefCell<u32>>,
-    mmap: MmapMut,
     callback: Rc<RefCell<dyn FnMut(wayland_client::DispatchData)>>,
 }
 
@@ -130,20 +164,9 @@ impl MemPool {
     where
         F: FnMut(wayland_client::DispatchData) + 'static,
     {
-        let mem_fd = create_shm_fd()?;
-        let mem_file = unsafe { File::from_raw_fd(mem_fd) };
-        mem_file.set_len(128)?;
-
-        let pool = shm.create_pool(mem_fd, 128);
-
-        let mmap = unsafe { MmapMut::map_mut(&mem_file).unwrap() };
-
         Ok(MemPool {
-            file: mem_file,
-            len: 128,
-            pool,
+            inner: Inner::new(shm)?,
             buffer_count: Rc::new(RefCell::new(0)),
-            mmap,
             callback: Rc::new(RefCell::new(callback)),
         })
     }
@@ -160,13 +183,7 @@ impl MemPool {
     /// This method allows you to ensure the underlying pool is large enough to
     /// hold what you want to write to it.
     pub fn resize(&mut self, newsize: usize) -> io::Result<()> {
-        if newsize > self.len {
-            self.file.set_len(newsize as u64)?;
-            self.pool.resize(newsize as i32);
-            self.len = newsize;
-            self.mmap = unsafe { MmapMut::map_mut(&self.file).unwrap() };
-        }
-        Ok(())
+        self.inner.resize(newsize)
     }
 
     /// Create a new buffer to this pool
@@ -192,7 +209,7 @@ impl MemPool {
         *self.buffer_count.borrow_mut() += 1;
         let my_buffer_count = self.buffer_count.clone();
         let my_callback = self.callback.clone();
-        let buffer = self.pool.create_buffer(offset, width, height, stride, format);
+        let buffer = self.inner.pool.create_buffer(offset, width, height, stride, format);
         buffer.quick_assign(move |buffer, event, dispatch_data| match event {
             wl_buffer::Event::Release => {
                 buffer.destroy();
@@ -214,7 +231,7 @@ impl MemPool {
 
     /// Uses the memmap2 crate to map the underlying shared memory file
     pub fn mmap(&mut self) -> &mut MmapMut {
-        &mut self.mmap
+        &mut self.inner.mmap
     }
 
     /// Returns true if the pool contains buffers that are currently in use by the server
@@ -223,24 +240,154 @@ impl MemPool {
     }
 }
 
-impl Drop for MemPool {
-    fn drop(&mut self) {
-        self.pool.destroy();
-    }
-}
-
 impl io::Write for MemPool {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        io::Write::write(&mut self.file, buf)
+        io::Write::write(&mut self.inner.file, buf)
     }
     fn flush(&mut self) -> io::Result<()> {
-        io::Write::flush(&mut self.file)
+        io::Write::flush(&mut self.inner.file)
     }
 }
 
 impl io::Seek for MemPool {
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
-        io::Seek::seek(&mut self.file, pos)
+        io::Seek::seek(&mut self.inner.file, pos)
+    }
+}
+
+/// A wrapper handling an SHM memory pool backed by a shared memory file
+///
+/// This wrapper handles the creation of the shared memory file, its synchronization with the
+/// protocol, and the allocation of buffers within the pool.
+///
+/// AutoMemPool internally tracks the release of the buffers by the compositor. As such, creating a
+/// buffer that is not commited to a surface (and then never released by the server) would result
+/// in that memory being unavailble for the rest of the pool's lifetime.
+///
+/// AutoMemPool will also handle the destruction of buffers; do not call destroy() on the returned
+/// WlBuffer objects.
+pub struct AutoMemPool {
+    inner: Inner,
+    free_list: Rc<RefCell<Vec<(usize, usize)>>>,
+}
+
+impl AutoMemPool {
+    /// Create a new memory pool associated with the given shm
+    pub fn new(shm: Attached<wl_shm::WlShm>) -> io::Result<AutoMemPool> {
+        let inner = Inner::new(shm)?;
+        let free_list = Rc::new(RefCell::new(vec![(0, inner.len)]));
+        Ok(AutoMemPool { inner, free_list })
+    }
+
+    /// Resize the memory pool
+    ///
+    /// This is normally done automatically, but can be used to avoid multiple resizes.
+    pub fn resize(&mut self, new_size: usize) -> io::Result<()> {
+        let old_size = self.inner.len;
+        if old_size >= new_size {
+            return Ok(());
+        }
+        self.inner.resize(new_size)?;
+        // add the new memory to the freelist
+        let mut free = self.free_list.borrow_mut();
+        if let Some((off, len)) = free.last_mut() {
+            if *off + *len == old_size {
+                *len += new_size - old_size;
+                return Ok(());
+            }
+        }
+        free.push((old_size, new_size - old_size));
+        Ok(())
+    }
+
+    fn alloc(&mut self, size: usize) -> io::Result<usize> {
+        let mut free = self.free_list.borrow_mut();
+        for (offset, len) in free.iter_mut() {
+            if *len >= size {
+                let rv = *offset;
+                *len -= size;
+                *offset += size;
+                return Ok(rv);
+            }
+        }
+        let mut rv = self.inner.len;
+        let mut pop_tail = false;
+        if let Some((start, len)) = free.last() {
+            if start + len == self.inner.len {
+                rv -= len;
+                pop_tail = true;
+            }
+        }
+        // resize like Vec::reserve, always at least doubling
+        let target = std::cmp::max(rv + size, self.inner.len * 2);
+        self.inner.resize(target)?;
+        // adjust the end of the freelist here
+        if pop_tail {
+            free.pop();
+        }
+        if target > rv + size {
+            free.push((rv + size, target - rv - size));
+        }
+        Ok(rv)
+    }
+
+    fn free(free_list: &RefCell<Vec<(usize, usize)>>, mut offset: usize, mut len: usize) {
+        let mut free = free_list.borrow_mut();
+        let mut nf = Vec::with_capacity(free.len() + 1);
+        for &(ioff, ilen) in free.iter() {
+            if ioff + ilen == offset {
+                offset = ioff;
+                len += ilen;
+                continue;
+            }
+            if ioff == offset + len {
+                len += ilen;
+                continue;
+            }
+            if ioff > offset + len && len != 0 {
+                nf.push((offset, len));
+                len = 0;
+            }
+            if ilen != 0 {
+                nf.push((ioff, ilen));
+            }
+        }
+        if len != 0 {
+            nf.push((offset, len));
+        }
+        *free = nf;
+    }
+
+    /// Create a new buffer in this pool
+    ///
+    /// The parameters are:
+    ///
+    /// - `width`: the width of this buffer (in pixels)
+    /// - `height`: the height of this buffer (in pixels)
+    /// - `stride`: distance (in bytes) between the beginning of a row and the next one
+    /// - `format`: the encoding format of the pixels. Using a format that was not
+    ///   advertised to the `wl_shm` global by the server is a protocol error and will
+    ///   terminate your connection
+    pub fn buffer(
+        &mut self,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: wl_shm::Format,
+    ) -> io::Result<(&mut [u8], wl_buffer::WlBuffer)> {
+        let len = (height as usize) * (stride as usize);
+        let offset = self.alloc(len)?;
+        let offset_i = offset as i32;
+        let buffer = self.inner.pool.create_buffer(offset_i, width, height, stride, format);
+        let free_list = self.free_list.clone();
+        buffer.quick_assign(move |buffer, event, _| match event {
+            wl_buffer::Event::Release => {
+                buffer.destroy();
+                Self::free(&free_list, offset, len);
+            }
+            _ => (),
+        });
+        Ok((&mut self.inner.mmap[offset..][..len], buffer.detach()))
     }
 }
 
@@ -336,5 +483,13 @@ where
         F: FnMut(wayland_client::DispatchData) + 'static,
     {
         DoubleMemPool::new(self.require_global::<wl_shm::WlShm>(), callback)
+    }
+
+    /// Create an automatic memory pool
+    ///
+    /// This pool will allocate more memory as needed in order to satisfy buffer requests, and will
+    /// return memory to the pool when the compositor has finished using the memory.
+    pub fn create_auto_pool(&self) -> io::Result<AutoMemPool> {
+        AutoMemPool::new(self.require_global::<wl_shm::WlShm>())
     }
 }
