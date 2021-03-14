@@ -389,6 +389,42 @@ impl AutoMemPool {
         });
         Ok((&mut self.inner.mmap[offset..][..len], buffer.detach()))
     }
+
+    /// Try drawing with the given closure
+    ///
+    /// This is identical to buffer(), but will only actually create the WlBuffer if the draw
+    /// closure succeeds.  Otherwise, the buffer is freed immediately instead of waiting for a
+    /// Release event that will never be sent if the WlBuffer is not used.
+    pub fn try_draw<F, E>(
+        &mut self,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: wl_shm::Format,
+        draw: F,
+    ) -> Result<wl_buffer::WlBuffer, E>
+    where
+        F: FnOnce(&mut [u8]) -> Result<(), E>,
+        E: From<io::Error>,
+    {
+        let len = (height as usize) * (stride as usize);
+        let offset = self.alloc(len)?;
+        let offset_i = offset as i32;
+        if let Err(e) = draw(&mut self.inner.mmap[offset..][..len]) {
+            Self::free(&self.free_list, offset, len);
+            return Err(e);
+        }
+        let buffer = self.inner.pool.create_buffer(offset_i, width, height, stride, format);
+        let free_list = self.free_list.clone();
+        buffer.quick_assign(move |buffer, event, _| match event {
+            wl_buffer::Event::Release => {
+                buffer.destroy();
+                Self::free(&free_list, offset, len);
+            }
+            _ => (),
+        });
+        Ok(buffer.detach())
+    }
 }
 
 fn create_shm_fd() -> io::Result<RawFd> {
