@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["smithay_client_toolkit"] = [{"text":"impl PartialEq&lt;ButtonState&gt; for ButtonState","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;WindowState&gt; for WindowState","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;Decorations&gt; for Decorations","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;ARGBColor&gt; for ARGBColor","synthetic":false,"types":[]}];
+implementors["smithay_client_toolkit"] = [{"text":"impl PartialEq&lt;ButtonState&gt; for ButtonState","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;WindowState&gt; for WindowState","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;Decorations&gt; for Decorations","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

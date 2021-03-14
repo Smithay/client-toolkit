@@ -815,103 +815,6 @@
 <span id="812">812</span>
 <span id="813">813</span>
 <span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
-<span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
-<span id="839">839</span>
-<span id="840">840</span>
-<span id="841">841</span>
-<span id="842">842</span>
-<span id="843">843</span>
-<span id="844">844</span>
-<span id="845">845</span>
-<span id="846">846</span>
-<span id="847">847</span>
-<span id="848">848</span>
-<span id="849">849</span>
-<span id="850">850</span>
-<span id="851">851</span>
-<span id="852">852</span>
-<span id="853">853</span>
-<span id="854">854</span>
-<span id="855">855</span>
-<span id="856">856</span>
-<span id="857">857</span>
-<span id="858">858</span>
-<span id="859">859</span>
-<span id="860">860</span>
-<span id="861">861</span>
-<span id="862">862</span>
-<span id="863">863</span>
-<span id="864">864</span>
-<span id="865">865</span>
-<span id="866">866</span>
-<span id="867">867</span>
-<span id="868">868</span>
-<span id="869">869</span>
-<span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
-<span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
-<span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
-<span id="893">893</span>
-<span id="894">894</span>
-<span id="895">895</span>
-<span id="896">896</span>
-<span id="897">897</span>
-<span id="898">898</span>
-<span id="899">899</span>
-<span id="900">900</span>
-<span id="901">901</span>
-<span id="902">902</span>
-<span id="903">903</span>
-<span id="904">904</span>
-<span id="905">905</span>
-<span id="906">906</span>
-<span id="907">907</span>
-<span id="908">908</span>
-<span id="909">909</span>
-<span id="910">910</span>
-<span id="911">911</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
@@ -937,10 +840,8 @@
     <span class="ident">shell</span>,
 };
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;frames&quot;</span>)]</span>
-<span class="kw">mod</span> <span class="ident">concept_frame</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;frames&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">concept_frame</span>::{<span class="ident">ConceptConfig</span>, <span class="ident">ConceptFrame</span>};
+<span class="kw">mod</span> <span class="ident">fallback_frame</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">fallback_frame</span>::<span class="ident">FallbackFrame</span>;
 
 <span class="comment">// Defines the minimum window size. Minimum width is set to 2 pixels to circumvent</span>
 <span class="comment">// a bug in mutter - https://gitlab.gnome.org/GNOME/mutter/issues/259</span>
@@ -1414,6 +1315,7 @@
                         <span class="comment">// the server side decorations if some are presented.</span>
                         <span class="ident">decoration</span>.<span class="ident">destroy</span>();
                         <span class="self">self</span>.<span class="ident">decoration</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                        <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">borrow_mut</span>().<span class="ident">set_hidden</span>(<span class="bool-val">false</span>);
                     }
                     <span class="ident">Decorations</span>::<span class="ident">ServerSide</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">decoration</span>.<span class="ident">set_mode</span>(<span class="ident">Mode</span>::<span class="ident">ServerSide</span>);
@@ -1726,102 +1628,6 @@
         <span class="ident">CB</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="ident">Window</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>::<span class="ident">init_with_decorations</span>(<span class="self">self</span>, <span class="ident">surface</span>, <span class="ident">theme_manager</span>, <span class="ident">initial_dims</span>, <span class="ident">callback</span>)
-    }
-}
-
-<span class="comment">//</span>
-<span class="comment">// Some helpers for Frame configuration</span>
-<span class="comment">//</span>
-
-<span class="doccomment">/// Color specification to be used in Frame configuration</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// It regroups two colors, one for when the window is active and</span>
-<span class="doccomment">/// one for when it is not.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ColorSpec</span> {
-    <span class="doccomment">/// The active color</span>
-    <span class="kw">pub</span> <span class="ident">active</span>: <span class="ident">ARGBColor</span>,
-    <span class="doccomment">/// The inactive color</span>
-    <span class="kw">pub</span> <span class="ident">inactive</span>: <span class="ident">ARGBColor</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ColorSpec</span> {
-    <span class="doccomment">/// Access the color associated with a certain window state</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_for</span>(<span class="self">self</span>, <span class="ident">state</span>: <span class="ident">WindowState</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ARGBColor</span> {
-        <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">WindowState</span>::<span class="ident">Active</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">active</span>,
-            <span class="ident">WindowState</span>::<span class="ident">Inactive</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">inactive</span>,
-        }
-    }
-
-    <span class="doccomment">/// Create a ColorSpec that is always the same color</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">identical</span>(<span class="ident">color</span>: <span class="ident">ARGBColor</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ColorSpec</span> {
-        <span class="ident">ColorSpec</span> { <span class="ident">active</span>: <span class="ident">color</span>, <span class="ident">inactive</span>: <span class="ident">color</span> }
-    }
-
-    <span class="doccomment">/// Create a ColorSpec corresponding to an always invisible color</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">invisible</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ColorSpec</span> {
-        <span class="ident">ColorSpec</span>::<span class="ident">identical</span>(<span class="ident">ARGBColor</span>::<span class="ident">zero</span>())
-    }
-}
-
-<span class="doccomment">/// A color specification associated with a button</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// It regroups 3 color specifications depending on the state of the</span>
-<span class="doccomment">/// button: idle, hovered, or disabled.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ButtonColorSpec</span> {
-    <span class="doccomment">/// ColorSpec for an idle button</span>
-    <span class="kw">pub</span> <span class="ident">idle</span>: <span class="ident">ColorSpec</span>,
-    <span class="doccomment">/// ColorSpec for an hovered button</span>
-    <span class="kw">pub</span> <span class="ident">hovered</span>: <span class="ident">ColorSpec</span>,
-    <span class="doccomment">/// ColorSpec for a disabled button</span>
-    <span class="kw">pub</span> <span class="ident">disabled</span>: <span class="ident">ColorSpec</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ButtonColorSpec</span> {
-    <span class="doccomment">/// Get the ColorSpec associated with a given button state</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_for</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">state</span>: <span class="ident">ButtonState</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ColorSpec</span> {
-        <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">ButtonState</span>::<span class="ident">Idle</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">idle</span>,
-            <span class="ident">ButtonState</span>::<span class="ident">Hovered</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">hovered</span>,
-            <span class="ident">ButtonState</span>::<span class="ident">Disabled</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">disabled</span>,
-        }
-    }
-}
-
-<span class="doccomment">/// Unambiguous representation of an ARGB color</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ARGBColor</span> {
-    <span class="doccomment">/// Alpha channel</span>
-    <span class="kw">pub</span> <span class="ident">a</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Red channel</span>
-    <span class="kw">pub</span> <span class="ident">r</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Green channel</span>
-    <span class="kw">pub</span> <span class="ident">g</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Blue channel</span>
-    <span class="kw">pub</span> <span class="ident">b</span>: <span class="ident">u8</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ARGBColor</span> {
-    <span class="doccomment">/// The invisible `#00000000` color</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">zero</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ARGBColor</span> {
-        <span class="ident">ARGBColor</span> { <span class="ident">a</span>: <span class="number">0</span>, <span class="ident">r</span>: <span class="number">0</span>, <span class="ident">g</span>: <span class="number">0</span>, <span class="ident">b</span>: <span class="number">0</span> }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ARGBColor</span><span class="op">&gt;</span> <span class="kw">for</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">color</span>: <span class="ident">ARGBColor</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
-        [<span class="ident">color</span>.<span class="ident">a</span>, <span class="ident">color</span>.<span class="ident">r</span>, <span class="ident">color</span>.<span class="ident">g</span>, <span class="ident">color</span>.<span class="ident">b</span>]
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ARGBColor</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">array</span>: [<span class="ident">u8</span>; <span class="number">4</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ARGBColor</span> {
-        <span class="ident">ARGBColor</span> { <span class="ident">a</span>: <span class="ident">array</span>[<span class="number">0</span>], <span class="ident">r</span>: <span class="ident">array</span>[<span class="number">1</span>], <span class="ident">g</span>: <span class="ident">array</span>[<span class="number">2</span>], <span class="ident">b</span>: <span class="ident">array</span>[<span class="number">3</span>] }
     }
 }
 </pre></div>

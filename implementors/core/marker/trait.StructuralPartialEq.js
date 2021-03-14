@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["smithay_client_toolkit"] = [{"text":"impl StructuralPartialEq for ButtonState","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for WindowState","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for Decorations","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for ARGBColor","synthetic":false,"types":[]}];
+implementors["smithay_client_toolkit"] = [{"text":"impl StructuralPartialEq for ButtonState","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for WindowState","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for Decorations","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

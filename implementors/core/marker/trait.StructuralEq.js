@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["smithay_client_toolkit"] = [{"text":"impl StructuralEq for ButtonState","synthetic":false,"types":[]},{"text":"impl StructuralEq for WindowState","synthetic":false,"types":[]},{"text":"impl StructuralEq for Decorations","synthetic":false,"types":[]},{"text":"impl StructuralEq for ARGBColor","synthetic":false,"types":[]}];
+implementors["smithay_client_toolkit"] = [{"text":"impl StructuralEq for ButtonState","synthetic":false,"types":[]},{"text":"impl StructuralEq for WindowState","synthetic":false,"types":[]},{"text":"impl StructuralEq for Decorations","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

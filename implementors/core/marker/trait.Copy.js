@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["smithay_client_toolkit"] = [{"text":"impl Copy for Mode","synthetic":false,"types":[]},{"text":"impl Copy for ModifiersState","synthetic":false,"types":[]},{"text":"impl Copy for ButtonState","synthetic":false,"types":[]},{"text":"impl Copy for WindowState","synthetic":false,"types":[]},{"text":"impl Copy for ColorSpec","synthetic":false,"types":[]},{"text":"impl Copy for ButtonColorSpec","synthetic":false,"types":[]},{"text":"impl Copy for ARGBColor","synthetic":false,"types":[]}];
+implementors["smithay_client_toolkit"] = [{"text":"impl Copy for Mode","synthetic":false,"types":[]},{"text":"impl Copy for ModifiersState","synthetic":false,"types":[]},{"text":"impl Copy for ButtonState","synthetic":false,"types":[]},{"text":"impl Copy for WindowState","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
