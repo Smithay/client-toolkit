@@ -9,6 +9,8 @@ use wayland_client::{
 
 pub use wayland_client::protocol::wl_data_device_manager::DndAction;
 
+use crate::MissingGlobal;
+
 mod device;
 mod offer;
 mod source;
@@ -96,19 +98,23 @@ impl DDInner {
     fn set_callback<F: FnMut(wl_seat::WlSeat, DndEvent, DispatchData) + 'static>(
         &mut self,
         cb: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         match self {
             DDInner::Ready { callback, .. } => {
                 *(callback.borrow_mut()) = Box::new(cb);
                 Ok(())
             }
-            DDInner::Pending { .. } => Err(()),
+            DDInner::Pending { .. } => Err(MissingGlobal),
         }
     }
 
-    fn with_device<F: FnOnce(&DataDevice)>(&self, seat: &wl_seat::WlSeat, f: F) -> Result<(), ()> {
+    fn with_device<F: FnOnce(&DataDevice)>(
+        &self,
+        seat: &wl_seat::WlSeat,
+        f: F,
+    ) -> Result<(), MissingGlobal> {
         match self {
-            DDInner::Pending { .. } => Err(()),
+            DDInner::Pending { .. } => Err(MissingGlobal),
             DDInner::Ready { devices, .. } => {
                 for (s, device) in devices {
                     if s == seat {
@@ -116,7 +122,7 @@ impl DDInner {
                         return Ok(());
                     }
                 }
-                Err(())
+                Err(MissingGlobal)
             }
         }
     }
@@ -189,24 +195,32 @@ pub trait DataDeviceHandling {
     fn set_callback<F: FnMut(wl_seat::WlSeat, DndEvent, DispatchData) + 'static>(
         &mut self,
         callback: F,
-    ) -> Result<(), ()>;
+    ) -> Result<(), MissingGlobal>;
 
     /// Access the data device associated with a seat
     ///
     /// Returns an error if the seat is not found (for example if it has since been removed by
     /// the server) or if the `wl_data_device_manager` global is missing.
-    fn with_device<F: FnOnce(&DataDevice)>(&self, seat: &wl_seat::WlSeat, f: F) -> Result<(), ()>;
+    fn with_device<F: FnOnce(&DataDevice)>(
+        &self,
+        seat: &wl_seat::WlSeat,
+        f: F,
+    ) -> Result<(), MissingGlobal>;
 }
 
 impl DataDeviceHandling for DataDeviceHandler {
     fn set_callback<F: FnMut(wl_seat::WlSeat, DndEvent, DispatchData) + 'static>(
         &mut self,
         callback: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         self.inner.borrow_mut().set_callback(callback)
     }
 
-    fn with_device<F: FnOnce(&DataDevice)>(&self, seat: &wl_seat::WlSeat, f: F) -> Result<(), ()> {
+    fn with_device<F: FnOnce(&DataDevice)>(
+        &self,
+        seat: &wl_seat::WlSeat,
+        f: F,
+    ) -> Result<(), MissingGlobal> {
         self.inner.borrow().with_device(seat, f)
     }
 }
@@ -247,7 +261,7 @@ where
     pub fn set_data_device_callback<F: FnMut(wl_seat::WlSeat, DndEvent, DispatchData) + 'static>(
         &mut self,
         callback: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         self.with_inner(|inner| inner.set_callback(callback))
     }
 
@@ -259,7 +273,14 @@ where
         &self,
         seat: &wl_seat::WlSeat,
         f: F,
-    ) -> Result<(), ()> {
+    ) -> Result<(), MissingGlobal> {
         self.with_inner(|inner| inner.with_device(seat, f))
+    }
+}
+
+pub(crate) fn no_nix_err(err: nix::Error) -> std::io::Error {
+    match err {
+        nix::Error::Sys(e) => e.into(),
+        _ => unreachable!("Impossible error: {:?}", err),
     }
 }

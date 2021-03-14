@@ -264,14 +264,16 @@ impl<F: Frame + 'static> Window<F> {
                         // Check whether we should save old size for later restoration.
                         let should_stash_size = states
                             .iter()
-                            .find(|s| match *s {
-                                State::Maximized
-                                | State::Fullscreen
-                                | State::TiledTop
-                                | State::TiledRight
-                                | State::TiledBottom
-                                | State::TiledLeft => true,
-                                _ => false,
+                            .find(|s| {
+                                matches!(
+                                    *s,
+                                    State::Maximized
+                                        | State::Fullscreen
+                                        | State::TiledTop
+                                        | State::TiledRight
+                                        | State::TiledBottom
+                                        | State::TiledLeft
+                                )
                             })
                             .map(|_| true)
                             .unwrap_or(false);

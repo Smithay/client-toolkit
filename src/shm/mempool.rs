@@ -385,7 +385,7 @@ impl AutoMemPool {
                 buffer.destroy();
                 Self::free(&free_list, offset, len);
             }
-            _ => (),
+            _ => unreachable!(),
         });
         Ok((&mut self.inner.mmap[offset..][..len], buffer.detach()))
     }
@@ -421,7 +421,7 @@ impl AutoMemPool {
                 buffer.destroy();
                 Self::free(&free_list, offset, len);
             }
-            _ => (),
+            _ => unreachable!(),
         });
         Ok(buffer.detach())
     }

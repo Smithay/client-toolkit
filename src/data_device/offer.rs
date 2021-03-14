@@ -8,6 +8,8 @@ use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
 use wayland_client::Main;
 
+use super::no_nix_err;
+
 struct Inner {
     mime_types: Vec<String>,
     actions: DndAction,
@@ -89,11 +91,11 @@ impl DataOffer {
     ///
     /// Fails if too many file descriptors were already open and a pipe
     /// could not be created.
-    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, ()> {
+    pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
         use nix::fcntl::OFlag;
         use nix::unistd::{close, pipe2};
         // create a pipe
-        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(|_| ())?;
+        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(no_nix_err)?;
 
         self.offer.receive(mime_type, writefd);
 
