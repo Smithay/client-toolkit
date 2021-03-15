@@ -920,7 +920,7 @@
                 <span class="ident">buffer</span>.<span class="ident">destroy</span>();
                 <span class="self">Self</span>::<span class="ident">free</span>(<span class="kw-2">&amp;</span><span class="ident">free_list</span>, <span class="ident">offset</span>, <span class="ident">len</span>);
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
         });
         <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">mmap</span>[<span class="ident">offset</span>..][..<span class="ident">len</span>], <span class="ident">buffer</span>.<span class="ident">detach</span>()))
     }
@@ -956,7 +956,7 @@
                 <span class="ident">buffer</span>.<span class="ident">destroy</span>();
                 <span class="self">Self</span>::<span class="ident">free</span>(<span class="kw-2">&amp;</span><span class="ident">free_list</span>, <span class="ident">offset</span>, <span class="ident">len</span>);
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
         });
         <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">detach</span>())
     }

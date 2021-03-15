@@ -242,6 +242,8 @@
 <span id="239">239</span>
 <span id="240">240</span>
 <span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fs</span>, <span class="ident">io</span>,
@@ -252,6 +254,8 @@
 <span class="kw">use</span> <span class="ident">wayland_client</span>::<span class="ident">protocol</span>::<span class="ident">wl_data_device_manager</span>::<span class="ident">DndAction</span>;
 <span class="kw">use</span> <span class="ident">wayland_client</span>::<span class="ident">protocol</span>::<span class="ident">wl_data_offer</span>;
 <span class="kw">use</span> <span class="ident">wayland_client</span>::<span class="ident">Main</span>;
+
+<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">no_nix_err</span>;
 
 <span class="kw">struct</span> <span class="ident">Inner</span> {
     <span class="ident">mime_types</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -334,11 +338,11 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Fails if too many file descriptors were already open and a pipe</span>
     <span class="doccomment">/// could not be created.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">receive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mime_type</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ReadPipe</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">receive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mime_type</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ReadPipe</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident">nix</span>::<span class="ident">fcntl</span>::<span class="ident">OFlag</span>;
         <span class="kw">use</span> <span class="ident">nix</span>::<span class="ident">unistd</span>::{<span class="ident">close</span>, <span class="ident">pipe2</span>};
         <span class="comment">// create a pipe</span>
-        <span class="kw">let</span> (<span class="ident">readfd</span>, <span class="ident">writefd</span>) <span class="op">=</span> <span class="ident">pipe2</span>(<span class="ident">OFlag</span>::<span class="ident">O_CLOEXEC</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())<span class="question-mark">?</span>;
+        <span class="kw">let</span> (<span class="ident">readfd</span>, <span class="ident">writefd</span>) <span class="op">=</span> <span class="ident">pipe2</span>(<span class="ident">OFlag</span>::<span class="ident">O_CLOEXEC</span>).<span class="ident">map_err</span>(<span class="ident">no_nix_err</span>)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.<span class="ident">offer</span>.<span class="ident">receive</span>(<span class="ident">mime_type</span>, <span class="ident">writefd</span>);
 

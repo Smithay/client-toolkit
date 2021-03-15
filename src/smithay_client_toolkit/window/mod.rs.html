@@ -815,6 +815,8 @@
 <span id="812">812</span>
 <span id="813">813</span>
 <span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Window abstraction</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
@@ -1082,14 +1084,16 @@
                         <span class="comment">// Check whether we should save old size for later restoration.</span>
                         <span class="kw">let</span> <span class="ident">should_stash_size</span> <span class="op">=</span> <span class="ident">states</span>
                             .<span class="ident">iter</span>()
-                            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">s</span> {
-                                <span class="ident">State</span>::<span class="ident">Maximized</span>
-                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">Fullscreen</span>
-                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledTop</span>
-                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledRight</span>
-                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledBottom</span>
-                                <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+                            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
+                                <span class="macro">matches</span><span class="macro">!</span>(
+                                    <span class="kw-2">*</span><span class="ident">s</span>,
+                                    <span class="ident">State</span>::<span class="ident">Maximized</span>
+                                        <span class="op">|</span> <span class="ident">State</span>::<span class="ident">Fullscreen</span>
+                                        <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledTop</span>
+                                        <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledRight</span>
+                                        <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledBottom</span>
+                                        <span class="op">|</span> <span class="ident">State</span>::<span class="ident">TiledLeft</span>
+                                )
                             })
                             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="bool-val">true</span>)
                             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);

@@ -956,23 +956,8 @@
 <span id="953">953</span>
 <span id="954">954</span>
 <span id="955">955</span>
-<span id="956">956</span>
-<span id="957">957</span>
-<span id="958">958</span>
-<span id="959">959</span>
-<span id="960">960</span>
-<span id="961">961</span>
-<span id="962">962</span>
-<span id="963">963</span>
-<span id="964">964</span>
-<span id="965">965</span>
-<span id="966">966</span>
-<span id="967">967</span>
-<span id="968">968</span>
-<span id="969">969</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span>;
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::<span class="ident">protocol</span>::{
@@ -984,7 +969,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ButtonState</span>, <span class="ident">Frame</span>, <span class="ident">FrameRequest</span>, <span class="ident">State</span>, <span class="ident">WindowState</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">seat</span>::<span class="ident">pointer</span>::{<span class="ident">ThemeManager</span>, <span class="ident">ThemeSpec</span>, <span class="ident">ThemedPointer</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">shm</span>::<span class="ident">DoubleMemPool</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">shm</span>::<span class="ident">AutoMemPool</span>;
 
 <span class="comment">/*
  * Drawing theme definitions
@@ -1191,7 +1176,7 @@
     <span class="ident">compositor</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span>,
     <span class="ident">subcompositor</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_subcompositor</span>::<span class="ident">WlSubcompositor</span><span class="op">&gt;</span>,
     <span class="ident">inner</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">pools</span>: <span class="ident">DoubleMemPool</span>,
+    <span class="ident">pool</span>: <span class="ident">AutoMemPool</span>,
     <span class="ident">active</span>: <span class="ident">WindowState</span>,
     <span class="ident">hidden</span>: <span class="ident">bool</span>,
     <span class="ident">pointers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ThemedPointer</span><span class="op">&gt;</span>,
@@ -1226,19 +1211,14 @@
             <span class="ident">fullscreened</span>: <span class="bool-val">false</span>,
         }));
 
-        <span class="kw">let</span> <span class="ident">my_inner</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">clone</span>();
-        <span class="comment">// Send a Refresh request on callback from DoubleMemPool as it will be fired when</span>
-        <span class="comment">// None was previously returned from `pool()` and the draw was postponed</span>
-        <span class="kw">let</span> <span class="ident">pools</span> <span class="op">=</span> <span class="ident">DoubleMemPool</span>::<span class="ident">new</span>(<span class="ident">shm</span>.<span class="ident">clone</span>(), <span class="kw">move</span> <span class="op">|</span><span class="ident">ddata</span><span class="op">|</span> {
-            (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">my_inner</span>.<span class="ident">borrow_mut</span>().<span class="ident">implem</span>)(<span class="ident">FrameRequest</span>::<span class="ident">Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
-        })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">pool</span> <span class="op">=</span> <span class="ident">AutoMemPool</span>::<span class="ident">new</span>(<span class="ident">shm</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">FallbackFrame</span> {
             <span class="ident">base_surface</span>: <span class="ident">base_surface</span>.<span class="ident">clone</span>(),
             <span class="ident">compositor</span>: <span class="ident">compositor</span>.<span class="ident">clone</span>(),
             <span class="ident">subcompositor</span>: <span class="ident">subcompositor</span>.<span class="ident">clone</span>(),
             <span class="ident">inner</span>,
-            <span class="ident">pools</span>,
+            <span class="ident">pool</span>,
             <span class="ident">active</span>: <span class="ident">WindowState</span>::<span class="ident">Inactive</span>,
             <span class="ident">hidden</span>: <span class="bool-val">true</span>,
             <span class="ident">pointers</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
@@ -1424,215 +1404,207 @@
         <span class="kw">let</span> <span class="ident">scaled_header_width</span> <span class="op">=</span> <span class="ident">width</span> <span class="op">*</span> <span class="ident">header_scale</span>;
 
         {
-            <span class="comment">// grab the current pool</span>
-            <span class="kw">let</span> <span class="ident">pool</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">pools</span>.<span class="ident">pool</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">pool</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">pool</span>,
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,
+            <span class="comment">// Create the buffers and draw</span>
+            <span class="kw">let</span> <span class="ident">color</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> <span class="op">=</span><span class="op">=</span> <span class="ident">WindowState</span>::<span class="ident">Active</span> {
+                <span class="ident">PRIMARY_COLOR_ACTIVE</span>.<span class="ident">to_ne_bytes</span>()
+            } <span class="kw">else</span> {
+                <span class="ident">PRIMARY_COLOR_INACTIVE</span>.<span class="ident">to_ne_bytes</span>()
             };
-            <span class="kw">let</span> <span class="ident">lr_surfaces_scale</span> <span class="op">=</span> <span class="ident">max</span>(<span class="ident">scales</span>[<span class="ident">LEFT</span>], <span class="ident">scales</span>[<span class="ident">RIGHT</span>]);
-            <span class="kw">let</span> <span class="ident">tp_surfaces_scale</span> <span class="op">=</span> <span class="ident">max</span>(<span class="ident">scales</span>[<span class="ident">TOP</span>], <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]);
 
-            <span class="comment">// resize the pool as appropriate</span>
-            <span class="kw">let</span> <span class="ident">pxcount</span> <span class="op">=</span> (<span class="ident">scaled_header_height</span> <span class="op">*</span> <span class="ident">scaled_header_width</span>)
-                <span class="op">+</span> <span class="ident">max</span>(
-                    (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">tp_surfaces_scale</span> <span class="op">*</span> <span class="ident">tp_surfaces_scale</span>,
-                    (<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">lr_surfaces_scale</span> <span class="op">*</span> <span class="ident">lr_surfaces_scale</span>,
-                );
-
-            <span class="ident">pool</span>.<span class="ident">resize</span>(<span class="number">4</span> <span class="op">*</span> <span class="ident">pxcount</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">expect</span>(<span class="string">&quot;I/O Error while redrawing the borders&quot;</span>);
-
-            <span class="comment">// draw the white header bar</span>
-            {
-                <span class="kw">let</span> <span class="ident">mmap</span> <span class="op">=</span> <span class="ident">pool</span>.<span class="ident">mmap</span>();
-                {
-                    <span class="kw">let</span> <span class="ident">canvas</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mmap</span>
-                        [<span class="number">0</span>..<span class="ident">scaled_header_height</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="number">4</span>];
-                    <span class="kw">let</span> <span class="ident">color</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> <span class="op">=</span><span class="op">=</span> <span class="ident">WindowState</span>::<span class="ident">Active</span> {
-                        <span class="ident">PRIMARY_COLOR_ACTIVE</span>.<span class="ident">to_ne_bytes</span>()
-                    } <span class="kw">else</span> {
-                        <span class="ident">PRIMARY_COLOR_INACTIVE</span>.<span class="ident">to_ne_bytes</span>()
-                    };
-
-                    <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
-                        <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
-                        <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
-                        <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
-                        <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
-                    }
-
-                    <span class="ident">draw_buttons</span>(
-                        <span class="ident">canvas</span>,
-                        <span class="ident">width</span>,
-                        <span class="ident">header_scale</span>,
-                        <span class="ident">inner</span>.<span class="ident">resizable</span>,
-                        <span class="self">self</span>.<span class="ident">active</span>,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>
-                            .<span class="ident">pointers</span>
-                            .<span class="ident">iter</span>()
-                            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> {
-                                <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">as_ref</span>().<span class="ident">is_alive</span>() {
-                                    <span class="kw">let</span> <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">PointerUserData</span><span class="op">&gt;</span> <span class="op">=</span>
-                                        <span class="ident">p</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>().<span class="ident">unwrap</span>();
-                                    <span class="prelude-val">Some</span>(<span class="ident">data</span>.<span class="ident">borrow</span>().<span class="ident">location</span>)
-                                } <span class="kw">else</span> {
-                                    <span class="prelude-val">None</span>
-                                }
-                            })
-                            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Location</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
-                    );
-
-                    <span class="comment">// For each pixel in borders</span>
-                    <span class="kw">let</span> <span class="ident">border_canvas</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mmap</span>
-                        [<span class="ident">scaled_header_height</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="number">4</span>..];
-                    <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">border_canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
-                        <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
-                        <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
-                        <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
-                        <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
-                    }
-                }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">mmap</span>.<span class="ident">flush</span>() {
-                    <span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Failed to flush frame memory map: {}&quot;</span>, <span class="ident">err</span>);
-                }
-            }
-
-            <span class="comment">// Create the buffers</span>
             <span class="comment">// -&gt; head-subsurface</span>
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">pool</span>.<span class="ident">buffer</span>(
-                <span class="number">0</span>,
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">canvas</span>, <span class="ident">buffer</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">buffer</span>(
                 <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">scaled_header_height</span> <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="number">4</span> <span class="op">*</span> <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
-            );
-            <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="number">0</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
-            <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
-                <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">i32</span>,
-                    <span class="ident">scaled_header_height</span> <span class="kw">as</span> <span class="ident">i32</span>,
+            ) {
+                <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
+                    <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
+                    <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
+                    <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
+                    <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
+                }
+
+                <span class="ident">draw_buttons</span>(
+                    <span class="ident">canvas</span>,
+                    <span class="ident">width</span>,
+                    <span class="ident">header_scale</span>,
+                    <span class="ident">inner</span>.<span class="ident">resizable</span>,
+                    <span class="self">self</span>.<span class="ident">active</span>,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>
+                        .<span class="ident">pointers</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> {
+                            <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">as_ref</span>().<span class="ident">is_alive</span>() {
+                                <span class="kw">let</span> <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">PointerUserData</span><span class="op">&gt;</span> <span class="op">=</span>
+                                    <span class="ident">p</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>().<span class="ident">unwrap</span>();
+                                <span class="prelude-val">Some</span>(<span class="ident">data</span>.<span class="ident">borrow</span>().<span class="ident">location</span>)
+                            } <span class="kw">else</span> {
+                                <span class="prelude-val">None</span>
+                            }
+                        })
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Location</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
                 );
-            } <span class="kw">else</span> {
-                <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
-                <span class="comment">// in surface coordinates and hope it is not rescaled</span>
-                <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>);
+
+                <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="number">0</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
+                <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
+                    <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        <span class="ident">scaled_header_width</span> <span class="kw">as</span> <span class="ident">i32</span>,
+                        <span class="ident">scaled_header_height</span> <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                } <span class="kw">else</span> {
+                    <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
+                    <span class="comment">// in surface coordinates and hope it is not rescaled</span>
+                    <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                }
+                <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
             }
-            <span class="ident">parts</span>[<span class="ident">HEAD</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
 
             <span class="comment">// -&gt; top-subsurface</span>
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">pool</span>.<span class="ident">buffer</span>(
-                <span class="number">4</span> <span class="op">*</span> (<span class="ident">scaled_header_width</span> <span class="op">*</span> <span class="ident">scaled_header_height</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">canvas</span>, <span class="ident">buffer</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">buffer</span>(
                 ((<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 (<span class="number">4</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>] <span class="op">*</span> (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>)) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
-            );
-            <span class="ident">parts</span>[<span class="ident">TOP</span>]
-                .<span class="ident">subsurface</span>
-                .<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span> <span class="op">+</span> <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
-            <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
-                <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    ((<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                    (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+            ) {
+                <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
+                    <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
+                    <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
+                    <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
+                    <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
+                }
+                <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(
+                    <span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>),
+                    <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span> <span class="op">+</span> <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>),
                 );
-            } <span class="kw">else</span> {
-                <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
-                <span class="comment">// in surface coordinates and hope it is not rescaled</span>
-                <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
-                    <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
-                );
+                <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
+                    <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        ((<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                        (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">TOP</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                } <span class="kw">else</span> {
+                    <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
+                    <span class="comment">// in surface coordinates and hope it is not rescaled</span>
+                    <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+                        <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                }
+                <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
             }
-            <span class="ident">parts</span>[<span class="ident">TOP</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
 
             <span class="comment">// -&gt; bottom-subsurface</span>
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">pool</span>.<span class="ident">buffer</span>(
-                <span class="number">4</span> <span class="op">*</span> (<span class="ident">scaled_header_width</span> <span class="op">*</span> <span class="ident">scaled_header_height</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">canvas</span>, <span class="ident">buffer</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">buffer</span>(
                 ((<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 (<span class="number">4</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>] <span class="op">*</span> (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>)) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
-            );
-            <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="ident">height</span> <span class="kw">as</span> <span class="ident">i32</span>);
-            <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
-                <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    ((<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                    (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                );
-            } <span class="kw">else</span> {
-                <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
-                <span class="comment">// in surface coordinates and hope it is not rescaled</span>
-                <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
-                    <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
-                );
+            ) {
+                <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
+                    <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
+                    <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
+                    <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
+                    <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
+                }
+                <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="ident">height</span> <span class="kw">as</span> <span class="ident">i32</span>);
+                <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
+                    <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        ((<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                        (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">BOTTOM</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                } <span class="kw">else</span> {
+                    <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
+                    <span class="comment">// in surface coordinates and hope it is not rescaled</span>
+                    <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        (<span class="ident">width</span> <span class="op">+</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">BORDER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+                        <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                }
+                <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
             }
-            <span class="ident">parts</span>[<span class="ident">BOTTOM</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
 
             <span class="comment">// -&gt; left-subsurface</span>
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">pool</span>.<span class="ident">buffer</span>(
-                <span class="number">4</span> <span class="op">*</span> (<span class="ident">scaled_header_width</span> <span class="op">*</span> <span class="ident">scaled_header_height</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">canvas</span>, <span class="ident">buffer</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">buffer</span>(
                 (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 ((<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="number">4</span> <span class="op">*</span> (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
-            );
-            <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
-            <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
-                <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                    ((<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                );
-            } <span class="kw">else</span> {
-                <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
-                <span class="comment">// in surface coordinates and hope it is not rescaled</span>
-                <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>, (<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>);
+            ) {
+                <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
+                    <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
+                    <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
+                    <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
+                    <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
+                }
+                <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="op">-</span>(<span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
+                <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
+                    <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                        ((<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">LEFT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                } <span class="kw">else</span> {
+                    <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
+                    <span class="comment">// in surface coordinates and hope it is not rescaled</span>
+                    <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
+                        (<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                }
+                <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
             }
-            <span class="ident">parts</span>[<span class="ident">LEFT</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
 
             <span class="comment">// -&gt; right-subsurface</span>
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">pool</span>.<span class="ident">buffer</span>(
-                <span class="number">4</span> <span class="op">*</span> (<span class="ident">scaled_header_width</span> <span class="op">*</span> <span class="ident">scaled_header_height</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">canvas</span>, <span class="ident">buffer</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">buffer</span>(
                 (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 ((<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="number">4</span> <span class="op">*</span> (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
                 <span class="ident">wl_shm</span>::<span class="ident">Format</span>::<span class="ident">Argb8888</span>,
-            );
-            <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
-            <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
-                <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                    ((<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
-                );
-            } <span class="kw">else</span> {
-                <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
-                <span class="comment">// in surface coordinates and hope it is not rescaled</span>
-                <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
-                    <span class="number">0</span>,
-                    <span class="number">0</span>,
-                    <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
-                    (<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
-                );
+            ) {
+                <span class="kw">for</span> <span class="ident">pixel</span> <span class="kw">in</span> <span class="ident">canvas</span>.<span class="ident">chunks_exact_mut</span>(<span class="number">4</span>) {
+                    <span class="ident">pixel</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">0</span>];
+                    <span class="ident">pixel</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">1</span>];
+                    <span class="ident">pixel</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">2</span>];
+                    <span class="ident">pixel</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">color</span>[<span class="number">3</span>];
+                }
+                <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">subsurface</span>.<span class="ident">set_position</span>(<span class="ident">width</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="op">-</span>(<span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>));
+                <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">attach</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>), <span class="number">0</span>, <span class="number">0</span>);
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">surface_version</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">4</span> {
+                    <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">damage_buffer</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        (<span class="ident">BORDER_SIZE</span> <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                        ((<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="op">*</span> <span class="ident">scales</span>[<span class="ident">RIGHT</span>]) <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                } <span class="kw">else</span> {
+                    <span class="comment">// surface is old and does not support damage_buffer, so we damage</span>
+                    <span class="comment">// in surface coordinates and hope it is not rescaled</span>
+                    <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">damage</span>(
+                        <span class="number">0</span>,
+                        <span class="number">0</span>,
+                        <span class="ident">BORDER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
+                        (<span class="ident">height</span> <span class="op">+</span> <span class="ident">HEADER_SIZE</span>) <span class="kw">as</span> <span class="ident">i32</span>,
+                    );
+                }
+                <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
             }
-            <span class="ident">parts</span>[<span class="ident">RIGHT</span>].<span class="ident">surface</span>.<span class="ident">commit</span>();
         }
     }
 
