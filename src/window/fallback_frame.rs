@@ -887,8 +887,8 @@ fn draw_icon(
         Icon::Close => {
             // Draw black rectangle
             for y in sh / 4..3 * sh / 4 {
-                let line = &mut canvas[(x_start + y * width + sh / 4) * 4 * scale
-                    ..(x_start + y * width + 3 * sh / 4) * 4 * scale];
+                let line = &mut canvas[(x_start + y * width + h / 4) * 4 * scale
+                    ..(x_start + y * width + 3 * h / 4) * 4 * scale];
                 for pixel in line.chunks_exact_mut(4) {
                     pixel[0] = icon_color[0];
                     pixel[1] = icon_color[1];
@@ -900,8 +900,8 @@ fn draw_icon(
         Icon::Maximize => {
             // Draw an empty rectangle
             for y in 2 * sh / 8..3 * sh / 8 {
-                let line = &mut canvas[(x_start + y * width + sh / 4) * 4 * scale
-                    ..(x_start + y * width + 3 * sh / 4) * 4 * scale];
+                let line = &mut canvas[(x_start + y * width + h / 4) * 4 * scale
+                    ..(x_start + y * width + 3 * h / 4) * 4 * scale];
                 for pixel in line.chunks_exact_mut(4) {
                     pixel[0] = icon_color[0];
                     pixel[1] = icon_color[1];
@@ -910,16 +910,16 @@ fn draw_icon(
                 }
             }
             for y in 3 * sh / 8..5 * sh / 8 {
-                let line = &mut canvas[(x_start + y * width + 2 * sh / 8) * 4 * scale
-                    ..(x_start + y * width + 3 * sh / 8) * 4 * scale];
+                let line = &mut canvas[(x_start + y * width + 2 * h / 8) * 4 * scale
+                    ..(x_start + y * width + 3 * h / 8) * 4 * scale];
                 for pixel in line.chunks_exact_mut(4) {
                     pixel[0] = icon_color[0];
                     pixel[1] = icon_color[1];
                     pixel[2] = icon_color[2];
                     pixel[3] = icon_color[3];
                 }
-                let line = &mut canvas[(x_start + y * width + 5 * sh / 8) * 4 * scale
-                    ..(x_start + y * width + 6 * sh / 8) * 4 * scale];
+                let line = &mut canvas[(x_start + y * width + 5 * h / 8) * 4 * scale
+                    ..(x_start + y * width + 6 * h / 8) * 4 * scale];
                 for pixel in line.chunks_exact_mut(4) {
                     pixel[0] = icon_color[0];
                     pixel[1] = icon_color[1];
@@ -928,8 +928,8 @@ fn draw_icon(
                 }
             }
             for y in 5 * sh / 8..6 * sh / 8 {
-                let line = &mut canvas[(x_start + y * width + sh / 4) * 4 * scale
-                    ..(x_start + y * width + 3 * sh / 4) * 4 * scale];
+                let line = &mut canvas[(x_start + y * width + h / 4) * 4 * scale
+                    ..(x_start + y * width + 3 * h / 4) * 4 * scale];
                 for pixel in line.chunks_exact_mut(4) {
                     pixel[0] = icon_color[0];
                     pixel[1] = icon_color[1];
@@ -941,8 +941,8 @@ fn draw_icon(
         Icon::Minimize => {
             // Draw an underline
             for y in 5 * sh / 8..3 * sh / 4 {
-                let line = &mut canvas[(x_start + y * width + sh / 4) * 4 * scale
-                    ..(x_start + y * width + 3 * sh / 4) * 4 * scale];
+                let line = &mut canvas[(x_start + y * width + h / 4) * 4 * scale
+                    ..(x_start + y * width + 3 * h / 4) * 4 * scale];
                 for pixel in line.chunks_exact_mut(4) {
                     pixel[0] = icon_color[0];
                     pixel[1] = icon_color[1];
