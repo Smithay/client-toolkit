@@ -13,7 +13,7 @@ readme = "README.md"
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.19"
+nix = "0.20"
 dlib = "0.5"
 lazy_static = "1.0"
 memmap2 = "0.2.0"
