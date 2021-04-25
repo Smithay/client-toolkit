@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["smithay_client_toolkit"] = [{"text":"impl From&lt;bool&gt; for WindowState","synthetic":false,"types":[]},{"text":"impl From&lt;WindowState&gt; for bool","synthetic":false,"types":[]}];
+implementors["smithay_client_toolkit"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/convert/trait.From.html\" title=\"trait core::convert::From\">From</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.bool.html\">bool</a>&gt; for <a class=\"enum\" href=\"smithay_client_toolkit/window/enum.WindowState.html\" title=\"enum smithay_client_toolkit::window::WindowState\">WindowState</a>","synthetic":false,"types":["smithay_client_toolkit::window::WindowState"]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
