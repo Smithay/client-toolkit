@@ -169,7 +169,7 @@ fn main() {
     let _listner_handle =
         env.listen_for_outputs(move |output, info, _| output_handler(output, info));
 
-    let mut event_loop = calloop::EventLoop::<()>::new().unwrap();
+    let mut event_loop = calloop::EventLoop::<()>::try_new().unwrap();
 
     WaylandSource::new(queue).quick_insert(event_loop.handle()).unwrap();
 

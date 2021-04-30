@@ -162,7 +162,7 @@ impl FromRawFd for ReadPipe {
         ReadPipe {
             file: calloop::generic::Generic::new(
                 FromRawFd::from_raw_fd(fd),
-                calloop::Interest::Readable,
+                calloop::Interest::READ,
                 calloop::Mode::Level,
             ),
         }
