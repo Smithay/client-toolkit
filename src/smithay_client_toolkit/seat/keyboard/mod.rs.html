@@ -804,7 +804,7 @@
     <span class="ident">rmlvo</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RMLVO</span><span class="op">&gt;</span>,
     <span class="ident">repeatkind</span>: <span class="ident">RepeatKind</span>,
     <span class="ident">callback</span>: <span class="ident">F</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">wl_keyboard</span>::<span class="ident">WlKeyboard</span>, <span class="ident">calloop</span>::<span class="ident">Source</span><span class="op">&lt;</span><span class="ident">RepeatSource</span><span class="op">&gt;</span>), <span class="ident">Error</span><span class="op">&gt;</span>
+) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">wl_keyboard</span>::<span class="ident">WlKeyboard</span>, <span class="ident">calloop</span>::<span class="ident">RegistrationToken</span>), <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>, <span class="ident">wl_keyboard</span>::<span class="ident">WlKeyboard</span>, <span class="ident">wayland_client</span>::<span class="ident">DispatchData</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {

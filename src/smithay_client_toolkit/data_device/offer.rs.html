@@ -409,7 +409,7 @@
         <span class="ident">ReadPipe</span> {
             <span class="ident">file</span>: <span class="ident">calloop</span>::<span class="ident">generic</span>::<span class="ident">Generic</span>::<span class="ident">new</span>(
                 <span class="ident">FromRawFd</span>::<span class="ident">from_raw_fd</span>(<span class="ident">fd</span>),
-                <span class="ident">calloop</span>::<span class="ident">Interest</span>::<span class="ident">Readable</span>,
+                <span class="ident">calloop</span>::<span class="ident">Interest</span>::<span class="ident">READ</span>,
                 <span class="ident">calloop</span>::<span class="ident">Mode</span>::<span class="ident">Level</span>,
             ),
         }

@@ -138,7 +138,7 @@
 
 <span class="kw">use</span> <span class="ident">calloop</span>::{
     <span class="ident">generic</span>::{<span class="ident">Fd</span>, <span class="ident">Generic</span>},
-    <span class="ident">EventSource</span>, <span class="ident">InsertError</span>, <span class="ident">Interest</span>, <span class="ident">LoopHandle</span>, <span class="ident">Mode</span>, <span class="ident">Source</span>,
+    <span class="ident">EventSource</span>, <span class="ident">InsertError</span>, <span class="ident">Interest</span>, <span class="ident">LoopHandle</span>, <span class="ident">Mode</span>, <span class="ident">RegistrationToken</span>,
 };
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::<span class="ident">EventQueue</span>;
@@ -162,14 +162,14 @@
     <span class="doccomment">/// Wrap an `EventQueue` as a `WaylandSource`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">queue</span>: <span class="ident">EventQueue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WaylandSource</span> {
         <span class="kw">let</span> <span class="ident">fd</span> <span class="op">=</span> <span class="ident">queue</span>.<span class="ident">display</span>().<span class="ident">get_connection_fd</span>();
-        <span class="ident">WaylandSource</span> { <span class="ident">queue</span>, <span class="ident">fd</span>: <span class="ident">Generic</span>::<span class="ident">from_fd</span>(<span class="ident">fd</span>, <span class="ident">Interest</span>::<span class="ident">Readable</span>, <span class="ident">Mode</span>::<span class="ident">Level</span>) }
+        <span class="ident">WaylandSource</span> { <span class="ident">queue</span>, <span class="ident">fd</span>: <span class="ident">Generic</span>::<span class="ident">from_fd</span>(<span class="ident">fd</span>, <span class="ident">Interest</span>::<span class="ident">READ</span>, <span class="ident">Mode</span>::<span class="ident">Level</span>) }
     }
 
     <span class="doccomment">/// Insert this source into given event loop with an adapter that panics on orphan events</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">quick_insert</span><span class="op">&lt;</span><span class="ident">Data</span>: <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="self">self</span>,
         <span class="ident">handle</span>: <span class="ident">LoopHandle</span><span class="op">&lt;</span><span class="ident">Data</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Source</span><span class="op">&lt;</span><span class="ident">WaylandSource</span><span class="op">&gt;</span>, <span class="ident">InsertError</span><span class="op">&lt;</span><span class="ident">WaylandSource</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RegistrationToken</span>, <span class="ident">InsertError</span><span class="op">&lt;</span><span class="ident">WaylandSource</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="ident">handle</span>.<span class="ident">insert_source</span>(<span class="self">self</span>, <span class="op">|</span>(), <span class="ident">queue</span>, <span class="ident">ddata</span><span class="op">|</span> {
             <span class="ident">queue</span>.<span class="ident">dispatch_pending</span>(<span class="ident">ddata</span>, <span class="op">|</span><span class="ident">event</span>, <span class="ident">object</span>, <span class="kw">_</span><span class="op">|</span> {
                 <span class="macro">panic</span><span class="macro">!</span>(
