@@ -8,6 +8,8 @@
   `FallbackFrame`. Dependency on `andrew` and `fontconfig` is dropped in the process. If fancier
   decorations are needed, they should be implemented using the `Frame` trait.
 
+- `calloop::Source` is switched to `calloop::RegistrationToken` as a 1-1 replacement in all public interfaces.
+
 #### Additions
 
 - `AutoMemPool` added as an alternative to the existing SHM pools

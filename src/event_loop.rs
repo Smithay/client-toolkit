@@ -2,7 +2,7 @@ use std::io;
 
 use calloop::{
     generic::{Fd, Generic},
-    EventSource, InsertError, Interest, LoopHandle, Mode, Source,
+    EventSource, InsertError, Interest, LoopHandle, Mode, RegistrationToken,
 };
 
 use wayland_client::EventQueue;
@@ -26,14 +26,14 @@ impl WaylandSource {
     /// Wrap an `EventQueue` as a `WaylandSource`.
     pub fn new(queue: EventQueue) -> WaylandSource {
         let fd = queue.display().get_connection_fd();
-        WaylandSource { queue, fd: Generic::from_fd(fd, Interest::Readable, Mode::Level) }
+        WaylandSource { queue, fd: Generic::from_fd(fd, Interest::READ, Mode::Level) }
     }
 
     /// Insert this source into given event loop with an adapter that panics on orphan events
     pub fn quick_insert<Data: 'static>(
         self,
         handle: LoopHandle<Data>,
-    ) -> Result<Source<WaylandSource>, InsertError<WaylandSource>> {
+    ) -> Result<RegistrationToken, InsertError<WaylandSource>> {
         handle.insert_source(self, |(), queue, ddata| {
             queue.dispatch_pending(ddata, |event, object, _| {
                 panic!(

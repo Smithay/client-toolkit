@@ -12,7 +12,7 @@ use sctk::{
 };
 
 use sctk::reexports::{
-    calloop::{LoopHandle, Source},
+    calloop::{LoopHandle, RegistrationToken},
     client::{
         protocol::{wl_keyboard, wl_seat, wl_shm, wl_surface},
         DispatchData,
@@ -23,7 +23,7 @@ sctk::default_environment!(SelectionExample, desktop);
 
 // Here the type parameter is a global value that will be shared by
 // all callbacks invoked by the event loop.
-type DData = (Environment<SelectionExample>, Option<WEvent>, Option<Source<ReadPipe>>);
+type DData = (Environment<SelectionExample>, Option<WEvent>, Option<RegistrationToken>);
 
 fn main() {
     /*
@@ -35,7 +35,7 @@ fn main() {
     /*
      * Prepare a calloop event loop to handle clipboard reading
      */
-    let mut event_loop = sctk::reexports::calloop::EventLoop::<DData>::new().unwrap();
+    let mut event_loop = sctk::reexports::calloop::EventLoop::<DData>::try_new().unwrap();
 
     // we need a window to receive things actually
     let mut dimensions = (320u32, 240u32);

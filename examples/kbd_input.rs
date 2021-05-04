@@ -22,7 +22,7 @@ fn main() {
      */
     // Here `Option<WEvent>` is the type of a global value that will be shared by
     // all callbacks invoked by the event loop.
-    let mut event_loop = calloop::EventLoop::<Option<WEvent>>::new().unwrap();
+    let mut event_loop = calloop::EventLoop::<Option<WEvent>>::try_new().unwrap();
 
     /*
      * Create a buffer with window contents
@@ -66,7 +66,8 @@ fn main() {
      * Keyboard initialization
      */
 
-    let mut seats = Vec::<(String, Option<(wl_keyboard::WlKeyboard, calloop::Source<_>)>)>::new();
+    let mut seats =
+        Vec::<(String, Option<(wl_keyboard::WlKeyboard, calloop::RegistrationToken)>)>::new();
 
     // first process already existing seats
     for seat in env.get_all_seats() {
