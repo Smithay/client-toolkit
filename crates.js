@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["smithay_client_toolkit"];
