@@ -2,13 +2,14 @@
 
 ## Unreleased
 
+## 0.14.0 - 2021-05-07
+
 #### Breaking Changes
 
 - `ConceptFrame` is removed, as well as the `frames` cargo feature, and replaced by a more minimalistic
   `FallbackFrame`. Dependency on `andrew` and `fontconfig` is dropped in the process. If fancier
   decorations are needed, they should be implemented using the `Frame` trait.
-
-- `calloop::Source` is switched to `calloop::RegistrationToken` as a 1-1 replacement in all public interfaces.
+- Update to calloop 0.7: `calloop::Source` is replaced by `calloop::RegistrationToken`
 
 #### Additions
 
