@@ -261,22 +261,36 @@ impl io::Seek for MemPool {
 /// protocol, and the allocation of buffers within the pool.
 ///
 /// AutoMemPool internally tracks the release of the buffers by the compositor. As such, creating a
-/// buffer that is not commited to a surface (and then never released by the server) would result
-/// in that memory being unavailble for the rest of the pool's lifetime.
+/// buffer that is not committed to a surface (and then never released by the server) would result
+/// in that memory being unavailable for the rest of the pool's lifetime.
 ///
 /// AutoMemPool will also handle the destruction of buffers; do not call destroy() on the returned
 /// WlBuffer objects.
+///
+/// The default alignment of returned buffers is 16 bytes; this can be changed by using the
+/// explicit with_min_align constructor.
 pub struct AutoMemPool {
     inner: Inner,
+    align: usize,
     free_list: Rc<RefCell<Vec<(usize, usize)>>>,
 }
 
 impl AutoMemPool {
     /// Create a new memory pool associated with the given shm
     pub fn new(shm: Attached<wl_shm::WlShm>) -> io::Result<AutoMemPool> {
+        Self::with_min_align(shm, 16)
+    }
+
+    /// Create a new memory pool associated with the given shm.
+    ///
+    /// All buffers will be aligned to at least the value of (align), which must be a power of two
+    /// not greater than 4096.
+    pub fn with_min_align(shm: Attached<wl_shm::WlShm>, align: usize) -> io::Result<AutoMemPool> {
+        assert!(align.is_power_of_two());
+        assert!(align <= 4096);
         let inner = Inner::new(shm)?;
         let free_list = Rc::new(RefCell::new(vec![(0, inner.len)]));
-        Ok(AutoMemPool { inner, free_list })
+        Ok(AutoMemPool { inner, align, free_list })
     }
 
     /// Resize the memory pool
@@ -376,14 +390,15 @@ impl AutoMemPool {
         format: wl_shm::Format,
     ) -> io::Result<(&mut [u8], wl_buffer::WlBuffer)> {
         let len = (height as usize) * (stride as usize);
-        let offset = self.alloc(len)?;
+        let alloc_len = (len + self.align - 1) & !(self.align - 1);
+        let offset = self.alloc(alloc_len)?;
         let offset_i = offset as i32;
         let buffer = self.inner.pool.create_buffer(offset_i, width, height, stride, format);
         let free_list = self.free_list.clone();
         buffer.quick_assign(move |buffer, event, _| match event {
             wl_buffer::Event::Release => {
                 buffer.destroy();
-                Self::free(&free_list, offset, len);
+                Self::free(&free_list, offset, alloc_len);
             }
             _ => unreachable!(),
         });
@@ -408,10 +423,11 @@ impl AutoMemPool {
         E: From<io::Error>,
     {
         let len = (height as usize) * (stride as usize);
-        let offset = self.alloc(len)?;
+        let alloc_len = (len + self.align - 1) & !(self.align - 1);
+        let offset = self.alloc(alloc_len)?;
         let offset_i = offset as i32;
         if let Err(e) = draw(&mut self.inner.mmap[offset..][..len]) {
-            Self::free(&self.free_list, offset, len);
+            Self::free(&self.free_list, offset, alloc_len);
             return Err(e);
         }
         let buffer = self.inner.pool.create_buffer(offset_i, width, height, stride, format);
@@ -419,7 +435,7 @@ impl AutoMemPool {
         buffer.quick_assign(move |buffer, event, _| match event {
             wl_buffer::Event::Release => {
                 buffer.destroy();
-                Self::free(&free_list, offset, len);
+                Self::free(&free_list, offset, alloc_len);
             }
             _ => unreachable!(),
         });

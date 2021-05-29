@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Additions
+
+- `AutoMemPool` now guarantees a minimum alignment of returned buffers
+
 ## 0.14.0 - 2021-05-07
 
 #### Breaking Changes
