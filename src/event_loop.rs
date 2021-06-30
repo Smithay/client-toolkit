@@ -67,52 +67,55 @@ impl EventSource for WaylandSource {
 
     fn process_events<F>(
         &mut self,
-        _: calloop::Readiness,
-        _: calloop::Token,
+        readiness: calloop::Readiness,
+        token: calloop::Token,
         mut callback: F,
     ) -> std::io::Result<PostAction>
     where
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {
-        // in case of readiness of the wayland socket we do the following in a loop, until nothing
-        // more can be read:
-        loop {
-            // 1. read events from the socket if any are available
-            if let Some(guard) = self.queue.prepare_read() {
-                // might be None if some other thread read events before us, concurently
-                if let Err(e) = guard.read_events() {
-                    if e.kind() != io::ErrorKind::WouldBlock {
+        let queue = &mut self.queue;
+        self.fd.process_events(readiness, token, |_, _| {
+            // in case of readiness of the wayland socket we do the following in a loop, until nothing
+            // more can be read:
+            loop {
+                // 1. read events from the socket if any are available
+                if let Some(guard) = queue.prepare_read() {
+                    // might be None if some other thread read events before us, concurently
+                    if let Err(e) = guard.read_events() {
+                        if e.kind() != io::ErrorKind::WouldBlock {
+                            return Err(e);
+                        }
+                    }
+                }
+                // 2. dispatch any pending event in the queue
+                // propagate orphan events to the user
+                let ret = callback((), queue);
+                match ret {
+                    Ok(0) => {
+                        // no events were dispatched even after reading the socket,
+                        // nothing more to do, stop here
+                        break;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        // in case of error, forward it and fast-exit
                         return Err(e);
                     }
                 }
             }
-            // 2. dispatch any pending event in the queue
-            // propagate orphan events to the user
-            let ret = callback((), &mut self.queue);
-            match ret {
-                Ok(0) => {
-                    // no events were dispatched even after reading the socket,
-                    // nothing more to do, stop here
-                    break;
-                }
-                Ok(_) => {}
-                Err(e) => {
+            // 3. Once dispatching is finished, flush the responses to the compositor
+            if let Err(e) = queue.display().flush() {
+                if e.kind() != io::ErrorKind::WouldBlock {
                     // in case of error, forward it and fast-exit
                     return Err(e);
                 }
+                // WouldBlock error means the compositor could not process all our messages
+                // quickly. Either it is slowed down or we are a spammer.
+                // Should not really happen, if it does we do nothing and will flush again later
             }
-        }
-        // 3. Once dispatching is finished, flush the responses to the compositor
-        if let Err(e) = self.queue.display().flush() {
-            if e.kind() != io::ErrorKind::WouldBlock {
-                // in case of error, forward it and fast-exit
-                return Err(e);
-            }
-            // WouldBlock error means the compositor could not process all our messages
-            // quickly. Either it is slowed down or we are a spammer.
-            // Should not really happen, if it does we do nothing and will flush again later
-        }
-        Ok(PostAction::Continue)
+            Ok(PostAction::Continue)
+        })
     }
 
     fn register(
