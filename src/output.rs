@@ -256,13 +256,13 @@ fn process_output_event(
     if let Event::Done = event {
         let (id, has_xdg, pending_events, mut callbacks) = match *udata {
             OutputData::Pending { id, has_xdg, events: ref mut v, callbacks: ref mut cb } => {
-                (id, has_xdg, std::mem::replace(v, vec![]), std::mem::replace(cb, vec![]))
+                (id, has_xdg, std::mem::take(v), std::mem::take(cb))
             }
             OutputData::PendingXDG { ref mut info, ref mut callbacks } => {
                 notify(&output, info, ddata.reborrow(), callbacks);
                 notify_status_listeners(&output, &info, ddata, listeners);
                 let info = info.clone();
-                let callbacks = std::mem::replace(callbacks, vec![]);
+                let callbacks = std::mem::take(callbacks);
                 *udata = OutputData::Ready { info, callbacks };
                 return;
             }
@@ -321,7 +321,7 @@ fn make_obsolete(
             return;
         }
         OutputData::Pending { id, callbacks: ref mut cb, .. } => {
-            (id, std::mem::replace(cb, vec![]))
+            (id, std::mem::take(cb))
         }
     };
     let mut info = OutputInfo::new(id);
@@ -642,7 +642,7 @@ fn process_xdg_event(
             if pending {
                 notify_status_listeners(wl_out, &info, ddata, listeners);
                 let info = info.clone();
-                let callbacks = std::mem::replace(callbacks, vec![]);
+                let callbacks = std::mem::take(callbacks);
                 *udata = OutputData::Ready { info, callbacks };
             }
         }

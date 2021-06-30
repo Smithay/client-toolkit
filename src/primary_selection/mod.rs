@@ -145,13 +145,12 @@ impl PrimarySelectionHandling for PrimarySelectionHandler {
     ///
     /// Returns `None` if no primary selection device manager was advertised.
     fn get_primary_selection_manager(&self) -> Option<PrimarySelectionDeviceManager> {
-        if let Some(zwp) = GlobalHandler::<ZwpPrimarySelectionDeviceManagerV1>::get(self) {
-            Some(PrimarySelectionDeviceManager::Zwp(zwp))
-        } else if let Some(gtk) = GlobalHandler::<GtkPrimarySelectionDeviceManager>::get(self) {
-            Some(PrimarySelectionDeviceManager::Gtk(gtk))
-        } else {
-            None
-        }
+        GlobalHandler::<ZwpPrimarySelectionDeviceManagerV1>::get(self)
+            .map(PrimarySelectionDeviceManager::Zwp)
+            .or_else(|| {
+                GlobalHandler::<GtkPrimarySelectionDeviceManager>::get(self)
+                    .map(PrimarySelectionDeviceManager::Gtk)
+            })
     }
 
     /// Access the primary selection associated with a seat.
@@ -188,7 +187,7 @@ impl PrimarySelectionDeviceManagerInner {
     fn init_selection_manager(&mut self, manager: PrimarySelectionDeviceManager) {
         let seats =
             if let PrimarySelectionDeviceManagerInitState::Pending { seats } = &mut self.state {
-                std::mem::replace(seats, Vec::new())
+                std::mem::take(seats)
             } else {
                 log::warn!("Ignoring second primary selection manager.");
                 return;
