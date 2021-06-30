@@ -1,9 +1,9 @@
 extern crate smithay_client_toolkit as sctk;
 
-use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Write};
 
 use sctk::{
-    data_device::{DataSourceEvent, ReadPipe},
+    data_device::DataSourceEvent,
     environment::Environment,
     primary_selection::PrimarySelectionSourceEvent,
     seat::keyboard::{map_keyboard_repeat, Event as KbEvent, KeyState, RepeatKind},

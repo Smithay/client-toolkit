@@ -22,6 +22,7 @@ pub(crate) struct KbState {
 ///
 /// All fields are optional, and the system default
 /// will be used if set to `None`.
+#[allow(clippy::upper_case_acronyms)]
 pub struct RMLVO {
     /// The rules file to use
     pub rules: Option<String>,

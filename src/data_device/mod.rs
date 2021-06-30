@@ -35,7 +35,7 @@ enum DDInner {
 impl DDInner {
     fn init_dd_mgr(&mut self, mgr: Attached<wl_data_device_manager::WlDataDeviceManager>) {
         let seats = if let DDInner::Pending { seats } = self {
-            ::std::mem::replace(seats, Vec::new())
+            ::std::mem::take(seats)
         } else {
             log::warn!("Ignoring second wl_data_device_manager.");
             return;

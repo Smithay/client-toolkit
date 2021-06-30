@@ -24,6 +24,7 @@ use std::{
     rc::Rc,
 };
 
+use calloop::{PostAction, TokenFactory};
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
@@ -563,7 +564,7 @@ impl calloop::EventSource for RepeatSource {
         readiness: calloop::Readiness,
         token: calloop::Token,
         mut callback: F,
-    ) -> std::io::Result<()>
+    ) -> std::io::Result<PostAction>
     where
         F: FnMut(Event<'static>, &mut wl_keyboard::WlKeyboard),
     {
@@ -594,16 +595,20 @@ impl calloop::EventSource for RepeatSource {
         })
     }
 
-    fn register(&mut self, poll: &mut calloop::Poll, token: calloop::Token) -> std::io::Result<()> {
-        self.timer.register(poll, token)
+    fn register(
+        &mut self,
+        poll: &mut calloop::Poll,
+        token_factory: &mut TokenFactory,
+    ) -> std::io::Result<()> {
+        self.timer.register(poll, token_factory)
     }
 
     fn reregister(
         &mut self,
         poll: &mut calloop::Poll,
-        token: calloop::Token,
+        token_factory: &mut TokenFactory,
     ) -> std::io::Result<()> {
-        self.timer.reregister(poll, token)
+        self.timer.reregister(poll, token_factory)
     }
 
     fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {

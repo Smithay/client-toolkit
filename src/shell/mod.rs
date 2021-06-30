@@ -327,15 +327,10 @@ impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
 
 impl ShellHandling for ShellHandler {
     fn get_shell(&self) -> Option<Shell> {
-        if let Some(xdg) = GlobalHandler::<xdg_wm_base::XdgWmBase>::get(self) {
-            Some(Shell::Xdg(xdg))
-        } else if let Some(zxdg) = GlobalHandler::<zxdg_shell_v6::ZxdgShellV6>::get(self) {
-            Some(Shell::Zxdg(zxdg))
-        } else if let Some(wl) = GlobalHandler::<wl_shell::WlShell>::get(self) {
-            Some(Shell::Wl(wl))
-        } else {
-            None
-        }
+        GlobalHandler::<xdg_wm_base::XdgWmBase>::get(self)
+            .map(Shell::Xdg)
+            .or_else(|| GlobalHandler::<zxdg_shell_v6::ZxdgShellV6>::get(self).map(Shell::Zxdg))
+            .or_else(|| GlobalHandler::<wl_shell::WlShell>::get(self).map(Shell::Wl))
     }
 }
 
