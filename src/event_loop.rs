@@ -2,7 +2,8 @@ use std::io;
 
 use calloop::{
     generic::{Fd, Generic},
-    EventSource, InsertError, Interest, LoopHandle, Mode, RegistrationToken,
+    EventSource, InsertError, Interest, LoopHandle, Mode, PostAction, RegistrationToken,
+    TokenFactory,
 };
 
 use wayland_client::EventQueue;
@@ -69,7 +70,7 @@ impl EventSource for WaylandSource {
         _: calloop::Readiness,
         _: calloop::Token,
         mut callback: F,
-    ) -> std::io::Result<()>
+    ) -> std::io::Result<PostAction>
     where
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {
@@ -111,19 +112,23 @@ impl EventSource for WaylandSource {
             // quickly. Either it is slowed down or we are a spammer.
             // Should not really happen, if it does we do nothing and will flush again later
         }
-        Ok(())
+        Ok(PostAction::Continue)
     }
 
-    fn register(&mut self, poll: &mut calloop::Poll, token: calloop::Token) -> std::io::Result<()> {
-        self.fd.register(poll, token)
+    fn register(
+        &mut self,
+        poll: &mut calloop::Poll,
+        token_factory: &mut TokenFactory,
+    ) -> std::io::Result<()> {
+        self.fd.register(poll, token_factory)
     }
 
     fn reregister(
         &mut self,
         poll: &mut calloop::Poll,
-        token: calloop::Token,
+        token_factory: &mut TokenFactory,
     ) -> std::io::Result<()> {
-        self.fd.reregister(poll, token)
+        self.fd.reregister(poll, token_factory)
     }
 
     fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
