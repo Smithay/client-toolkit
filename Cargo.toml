@@ -16,7 +16,7 @@ bitflags = "1.0"
 nix = "0.20"
 dlib = "0.5"
 lazy_static = "1.0"
-memmap2 = "0.2.0"
+memmap2 = "0.3.0"
 log = "0.4"
 wayland-client = "0.28"
 wayland-protocols = { version = "0.28" , features = ["client", "unstable_protocols"] }
