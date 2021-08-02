@@ -4,7 +4,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use calloop::{PostAction, TokenFactory};
 use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
 use wayland_client::Main;
@@ -216,20 +215,20 @@ impl calloop::EventSource for ReadPipe {
         readiness: calloop::Readiness,
         token: calloop::Token,
         mut callback: F,
-    ) -> std::io::Result<PostAction>
+    ) -> std::io::Result<calloop::PostAction>
     where
         F: FnMut((), &mut fs::File),
     {
         self.file.process_events(readiness, token, |_, file| {
             callback((), file);
-            Ok(PostAction::Continue)
+            Ok(calloop::PostAction::Continue)
         })
     }
 
     fn register(
         &mut self,
         poll: &mut calloop::Poll,
-        token_factory: &mut TokenFactory,
+        token_factory: &mut calloop::TokenFactory,
     ) -> std::io::Result<()> {
         self.file.register(poll, token_factory)
     }
@@ -237,7 +236,7 @@ impl calloop::EventSource for ReadPipe {
     fn reregister(
         &mut self,
         poll: &mut calloop::Poll,
-        token_factory: &mut TokenFactory,
+        token_factory: &mut calloop::TokenFactory,
     ) -> std::io::Result<()> {
         self.file.reregister(poll, token_factory)
     }
