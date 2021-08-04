@@ -1,7 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../smithay_client_toolkit/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
-                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../smithay_client_toolkit/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -412,7 +411,7 @@
 <span id="409">409</span>
 <span id="410">410</span>
 <span id="411">411</span>
-</pre><div class="example-wrap"><pre class="rust ">
+</pre><pre class="rust">
 <span class="doccomment">//! Smithay Client Toolkit</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Provides various utilities and abstractions for comunicating with various</span>
@@ -439,7 +438,7 @@
 <span class="doccomment">//! a calloop event loop. And some of the modules of SCTK will provide you with other event sources</span>
 <span class="doccomment">//! that you need to insert into calloop for them to work correctly.</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">new_without_default</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">dlib</span>;
@@ -467,7 +466,7 @@
 <span class="kw">mod</span> <span class="ident">surface</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">event_loop</span>::<span class="ident">WaylandSource</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">event_loop::WaylandSource</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">surface</span>::{<span class="ident">get_surface_outputs</span>, <span class="ident">get_surface_scale_factor</span>};
 
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
@@ -523,29 +522,29 @@
 <span class="doccomment">///     ]</span>
 <span class="doccomment">/// );</span>
 <span class="doccomment">/// ```</span>
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">default_environment</span> {
+<span class="macro">macro_rules!</span> <span class="ident">default_environment</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>:<span class="ident">ident</span>, <span class="ident">desktop</span>
         $(,<span class="ident">fields</span> <span class="op">=</span> [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span>:<span class="ident">ident</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fty</span>:<span class="ident">ty</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>])<span class="question-mark">?</span>
         $(,<span class="ident">singles</span> <span class="op">=</span> [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">sty</span>:<span class="ident">ty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">sname</span>: <span class="ident">ident</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>])<span class="question-mark">?</span>
         $(,<span class="ident">multis</span> <span class="op">=</span> [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">mty</span>:<span class="ident">ty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">mname</span>:<span class="ident">ident</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>])<span class="question-mark">?</span>
         $(,)<span class="question-mark">?</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {
-        <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro">default_environment</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
+        <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro">::default_environment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
             <span class="ident">fields</span><span class="op">=</span>[
                 <span class="comment">// shell</span>
-                <span class="ident">sctk_shell</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shell</span>::<span class="ident">ShellHandler</span>,
+                <span class="ident">sctk_shell</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shell::ShellHandler</span>,
                 <span class="comment">// decoration</span>
-                <span class="ident">sctk_decoration_mgr</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">protocols</span>::<span class="ident">unstable</span>::<span class="ident">xdg_decoration</span>::<span class="ident">v1</span>::<span class="ident">client</span>::<span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span><span class="op">&gt;</span>,
+                <span class="ident">sctk_decoration_mgr</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span><span class="op">&gt;</span>,
                 <span class="comment">// others</span>
                 $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fty</span>,)<span class="kw-2">*</span>)<span class="question-mark">?</span>
             ],
             <span class="ident">singles</span> <span class="op">=</span> [
                 <span class="comment">// shell globals</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_shell</span>::<span class="ident">WlShell</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shell</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">protocols</span>::<span class="ident">xdg_shell</span>::<span class="ident">client</span>::<span class="ident">xdg_wm_base</span>::<span class="ident">XdgWmBase</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shell</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">protocols</span>::<span class="ident">unstable</span>::<span class="ident">xdg_shell</span>::<span class="ident">v6</span>::<span class="ident">client</span>::<span class="ident">zxdg_shell_v6</span>::<span class="ident">ZxdgShellV6</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shell</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_shell::WlShell</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shell</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shell</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::protocols::unstable::xdg_shell::v6::client::zxdg_shell_v6::ZxdgShellV6</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shell</span>,
                 <span class="comment">// decoration</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">protocols</span>::<span class="ident">unstable</span>::<span class="ident">xdg_decoration</span>::<span class="ident">v1</span>::<span class="ident">client</span>::<span class="ident">zxdg_decoration_manager_v1</span>::<span class="ident">ZxdgDecorationManagerV1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_decoration_mgr</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_decoration_mgr</span>,
                 <span class="comment">// others</span>
                 $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">sty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">sname</span>,)<span class="kw-2">*</span>)<span class="question-mark">?</span>
             ],
@@ -553,8 +552,8 @@
         );
 
         <span class="comment">// Shell utility</span>
-        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shell</span>::<span class="ident">ShellHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-            <span class="kw">fn</span> <span class="ident">get_shell</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shell</span>::<span class="ident">Shell</span><span class="op">&gt;</span> {
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shell::ShellHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+            <span class="kw">fn</span> <span class="ident">get_shell</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shell::Shell</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">sctk_shell</span>.<span class="ident">get_shell</span>()
             }
         }
@@ -570,18 +569,18 @@
          */</span>
         <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
             <span class="comment">// SimpleGlobals</span>
-            <span class="ident">sctk_compositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span><span class="op">&gt;</span>,
-            <span class="ident">sctk_subcompositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_subcompositor</span>::<span class="ident">WlSubcompositor</span><span class="op">&gt;</span>,
+            <span class="ident">sctk_compositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_compositor::WlCompositor</span><span class="op">&gt;</span>,
+            <span class="ident">sctk_subcompositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_subcompositor::WlSubcompositor</span><span class="op">&gt;</span>,
             <span class="comment">// shm</span>
-            <span class="ident">sctk_shm</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shm</span>::<span class="ident">ShmHandler</span>,
+            <span class="ident">sctk_shm</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shm::ShmHandler</span>,
             <span class="comment">// output</span>
-            <span class="ident">sctk_outputs</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">output</span>::<span class="ident">OutputHandler</span>,
+            <span class="ident">sctk_outputs</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::output::OutputHandler</span>,
             <span class="comment">// seat</span>
-            <span class="ident">sctk_seats</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">seat</span>::<span class="ident">SeatHandler</span>,
+            <span class="ident">sctk_seats</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::seat::SeatHandler</span>,
             <span class="comment">// data device</span>
-            <span class="ident">sctk_data_device_manager</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">data_device</span>::<span class="ident">DataDeviceHandler</span>,
+            <span class="ident">sctk_data_device_manager</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::data_device::DataDeviceHandler</span>,
             <span class="comment">// primary selection</span>
-            <span class="ident">sctk_primary_selection_manager</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">primary_selection</span>::<span class="ident">PrimarySelectionHandler</span>,
+            <span class="ident">sctk_primary_selection_manager</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::primary_selection::PrimarySelectionHandler</span>,
             <span class="comment">// user added</span>
             $($(
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fty</span>,
@@ -589,19 +588,19 @@
         }
 
         <span class="comment">// SHM utility</span>
-        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shm</span>::<span class="ident">ShmHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-            <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_shm</span>::<span class="ident">Format</span><span class="op">&gt;</span> {
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shm::ShmHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+            <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_shm::Format</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">sctk_shm</span>.<span class="ident">shm_formats</span>()
             }
         }
 
         <span class="comment">// Seat utility</span>
-        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">seat</span>::<span class="ident">SeatHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-            <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">seat</span>::<span class="ident">SeatListener</span>
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::seat::SeatHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+            <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::seat::SeatListener</span>
             <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnMut</span>(
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">Attached</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span><span class="op">&gt;</span>,
-                <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">seat</span>::<span class="ident">SeatData</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">DispatchData</span>
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::Attached</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_seat::WlSeat</span><span class="op">&gt;</span>,
+                <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::seat::SeatData</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::DispatchData</span>
             ) <span class="op">+</span> <span class="lifetime">&#39;static</span>
             {
                 <span class="self">self</span>.<span class="ident">sctk_seats</span>.<span class="ident">listen</span>(<span class="ident">f</span>)
@@ -609,12 +608,12 @@
         }
 
         <span class="comment">// Output utility</span>
-        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">output</span>::<span class="ident">OutputHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-            <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">output</span>::<span class="ident">OutputStatusListener</span>
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::output::OutputHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+            <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::output::OutputStatusListener</span>
             <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnMut</span>(
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_output</span>::<span class="ident">WlOutput</span>,
-                <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">output</span>::<span class="ident">OutputInfo</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">DispatchData</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_output::WlOutput</span>,
+                <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::output::OutputInfo</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::DispatchData</span>,
             ) <span class="op">+</span> <span class="lifetime">&#39;static</span>
             {
                 <span class="self">self</span>.<span class="ident">sctk_outputs</span>.<span class="ident">listen</span>(<span class="ident">f</span>)
@@ -622,39 +621,39 @@
         }
 
         <span class="comment">// Data device utility</span>
-        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">data_device</span>::<span class="ident">DataDeviceHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-            <span class="kw">fn</span> <span class="ident">set_callback</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">callback</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">MissingGlobal</span><span class="op">&gt;</span>
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::data_device::DataDeviceHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+            <span class="kw">fn</span> <span class="ident">set_callback</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">callback</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::MissingGlobal</span><span class="op">&gt;</span>
             <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnMut</span>(
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">data_device</span>::<span class="ident">DndEvent</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">DispatchData</span>
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_seat::WlSeat</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::data_device::DndEvent</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::DispatchData</span>
             ) <span class="op">+</span> <span class="lifetime">&#39;static</span>
             {
                 <span class="self">self</span>.<span class="ident">sctk_data_device_manager</span>.<span class="ident">set_callback</span>(<span class="ident">callback</span>)
             }
 
-            <span class="kw">fn</span> <span class="ident">with_device</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">data_device</span>::<span class="ident">DataDevice</span>)<span class="op">&gt;</span>(
+            <span class="kw">fn</span> <span class="ident">with_device</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::data_device::DataDevice</span>)<span class="op">&gt;</span>(
                 <span class="kw-2">&amp;</span><span class="self">self</span>,
-                <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>,
+                <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_seat::WlSeat</span>,
                 <span class="ident">f</span>: <span class="ident">F</span>
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">MissingGlobal</span><span class="op">&gt;</span> {
+            ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::MissingGlobal</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">sctk_data_device_manager</span>.<span class="ident">with_device</span>(<span class="ident">seat</span>, <span class="ident">f</span>)
             }
         }
 
         <span class="comment">// Primary selection utility</span>
-        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">primary_selection</span>::<span class="ident">PrimarySelectionHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::primary_selection::PrimarySelectionHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
             <span class="kw">fn</span> <span class="ident">with_primary_selection</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
                 <span class="kw-2">&amp;</span><span class="self">self</span>,
-                <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>,
+                <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_seat::WlSeat</span>,
                 <span class="ident">f</span>: <span class="ident">F</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">MissingGlobal</span><span class="op">&gt;</span>
-            <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">primary_selection</span>::<span class="ident">PrimarySelectionDevice</span>)
+            ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::MissingGlobal</span><span class="op">&gt;</span>
+            <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::primary_selection::PrimarySelectionDevice</span>)
             {
                 <span class="self">self</span>.<span class="ident">sctk_primary_selection_manager</span>.<span class="ident">with_primary_selection</span>(<span class="ident">seat</span>, <span class="ident">f</span>)
             }
 
-            <span class="kw">fn</span> <span class="ident">get_primary_selection_manager</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">primary_selection</span>::<span class="ident">PrimarySelectionDeviceManager</span><span class="op">&gt;</span> {
+            <span class="kw">fn</span> <span class="ident">get_primary_selection_manager</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::primary_selection::PrimarySelectionDeviceManager</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">sctk_primary_selection_manager</span>.<span class="ident">get_primary_selection_manager</span>()
             }
         }
@@ -662,26 +661,26 @@
         <span class="comment">//</span>
         <span class="comment">// Final macro delegation</span>
         <span class="comment">//</span>
-        <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro">environment</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
+        <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro">::environment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
             <span class="ident">singles</span> <span class="op">=</span> [
                 <span class="comment">// SimpleGlobals</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_compositor</span>::<span class="ident">WlCompositor</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_compositor</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_subcompositor</span>::<span class="ident">WlSubcompositor</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_subcompositor</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_compositor::WlCompositor</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_compositor</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_subcompositor::WlSubcompositor</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_subcompositor</span>,
                 <span class="comment">// shm</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_shm</span>::<span class="ident">WlShm</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shm</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_shm::WlShm</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_shm</span>,
                 <span class="comment">// data device</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_data_device_manager</span>::<span class="ident">WlDataDeviceManager</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_data_device_manager</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_data_device_manager</span>,
                 <span class="comment">// primary selection</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">protocols</span>::<span class="ident">unstable</span>::<span class="ident">primary_selection</span>::<span class="ident">v1</span>::<span class="ident">client</span>::<span class="ident">zwp_primary_selection_device_manager_v1</span>::<span class="ident">ZwpPrimarySelectionDeviceManagerV1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_primary_selection_manager</span>,
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">protocols</span>::<span class="ident">misc</span>::<span class="ident">gtk_primary_selection</span>::<span class="ident">client</span>::<span class="ident">gtk_primary_selection_device_manager</span>::<span class="ident">GtkPrimarySelectionDeviceManager</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_primary_selection_manager</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::protocols::unstable::primary_selection::v1::client::zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_primary_selection_manager</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::protocols::misc::gtk_primary_selection::client::gtk_primary_selection_device_manager::GtkPrimarySelectionDeviceManager</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_primary_selection_manager</span>,
                 <span class="comment">// user added</span>
                 $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">sty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">sname</span>),<span class="kw-2">*</span>)<span class="question-mark">?</span>
             ],
             <span class="ident">multis</span> <span class="op">=</span> [
                 <span class="comment">// output globals</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_output</span>::<span class="ident">WlOutput</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_outputs</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_output::WlOutput</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_outputs</span>,
                 <span class="comment">// seat globals</span>
-                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">protocol</span>::<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_seats</span>,
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::protocol::wl_seat::WlSeat</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sctk_seats</span>,
                 <span class="comment">// user added</span>
                 $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">mty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">mname</span>),<span class="kw-2">*</span>)<span class="question-mark">?</span>
             ]
@@ -737,17 +736,17 @@
 <span class="doccomment">///     ]</span>
 <span class="doccomment">/// ).expect(&quot;Initial roundtrips failed!&quot;);</span>
 <span class="doccomment">/// ```</span>
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">new_default_environment</span> {
+<span class="macro">macro_rules!</span> <span class="ident">new_default_environment</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>:<span class="ident">ident</span>, <span class="ident">desktop</span>
         $(, <span class="ident">with</span><span class="op">=</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">display</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">queue</span>:<span class="ident">expr</span>))<span class="question-mark">?</span>
         $(,<span class="ident">fields</span> <span class="op">=</span> [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span>:<span class="ident">ident</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fval</span>:<span class="ident">expr</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>])<span class="question-mark">?</span>
         $(,)<span class="question-mark">?</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {
-        <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro">new_default_environment</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
+        <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro">::new_default_environment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
             $(<span class="ident">with</span><span class="op">=</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">display</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">queue</span>),)<span class="question-mark">?</span>
             <span class="ident">fields</span> <span class="op">=</span> [
-                <span class="ident">sctk_shell</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shell</span>::<span class="ident">ShellHandler</span>::<span class="ident">new</span>(),
-                <span class="ident">sctk_decoration_mgr</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">SimpleGlobal</span>::<span class="ident">new</span>(),
+                <span class="ident">sctk_shell</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shell::ShellHandler::new</span>(),
+                <span class="ident">sctk_decoration_mgr</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::SimpleGlobal::new</span>(),
                 $($(
                     <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fval</span>,
                 )<span class="kw-2">*</span>)<span class="question-mark">?</span>
@@ -759,16 +758,16 @@
         $(,)<span class="question-mark">?</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {
         {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sctk_seats</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">seat</span>::<span class="ident">SeatHandler</span>::<span class="ident">new</span>();
-            <span class="kw">let</span> <span class="ident">sctk_data_device_manager</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">data_device</span>::<span class="ident">DataDeviceHandler</span>::<span class="ident">init</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sctk_seats</span>);
-            <span class="kw">let</span> <span class="ident">sctk_primary_selection_manager</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">primary_selection</span>::<span class="ident">PrimarySelectionHandler</span>::<span class="ident">init</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sctk_seats</span>);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sctk_seats</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::seat::SeatHandler::new</span>();
+            <span class="kw">let</span> <span class="ident">sctk_data_device_manager</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::data_device::DataDeviceHandler::init</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sctk_seats</span>);
+            <span class="kw">let</span> <span class="ident">sctk_primary_selection_manager</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::primary_selection::PrimarySelectionHandler::init</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sctk_seats</span>);
 
-            <span class="kw">let</span> <span class="ident">display</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">Proxy</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">display</span>);
-            <span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">Environment</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">display</span>.<span class="ident">attach</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">queue</span>.<span class="ident">token</span>()), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">queue</span>,<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-                <span class="ident">sctk_compositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">SimpleGlobal</span>::<span class="ident">new</span>(),
-                <span class="ident">sctk_subcompositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">environment</span>::<span class="ident">SimpleGlobal</span>::<span class="ident">new</span>(),
-                <span class="ident">sctk_shm</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">shm</span>::<span class="ident">ShmHandler</span>::<span class="ident">new</span>(),
-                <span class="ident">sctk_outputs</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">output</span>::<span class="ident">OutputHandler</span>::<span class="ident">new</span>(),
+            <span class="kw">let</span> <span class="ident">display</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::Proxy::clone</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">display</span>);
+            <span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::Environment::new</span>(<span class="kw-2">&amp;</span><span class="ident">display</span>.<span class="ident">attach</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">queue</span>.<span class="ident">token</span>()), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">queue</span>,<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
+                <span class="ident">sctk_compositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::SimpleGlobal::new</span>(),
+                <span class="ident">sctk_subcompositor</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::environment::SimpleGlobal::new</span>(),
+                <span class="ident">sctk_shm</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::shm::ShmHandler::new</span>(),
+                <span class="ident">sctk_outputs</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::output::OutputHandler::new</span>(),
                 <span class="ident">sctk_seats</span>,
                 <span class="ident">sctk_data_device_manager</span>,
                 <span class="ident">sctk_primary_selection_manager</span>,
@@ -789,9 +788,9 @@
         $(,<span class="ident">fields</span> <span class="op">=</span> [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span>:<span class="ident">ident</span> : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fval</span>:<span class="ident">expr</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>])<span class="question-mark">?</span>
         $(,)<span class="question-mark">?</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {
-        <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">Display</span>::<span class="ident">connect_to_env</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">display</span><span class="op">|</span> {
+        <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::Display::connect_to_env</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">display</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">queue</span> <span class="op">=</span> <span class="ident">display</span>.<span class="ident">create_event_queue</span>();
-            <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro">new_default_environment</span><span class="macro">!</span>(
+            <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro">::new_default_environment!</span>(
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span>,
                 <span class="ident">with</span><span class="op">=</span>(<span class="ident">display</span>, <span class="ident">queue</span>),
                 <span class="ident">fields</span><span class="op">=</span>[$($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fname</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fval</span>),<span class="kw-2">*</span>)<span class="question-mark">?</span>],
@@ -800,12 +799,12 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">env</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">env</span>, <span class="ident">display</span>, <span class="ident">queue</span>)),
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">perr</span>) <span class="op">=</span> <span class="ident">display</span>.<span class="ident">protocol_error</span>() {
-                        <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;[SCTK] A protocol error occured during initial setup: {}&quot;</span>, <span class="ident">perr</span>);
+                        <span class="macro">panic!</span>(<span class="string">&quot;[SCTK] A protocol error occured during initial setup: {}&quot;</span>, <span class="ident">perr</span>);
                     } <span class="kw">else</span> {
                         <span class="comment">// For some other reason the connection with the compositor was lost</span>
                         <span class="comment">// This should not arrive unless maybe the compositor was shutdown during</span>
                         <span class="comment">// the initial setup...</span>
-                        <span class="prelude-val">Err</span>(<span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">reexports</span>::<span class="ident">client</span>::<span class="ident">ConnectError</span>::<span class="ident">NoCompositorListening</span>)
+                        <span class="prelude-val">Err</span>(<span class="macro-nonterminal">$</span><span class="kw">crate</span><span class="macro-nonterminal">::reexports::client::ConnectError::NoCompositorListening</span>)
                     }
                 }
             }
@@ -817,13 +816,12 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MissingGlobal</span>;
 
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">error</span>::<span class="ident">Error</span> <span class="kw">for</span> <span class="ident">MissingGlobal</span> {}
+<span class="kw">impl</span> <span class="ident">std::error::Error</span> <span class="kw">for</span> <span class="ident">MissingGlobal</span> {}
 
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">MissingGlobal</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">MissingGlobal</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="string">&quot;missing global&quot;</span>)
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-search-js="../../search-index.js"></div>
-    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

@@ -1,7 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/primary_selection/device.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>device.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../smithay_client_toolkit/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
-                <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../smithay_client_toolkit/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -164,26 +163,26 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
-</pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
+</pre><pre class="rust">
+<span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
 
 <span class="kw">use</span> <span class="ident">wayland_protocols</span>::{
-    <span class="ident">misc</span>::<span class="ident">gtk_primary_selection</span>::<span class="ident">client</span>::<span class="ident">gtk_primary_selection_device</span>::{
+    <span class="ident">misc::gtk_primary_selection::client::gtk_primary_selection_device</span>::{
         <span class="self">self</span>, <span class="ident">GtkPrimarySelectionDevice</span>,
     },
-    <span class="ident">unstable</span>::<span class="ident">primary_selection</span>::<span class="ident">v1</span>::<span class="ident">client</span>::<span class="ident">zwp_primary_selection_device_v1</span>::{
+    <span class="ident">unstable::primary_selection::v1::client::zwp_primary_selection_device_v1</span>::{
         <span class="self">self</span>, <span class="ident">ZwpPrimarySelectionDeviceV1</span>,
     },
 };
 
-<span class="kw">use</span> <span class="ident">wayland_client</span>::<span class="ident">protocol</span>::<span class="ident">wl_seat</span>::<span class="ident">WlSeat</span>;
+<span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_seat::WlSeat</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">primary_selection</span>::<span class="ident">offer</span>::<span class="ident">PrimarySelectionOfferImpl</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">primary_selection</span>::<span class="ident">source</span>::<span class="ident">PrimarySelectionSourceImpl</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::primary_selection::offer::PrimarySelectionOfferImpl</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::primary_selection::source::PrimarySelectionSourceImpl</span>;
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">PrimarySelectionDeviceManager</span>;
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">PrimarySelectionOffer</span>;
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">PrimarySelectionSource</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::PrimarySelectionDeviceManager</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::PrimarySelectionOffer</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::PrimarySelectionSource</span>;
 
 <span class="doccomment">/// Handle to support primary selection on a given seat.</span>
 <span class="doccomment">///</span>
@@ -226,7 +225,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">know_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">=</span><span class="op">=</span> <span class="ident">offer</span>) {
             <span class="self">self</span>.<span class="ident">selection</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">know_offers</span>.<span class="ident">swap_remove</span>(<span class="ident">id</span>));
         } <span class="kw">else</span> {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Compositor set an unknown primary offer for a primary selection.&quot;</span>)
+            <span class="macro">panic!</span>(<span class="string">&quot;Compositor set an unknown primary offer for a primary selection.&quot;</span>)
         }
     }
 }
@@ -234,8 +233,8 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">PrimarySelectionDevice</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">device</span> {
-            <span class="ident">PrimarySelectionDeviceImpl</span>::<span class="ident">Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">device</span>.<span class="ident">destroy</span>(),
-            <span class="ident">PrimarySelectionDeviceImpl</span>::<span class="ident">Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">device</span>.<span class="ident">destroy</span>(),
+            <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">device</span>.<span class="ident">destroy</span>(),
+            <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">device</span>.<span class="ident">destroy</span>(),
         }
     }
 }
@@ -243,54 +242,54 @@
 <span class="kw">impl</span> <span class="ident">PrimarySelectionDevice</span> {
     <span class="doccomment">/// Create the `PrimarySelectionDevice` helper for this seat.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_for_seat</span>(<span class="ident">manager</span>: <span class="kw-2">&amp;</span><span class="ident">PrimarySelectionDeviceManager</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">WlSeat</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">PrimarySelectionDeviceInner</span> {
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">PrimarySelectionDeviceInner</span> {
             <span class="ident">selection</span>: <span class="prelude-val">None</span>,
-            <span class="ident">know_offers</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+            <span class="ident">know_offers</span>: <span class="ident">Vec::new</span>(),
         }));
 
         <span class="kw">let</span> <span class="ident">inner2</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">clone</span>();
 
         <span class="kw">let</span> <span class="ident">device</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">manager</span> {
-            <span class="ident">PrimarySelectionDeviceManager</span>::<span class="ident">Zwp</span>(<span class="ident">zwp_manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceManager::Zwp</span>(<span class="ident">zwp_manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">device</span> <span class="op">=</span> <span class="ident">zwp_manager</span>.<span class="ident">get_device</span>(<span class="ident">seat</span>);
 
                 <span class="ident">device</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner2</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
 
-                    <span class="kw">use</span> <span class="ident">zwp_primary_selection_device_v1</span>::<span class="ident">Event</span>;
+                    <span class="kw">use</span> <span class="ident">zwp_primary_selection_device_v1::Event</span>;
                     <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">Event</span>::<span class="ident">DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer</span>::<span class="ident">from_zwp</span>(<span class="ident">offer</span>))
+                        <span class="ident">Event::DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer::from_zwp</span>(<span class="ident">offer</span>))
                         }
-                        <span class="ident">Event</span>::<span class="ident">Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Zwp</span>);
+                        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl::Zwp</span>);
                             <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>);
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
                     }
                 });
 
-                <span class="ident">PrimarySelectionDeviceImpl</span>::<span class="ident">Zwp</span>(<span class="ident">device</span>.<span class="ident">detach</span>())
+                <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="ident">device</span>.<span class="ident">detach</span>())
             }
-            <span class="ident">PrimarySelectionDeviceManager</span>::<span class="ident">Gtk</span>(<span class="ident">gtk_manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceManager::Gtk</span>(<span class="ident">gtk_manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">device</span> <span class="op">=</span> <span class="ident">gtk_manager</span>.<span class="ident">get_device</span>(<span class="ident">seat</span>);
 
                 <span class="ident">device</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner2</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
 
-                    <span class="kw">use</span> <span class="ident">gtk_primary_selection_device</span>::<span class="ident">Event</span>;
+                    <span class="kw">use</span> <span class="ident">gtk_primary_selection_device::Event</span>;
                     <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">Event</span>::<span class="ident">DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer</span>::<span class="ident">from_gtk</span>(<span class="ident">offer</span>))
+                        <span class="ident">Event::DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer::from_gtk</span>(<span class="ident">offer</span>))
                         }
-                        <span class="ident">Event</span>::<span class="ident">Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl</span>::<span class="ident">Gtk</span>);
+                        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl::Gtk</span>);
                             <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>);
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
                     }
                 });
-                <span class="ident">PrimarySelectionDeviceImpl</span>::<span class="ident">Gtk</span>(<span class="ident">device</span>.<span class="ident">detach</span>())
+                <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="ident">device</span>.<span class="ident">detach</span>())
             }
         };
 
@@ -303,19 +302,19 @@
     <span class="doccomment">/// the selection.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_selection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrimarySelectionSource</span><span class="op">&gt;</span>, <span class="ident">serial</span>: <span class="ident">u32</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">device</span> {
-            <span class="ident">PrimarySelectionDeviceImpl</span>::<span class="ident">Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">source</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">source</span>.<span class="ident">source</span> {
-                    <span class="ident">PrimarySelectionSourceImpl</span>::<span class="ident">Zwp</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">source</span>,
+                    <span class="ident">PrimarySelectionSourceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">source</span>,
                     <span class="comment">// We can&#39;t reach `Gtk` source in `Zwp`.</span>
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
                 });
                 <span class="ident">device</span>.<span class="ident">set_selection</span>(<span class="ident">source</span>, <span class="ident">serial</span>);
             }
-            <span class="ident">PrimarySelectionDeviceImpl</span>::<span class="ident">Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">source</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">source</span>.<span class="ident">source</span> {
-                    <span class="ident">PrimarySelectionSourceImpl</span>::<span class="ident">Gtk</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">source</span>,
+                    <span class="ident">PrimarySelectionSourceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">source</span>,
                     <span class="comment">// We can&#39;t reach `Zwp` source in `Gtk`.</span>
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
                 });
                 <span class="ident">device</span>.<span class="ident">set_selection</span>(<span class="ident">source</span>, <span class="ident">serial</span>);
             }
@@ -329,5 +328,4 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-search-js="../../../search-index.js"></div>
-    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>
