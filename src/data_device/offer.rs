@@ -215,26 +215,30 @@ impl calloop::EventSource for ReadPipe {
         readiness: calloop::Readiness,
         token: calloop::Token,
         mut callback: F,
-    ) -> std::io::Result<()>
+    ) -> std::io::Result<calloop::PostAction>
     where
         F: FnMut((), &mut fs::File),
     {
         self.file.process_events(readiness, token, |_, file| {
             callback((), file);
-            Ok(())
+            Ok(calloop::PostAction::Continue)
         })
     }
 
-    fn register(&mut self, poll: &mut calloop::Poll, token: calloop::Token) -> std::io::Result<()> {
-        self.file.register(poll, token)
+    fn register(
+        &mut self,
+        poll: &mut calloop::Poll,
+        token_factory: &mut calloop::TokenFactory,
+    ) -> std::io::Result<()> {
+        self.file.register(poll, token_factory)
     }
 
     fn reregister(
         &mut self,
         poll: &mut calloop::Poll,
-        token: calloop::Token,
+        token_factory: &mut calloop::TokenFactory,
     ) -> std::io::Result<()> {
-        self.file.reregister(poll, token)
+        self.file.reregister(poll, token_factory)
     }
 
     fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
