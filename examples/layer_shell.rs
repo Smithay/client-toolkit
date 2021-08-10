@@ -50,7 +50,7 @@ impl Surface {
     ) -> Self {
         let layer_surface = layer_shell.get_layer_surface(
             &surface,
-            Some(&output),
+            Some(output),
             zwlr_layer_shell_v1::Layer::Overlay,
             "example".to_owned(),
         );

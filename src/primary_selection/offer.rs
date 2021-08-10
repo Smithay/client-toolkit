@@ -12,7 +12,7 @@ use wayland_protocols::{
     },
 };
 
-use crate::data_device::{no_nix_err, ReadPipe};
+use crate::data_device::ReadPipe;
 
 /// A primary selection offer for receiving data through copy/paste.
 pub struct PrimarySelectionOffer {
@@ -38,7 +38,7 @@ impl PrimarySelectionOffer {
         use nix::fcntl::OFlag;
         use nix::unistd::{close, pipe2};
         // create a pipe
-        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(no_nix_err)?;
+        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
         match &self.offer {
             PrimarySelectionOfferImpl::Zwp(offer) => {

@@ -208,7 +208,7 @@ fn process_seat_event(
 /// will be set to `true`. This handler will not automatically detroy the output by calling its
 /// `release` method, to avoid interfering with your logic.
 pub fn clone_seat_data(seat: &wl_seat::WlSeat) -> Option<SeatData> {
-    if let Some(ref udata_mutex) = seat.as_ref().user_data().get::<Mutex<SeatData>>() {
+    if let Some(udata_mutex) = seat.as_ref().user_data().get::<Mutex<SeatData>>() {
         let udata = udata_mutex.lock().unwrap();
         Some(udata.clone())
     } else {
@@ -227,7 +227,7 @@ pub fn clone_seat_data(seat: &wl_seat::WlSeat) -> Option<SeatData> {
 /// will be set to `true`. This handler will not automatically detroy the output by calling its
 /// `release` method, to avoid interfering with your logic.
 pub fn with_seat_data<T, F: FnOnce(&SeatData) -> T>(seat: &wl_seat::WlSeat, f: F) -> Option<T> {
-    if let Some(ref udata_mutex) = seat.as_ref().user_data().get::<Mutex<SeatData>>() {
+    if let Some(udata_mutex) = seat.as_ref().user_data().get::<Mutex<SeatData>>() {
         let udata = udata_mutex.lock().unwrap();
         Some(f(&*udata))
     } else {

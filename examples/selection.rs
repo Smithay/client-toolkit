@@ -49,13 +49,13 @@ fn main() {
             move |evt, mut dispatch_data| {
                 let (_, next_action, _) = dispatch_data.get::<DData>().unwrap();
                 // Keep last event in priority order : Close > Configure > Refresh
-                let replace = match (&evt, &*next_action) {
+                let replace = matches!(
+                    (&evt, &*next_action),
                     (_, &None)
-                    | (_, &Some(WEvent::Refresh))
-                    | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-                    | (&WEvent::Close, _) => true,
-                    _ => false,
-                };
+                        | (_, &Some(WEvent::Refresh))
+                        | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+                        | (&WEvent::Close, _)
+                );
                 if replace {
                     *next_action = Some(evt);
                 }
@@ -131,11 +131,9 @@ fn main() {
                     }
                 }
             }
-        } else {
-            if let Some(kbd) = opt_kbd.take() {
-                // the keyboard has been removed, cleanup
-                kbd.release();
-            }
+        } else if let Some(kbd) = opt_kbd.take() {
+            // the keyboard has been removed, cleanup
+            kbd.release();
         }
     });
 
@@ -182,146 +180,139 @@ fn process_keyboard_event(
     mut ddata: DispatchData,
 ) {
     let (env, _, opt_source) = ddata.get::<DData>().unwrap();
-    match event {
-        KbEvent::Key { state, utf8: Some(text), serial, .. } => {
-            if text == "p" && state == KeyState::Pressed {
-                // pressed the 'p' key, try to read contents !
-                env.with_data_device(seat, |device| {
-                    device.with_selection(|offer| {
-                        let offer = match offer {
-                            Some(offer) => offer,
-                            None => {
-                                println!("No current selection buffer!");
-                                return;
-                            }
-                        };
+    if let KbEvent::Key { state, utf8: Some(text), serial, .. } = event {
+        if text == "p" && state == KeyState::Pressed {
+            // pressed the 'p' key, try to read contents !
+            env.with_data_device(seat, |device| {
+                device.with_selection(|offer| {
+                    let offer = match offer {
+                        Some(offer) => offer,
+                        None => {
+                            println!("No current selection buffer!");
+                            return;
+                        }
+                    };
 
-                        let seat_name =
-                            sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
-                        print!("Current selection buffer mime types on seat '{}': [ ", seat_name);
-                        let mut has_text = false;
-                        offer.with_mime_types(|types| {
-                            for t in types {
-                                print!("\"{}\", ", t);
-                                if t == "text/plain;charset=utf-8" {
-                                    has_text = true;
-                                }
+                    let seat_name =
+                        sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
+                    print!("Current selection buffer mime types on seat '{}': [ ", seat_name);
+                    let mut has_text = false;
+                    offer.with_mime_types(|types| {
+                        for t in types {
+                            print!("\"{}\", ", t);
+                            if t == "text/plain;charset=utf-8" {
+                                has_text = true;
                             }
-                        });
-                        println!("]");
-                        if has_text {
-                            println!("Buffer contains text, going to read it...");
-                            let reader = offer.receive("text/plain;charset=utf-8".into()).unwrap();
-                            let src_handle = handle.clone();
-                            let source = handle
-                                .insert_source(reader, move |(), file, ddata| {
-                                    let mut txt = String::new();
-                                    file.read_to_string(&mut txt).unwrap();
-                                    println!("Selection contents are: \"{}\"", txt);
-                                    if let Some(src) = ddata.2.take() {
-                                        src_handle.kill(src);
-                                    }
-                                })
-                                .unwrap();
-                            *opt_source = Some(source);
                         }
                     });
-                })
-                .unwrap();
-            }
-
-            if text == "P" && state == KeyState::Pressed {
-                env.with_primary_selection(seat, |primary_selection| {
-                    println!("In primary selection closure");
-                    primary_selection.with_selection(|offer| {
-                        let offer = match offer {
-                            Some(offer) => offer,
-                            None => {
-                                println!("No current primary selection buffer!");
-                                return;
-                            }
-                        };
-
-                        let seat_name =
-                            sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
-                        print!(
-                            "Current primary selection buffer mime type on seat '{}': [ ",
-                            seat_name
-                        );
-
-                        let mut has_text = false;
-                        offer.with_mime_types(|types| {
-                            for t in types {
-                                print!("\"{}\", ", t);
-                                if t == "text/plain;charset=utf-8" {
-                                    has_text = true;
+                    println!("]");
+                    if has_text {
+                        println!("Buffer contains text, going to read it...");
+                        let reader = offer.receive("text/plain;charset=utf-8".into()).unwrap();
+                        let src_handle = handle.clone();
+                        let source = handle
+                            .insert_source(reader, move |(), file, ddata| {
+                                let mut txt = String::new();
+                                file.read_to_string(&mut txt).unwrap();
+                                println!("Selection contents are: \"{}\"", txt);
+                                if let Some(src) = ddata.2.take() {
+                                    src_handle.kill(src);
                                 }
-                            }
-                        });
-                        println!("]");
-                        if has_text {
-                            println!("Buffer contains text, going to read it...");
-                            let reader = offer.receive("text/plain;charset=utf-8".into()).unwrap();
-                            let src_handle = handle.clone();
-                            let source = handle
-                                .insert_source(reader, move |(), file, ddata| {
-                                    let mut txt = String::new();
-                                    file.read_to_string(&mut txt).unwrap();
-                                    println!("Selection contents are: \"{}\"", txt);
-                                    if let Some(src) = ddata.2.take() {
-                                        src_handle.kill(src);
-                                    }
-                                })
-                                .unwrap();
-
-                            *opt_source = Some(source);
-                        }
-                    })
-                })
-                .unwrap()
-            }
-
-            if text == "c" && state == KeyState::Pressed {
-                let data_source = env.new_data_source(
-                    vec!["text/plain;charset=utf-8".into()],
-                    move |event, _| match event {
-                        DataSourceEvent::Send { mut pipe, .. } => {
-                            let contents = "Hello from clipboard";
-                            println!("Setting clipboard to: {}", &contents);
-                            write!(pipe, "{}", contents).unwrap();
-                        }
-                        _ => (),
-                    },
-                );
-
-                env.with_data_device(&seat, |device| {
-                    println!("Set selection source");
-                    device.set_selection(&Some(data_source), serial);
-                })
-                .unwrap();
-            }
-
-            if text == "C" && state == KeyState::Pressed {
-                let data_source = env.new_primary_selection_source(
-                    vec!["text/plain;charset=utf-8".into()],
-                    move |event, _| match event {
-                        PrimarySelectionSourceEvent::Send { mut pipe, .. } => {
-                            let contents = "Hello from primary selection";
-                            println!("Setting clipboard primary clipboard to {}", &contents);
-                            write!(pipe, "{}", contents).unwrap();
-                        }
-                        _ => (),
-                    },
-                );
-
-                env.with_primary_selection(&seat, |device| {
-                    println!("Set primary selection source");
-                    device.set_selection(&Some(data_source), serial);
-                })
-                .unwrap();
-            }
+                            })
+                            .unwrap();
+                        *opt_source = Some(source);
+                    }
+                });
+            })
+            .unwrap();
         }
-        _ => (),
+
+        if text == "P" && state == KeyState::Pressed {
+            env.with_primary_selection(seat, |primary_selection| {
+                println!("In primary selection closure");
+                primary_selection.with_selection(|offer| {
+                    let offer = match offer {
+                        Some(offer) => offer,
+                        None => {
+                            println!("No current primary selection buffer!");
+                            return;
+                        }
+                    };
+
+                    let seat_name =
+                        sctk::seat::with_seat_data(seat, |data| data.name.clone()).unwrap();
+                    print!(
+                        "Current primary selection buffer mime type on seat '{}': [ ",
+                        seat_name
+                    );
+
+                    let mut has_text = false;
+                    offer.with_mime_types(|types| {
+                        for t in types {
+                            print!("\"{}\", ", t);
+                            if t == "text/plain;charset=utf-8" {
+                                has_text = true;
+                            }
+                        }
+                    });
+                    println!("]");
+                    if has_text {
+                        println!("Buffer contains text, going to read it...");
+                        let reader = offer.receive("text/plain;charset=utf-8".into()).unwrap();
+                        let src_handle = handle.clone();
+                        let source = handle
+                            .insert_source(reader, move |(), file, ddata| {
+                                let mut txt = String::new();
+                                file.read_to_string(&mut txt).unwrap();
+                                println!("Selection contents are: \"{}\"", txt);
+                                if let Some(src) = ddata.2.take() {
+                                    src_handle.kill(src);
+                                }
+                            })
+                            .unwrap();
+
+                        *opt_source = Some(source);
+                    }
+                })
+            })
+            .unwrap()
+        }
+
+        if text == "c" && state == KeyState::Pressed {
+            let data_source =
+                env.new_data_source(vec!["text/plain;charset=utf-8".into()], move |event, _| {
+                    if let DataSourceEvent::Send { mut pipe, .. } = event {
+                        let contents = "Hello from clipboard";
+                        println!("Setting clipboard to: {}", &contents);
+                        write!(pipe, "{}", contents).unwrap();
+                    }
+                });
+
+            env.with_data_device(seat, |device| {
+                println!("Set selection source");
+                device.set_selection(&Some(data_source), serial);
+            })
+            .unwrap();
+        }
+
+        if text == "C" && state == KeyState::Pressed {
+            let data_source = env.new_primary_selection_source(
+                vec!["text/plain;charset=utf-8".into()],
+                move |event, _| {
+                    if let PrimarySelectionSourceEvent::Send { mut pipe, .. } = event {
+                        let contents = "Hello from primary selection";
+                        println!("Setting clipboard primary clipboard to {}", &contents);
+                        write!(pipe, "{}", contents).unwrap();
+                    }
+                },
+            );
+
+            env.with_primary_selection(seat, |device| {
+                println!("Set primary selection source");
+                device.set_selection(&Some(data_source), serial);
+            })
+            .unwrap();
+        }
     }
 }
 

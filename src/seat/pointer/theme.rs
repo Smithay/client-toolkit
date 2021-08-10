@@ -184,7 +184,7 @@ impl PointerInner {
         let (w, h) = image.dimensions();
         let (hx, hy) = image.hotspot();
         self.surface.set_buffer_scale(scale as i32);
-        self.surface.attach(Some(&image), 0, 0);
+        self.surface.attach(Some(image), 0, 0);
         if self.surface.as_ref().version() >= 4 {
             self.surface.damage_buffer(0, 0, w as i32, h as i32);
         } else {

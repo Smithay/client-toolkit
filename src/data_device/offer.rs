@@ -8,8 +8,6 @@ use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
 use wayland_client::Main;
 
-use super::no_nix_err;
-
 struct Inner {
     mime_types: Vec<String>,
     actions: DndAction,
@@ -95,7 +93,7 @@ impl DataOffer {
         use nix::fcntl::OFlag;
         use nix::unistd::{close, pipe2};
         // create a pipe
-        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC).map_err(no_nix_err)?;
+        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
         self.offer.receive(mime_type, writefd);
 

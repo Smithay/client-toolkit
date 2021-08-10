@@ -149,7 +149,7 @@ impl<E: InnerEnv + 'static> Environment<E> {
             inner.process_event(event, registry, ddata);
         };
 
-        let manager = GlobalManager::new_with_cb(&display, my_cb);
+        let manager = GlobalManager::new_with_cb(display, my_cb);
 
         Self { manager, inner }
     }

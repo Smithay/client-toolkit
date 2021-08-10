@@ -461,10 +461,9 @@ fn create_shm_fd() -> io::Result<RawFd> {
                 );
                 return Ok(fd);
             }
-            Err(nix::Error::Sys(Errno::EINTR)) => continue,
-            Err(nix::Error::Sys(Errno::ENOSYS)) => break,
-            Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
-            Err(err) => unreachable!(err),
+            Err(Errno::EINTR) => continue,
+            Err(Errno::ENOSYS) => break,
+            Err(errno) => return Err(errno.into()),
         }
     }
 
@@ -485,14 +484,12 @@ fn create_shm_fd() -> io::Result<RawFd> {
         ) {
             Ok(fd) => match mman::shm_unlink(mem_file_handle.as_str()) {
                 Ok(_) => return Ok(fd),
-                Err(nix::Error::Sys(errno)) => match unistd::close(fd) {
-                    Ok(_) => return Err(io::Error::from(errno)),
-                    Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
-                    Err(err) => panic!("{}", err),
+                Err(errno) => match unistd::close(fd) {
+                    Ok(_) => return Err(errno.into()),
+                    Err(errno) => return Err(errno.into()),
                 },
-                Err(err) => panic!("{}", err),
             },
-            Err(nix::Error::Sys(Errno::EEXIST)) => {
+            Err(Errno::EEXIST) => {
                 // If a file with that handle exists then change the handle
                 mem_file_handle = format!(
                     "/smithay-client-toolkit-{}",
@@ -500,9 +497,8 @@ fn create_shm_fd() -> io::Result<RawFd> {
                 );
                 continue;
             }
-            Err(nix::Error::Sys(Errno::EINTR)) => continue,
-            Err(nix::Error::Sys(errno)) => return Err(io::Error::from(errno)),
-            Err(err) => unreachable!(err),
+            Err(Errno::EINTR) => continue,
+            Err(errno) => return Err(errno.into()),
         }
     }
 }

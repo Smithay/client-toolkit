@@ -215,7 +215,7 @@ impl PrimarySelectionDeviceManagerInner {
                 }
 
                 // Initialize primary selection device for a new seat.
-                let device = PrimarySelectionDevice::init_for_seat(&manager, seat);
+                let device = PrimarySelectionDevice::init_for_seat(manager, seat);
 
                 devices.push((seat.clone(), device));
             }

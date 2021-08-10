@@ -11,7 +11,7 @@ sctk::default_environment!(ImViewerExample, desktop);
 
 fn main() {
     // First of all, retrieve the path from the program arguments:
-    let path = match env::args_os().skip(1).next() {
+    let path = match env::args_os().nth(1) {
         Some(p) => p,
         None => {
             println!("USAGE: ./image_wiewer <PATH>");
@@ -84,18 +84,17 @@ fn main() {
                 // We access the next_action Option via the dispatch_data provided by wayland-rs.
                 let next_action = dispatch_data.get::<Option<WEvent>>().unwrap();
                 // Check if we need to replace the old event by the new one
-                let replace = match (&evt, &*next_action) {
-                // replace if there is no old event
-                (_, &None)
-                // or the old event is refresh
-                | (_, &Some(WEvent::Refresh))
-                // or we had a configure and received a new one
-                | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
-                // or the new event is close
-                | (&WEvent::Close, _) => true,
-                // keep the old event otherwise
-                _ => false,
-            };
+                let replace = matches!(
+                    (&evt, &*next_action),
+                    // replace if there is no old event
+                    (_, &None)
+                    // or the old event is refresh
+                    | (_, &Some(WEvent::Refresh))
+                    // or we had a configure and received a new one
+                    | (&WEvent::Configure { .. }, &Some(WEvent::Configure { .. }))
+                    // or the new event is close
+                    | (&WEvent::Close, _)
+                );
                 if replace {
                     *next_action = Some(evt);
                 }

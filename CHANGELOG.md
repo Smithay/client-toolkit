@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Breaking Changes
+
+- Update `wayland-client` to 0.29
+
 #### Additions
 
 - `AutoMemPool` now guarantees a minimum alignment of returned buffers
