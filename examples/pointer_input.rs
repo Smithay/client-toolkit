@@ -37,12 +37,12 @@ impl WindowConfig {
     }
 
     pub fn handle_action(&mut self, new_action: NextAction) {
-        let replace = match (&self.next_action, &new_action) {
+        let replace = matches!(
+            (&self.next_action, &new_action),
             (&None, _)
-            | (&Some(NextAction::Refresh), _)
-            | (&Some(NextAction::Redraw), &NextAction::Exit) => true,
-            _ => false,
-        };
+                | (&Some(NextAction::Refresh), _)
+                | (&Some(NextAction::Redraw), &NextAction::Exit)
+        );
         if replace {
             self.next_action = Some(new_action);
         }
@@ -152,11 +152,9 @@ fn main() {
                 });
                 *opt_ptr = Some(pointer.detach());
             }
-        } else {
-            if let Some(ptr) = opt_ptr.take() {
-                // the pointer has been removed, cleanup
-                ptr.release();
-            }
+        } else if let Some(ptr) = opt_ptr.take() {
+            // the pointer has been removed, cleanup
+            ptr.release();
         }
     });
 
@@ -188,6 +186,7 @@ fn main() {
     }
 }
 
+#[allow(clippy::many_single_char_names)]
 fn redraw(
     pool: &mut AutoMemPool,
     surface: &wl_surface::WlSurface,

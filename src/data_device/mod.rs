@@ -277,10 +277,3 @@ where
         self.with_inner(|inner| inner.with_device(seat, f))
     }
 }
-
-pub(crate) fn no_nix_err(err: nix::Error) -> std::io::Error {
-    match err {
-        nix::Error::Sys(e) => e.into(),
-        _ => unreachable!("Impossible error: {:?}", err),
-    }
-}

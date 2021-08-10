@@ -230,7 +230,7 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
             if *i != id {
                 true
             } else {
-                make_obsolete(o, ddata.reborrow(), &status_listeners_handle, &xdg_listener_handle);
+                make_obsolete(o, ddata.reborrow(), status_listeners_handle, xdg_listener_handle);
                 false
             }
         });
@@ -260,7 +260,7 @@ fn process_output_event(
             }
             OutputData::PendingXDG { ref mut info, ref mut callbacks } => {
                 notify(&output, info, ddata.reborrow(), callbacks);
-                notify_status_listeners(&output, &info, ddata, listeners);
+                notify_status_listeners(&output, info, ddata, listeners);
                 let info = info.clone();
                 let callbacks = std::mem::take(callbacks);
                 *udata = OutputData::Ready { info, callbacks };
@@ -310,24 +310,22 @@ fn make_obsolete(
         .expect("SCTK: wl_output has invalid UserData");
     let mut udata = udata_mutex.lock().unwrap();
     if let Some(xdg) = xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
-        xdg.borrow_mut().destroy_xdg_output(&output);
+        xdg.borrow_mut().destroy_xdg_output(output);
     }
     let (id, mut callbacks) = match *udata {
         OutputData::PendingXDG { ref mut info, ref mut callbacks }
         | OutputData::Ready { ref mut info, ref mut callbacks } => {
             info.obsolete = true;
             notify(output, info, ddata.reborrow(), callbacks);
-            notify_status_listeners(&output, info, ddata, listeners);
+            notify_status_listeners(output, info, ddata, listeners);
             return;
         }
-        OutputData::Pending { id, callbacks: ref mut cb, .. } => {
-            (id, std::mem::take(cb))
-        }
+        OutputData::Pending { id, callbacks: ref mut cb, .. } => (id, std::mem::take(cb)),
     };
     let mut info = OutputInfo::new(id);
     info.obsolete = true;
     notify(output, &info, ddata.reborrow(), &mut callbacks);
-    notify_status_listeners(&output, &info, ddata, listeners);
+    notify_status_listeners(output, &info, ddata, listeners);
     *udata = OutputData::Ready { info, callbacks };
 }
 
@@ -424,7 +422,7 @@ fn notify_status_listeners(
 /// will be set to `true`. This handler will not automatically detroy the output by calling its
 /// `release` method, to avoid interfering with your logic.
 pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(output: &WlOutput, f: F) -> Option<T> {
-    if let Some(ref udata_mutex) = output.as_ref().user_data().get::<Mutex<OutputData>>() {
+    if let Some(udata_mutex) = output.as_ref().user_data().get::<Mutex<OutputData>>() {
         let udata = udata_mutex.lock().unwrap();
         match *udata {
             OutputData::PendingXDG { ref info, .. } | OutputData::Ready { ref info, .. } => {
@@ -588,7 +586,7 @@ impl XdgOutputHandlerInner {
         listeners: &Rc<RefCell<Vec<rc::Weak<RefCell<OutputStatusCallback>>>>>,
     ) -> bool {
         if let Some(xdg_manager) = &self.xdg_manager {
-            let xdg_main = xdg_manager.get_xdg_output(&output);
+            let xdg_main = xdg_manager.get_xdg_output(output);
             let wl_out = output.clone();
             let listeners = listeners.clone();
             xdg_main.quick_assign(move |_xdg_out, event, ddata| {
@@ -640,7 +638,7 @@ fn process_xdg_event(
         Event::Done => {
             notify(wl_out, info, ddata.reborrow(), callbacks);
             if pending {
-                notify_status_listeners(wl_out, &info, ddata, listeners);
+                notify_status_listeners(wl_out, info, ddata, listeners);
                 let info = info.clone();
                 let callbacks = std::mem::take(callbacks);
                 *udata = OutputData::Ready { info, callbacks };

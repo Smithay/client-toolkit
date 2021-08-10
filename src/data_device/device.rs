@@ -20,9 +20,7 @@ impl Inner {
 
     fn set_selection(&mut self, offer: Option<wl_data_offer::WlDataOffer>) {
         if let Some(offer) = offer {
-            if let Some(id) =
-                self.known_offers.iter().position(|o| o.offer.as_ref().equals(&offer.as_ref()))
-            {
+            if let Some(id) = self.known_offers.iter().position(|o| o.offer == offer) {
                 self.selection = Some(self.known_offers.swap_remove(id));
             } else {
                 panic!("Compositor set an unknown data_offer for selection.");
@@ -35,9 +33,7 @@ impl Inner {
 
     fn set_dnd(&mut self, offer: Option<wl_data_offer::WlDataOffer>) {
         if let Some(offer) = offer {
-            if let Some(id) =
-                self.known_offers.iter().position(|o| o.offer.as_ref().equals(&offer.as_ref()))
-            {
+            if let Some(id) = self.known_offers.iter().position(|o| o.offer == offer) {
                 self.current_dnd = Some(self.known_offers.swap_remove(id));
             } else {
                 panic!("Compositor set an unknown data_offer for selection.");
