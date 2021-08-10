@@ -668,8 +668,6 @@
 <span id="666">666</span>
 <span id="667">667</span>
 <span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
 </pre><pre class="rust">
 <span class="doccomment">//! Types and functions related to graphical outputs</span>
 <span class="doccomment">//!</span>
@@ -903,7 +901,7 @@
             <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">i</span> <span class="op">!</span><span class="op">=</span> <span class="ident">id</span> {
                 <span class="bool-val">true</span>
             } <span class="kw">else</span> {
-                <span class="ident">make_obsolete</span>(<span class="ident">o</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="kw-2">&amp;</span><span class="ident">status_listeners_handle</span>, <span class="kw-2">&amp;</span><span class="ident">xdg_listener_handle</span>);
+                <span class="ident">make_obsolete</span>(<span class="ident">o</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">status_listeners_handle</span>, <span class="ident">xdg_listener_handle</span>);
                 <span class="bool-val">false</span>
             }
         });
@@ -933,7 +931,7 @@
             }
             <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
-                <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
+                <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
                 <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">info</span>.<span class="ident">clone</span>();
                 <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">std::mem::take</span>(<span class="ident">callbacks</span>);
                 <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
@@ -983,24 +981,22 @@
         .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg</span>) <span class="op">=</span> <span class="ident">xdg_listener</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="ident">rc::Weak::upgrade</span>) {
-        <span class="ident">xdg</span>.<span class="ident">borrow_mut</span>().<span class="ident">destroy_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>);
+        <span class="ident">xdg</span>.<span class="ident">borrow_mut</span>().<span class="ident">destroy_xdg_output</span>(<span class="ident">output</span>);
     }
     <span class="kw">let</span> (<span class="ident">id</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
         <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> }
         <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
             <span class="ident">notify</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
-            <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
+            <span class="ident">notify_status_listeners</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
             <span class="kw">return</span>;
         }
-        <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
-            (<span class="ident">id</span>, <span class="ident">std::mem::take</span>(<span class="ident">cb</span>))
-        }
+        <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>, .. } <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">std::mem::take</span>(<span class="ident">cb</span>)),
     };
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">OutputInfo::new</span>(<span class="ident">id</span>);
     <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
     <span class="ident">notify</span>(<span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">callbacks</span>);
-    <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
+    <span class="ident">notify_status_listeners</span>(<span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
     <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
 }
 
@@ -1097,7 +1093,7 @@
 <span class="doccomment">/// will be set to `true`. This handler will not automatically detroy the output by calling its</span>
 <span class="doccomment">/// `release` method, to avoid interfering with your logic.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_output_info</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
         <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
             <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
@@ -1261,7 +1257,7 @@
         <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_manager</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">xdg_manager</span> {
-            <span class="kw">let</span> <span class="ident">xdg_main</span> <span class="op">=</span> <span class="ident">xdg_manager</span>.<span class="ident">get_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>);
+            <span class="kw">let</span> <span class="ident">xdg_main</span> <span class="op">=</span> <span class="ident">xdg_manager</span>.<span class="ident">get_xdg_output</span>(<span class="ident">output</span>);
             <span class="kw">let</span> <span class="ident">wl_out</span> <span class="op">=</span> <span class="ident">output</span>.<span class="ident">clone</span>();
             <span class="kw">let</span> <span class="ident">listeners</span> <span class="op">=</span> <span class="ident">listeners</span>.<span class="ident">clone</span>();
             <span class="ident">xdg_main</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">_xdg_out</span>, <span class="ident">event</span>, <span class="ident">ddata</span><span class="op">|</span> {
@@ -1313,7 +1309,7 @@
         <span class="ident">Event::Done</span> <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">notify</span>(<span class="ident">wl_out</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
             <span class="kw">if</span> <span class="ident">pending</span> {
-                <span class="ident">notify_status_listeners</span>(<span class="ident">wl_out</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
+                <span class="ident">notify_status_listeners</span>(<span class="ident">wl_out</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
                 <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">info</span>.<span class="ident">clone</span>();
                 <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">std::mem::take</span>(<span class="ident">callbacks</span>);
                 <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };

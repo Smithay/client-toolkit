@@ -245,8 +245,6 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fs</span>, <span class="ident">io</span>,
@@ -257,8 +255,6 @@
 <span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_data_device_manager::DndAction</span>;
 <span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_data_offer</span>;
 <span class="kw">use</span> <span class="ident">wayland_client::Main</span>;
-
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::no_nix_err</span>;
 
 <span class="kw">struct</span> <span class="ident">Inner</span> {
     <span class="ident">mime_types</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -345,7 +341,7 @@
         <span class="kw">use</span> <span class="ident">nix::fcntl::OFlag</span>;
         <span class="kw">use</span> <span class="ident">nix::unistd</span>::{<span class="ident">close</span>, <span class="ident">pipe2</span>};
         <span class="comment">// create a pipe</span>
-        <span class="kw">let</span> (<span class="ident">readfd</span>, <span class="ident">writefd</span>) <span class="op">=</span> <span class="ident">pipe2</span>(<span class="ident">OFlag::O_CLOEXEC</span>).<span class="ident">map_err</span>(<span class="ident">no_nix_err</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> (<span class="ident">readfd</span>, <span class="ident">writefd</span>) <span class="op">=</span> <span class="ident">pipe2</span>(<span class="ident">OFlag::O_CLOEXEC</span>)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.<span class="ident">offer</span>.<span class="ident">receive</span>(<span class="ident">mime_type</span>, <span class="ident">writefd</span>);
 

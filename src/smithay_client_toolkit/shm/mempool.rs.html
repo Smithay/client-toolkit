@@ -543,10 +543,6 @@
 <span id="541">541</span>
 <span id="542">542</span>
 <span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">cell::RefCell</span>,
@@ -1011,10 +1007,9 @@
                 );
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">fd</span>);
             }
-            <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">Errno::EINTR</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">continue</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">Errno::ENOSYS</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">errno</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io::Error::from</span>(<span class="ident">errno</span>)),
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(<span class="ident">err</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">Errno::EINTR</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">continue</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">Errno::ENOSYS</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">errno</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">errno</span>.<span class="ident">into</span>()),
         }
     }
 
@@ -1035,14 +1030,12 @@
         ) {
             <span class="prelude-val">Ok</span>(<span class="ident">fd</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">mman::shm_unlink</span>(<span class="ident">mem_file_handle</span>.<span class="ident">as_str</span>()) {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">fd</span>),
-                <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">errno</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">unistd::close</span>(<span class="ident">fd</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io::Error::from</span>(<span class="ident">errno</span>)),
-                    <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">errno</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io::Error::from</span>(<span class="ident">errno</span>)),
-                    <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">err</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">errno</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">unistd::close</span>(<span class="ident">fd</span>) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">errno</span>.<span class="ident">into</span>()),
+                    <span class="prelude-val">Err</span>(<span class="ident">errno</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">errno</span>.<span class="ident">into</span>()),
                 },
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">err</span>),
             },
-            <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">Errno::EEXIST</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">Errno::EEXIST</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// If a file with that handle exists then change the handle</span>
                 <span class="ident">mem_file_handle</span> <span class="op">=</span> <span class="macro">format!</span>(
                     <span class="string">&quot;/smithay-client-toolkit-{}&quot;</span>,
@@ -1050,9 +1043,8 @@
                 );
                 <span class="kw">continue</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">Errno::EINTR</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">continue</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">nix::Error::Sys</span>(<span class="ident">errno</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io::Error::from</span>(<span class="ident">errno</span>)),
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(<span class="ident">err</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">Errno::EINTR</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">continue</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">errno</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">errno</span>.<span class="ident">into</span>()),
         }
     }
 }
