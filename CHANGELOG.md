@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- when not using `dlopen` feature, `xkbdcommon` library is linked using `pkg-config`
+
 ## 0.15.0 - 2021-08-10
 
 #### Breaking Changes
