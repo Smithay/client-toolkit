@@ -27,5 +27,8 @@ calloop = { version = "0.9.1", optional = true }
 default = ["calloop", "dlopen"]
 dlopen = ["wayland-client/dlopen"]
 
+[build-dependencies]
+pkg-config = "0.3"
+
 [dev-dependencies]
 image = "0.23"
