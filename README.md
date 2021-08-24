@@ -1,4 +1,4 @@
-[![crates.io](https://meritbadge.herokuapp.com/smithay-client-toolkit)](https://crates.io/crates/smithay-client-toolkit)
+[![crates.io](https://img.shields.io/crates/v/smithay-client-toolkit.svg)](https://crates.io/crates/smithay-client-toolkit)
 [![docs.rs](https://docs.rs/smithay-client-toolkit/badge.svg)](https://docs.rs/smithay-client-toolkit)
 [![Build Status](https://github.com/Smithay/client-toolkit/workflows/Continuous%20Integration/badge.svg)](https://github.com/Smithay/client-toolkit/actions?query=workflow%3A%22Continuous+Integration%22)
 
