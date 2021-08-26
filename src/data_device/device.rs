@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use super::{DataOffer, DataSource, DndAction};
 
+#[derive(Debug)]
 struct Inner {
     selection: Option<DataOffer>,
     current_dnd: Option<DataOffer>,
@@ -50,12 +51,14 @@ impl Inner {
 /// This type provides you with functionality to send and receive
 /// data through drag'n'drop or copy/paste actions. It is associated
 /// with a seat upon creation.
+#[derive(Debug)]
 pub struct DataDevice {
     device: wl_data_device::WlDataDevice,
     inner: Arc<Mutex<Inner>>,
 }
 
 /// Possible events generated during a drag'n'drop session
+#[derive(Debug)]
 pub enum DndEvent<'a> {
     /// A new drag'n'drop entered your surfaces
     Enter {

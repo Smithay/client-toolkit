@@ -1,6 +1,6 @@
 //! Helpers to handle data device related actions
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt, rc::Rc};
 
 use wayland_client::{
     protocol::{wl_data_device_manager, wl_registry, wl_seat},
@@ -128,12 +128,27 @@ impl DDInner {
     }
 }
 
+impl fmt::Debug for DDInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ready { mgr, devices, .. } => f
+                .debug_struct("Ready")
+                .field("mgr", mgr)
+                .field("devices", devices)
+                .field("callback", &"Fn() -> { ... }")
+                .finish(),
+            Self::Pending { seats } => f.debug_struct("Pending").field("seats", seats).finish(),
+        }
+    }
+}
+
 /// A handler for data devices
 ///
 /// It provides automatic tracking of data device for each available seat,
 /// allowing you to manipulate selection clipboard and drag&drop manipulations.
 ///
 /// It is automatically included in the [`default_environment!`](../macro.default_environment.html).
+#[derive(Debug)]
 pub struct DataDeviceHandler {
     inner: Rc<RefCell<DDInner>>,
     _listener: crate::seat::SeatListener,

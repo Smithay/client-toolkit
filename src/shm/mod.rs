@@ -16,6 +16,7 @@ pub use wl_shm::Format;
 ///
 /// This handler is automatically included in the
 /// [`default_environment!`](../macro.default_environment.html).
+#[derive(Debug)]
 pub struct ShmHandler {
     shm: Option<Attached<wl_shm::WlShm>>,
     formats: Rc<RefCell<Vec<wl_shm::Format>>>,

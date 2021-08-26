@@ -32,9 +32,9 @@
 //! [`default_environment!`](../macro.default_environment.html) macro to quickly setup things and bring
 //! in all SCTK modules.
 
-use std::cell::RefCell;
 use std::io::Result;
 use std::rc::Rc;
+use std::{cell::RefCell, fmt};
 
 use wayland_client::{
     protocol::{wl_display, wl_registry},
@@ -216,6 +216,18 @@ impl<E> Clone for Environment<E> {
     }
 }
 
+impl<E> fmt::Debug for Environment<E>
+where
+    E: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Environment")
+            .field("manager", &self.manager)
+            .field("inner", &self.inner)
+            .finish()
+    }
+}
+
 /// Internal trait for the `Environment` logic
 ///
 /// This trait is automatically implemented by the [`environment!`](../macro.environment.html)
@@ -241,6 +253,7 @@ pub trait InnerEnv {
 ///
 /// It is appropriate for globals that never generate events, like `wl_compositor`
 /// or `wl_data_device_manager`.
+#[derive(Debug)]
 pub struct SimpleGlobal<I: Interface> {
     global: Option<Attached<I>>,
 }

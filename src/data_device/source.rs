@@ -8,11 +8,13 @@ use std::{fs, io};
 
 /// A data source for sending data though copy/paste or
 /// drag and drop
+#[derive(Debug)]
 pub struct DataSource {
     pub(crate) source: wl_data_source::WlDataSource,
 }
 
 /// Possible events a data source needs to react to
+#[derive(Debug)]
 pub enum DataSourceEvent {
     /// Write the offered data for selected mime type
     ///
@@ -135,6 +137,7 @@ impl DataSource {
 }
 
 /// A file descriptor that can only be written to
+#[derive(Debug)]
 pub struct WritePipe {
     file: fs::File,
 }

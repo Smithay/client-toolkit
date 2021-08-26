@@ -8,6 +8,7 @@ use super::ffi::*;
 use super::ffi::{self, xkb_state_component};
 use super::Error;
 
+#[derive(Debug)]
 pub(crate) struct KbState {
     xkb_context: *mut ffi::xkb_context,
     xkb_keymap: *mut ffi::xkb_keymap,
@@ -22,6 +23,7 @@ pub(crate) struct KbState {
 ///
 /// All fields are optional, and the system default
 /// will be used if set to `None`.
+#[derive(Debug)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct RMLVO {
     /// The rules file to use

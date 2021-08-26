@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     ffi::CStr,
+    fmt,
     fs::File,
     io,
     os::unix::io::{FromRawFd, RawFd},
@@ -34,6 +35,7 @@ use wayland_client::{
 /// DoubleMemPool requires a implementation that is called when
 /// one of the two internal memory pools becomes free after None
 /// was returned from the `pool()` method.
+#[derive(Debug)]
 pub struct DoubleMemPool {
     pool1: MemPool,
     pool2: MemPool,
@@ -98,6 +100,7 @@ impl DoubleMemPool {
     }
 }
 
+#[derive(Debug)]
 struct Inner {
     file: File,
     len: usize,
@@ -240,6 +243,16 @@ impl MemPool {
     }
 }
 
+impl fmt::Debug for MemPool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MemPool")
+            .field("inner", &self.inner)
+            .field("buffer_count", &self.buffer_count)
+            .field("callback", &"Fn() -> { ... }")
+            .finish()
+    }
+}
+
 impl io::Write for MemPool {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         io::Write::write(&mut self.inner.file, buf)
@@ -269,6 +282,7 @@ impl io::Seek for MemPool {
 ///
 /// The default alignment of returned buffers is 16 bytes; this can be changed by using the
 /// explicit with_min_align constructor.
+#[derive(Debug)]
 pub struct AutoMemPool {
     inner: Inner,
     align: usize,

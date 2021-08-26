@@ -7,6 +7,7 @@ use wayland_protocols::xdg_shell::client::xdg_toplevel;
 
 use super::{Event, ShellSurface};
 
+#[derive(Debug)]
 pub(crate) struct Wl {
     shell_surface: wl_shell_surface::WlShellSurface,
 }

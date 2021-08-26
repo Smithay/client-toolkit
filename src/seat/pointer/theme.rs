@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    fmt,
     ops::Deref,
     rc::{Rc, Weak},
 };
@@ -10,6 +11,7 @@ use wayland_client::{
 use wayland_cursor::{Cursor, CursorTheme};
 
 /// The specification of a cursor theme to be used by the ThemeManager
+#[derive(Debug)]
 pub enum ThemeSpec<'a> {
     /// Use this specific theme with given base size
     Precise {
@@ -39,7 +41,7 @@ pub enum ThemeSpec<'a> {
 /// pointer theming from different places.
 ///
 /// Note that it is however neither `Send` nor `Sync`
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ThemeManager {
     themes: Rc<RefCell<ScaledThemeList>>,
     compositor: Attached<wl_compositor::WlCompositor>,
@@ -167,6 +169,19 @@ impl ScaledThemeList {
     }
 }
 
+impl fmt::Debug for ScaledThemeList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ScaledThemeList")
+            .field("shm", &self.shm)
+            .field("name", &self.name)
+            .field("size", &self.size)
+            // Wayland-cursor needs to implement debug
+            .field("themes", &"[...]")
+            .finish()
+    }
+}
+
+#[derive(Debug)]
 struct PointerInner {
     surface: wl_surface::WlSurface,
     themes: Rc<RefCell<ScaledThemeList>>,
@@ -210,7 +225,7 @@ impl PointerInner {
 ///
 /// Just like `Proxy`, this is a `Rc`-like wrapper. You can clone it
 /// to have several handles to the same theming machinery of a pointer.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ThemedPointer {
     pointer: wl_pointer::WlPointer,
     inner: Rc<RefCell<PointerInner>>,

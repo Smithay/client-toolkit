@@ -31,12 +31,14 @@ pub use self::source::{PrimarySelectionSource, PrimarySelectionSourceEvent};
 /// allowing you to manipulate the primary selection clipboard.
 ///
 /// It's automatically included in the [`default_environment!`](../macro.default_environment.html).
+#[derive(Debug)]
 pub struct PrimarySelectionHandler {
     inner: Rc<RefCell<PrimarySelectionDeviceManagerInner>>,
     _listener: SeatListener,
 }
 
 /// Possible supported primary selection protocols
+#[derive(Debug)]
 pub enum PrimarySelectionDeviceManager {
     /// The current standard `primary_selection` protocol.
     Zwp(Attached<ZwpPrimarySelectionDeviceManagerV1>),
@@ -168,12 +170,14 @@ impl PrimarySelectionHandling for PrimarySelectionHandler {
 }
 
 /// Initialization phase of `PrimarySelectionDeviceManagerInner`.
+#[derive(Debug)]
 enum PrimarySelectionDeviceManagerInitState {
     Ready { manager: PrimarySelectionDeviceManager, devices: Vec<(WlSeat, PrimarySelectionDevice)> },
     Pending { seats: Vec<WlSeat> },
 }
 
 /// Inner mutable state for `PrimarySelectionHandler`.
+#[derive(Debug)]
 struct PrimarySelectionDeviceManagerInner {
     registry: Option<Attached<WlRegistry>>,
     zwp_mgr: LazyGlobal<ZwpPrimarySelectionDeviceManagerV1>,
