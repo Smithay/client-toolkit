@@ -15,6 +15,7 @@ use wayland_protocols::{
 use crate::data_device::ReadPipe;
 
 /// A primary selection offer for receiving data through copy/paste.
+#[derive(Debug)]
 pub struct PrimarySelectionOffer {
     pub(crate) offer: PrimarySelectionOfferImpl,
     inner: Arc<Mutex<PrimarySelectionOfferInner>>,
@@ -105,7 +106,7 @@ impl Drop for PrimarySelectionOffer {
 }
 
 /// Inner state for `PrimarySelectionOffer`.
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct PrimarySelectionOfferInner {
     mime_types: Vec<String>,
 }
@@ -117,7 +118,7 @@ impl PrimarySelectionOfferInner {
 }
 
 /// Possible supported primary selection offers.
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) enum PrimarySelectionOfferImpl {
     Zwp(ZwpPrimarySelectionOfferV1),
     Gtk(GtkPrimarySelectionOffer),

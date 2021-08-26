@@ -8,6 +8,7 @@ use wayland_client::protocol::wl_data_device_manager::DndAction;
 use wayland_client::protocol::wl_data_offer;
 use wayland_client::Main;
 
+#[derive(Debug)]
 struct Inner {
     mime_types: Vec<String>,
     actions: DndAction,
@@ -17,6 +18,7 @@ struct Inner {
 
 /// A data offer for receiving data though copy/paste or
 /// drag and drop
+#[derive(Debug)]
 pub struct DataOffer {
     pub(crate) offer: wl_data_offer::WlDataOffer,
     inner: Arc<Mutex<Inner>>,
@@ -133,6 +135,7 @@ impl Drop for DataOffer {
 ///
 /// If the `calloop` cargo feature is enabled, this can be used
 /// as an `EventSource` in a calloop event loop.
+#[derive(Debug)]
 pub struct ReadPipe {
     #[cfg(feature = "calloop")]
     file: calloop::generic::Generic<fs::File>,

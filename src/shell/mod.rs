@@ -7,7 +7,7 @@
 //! This abstraction only manages the protocol part of shell surfaces. If you're
 //! looking for a more battery-included abstraction for creating windows,
 //! consider the `Window` type.
-use std::cell::RefCell;
+use std::{cell::RefCell, fmt};
 
 use wayland_client::{
     protocol::{wl_output, wl_registry, wl_seat, wl_shell, wl_surface},
@@ -57,6 +57,7 @@ pub enum Event {
     Close,
 }
 
+#[derive(Debug)]
 /// Possible supported shell protocols
 pub enum Shell {
     /// The current standard `xdg_shell` protocol.
@@ -104,7 +105,7 @@ where
 /// This trait's API is designed to reflect the behavior of the current standard
 /// shell surface protocol: `xdg_shell`. Compatibility implementations are
 /// provided for older protocols.
-pub trait ShellSurface: Send + Sync {
+pub trait ShellSurface: fmt::Debug + Send + Sync {
     /// Resizes the shell surface
     fn resize(&self, seat: &wl_seat::WlSeat, serial: u32, edges: xdg_toplevel::ResizeEdge);
     /// Moves the shell surface
@@ -139,6 +140,7 @@ pub trait ShellSurface: Send + Sync {
     fn get_xdg(&self) -> Option<&xdg_toplevel::XdgToplevel>;
 }
 
+#[derive(Debug)]
 struct ShellInner {
     registry: Option<Attached<wl_registry::WlRegistry>>,
     wl_shell: LazyGlobal<wl_shell::WlShell>,
@@ -191,6 +193,7 @@ struct ShellInner {
 ///     my_shell: ShellHandler::new()
 /// });
 /// ```
+#[derive(Debug)]
 pub struct ShellHandler {
     inner: RefCell<ShellInner>,
 }

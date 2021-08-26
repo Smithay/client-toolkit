@@ -15,11 +15,13 @@ use wayland_client::DispatchData;
 use super::PrimarySelectionDeviceManager;
 
 /// A primary selection source for sending data through copy/paste.
+#[derive(Debug)]
 pub struct PrimarySelectionSource {
     pub(crate) source: PrimarySelectionSourceImpl,
 }
 
 /// Possible events a primary selection source needs to react to.
+#[derive(Debug)]
 pub enum PrimarySelectionSourceEvent {
     /// Write the offered data for selected mime type.
     Send {
@@ -82,6 +84,7 @@ impl PrimarySelectionSource {
 }
 
 /// Possible supported primary selection sources.
+#[derive(Debug)]
 pub(crate) enum PrimarySelectionSourceImpl {
     Zwp(ZwpPrimarySelectionSourceV1),
     Gtk(GtkPrimarySelectionSource),

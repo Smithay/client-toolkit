@@ -12,6 +12,7 @@ use wayland_protocols::{
 
 use super::{Event, ShellSurface};
 
+#[derive(Debug)]
 pub(crate) struct Zxdg {
     surface: zxdg_surface_v6::ZxdgSurfaceV6,
     toplevel: zxdg_toplevel_v6::ZxdgToplevelV6,

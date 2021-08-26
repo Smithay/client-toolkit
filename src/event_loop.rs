@@ -18,6 +18,7 @@ use wayland_client::EventQueue;
 /// If you don't use orphan events, the `quick_insert` method will firectly
 /// insert the source into a provided `LoopHandle` with an adapter which will panic
 /// whenever an oprhan event is encountered.
+#[derive(Debug)]
 pub struct WaylandSource {
     queue: EventQueue,
     fd: Generic<Fd>,

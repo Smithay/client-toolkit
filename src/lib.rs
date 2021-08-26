@@ -23,7 +23,7 @@
 //! [`WaylandSource`](struct.WaylandSource.html) is an adapter to insert a Wayland `EventQueue` into
 //! a calloop event loop. And some of the modules of SCTK will provide you with other event sources
 //! that you need to insert into calloop for them to work correctly.
-#![warn(missing_docs)]
+#![warn(missing_docs, missing_debug_implementations)]
 #![allow(clippy::new_without_default)]
 
 #[macro_use]

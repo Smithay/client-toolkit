@@ -43,6 +43,7 @@ pub use self::state::{ModifiersState, RMLVO};
 const MICROS_IN_SECOND: u32 = 1000000;
 
 /// Possible kinds of key repetition
+#[derive(Debug)]
 pub enum RepeatKind {
     /// keys will be repeated at a set rate and delay
     Fixed {
@@ -69,6 +70,7 @@ pub enum Error {
 }
 
 /// Events received from a mapped keyboard
+#[derive(Debug)]
 pub enum Event<'a> {
     /// The keyboard focus has entered a surface
     Enter {
@@ -525,6 +527,7 @@ impl KbdHandler {
  * Repeat handling
  */
 
+#[derive(Debug)]
 #[cfg(feature = "calloop")]
 struct RepeatData {
     keyboard: wl_keyboard::WlKeyboard,
@@ -546,6 +549,7 @@ struct RepeatData {
 /// `EventLoopHandle::insert_source()` will be ignored. Instead it triggers the
 /// callback you provided to [`map_keyboard`](fn.map_keyboard.html).
 #[cfg(feature = "calloop")]
+#[derive(Debug)]
 pub struct RepeatSource {
     timer: calloop::timer::Timer<()>,
     state: Rc<RefCell<KbState>>,

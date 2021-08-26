@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 
 use wayland_client::protocol::{
@@ -57,6 +58,7 @@ enum UIButton {
     Close,
 }
 
+#[derive(Debug)]
 struct Part {
     surface: wl_surface::WlSurface,
     subsurface: wl_subsurface::WlSubsurface,
@@ -145,6 +147,20 @@ impl Inner {
     }
 }
 
+impl fmt::Debug for Inner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Inner")
+            .field("parts", &self.parts)
+            .field("size", &self.size)
+            .field("resizable", &self.resizable)
+            .field("theme_over_surface", &self.theme_over_surface)
+            .field("implem", &"FnMut(FrameRequest, u32, DispatchData) -> { ... }")
+            .field("maximized", &self.maximized)
+            .field("fullscreened", &self.fullscreened)
+            .finish()
+    }
+}
+
 fn precise_location(old: Location, width: u32, x: f64, y: f64) -> Location {
     match old {
         Location::Head | Location::Button(_) => find_button(x, y, width),
@@ -212,6 +228,7 @@ fn find_button(x: f64, y: f64, w: u32) -> Location {
 /// `FallbackFrame` is hiding its `ClientSide` decorations
 /// in a `Fullscreen` state and brings them back if those are
 /// visible when unsetting `Fullscreen` state.
+#[derive(Debug)]
 pub struct FallbackFrame {
     base_surface: wl_surface::WlSurface,
     compositor: Attached<wl_compositor::WlCompositor>,

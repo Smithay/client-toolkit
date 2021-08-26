@@ -110,6 +110,15 @@ impl SeatHandler {
     }
 }
 
+impl fmt::Debug for SeatHandler {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SeatHandler")
+            .field("seats", &self.seats)
+            .field("listeners", &"Fn(..) -> { ... }")
+            .finish()
+    }
+}
+
 /// A handle to an seat listener callback
 ///
 /// Dropping it disables the associated callback and frees the closure.
@@ -160,6 +169,12 @@ impl crate::environment::MultiGlobalHandler<wl_seat::WlSeat> for SeatHandler {
     }
     fn get_all(&self) -> Vec<Attached<wl_seat::WlSeat>> {
         self.seats.iter().map(|(_, s)| s.clone()).collect()
+    }
+}
+
+impl fmt::Debug for SeatListener {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SeatListener").field("_cb", &"Fn(..) -> { ... }").finish()
     }
 }
 

@@ -11,6 +11,7 @@
 
 use std::{
     cell::RefCell,
+    fmt,
     rc::{self, Rc},
     sync::{self, Arc, Mutex},
 };
@@ -237,6 +238,16 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
     }
     fn get_all(&self) -> Vec<Attached<WlOutput>> {
         self.outputs.iter().map(|(_, o)| o.clone()).collect()
+    }
+}
+
+impl fmt::Debug for OutputHandler {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OutputHandler")
+            .field("outputs", &self.outputs)
+            .field("status_listeners", &"Fn() -> { ... }")
+            .field("xdg_listener", &self.xdg_listener)
+            .finish()
     }
 }
 
@@ -471,11 +482,23 @@ pub struct OutputListener {
     _cb: Arc<dyn Fn(WlOutput, &OutputInfo, DispatchData) + Send + Sync + 'static>,
 }
 
+impl fmt::Debug for OutputListener {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OutputListener").field("_cb", &"fn() -> { ... }").finish()
+    }
+}
+
 /// A handle to an output status callback
 ///
 /// Dropping it disables the associated callback and frees the closure.
 pub struct OutputStatusListener {
     _cb: Rc<RefCell<OutputStatusCallback>>,
+}
+
+impl fmt::Debug for OutputStatusListener {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OutputStatusListener").field("_cb", &"fn() -> { ... }").finish()
+    }
 }
 
 /// Trait representing the OutputHandler functions
@@ -553,10 +576,12 @@ impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::En
 ///  })?;
 ///
 /// ```
+#[derive(Debug)]
 pub struct XdgOutputHandler {
     inner: Rc<RefCell<XdgOutputHandlerInner>>,
 }
 
+#[derive(Debug)]
 struct XdgOutputHandlerInner {
     xdg_manager: Option<Attached<ZxdgOutputManagerV1>>,
     outputs: Vec<(WlOutput, Attached<ZxdgOutputV1>)>,

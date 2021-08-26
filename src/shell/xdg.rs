@@ -9,6 +9,7 @@ use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_bas
 
 use super::{Event, ShellSurface};
 
+#[derive(Debug)]
 pub(crate) struct Xdg {
     surface: xdg_surface::XdgSurface,
     toplevel: xdg_toplevel::XdgToplevel,

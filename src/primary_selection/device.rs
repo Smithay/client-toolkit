@@ -21,18 +21,21 @@ use super::PrimarySelectionSource;
 /// Handle to support primary selection on a given seat.
 ///
 /// This type provides you with copy/paste actions. It is associated with a seat upon creation.
+#[derive(Debug)]
 pub struct PrimarySelectionDevice {
     device: PrimarySelectionDeviceImpl,
     inner: Arc<Mutex<PrimarySelectionDeviceInner>>,
 }
 
 /// Possible supported primary selection devices.
+#[derive(Debug)]
 enum PrimarySelectionDeviceImpl {
     Zwp(ZwpPrimarySelectionDeviceV1),
     Gtk(GtkPrimarySelectionDevice),
 }
 
 /// Inner state for `PrimarySelectionDevice`.
+#[derive(Debug)]
 struct PrimarySelectionDeviceInner {
     /// Current selection.
     selection: Option<PrimarySelectionOffer>,
