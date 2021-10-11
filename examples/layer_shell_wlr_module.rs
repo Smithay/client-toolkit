@@ -1,5 +1,3 @@
-// Abstraction in later_shell_wlr_module
-
 use smithay_client_toolkit::{
     default_environment,
     environment::SimpleGlobal,
@@ -7,17 +5,15 @@ use smithay_client_toolkit::{
     output::{with_output_info, OutputInfo},
     reexports::{
         calloop,
-        client::protocol::{wl_output, wl_shm, wl_surface},
-        client::{Attached, Main},
-        protocols::wlr::unstable::layer_shell::v1::client::{
-            zwlr_layer_shell_v1, zwlr_layer_surface_v1,
-        },
+        client::protocol::{wl_output, wl_shm},
+        protocols::wlr::unstable::layer_shell::v1::client::zwlr_layer_shell_v1,
     },
+    shell::wlr,
     shm::AutoMemPool,
     WaylandSource,
 };
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 default_environment!(Env,
@@ -29,69 +25,25 @@ default_environment!(Env,
     ],
 );
 
-#[derive(PartialEq, Copy, Clone)]
-enum RenderEvent {
-    Configure { width: u32, height: u32 },
-    Closed,
-}
-
 struct Surface {
-    surface: wl_surface::WlSurface,
-    layer_surface: Main<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1>,
-    next_render_event: Rc<Cell<Option<RenderEvent>>>,
+    shell: wlr::WlrShell,
     pool: AutoMemPool,
-    dimensions: (u32, u32),
 }
 
 impl Surface {
-    fn new(
-        output: &wl_output::WlOutput,
-        surface: wl_surface::WlSurface,
-        layer_shell: &Attached<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
-        pool: AutoMemPool,
-    ) -> Self {
-        let layer_surface = layer_shell.get_layer_surface(
-            &surface,
-            Some(output),
-            zwlr_layer_shell_v1::Layer::Overlay,
-            "example".to_owned(),
-        );
+    fn new(shell: wlr::WlrShell, pool: AutoMemPool) -> Self {
+        shell.surface.commit();
 
-        layer_surface.set_size(32, 32);
-        // Anchor to the top left corner of the output
-        layer_surface
-            .set_anchor(zwlr_layer_surface_v1::Anchor::Top | zwlr_layer_surface_v1::Anchor::Left);
-
-        let next_render_event = Rc::new(Cell::new(None::<RenderEvent>));
-        let next_render_event_handle = Rc::clone(&next_render_event);
-        layer_surface.quick_assign(move |layer_surface, event, _| {
-            match (event, next_render_event_handle.get()) {
-                (zwlr_layer_surface_v1::Event::Closed, _) => {
-                    next_render_event_handle.set(Some(RenderEvent::Closed));
-                }
-                (zwlr_layer_surface_v1::Event::Configure { serial, width, height }, next)
-                    if next != Some(RenderEvent::Closed) =>
-                {
-                    layer_surface.ack_configure(serial);
-                    next_render_event_handle.set(Some(RenderEvent::Configure { width, height }));
-                }
-                (_, _) => {}
-            }
-        });
-
-        // Commit so that the server will send a configure event
-        surface.commit();
-
-        Self { surface, layer_surface, next_render_event, pool, dimensions: (0, 0) }
+        Self { pool, shell }
     }
 
     /// Handles any events that have occurred since the last call, redrawing if needed.
     /// Returns true if the surface should be dropped.
     fn handle_events(&mut self) -> bool {
-        match self.next_render_event.take() {
-            Some(RenderEvent::Closed) => true,
-            Some(RenderEvent::Configure { width, height }) => {
-                self.dimensions = (width, height);
+        match self.shell.render_event.take() {
+            Some(wlr::RenderEvent::Closed) => true,
+            Some(wlr::RenderEvent::Configure { width, height }) => {
+                self.shell.dimensions = (width, height);
                 self.draw();
                 false
             }
@@ -100,9 +52,9 @@ impl Surface {
     }
 
     fn draw(&mut self) {
-        let stride = 4 * self.dimensions.0 as i32;
-        let width = self.dimensions.0 as i32;
-        let height = self.dimensions.1 as i32;
+        let stride = 4 * self.shell.dimensions.0 as i32;
+        let width = self.shell.dimensions.0 as i32;
+        let height = self.shell.dimensions.1 as i32;
 
         // Note: unwrap() is only used here in the interest of simplicity of the example.
         // A "real" application should handle the case where both pools are still in use by the
@@ -111,7 +63,7 @@ impl Surface {
             self.pool.buffer(width, height, stride, wl_shm::Format::Argb8888).unwrap();
 
         for dst_pixel in canvas.chunks_exact_mut(4) {
-            let pixel = 0xff00ff00u32.to_ne_bytes();
+            let pixel = 0xaa2246u32.to_ne_bytes();
             dst_pixel[0] = pixel[0];
             dst_pixel[1] = pixel[1];
             dst_pixel[2] = pixel[2];
@@ -119,18 +71,11 @@ impl Surface {
         }
 
         // Attach the buffer to the surface and mark the entire surface as damaged
-        self.surface.attach(Some(&buffer), 0, 0);
-        self.surface.damage_buffer(0, 0, width as i32, height as i32);
+        self.shell.surface.attach(Some(&buffer), 0, 0);
+        self.shell.surface.damage_buffer(0, 0, width as i32, height as i32);
 
         // Finally, commit the surface
-        self.surface.commit();
-    }
-}
-
-impl Drop for Surface {
-    fn drop(&mut self) {
-        self.layer_surface.destroy();
-        self.surface.destroy();
+        self.shell.surface.commit();
     }
 }
 
@@ -154,8 +99,17 @@ fn main() {
             // an output has been created, construct a surface for it
             let surface = env_handle.create_surface().detach();
             let pool = env_handle.create_auto_pool().expect("Failed to create a memory pool!");
-            (*surfaces_handle.borrow_mut())
-                .push((info.id, Surface::new(&output, surface, &layer_shell.clone(), pool)));
+
+            let wlr_shell = wlr::WlrShell::new(
+                &output,
+                surface,
+                &layer_shell.clone(),
+                wlr::Layer::Background,
+                wlr::Anchor::Top,
+                (info.modes[0].dimensions.0 as u32, info.modes[0].dimensions.1 as u32),
+            );
+
+            (*surfaces_handle.borrow_mut()).push((info.id, Surface::new(wlr_shell, pool)));
         }
     };
 

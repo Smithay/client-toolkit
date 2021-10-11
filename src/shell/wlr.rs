@@ -12,7 +12,7 @@ use wayland_protocols::wlr::unstable::layer_shell::v1::client::{
 };
 
 #[derive(PartialEq, Copy, Clone)]
-enum RenderEvent {
+pub enum RenderEvent {
     Configure { width: u32, height: u32 },
     Closed,
 }
@@ -88,6 +88,9 @@ pub struct WlrShell {
 
     /// The dimensions of the wlr surface
     pub dimensions: (u32, u32),
+
+    /// The next render event
+    pub render_event: Rc<Cell<Option<RenderEvent>>>,
 }
 
 impl WlrShell {
@@ -137,6 +140,7 @@ impl WlrShell {
             layer_surface,
             layer,
             anchor,
+            render_event: next_render_event,
             dimensions: (dimensions.0 as u32, dimensions.1 as u32),
         }
     }
