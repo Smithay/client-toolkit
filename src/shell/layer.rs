@@ -1,4 +1,4 @@
-/// Wlr shell abstraction
+/// WLR layer abstraction
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -11,70 +11,30 @@ use wayland_protocols::wlr::unstable::layer_shell::v1::client::{
     zwlr_layer_shell_v1, zwlr_layer_surface_v1,
 };
 
+pub use wayland_protocols::wlr::unstable::layer_shell::v1::client::{
+    zwlr_layer_shell_v1::Layer, zwlr_layer_surface_v1::Anchor,
+};
+
+/// Render event
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum RenderEvent {
-    Configure { width: u32, height: u32 },
+    /// Surface wants a reconfiguration/configuration
+    Configure {
+        /// The new width of the surface
+        width: u32,
+
+        /// The new height of the surface
+        height: u32,
+    },
+
+    /// Surface has closed and wants to be closed here also.
     Closed,
 }
 
-/// Just a tiny abstraction making layers easier.  A layer specifies a z depth for where something is drawn. A normal xdg shell is normally drawn somewhere in between Bottom and Top
-#[derive(PartialEq, Copy, Clone)]
-pub enum Layer {
-    /// All the way in the back, a example usecase is for backgrounds
-    Background,
+/// A struct representing the layer surface (wlr)
 
-    /// In front of background but behind normal xdg shells
-    Bottom,
-
-    /// Behind overlay but in front normal xdg shells
-    Top,
-
-    /// All the way in the front, overiding what other applications are trying to draw.
-    Overlay,
-}
-
-/// Just a tiny abstraction making anchors easier. Anchor says something about where on the screen the shell is rendered
-
-#[derive(PartialEq, Copy, Clone)]
-pub enum Anchor {
-    /// Top of the screen
-    Top,
-
-    /// Bottom of the screen
-    Bottom,
-
-    /// Left side of the screen
-    Left,
-
-    /// Right side of the screen
-    Right,
-}
-
-impl Anchor {
-    pub(crate) fn too_raw(&self) -> zwlr_layer_surface_v1::Anchor {
-        match *self {
-            Anchor::Top => zwlr_layer_surface_v1::Anchor::Top,
-            Anchor::Bottom => zwlr_layer_surface_v1::Anchor::Bottom,
-            Anchor::Left => zwlr_layer_surface_v1::Anchor::Left,
-            Anchor::Right => zwlr_layer_surface_v1::Anchor::Right,
-        }
-    }
-}
-
-impl Layer {
-    pub(crate) fn too_raw(&self) -> zwlr_layer_shell_v1::Layer {
-        match *self {
-            Layer::Background => zwlr_layer_shell_v1::Layer::Background,
-            Layer::Bottom => zwlr_layer_shell_v1::Layer::Bottom,
-            Layer::Top => zwlr_layer_shell_v1::Layer::Top,
-            Layer::Overlay => zwlr_layer_shell_v1::Layer::Overlay,
-        }
-    }
-}
-
-/// A struct representing the wlr shell
-
-pub struct WlrShell {
+pub struct LayerSurface {
     /// The raw wl_surface
     pub surface: wl_surface::WlSurface,
 
@@ -93,7 +53,7 @@ pub struct WlrShell {
     pub render_event: Rc<Cell<Option<RenderEvent>>>,
 }
 
-impl WlrShell {
+impl LayerSurface {
     /// Create a new wlr shell
 
     pub fn new(
@@ -104,16 +64,12 @@ impl WlrShell {
         anchor: Anchor,
         dimensions: (u32, u32),
     ) -> Self {
-        let layer_surface = layer_shell.get_layer_surface(
-            &surface,
-            Some(output),
-            layer.too_raw(),
-            "example".to_owned(),
-        );
+        let layer_surface =
+            layer_shell.get_layer_surface(&surface, Some(output), layer, "example".to_owned());
 
         layer_surface.set_size(dimensions.0, dimensions.1);
         // Anchor to the top left corner of the output
-        layer_surface.set_anchor(anchor.too_raw());
+        layer_surface.set_anchor(anchor);
 
         let next_render_event = Rc::new(Cell::new(None::<RenderEvent>));
         let next_render_event_handle = Rc::clone(&next_render_event);
@@ -146,7 +102,7 @@ impl WlrShell {
     }
 }
 
-impl Drop for WlrShell {
+impl Drop for LayerSurface {
     fn drop(&mut self) {
         self.layer_surface.destroy();
         self.surface.destroy();

@@ -22,8 +22,8 @@ use wayland_protocols::{
 
 use crate::environment::{Environment, GlobalHandler};
 
+pub mod layer;
 mod wl;
-pub mod wlr;
 mod xdg;
 mod zxdg;
 
