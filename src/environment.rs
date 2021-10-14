@@ -119,8 +119,18 @@ impl<E: InnerEnv + 'static> Environment<E> {
         let environment = Self::new_pending(display, env);
 
         // Fully initialize the environment.
-        queue.sync_roundtrip(&mut (), |_, _, _| unreachable!())?;
-        queue.sync_roundtrip(&mut (), |_, _, _| unreachable!())?;
+        queue.sync_roundtrip(&mut (), |event, _, _| {
+            panic!(
+                "Encountered unhandled event during initial roundtrip ({}::{})",
+                event.interface, event.name
+            );
+        })?;
+        queue.sync_roundtrip(&mut (), |event, _, _| {
+            panic!(
+                "Encountered unhandled event during initial roundtrip ({}::{})",
+                event.interface, event.name
+            );
+        })?;
 
         Ok(environment)
     }
