@@ -15,7 +15,7 @@ use wayland_client::EventQueue;
 /// will be given access to the `EventQueue` and you should call `.dispatch_pending()`
 /// and forward its return value, allowing you to handle orphan events as you prefer.
 ///
-/// If you don't use orphan events, the `quick_insert` method will firectly
+/// If you don't use orphan events, the `quick_insert` method will directly
 /// insert the source into a provided `LoopHandle` with an adapter which will panic
 /// whenever an oprhan event is encountered.
 #[derive(Debug)]
@@ -32,6 +32,9 @@ impl WaylandSource {
     }
 
     /// Insert this source into given event loop with an adapter that panics on orphan events
+    ///
+    /// The adapter will pass the event loop's global shared data as `dispatch_data` too all
+    /// callbacks.
     pub fn quick_insert<Data: 'static>(
         self,
         handle: LoopHandle<Data>,
