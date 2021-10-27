@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.15.2 - 2021-10-27
+
+- Most types are now `Debug`
+
 ## 0.15.1 - 2021-08-23
 
 #### Bugfixes
