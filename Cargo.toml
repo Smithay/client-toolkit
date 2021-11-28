@@ -13,19 +13,20 @@ readme = "README.md"
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.22"
+nix = "0.23.0"
 dlib = "0.5"
 lazy_static = "1.0"
 memmap2 = "0.3.0"
 log = "0.4"
-wayland-client = "0.29"
-wayland-protocols = { version = "0.29" , features = ["client", "unstable_protocols"] }
-wayland-cursor = "0.29"
+thiserror = "1.0.30"
+wayland-client = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
+wayland-protocols = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317", features = ["client", "unstable_protocols"] }
+wayland-cursor = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 calloop = { version = "0.9.1", optional = true }
 
 [features]
-default = ["calloop", "dlopen"]
-dlopen = ["wayland-client/dlopen"]
+default = ["calloop"]
+#dlopen = ["wayland-client/dlopen"]
 
 [build-dependencies]
 pkg-config = "0.3"
