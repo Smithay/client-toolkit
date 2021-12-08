@@ -519,7 +519,7 @@ fn create_shm_fd() -> io::Result<RawFd> {
 
 impl<E> crate::environment::Environment<E>
 where
-    E: crate::environment::GlobalHandler<wl_shm::WlShm>,
+    E: crate::environment::SingleGlobalHandler<wl_shm::WlShm>,
 {
     /// Create a simple memory pool
     ///

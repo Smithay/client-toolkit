@@ -178,7 +178,7 @@ impl DataDeviceHandler {
     }
 }
 
-impl crate::environment::GlobalHandler<wl_data_device_manager::WlDataDeviceManager>
+impl crate::environment::SingleGlobalHandler<wl_data_device_manager::WlDataDeviceManager>
     for DataDeviceHandler
 {
     fn created(
@@ -242,7 +242,7 @@ impl DataDeviceHandling for DataDeviceHandler {
 
 impl<E> crate::environment::Environment<E>
 where
-    E: crate::environment::GlobalHandler<wl_data_device_manager::WlDataDeviceManager>,
+    E: crate::environment::SingleGlobalHandler<wl_data_device_manager::WlDataDeviceManager>,
 {
     /// Create a new data source
     ///

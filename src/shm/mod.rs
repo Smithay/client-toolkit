@@ -29,7 +29,7 @@ impl ShmHandler {
     }
 }
 
-impl crate::environment::GlobalHandler<wl_shm::WlShm> for ShmHandler {
+impl crate::environment::SingleGlobalHandler<wl_shm::WlShm> for ShmHandler {
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,

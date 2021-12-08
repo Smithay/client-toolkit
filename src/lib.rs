@@ -65,11 +65,11 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 ///
 /// This includes handlers for the following globals:
 ///
-/// - `wl_compositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+/// - `wl_compositor` as a [`SingleGlobal`](environment/struct.SingleGlobal.html)
 /// - `wl_data_device_manager` as a [`DataDeviceHandler`](data_device/struct.DataDeviceHandler.html)
 /// - `wl_output` with the [`OutputHandler`](output/struct.OutputHandler.html)
 /// - `wl_seat` with the [`SeatHandler`](seat/struct.SeatHandler.html)
-/// - `wl_subcompositor` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+/// - `wl_subcompositor` as a [`SingleGlobal`](environment/struct.SingleGlobal.html)
 /// - `wl_shm` as a [`ShmHandler`](shm/struct.ShmHandler.html)
 /// - `zwp` and `gtk` primary selection device manager as a [`PrimarySelectionHandler`](primary_selection/struct.PrimarySelectionHandler.html)
 ///
@@ -85,7 +85,7 @@ pub use surface::{get_surface_outputs, get_surface_scale_factor};
 /// - the `desktop` preset, invoked as `default_environment!(MyEnv, desktop);` additionally
 /// includes:
 ///   - `xdg_shell` and `wl_shell` with the [`ShellHandler`](shell/struct.ShellHandler.html)
-///   - `xdg_decoration_manager` as a [`SimpleGlobal`](environment/struct.SimpleGlobal.html)
+///   - `xdg_decoration_manager` as a [`SingleGlobal`](environment/struct.SingleGlobal.html)
 ///
 /// You can also add the `fields` argument to add additional fields to the generated struct, and
 /// the `singles` and `multis` arguments to route additional globals like with the
@@ -120,7 +120,7 @@ macro_rules! default_environment {
                 // shell
                 sctk_shell: $crate::shell::ShellHandler,
                 // decoration
-                sctk_decoration_mgr: $crate::environment::SimpleGlobal<$crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
+                sctk_decoration_mgr: $crate::environment::SingleGlobal<$crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
                 // others
                 $($($fname : $fty,)*)?
             ],
@@ -154,9 +154,9 @@ macro_rules! default_environment {
          * Declare the type
          */
         pub struct $env_name {
-            // SimpleGlobals
-            sctk_compositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_compositor::WlCompositor>,
-            sctk_subcompositor: $crate::environment::SimpleGlobal<$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor>,
+            // SingleGlobals
+            sctk_compositor: $crate::environment::SingleGlobal<$crate::reexports::client::protocol::wl_compositor::WlCompositor>,
+            sctk_subcompositor: $crate::environment::SingleGlobal<$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor>,
             // shm
             sctk_shm: $crate::shm::ShmHandler,
             // output
@@ -249,7 +249,7 @@ macro_rules! default_environment {
         //
         $crate::environment!($env_name,
             singles = [
-                // SimpleGlobals
+                // SingleGlobals
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor => sctk_compositor,
                 $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor => sctk_subcompositor,
                 // shm
@@ -332,7 +332,7 @@ macro_rules! new_default_environment {
             $(with=($display, $queue),)?
             fields = [
                 sctk_shell: $crate::shell::ShellHandler::new(),
-                sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
+                sctk_decoration_mgr: $crate::environment::SingleGlobal::new(),
                 $($(
                     $fname: $fval,
                 )*)?
@@ -350,8 +350,8 @@ macro_rules! new_default_environment {
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
             let env = $crate::environment::Environment::new(&display.attach($queue.token()), &mut $queue,$env_name {
-                sctk_compositor: $crate::environment::SimpleGlobal::new(),
-                sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
+                sctk_compositor: $crate::environment::SingleGlobal::new(),
+                sctk_subcompositor: $crate::environment::SingleGlobal::new(),
                 sctk_shm: $crate::shm::ShmHandler::new(),
                 sctk_outputs: $crate::output::OutputHandler::new(),
                 sctk_seats,

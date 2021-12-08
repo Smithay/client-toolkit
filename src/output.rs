@@ -673,7 +673,7 @@ fn process_xdg_event(
     }
 }
 
-impl crate::environment::GlobalHandler<ZxdgOutputManagerV1> for XdgOutputHandler {
+impl crate::environment::SingleGlobalHandler<ZxdgOutputManagerV1> for XdgOutputHandler {
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,

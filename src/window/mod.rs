@@ -18,7 +18,7 @@ use wayland_protocols::unstable::xdg_decoration::v1::client::{
 };
 
 use crate::{
-    environment::{Environment, GlobalHandler, MultiGlobalHandler},
+    environment::{Environment, MultiGlobalHandler, SingleGlobalHandler},
     seat::pointer::ThemeManager,
     shell,
 };
@@ -195,12 +195,12 @@ impl<F: Frame + 'static> Window<F> {
     ) -> Result<Window<F>, F::Error>
     where
         Impl: FnMut(Event, DispatchData) + 'static,
-        E: GlobalHandler<wl_compositor::WlCompositor>
-            + GlobalHandler<wl_subcompositor::WlSubcompositor>
-            + GlobalHandler<wl_shm::WlShm>
+        E: SingleGlobalHandler<wl_compositor::WlCompositor>
+            + SingleGlobalHandler<wl_subcompositor::WlSubcompositor>
+            + SingleGlobalHandler<wl_shm::WlShm>
             + crate::shell::ShellHandling
             + MultiGlobalHandler<wl_seat::WlSeat>
-            + GlobalHandler<ZxdgDecorationManagerV1>
+            + SingleGlobalHandler<ZxdgDecorationManagerV1>
             + crate::seat::SeatHandling,
     {
         let compositor = env.require_global::<wl_compositor::WlCompositor>();
@@ -821,12 +821,12 @@ pub trait Frame: Sized {
 
 impl<E> Environment<E>
 where
-    E: GlobalHandler<wl_compositor::WlCompositor>
-        + GlobalHandler<wl_subcompositor::WlSubcompositor>
-        + GlobalHandler<wl_shm::WlShm>
+    E: SingleGlobalHandler<wl_compositor::WlCompositor>
+        + SingleGlobalHandler<wl_subcompositor::WlSubcompositor>
+        + SingleGlobalHandler<wl_shm::WlShm>
         + crate::shell::ShellHandling
         + MultiGlobalHandler<wl_seat::WlSeat>
-        + GlobalHandler<ZxdgDecorationManagerV1>
+        + SingleGlobalHandler<ZxdgDecorationManagerV1>
         + crate::seat::SeatHandling,
 {
     /// Create a new window wrapping given surface

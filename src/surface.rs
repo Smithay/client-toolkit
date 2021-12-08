@@ -124,7 +124,7 @@ where
     surface.into()
 }
 
-impl<E: crate::environment::GlobalHandler<wl_compositor::WlCompositor>>
+impl<E: crate::environment::SingleGlobalHandler<wl_compositor::WlCompositor>>
     crate::environment::Environment<E>
 {
     /// Create a DPI-aware surface

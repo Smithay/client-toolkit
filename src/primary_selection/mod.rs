@@ -15,7 +15,7 @@ use wayland_client::{
 
 use crate::lazy_global::LazyGlobal;
 use crate::seat::{SeatHandling, SeatListener};
-use crate::{environment::GlobalHandler, MissingGlobal};
+use crate::{environment::SingleGlobalHandler, MissingGlobal};
 
 mod device;
 mod offer;
@@ -147,10 +147,10 @@ impl PrimarySelectionHandling for PrimarySelectionHandler {
     ///
     /// Returns `None` if no primary selection device manager was advertised.
     fn get_primary_selection_manager(&self) -> Option<PrimarySelectionDeviceManager> {
-        GlobalHandler::<ZwpPrimarySelectionDeviceManagerV1>::get(self)
+        SingleGlobalHandler::<ZwpPrimarySelectionDeviceManagerV1>::get(self)
             .map(PrimarySelectionDeviceManager::Zwp)
             .or_else(|| {
-                GlobalHandler::<GtkPrimarySelectionDeviceManager>::get(self)
+                SingleGlobalHandler::<GtkPrimarySelectionDeviceManager>::get(self)
                     .map(PrimarySelectionDeviceManager::Gtk)
             })
     }
@@ -267,7 +267,7 @@ impl PrimarySelectionDeviceManagerInner {
     }
 }
 
-impl GlobalHandler<ZwpPrimarySelectionDeviceManagerV1> for PrimarySelectionHandler {
+impl SingleGlobalHandler<ZwpPrimarySelectionDeviceManagerV1> for PrimarySelectionHandler {
     fn created(&mut self, registry: Attached<WlRegistry>, id: u32, version: u32, _: DispatchData) {
         let mut inner = self.inner.borrow_mut();
         if inner.registry.is_none() {
@@ -309,7 +309,7 @@ impl GlobalHandler<ZwpPrimarySelectionDeviceManagerV1> for PrimarySelectionHandl
     }
 }
 
-impl GlobalHandler<GtkPrimarySelectionDeviceManager> for PrimarySelectionHandler {
+impl SingleGlobalHandler<GtkPrimarySelectionDeviceManager> for PrimarySelectionHandler {
     fn created(&mut self, registry: Attached<WlRegistry>, id: u32, version: u32, _: DispatchData) {
         let mut inner = self.inner.borrow_mut();
         if inner.registry.is_none() {

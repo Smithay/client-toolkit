@@ -22,7 +22,7 @@
 //! from the registry, and assigning them to filters to receive their events as necessary.
 //!
 //! This module provides a generic implementation of the [`GlobalHandler<I>`](trait.GlobalHandler.html) trait
-//! as [`SimpleGlobal<I>`](struct.SimpleGlobal.html). It can manage "single" globals that do not generate
+//! as [`SingleGlobal<I>`](struct.SingleGlobal.html). It can manage "single" globals that do not generate
 //! events, and thus require no filter.
 //!
 //! ## the  `environment!` macro
@@ -46,7 +46,7 @@ use wayland_client::{
  */
 
 /// Required trait for implementing a handler for "single" globals
-pub trait GlobalHandler<I: Interface> {
+pub trait SingleGlobalHandler<I: Interface> {
     /// This global was created and signaled in the registry with given id and version
     fn created(
         &mut self,
@@ -175,7 +175,7 @@ impl<E> Environment<E> {
     /// It returns `None` if the global has not (yet) been signaled by the registry.
     pub fn get_global<I: Interface>(&self) -> Option<Attached<I>>
     where
-        E: GlobalHandler<I>,
+        E: SingleGlobalHandler<I>,
     {
         self.inner.borrow().get()
     }
@@ -186,7 +186,7 @@ impl<E> Environment<E> {
     /// message if the requested global was not advertized by the server.
     pub fn require_global<I: Interface>(&self) -> Attached<I>
     where
-        E: GlobalHandler<I>,
+        E: SingleGlobalHandler<I>,
     {
         match self.inner.borrow().get() {
             Some(g) => g,
@@ -253,7 +253,7 @@ pub trait InnerEnv {
 }
 
 /*
- * Simple handlers
+ * Single global handler
  */
 
 /// A minimalist global handler for "single" globals
@@ -264,18 +264,20 @@ pub trait InnerEnv {
 /// It is appropriate for globals that never generate events, like `wl_compositor`
 /// or `wl_data_device_manager`.
 #[derive(Debug)]
-pub struct SimpleGlobal<I: Interface> {
+pub struct SingleGlobal<I: Interface> {
     global: Option<Attached<I>>,
 }
 
-impl<I: Interface> SimpleGlobal<I> {
+impl<I: Interface> SingleGlobal<I> {
     /// Create a new handler
-    pub fn new() -> SimpleGlobal<I> {
-        SimpleGlobal { global: None }
+    pub fn new() -> SingleGlobal<I> {
+        SingleGlobal { global: None }
     }
 }
 
-impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> GlobalHandler<I> for SimpleGlobal<I> {
+impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> SingleGlobalHandler<I>
+    for SingleGlobal<I>
+{
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,
@@ -304,12 +306,12 @@ impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> GlobalHandler<I> f
 /// ```no_run
 /// # extern crate smithay_client_toolkit as sctk;
 /// # use sctk::reexports::client::protocol::{wl_compositor::WlCompositor, wl_subcompositor::WlSubcompositor, wl_output::WlOutput};
-/// # use sctk::environment::SimpleGlobal;
+/// # use sctk::environment::SingleGlobal;
 /// # use sctk::environment;
 /// # use sctk::output::OutputHandler;
 /// struct MyEnv {
-///     compositor: SimpleGlobal<WlCompositor>,
-///     subcompositor: SimpleGlobal<WlSubcompositor>,
+///     compositor: SingleGlobal<WlCompositor>,
+///     subcompositor: SingleGlobal<WlSubcompositor>,
 ///     outputs: OutputHandler
 /// }
 ///
@@ -349,7 +351,7 @@ macro_rules! environment {
                 match event {
                     $crate::reexports::client::GlobalEvent::New { id, interface, version } => match &interface[..] {
                         $(
-                            <$sty as $crate::reexports::client::Interface>::NAME => $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata),
+                            <$sty as $crate::reexports::client::Interface>::NAME => $crate::environment::SingleGlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata),
                         )*
                         $(
                             <$mty as $crate::reexports::client::Interface>::NAME => $crate::environment::MultiGlobalHandler::<$mty>::created(&mut self.$mname, registry, id, version, ddata),
@@ -367,12 +369,12 @@ macro_rules! environment {
         }
 
         $(
-            impl $crate::environment::GlobalHandler<$sty> for $env_name {
+            impl $crate::environment::SingleGlobalHandler<$sty> for $env_name {
                 fn created(&mut self, registry: $crate::reexports::client::Attached<$crate::reexports::client::protocol::wl_registry::WlRegistry>, id: u32, version: u32, ddata: $crate::reexports::client::DispatchData) {
-                    $crate::environment::GlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata)
+                    $crate::environment::SingleGlobalHandler::<$sty>::created(&mut self.$sname, registry, id, version, ddata)
                 }
                 fn get(&self) -> Option<$crate::reexports::client::Attached<$sty>> {
-                    $crate::environment::GlobalHandler::<$sty>::get(&self.$sname)
+                    $crate::environment::SingleGlobalHandler::<$sty>::get(&self.$sname)
                 }
             }
         )*

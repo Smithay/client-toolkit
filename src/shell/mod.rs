@@ -20,7 +20,7 @@ use wayland_protocols::{
     xdg_shell::client::{xdg_toplevel, xdg_wm_base},
 };
 
-use crate::environment::{Environment, GlobalHandler};
+use crate::environment::{Environment, SingleGlobalHandler};
 
 mod wl;
 mod xdg;
@@ -212,7 +212,7 @@ impl ShellHandler {
     }
 }
 
-impl GlobalHandler<wl_shell::WlShell> for ShellHandler {
+impl SingleGlobalHandler<wl_shell::WlShell> for ShellHandler {
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,
@@ -247,7 +247,7 @@ impl GlobalHandler<wl_shell::WlShell> for ShellHandler {
     }
 }
 
-impl GlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
+impl SingleGlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,
@@ -288,7 +288,7 @@ impl GlobalHandler<xdg_wm_base::XdgWmBase> for ShellHandler {
     }
 }
 
-impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
+impl SingleGlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,
@@ -330,10 +330,12 @@ impl GlobalHandler<zxdg_shell_v6::ZxdgShellV6> for ShellHandler {
 
 impl ShellHandling for ShellHandler {
     fn get_shell(&self) -> Option<Shell> {
-        GlobalHandler::<xdg_wm_base::XdgWmBase>::get(self)
+        SingleGlobalHandler::<xdg_wm_base::XdgWmBase>::get(self)
             .map(Shell::Xdg)
-            .or_else(|| GlobalHandler::<zxdg_shell_v6::ZxdgShellV6>::get(self).map(Shell::Zxdg))
-            .or_else(|| GlobalHandler::<wl_shell::WlShell>::get(self).map(Shell::Wl))
+            .or_else(|| {
+                SingleGlobalHandler::<zxdg_shell_v6::ZxdgShellV6>::get(self).map(Shell::Zxdg)
+            })
+            .or_else(|| SingleGlobalHandler::<wl_shell::WlShell>::get(self).map(Shell::Wl))
     }
 }
 

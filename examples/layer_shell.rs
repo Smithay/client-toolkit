@@ -1,6 +1,6 @@
 use smithay_client_toolkit::{
     default_environment,
-    environment::SimpleGlobal,
+    environment::SingleGlobal,
     new_default_environment,
     output::{with_output_info, OutputInfo},
     reexports::{
@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 default_environment!(Env,
     fields = [
-        layer_shell: SimpleGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
+        layer_shell: SingleGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
     ],
     singles = [
         zwlr_layer_shell_v1::ZwlrLayerShellV1 => layer_shell
@@ -55,7 +55,7 @@ impl Surface {
             "example".to_owned(),
         );
 
-        layer_surface.set_size(32, 32);
+        layer_surface.set_size(332, 332);
         // Anchor to the top left corner of the output
         layer_surface
             .set_anchor(zwlr_layer_surface_v1::Anchor::Top | zwlr_layer_surface_v1::Anchor::Left);
@@ -134,7 +134,7 @@ impl Drop for Surface {
 
 fn main() {
     let (env, display, queue) =
-        new_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(),])
+        new_default_environment!(Env, fields = [layer_shell: SingleGlobal::new(),])
             .expect("Initial roundtrip failed!");
 
     let surfaces = Rc::new(RefCell::new(Vec::new()));
