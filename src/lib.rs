@@ -12,45 +12,28 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
 }
 
+pub mod output;
+
 /// TODO: Replace this wil wayland-rs delegate_dispatch when it supports fields.
 #[macro_export]
-macro_rules! delegate_dispatch_2 {
-    // Delegate implementation to another type using a conversion function from the from type.
-    ($dispatch_from:ty => $dispatch_to:ty ; [$($interface:ty),*] => $convert:ident) => {
+macro_rules! delegate_dispatch {
+    ($dispatch_from: ty: [$($interface: ty),*] => $dispatch_to: ty ; |$dispatcher: ident| $closure: block) => {
         $(
-            impl wayland_client::Dispatch<$interface> for $dispatch_from {
+            impl $crate::Dispatch<$interface> for $dispatch_from {
                 type UserData = <$dispatch_to as $crate::DelegateDispatchBase<$interface>>::UserData;
-                fn event(
-                    &mut self,
-                    proxy: &$interface,
-                    event: <$interface as wayland_client::Proxy>::Event,
-                    data: &Self::UserData,
-                    cxhandle: &mut wayland_client::ConnectionHandle,
-                    qhandle: &wayland_client::QueueHandle<Self>,
-                    init: &mut wayland_client::DataInit<'_>,
-                ) {
-                    <$dispatch_to as wayland_client::DelegateDispatch<$interface, Self>>::event(&mut self.$convert(), proxy, event, data, cxhandle, qhandle, init)
-                }
-            }
-        )*
-    };
-
-    // Delegate implementation to another type using a field owned by the from type.
-    ($dispatch_from:ty => $dispatch_to:ty ; [$($interface:ty),*] => self.$field:ident) => {
-        $(
-            impl wayland_client::Dispatch<$interface> for $dispatch_from {
-                type UserData = <$dispatch_to as wayland_client::DelegateDispatchBase<$interface>>::UserData;
 
                 fn event(
                     &mut self,
                     proxy: &$interface,
-                    event: <$interface as wayland_client::Proxy>::Event,
+                    event: <$interface as $crate::Proxy>::Event,
                     data: &Self::UserData,
-                    cxhandle: &mut wayland_client::ConnectionHandle,
-                    qhandle: &wayland_client::QueueHandle<Self>,
-                    init: &mut wayland_client::DataInit<'_>,
+                    cxhandle: &mut $crate::ConnectionHandle,
+                    qhandle: &$crate::QueueHandle<Self>,
+                    init: &mut $crate::DataInit<'_>,
                 ) {
-                    <$dispatch_to as wayland_client::DelegateDispatch<$interface, Self>>::event(&mut self.$field, proxy, event, data, cxhandle, qhandle, init)
+                    let $dispatcher = self; // We need to do this so the closure can see the dispatcher field.
+                    let delegate: &mut $dispatch_to = { $closure };
+                    delegate.event(proxy, event, data, cxhandle, qhandle, init)
                 }
             }
         )*
