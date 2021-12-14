@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use smithay_client_toolkit::output::{OutputData, OutputHandler, OutputInfo, OutputState};
+use smithay_client_toolkit::output::{OutputData, OutputHandler, OutputInfo, OutputState, OutputDispatch};
 use wayland_client::{
     protocol::{wl_output, wl_registry},
     Connection, ConnectionHandle, DataInit, Dispatch, QueueHandle, delegate_dispatch,
 };
-use wayland_protocols::unstable::xdg_output::v1::client::zxdg_output_manager_v1;
+use wayland_protocols::unstable::xdg_output::v1::client::{zxdg_output_manager_v1, zxdg_output_v1};
 
 struct ListOutputs {
     inner: InnerApp,
