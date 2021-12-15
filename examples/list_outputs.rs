@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use smithay_client_toolkit::output::{OutputData, OutputHandler, OutputInfo, OutputState, OutputDispatch};
+use smithay_client_toolkit::output::{
+    OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState,
+};
 use wayland_client::{
+    delegate_dispatch,
     protocol::{wl_output, wl_registry},
-    Connection, ConnectionHandle, DataInit, Dispatch, QueueHandle, delegate_dispatch,
+    Connection, ConnectionHandle, DataInit, Dispatch, QueueHandle,
 };
 use wayland_protocols::unstable::xdg_output::v1::client::{zxdg_output_manager_v1, zxdg_output_v1};
 

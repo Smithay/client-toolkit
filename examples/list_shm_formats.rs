@@ -1,9 +1,8 @@
-use smithay_client_toolkit::{
-    shm::{ShmDispatch, ShmHandler, ShmState},
-};
+use smithay_client_toolkit::shm::{ShmDispatch, ShmHandler, ShmState};
 use wayland_client::{
+    delegate_dispatch,
     protocol::{wl_registry, wl_shm},
-    Connection, Dispatch, delegate_dispatch,
+    Connection, Dispatch,
 };
 
 struct ListShmFormats {
