@@ -1,3 +1,5 @@
+pub mod pool;
+
 use wayland_client::{
     protocol::wl_shm, ConnectionHandle, DataInit, DelegateDispatch, DelegateDispatchBase, Dispatch,
     QueueHandle, WEnum,
