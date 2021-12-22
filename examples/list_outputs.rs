@@ -1,17 +1,19 @@
 use std::collections::HashMap;
 
-use smithay_client_toolkit::output::{
-    OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState,
+use smithay_client_toolkit::{
+    output::{OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState},
+    registry::{RegistryDispatch, RegistryHandle, RegistryHandler},
 };
 use wayland_client::{
     delegate_dispatch,
     protocol::{wl_output, wl_registry},
-    Connection, ConnectionHandle, DataInit, Dispatch, QueueHandle,
+    Connection,
 };
 use wayland_protocols::unstable::xdg_output::v1::client::{zxdg_output_manager_v1, zxdg_output_v1};
 
 struct ListOutputs {
     inner: InnerApp,
+    registry_handle: RegistryHandle,
     output_state: OutputState,
 }
 
@@ -33,72 +35,18 @@ impl OutputHandler for InnerApp {
     }
 }
 
-impl Dispatch<wl_registry::WlRegistry> for ListOutputs {
-    type UserData = ();
-
-    fn event(
-        &mut self,
-        registry: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _data: &Self::UserData,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<Self>,
-        _init: &mut DataInit<'_>,
-    ) {
-        match event {
-            wl_registry::Event::Global { name, interface, version } => match &interface[..] {
-                "wl_output" => {
-                    let output = registry
-                        .bind::<wl_output::WlOutput, _>(
-                            cx,
-                            name,
-                            u32::min(version, 4),
-                            qh,
-                            OutputData::new(),
-                        )
-                        .expect("Failed to bind global");
-
-                    // Very temporary hack.
-                    #[allow(deprecated)]
-                    self.output_state.new_output(cx, qh, name, output);
-
-                    println!("Bind [{}] {} @ v{}", name, &interface, version);
-                }
-
-                "zxdg_output_manager_v1" => {
-                    let manager = registry
-                        .bind::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _>(
-                            cx,
-                            name,
-                            u32::min(version, 3),
-                            qh,
-                            (),
-                        )
-                        .expect("Failed to bind globals");
-
-                    // Very temporary hack.
-                    #[allow(deprecated)]
-                    self.output_state.zxdg_manager_bound(cx, qh, manager);
-
-                    println!("Bind zxdg manager");
-                }
-
-                _ => (),
-            },
-
-            wl_registry::Event::GlobalRemove { name: _ } => todo!(),
-
-            _ => unreachable!(),
-        }
-    }
-}
-
 delegate_dispatch!(ListOutputs: <UserData = OutputData> [wl_output::WlOutput, zxdg_output_v1::ZxdgOutputV1] => OutputDispatch<'_, InnerApp> ; |app| {
     &mut OutputDispatch(&mut app.output_state, &mut app.inner)
 });
 
 delegate_dispatch!(ListOutputs: <UserData = ()> [zxdg_output_manager_v1::ZxdgOutputManagerV1] => OutputDispatch<'_, InnerApp> ; |app| {
     &mut OutputDispatch(&mut app.output_state, &mut app.inner)
+});
+
+delegate_dispatch!(ListOutputs: <UserData = ()> [wl_registry::WlRegistry] => RegistryDispatch<'_, ListOutputs> ; |app| {
+    let handles: Vec<&mut dyn RegistryHandler<ListOutputs>> = vec![&mut app.output_state];
+
+    &mut RegistryDispatch(&mut app.registry_handle, handles)
 });
 
 fn main() {
@@ -109,10 +57,11 @@ fn main() {
     let mut event_queue = cx.new_event_queue();
     let qh = event_queue.handle();
 
-    let _registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
 
     let mut list_outputs = ListOutputs {
         inner: InnerApp { outputs: HashMap::new() },
+        registry_handle: RegistryHandle::new(registry),
         output_state: OutputState::new(),
     };
     event_queue.blocking_dispatch(&mut list_outputs).unwrap();
