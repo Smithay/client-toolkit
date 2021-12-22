@@ -28,6 +28,8 @@ use super::CreatePoolError;
 /// A raw handler for file backed shared memory pools.
 ///
 /// This type of pool will create the SHM memory pool and provide a way to resize the pool.
+///
+/// This pool does not release of buffers. If you need this, use one of the higher level pools.
 #[derive(Debug)]
 pub struct RawPool {
     pool: wl_shm_pool::WlShmPool,
@@ -37,26 +39,6 @@ pub struct RawPool {
 }
 
 impl RawPool {
-    /// Creates a raw pool of the specified size with the associated wl_shm global.
-    pub fn new<D>(
-        len: usize,
-        shm: &wl_shm::WlShm,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-    ) -> Result<RawPool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = ()> + 'static,
-    {
-        let shm_fd = RawPool::create_shm_fd()?;
-        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
-        mem_file.set_len(len as u64)?;
-
-        let pool = shm.create_pool(cx, shm_fd, len as i32, qh, ())?;
-        let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
-
-        Ok(RawPool { pool, len, mem_file, mmap })
-    }
-
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -122,6 +104,27 @@ impl RawPool {
     /// existing buffers created from the pool to free the memory.
     pub fn destroy(self, cx: &mut ConnectionHandle) {
         self.pool.destroy(cx);
+    }
+
+    pub(crate) fn new<D, U>(
+        len: usize,
+        shm: &wl_shm::WlShm,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        udata: U,
+    ) -> Result<RawPool, CreatePoolError>
+    where
+        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
+        U: Send + Sync + 'static,
+    {
+        let shm_fd = RawPool::create_shm_fd()?;
+        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
+        mem_file.set_len(len as u64)?;
+
+        let pool = shm.create_pool(cx, shm_fd, len as i32, qh, udata)?;
+        let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
+
+        Ok(RawPool { pool, len, mem_file, mmap })
     }
 }
 
