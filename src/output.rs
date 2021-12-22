@@ -5,7 +5,7 @@ use std::{
 };
 
 use wayland_client::{
-    protocol::wl_output::{self, Subpixel, Transform, WlOutput},
+    protocol::wl_output::{self, Subpixel, Transform},
     ConnectionHandle, DataInit, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy,
     QueueHandle, WEnum,
 };
@@ -13,6 +13,8 @@ use wayland_protocols::unstable::xdg_output::v1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
     zxdg_output_v1,
 };
+
+use crate::registry::{RegistryHandle, RegistryHandler};
 
 pub trait OutputHandler {
     /// A new output has been advertised.
@@ -36,69 +38,6 @@ pub struct OutputState {
 impl OutputState {
     pub fn new() -> OutputState {
         OutputState { xdg: None, outputs: vec![] }
-    }
-
-    #[deprecated = "This is a temporary hack until some way to notify delegates a global was created is available."]
-    pub fn new_output<D>(
-        &mut self,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        name: u32,
-        output: WlOutput,
-    ) where
-        D: Dispatch<wl_output::WlOutput, UserData = OutputData>
-            + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
-            + 'static,
-    {
-        let version = output.version();
-
-        self.outputs.push(OutputInner {
-            _name: name,
-            wl_output: output.clone(),
-            xdg_output: None,
-            just_created: true,
-            // wl_output::done was added in version 2.
-            // If we have an output at version 1, assume the data was already sent.
-            data: if version > 1 {
-                OutputStatus::Pending(Pending {
-                    pending_wl: true,
-                    pending_xdg: self.xdg.is_some(),
-                    info: OutputInfo::new(name),
-                })
-            } else {
-                OutputStatus::Ready { info: OutputInfo::new(name) }
-            },
-        });
-
-        if self.xdg.is_some() {
-            let xdg = self.xdg.as_ref().unwrap();
-
-            let data = output.data::<OutputData>().unwrap().clone();
-
-            let xdg_output = xdg.get_xdg_output(cx, output, qh, data).unwrap();
-            self.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
-        }
-    }
-
-    #[deprecated = "This is a temporary hack until some way to notify delegates a global was created is available."]
-    pub fn zxdg_manager_bound<D>(
-        &mut self,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        manager: zxdg_output_manager_v1::ZxdgOutputManagerV1,
-    ) where
-        D: Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData> + 'static,
-    {
-        self.xdg = Some(manager);
-        let xdg = self.xdg.as_ref().unwrap();
-
-        // Initialize the XDG output for any existing output globals found before the manager is initialized.
-        self.outputs.iter_mut().for_each(|output| {
-            let data = output.wl_output.data::<OutputData>().unwrap().clone();
-
-            let xdg_output = xdg.get_xdg_output(cx, output.wl_output.clone(), qh, data).unwrap();
-            output.xdg_output = Some(xdg_output);
-        });
     }
 }
 
@@ -393,6 +332,109 @@ where
     }
 }
 
+impl<D> RegistryHandler<D> for OutputState
+where
+    D: Dispatch<wl_output::WlOutput, UserData = OutputData>
+        + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
+        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = ()>
+        + 'static,
+{
+    fn new_global(
+        &mut self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        name: u32,
+        interface: &str,
+        version: u32,
+        handle: &mut RegistryHandle,
+    ) {
+        match interface {
+            "wl_output" => {
+                let wl_output = handle
+                    .bind_cached::<wl_output::WlOutput, _, _, _>(cx, qh, name, || {
+                        (u32::min(version, 4), OutputData::new())
+                    })
+                    .expect("Failed to bind global");
+
+                let version = wl_output.version();
+
+                self.outputs.push(OutputInner {
+                    name,
+                    wl_output: wl_output.clone(),
+                    xdg_output: None,
+                    just_created: true,
+                    // wl_output::done was added in version 2.
+                    // If we have an output at version 1, assume the data was already sent.
+                    data: if version > 1 {
+                        OutputStatus::Pending(Pending {
+                            pending_wl: true,
+                            pending_xdg: self.xdg.is_some(),
+                            info: OutputInfo::new(name),
+                        })
+                    } else {
+                        OutputStatus::Ready { info: OutputInfo::new(name) }
+                    },
+                });
+
+                if self.xdg.is_some() {
+                    let xdg = self.xdg.as_ref().unwrap();
+
+                    let data = wl_output.data::<OutputData>().unwrap().clone();
+
+                    let xdg_output = xdg.get_xdg_output(cx, wl_output, qh, data).unwrap();
+                    self.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
+                }
+            }
+
+            "zxdg_output_manager_v1" => {
+                let global = handle
+                    .bind_once::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _, _>(
+                        cx,
+                        qh,
+                        name,
+                        u32::min(version, 3),
+                        (),
+                    )
+                    .expect("Failed to bind global");
+
+                self.xdg = Some(global);
+
+                let xdg = self.xdg.as_ref().unwrap();
+
+                // Because the order in which globals are advertised is undefined, we need to get the extension of any
+                // wl_output we have already gotten.
+                self.outputs.iter_mut().for_each(|output| {
+                    let data = output.wl_output.data::<OutputData>().unwrap().clone();
+
+                    let xdg_output =
+                        xdg.get_xdg_output(cx, output.wl_output.clone(), qh, data).unwrap();
+                    output.xdg_output = Some(xdg_output);
+                });
+            }
+
+            _ => (),
+        }
+    }
+
+    fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32) {
+        self.outputs.retain(|inner| {
+            let destroy = inner.name != name;
+
+            if destroy {
+                if let Some(xdg_output) = &inner.xdg_output {
+                    xdg_output.destroy(cx);
+                }
+
+                inner.wl_output.release(cx);
+            }
+
+            // FIXME: How do we tell the client that the output was destroyed?
+
+            destroy
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Mode {
     /// Number of pixels of this mode in format `(width, height)`
@@ -541,7 +583,7 @@ impl OutputData {
 #[derive(Debug)]
 struct OutputInner {
     /// The name of the wl_output global.
-    _name: u32,
+    name: u32,
     wl_output: wl_output::WlOutput,
     xdg_output: Option<zxdg_output_v1::ZxdgOutputV1>,
     /// Whether this output was just created and has not an event yet.
