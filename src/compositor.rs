@@ -9,7 +9,10 @@ use wayland_client::{
     QueueHandle,
 };
 
-use crate::output::OutputData;
+use crate::{
+    output::OutputData,
+    registry::{RegistryHandle, RegistryHandler},
+};
 
 pub trait SurfaceHandler {
     /// The surface has either been moved into or out of an output and the output has a different scale factor.
@@ -18,7 +21,7 @@ pub trait SurfaceHandler {
 
 #[derive(Debug)]
 pub struct CompositorState {
-    wl_compositor: Option<wl_compositor::WlCompositor>,
+    wl_compositor: Option<(u32, wl_compositor::WlCompositor)>,
 }
 
 impl CompositorState {
@@ -26,9 +29,29 @@ impl CompositorState {
         CompositorState { wl_compositor: None }
     }
 
-    #[deprecated = "This is a temporary hack until some way to notify delegates a global was created is available."]
-    pub fn compositor_bind(&mut self, wl_compositor: wl_compositor::WlCompositor) {
-        self.wl_compositor = Some(wl_compositor);
+    pub fn create_surface<D>(
+        &self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+    ) -> Result<wl_surface::WlSurface, ()>
+    where
+        D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData> + 'static,
+    {
+        let (_, compositor) = self.wl_compositor.as_ref().ok_or(())?;
+
+        let surface = compositor
+            .create_surface(
+                cx,
+                qh,
+                SurfaceData {
+                    scale_factor: AtomicI32::new(1),
+                    outputs: Mutex::new(vec![]),
+                    role: Mutex::new(SurfaceRole::None),
+                },
+            )
+            .expect("TODO: Error");
+
+        Ok(surface)
     }
 }
 
@@ -36,9 +59,13 @@ impl CompositorState {
 #[derive(Debug)]
 pub struct SurfaceData {
     /// The scale factor of the output with the highest scale factor.
-    scale_factor: AtomicI32,
+    pub(crate) scale_factor: AtomicI32,
+
     /// The outputs the surface is currently inside.
-    outputs: Mutex<Vec<wl_output::WlOutput>>,
+    pub(crate) outputs: Mutex<Vec<wl_output::WlOutput>>,
+
+    /// The role object associated with the surface.
+    pub(crate) role: Mutex<SurfaceRole>,
 }
 
 #[derive(Debug)]
@@ -97,4 +124,80 @@ where
             }
         }
     }
+}
+
+impl<H: SurfaceHandler> DelegateDispatchBase<wl_compositor::WlCompositor>
+    for SurfaceDispatch<'_, H>
+{
+    type UserData = ();
+}
+
+impl<D, H> DelegateDispatch<wl_compositor::WlCompositor, D> for SurfaceDispatch<'_, H>
+where
+    H: SurfaceHandler,
+    D: Dispatch<wl_compositor::WlCompositor, UserData = Self::UserData>,
+{
+    fn event(
+        &mut self,
+        _: &wl_compositor::WlCompositor,
+        _: wl_compositor::Event,
+        _: &(),
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<D>,
+        _: &mut DataInit<'_>,
+    ) {
+        unreachable!("wl_compositor has no events")
+    }
+}
+
+impl<D> RegistryHandler<D> for CompositorState
+where
+    D: Dispatch<wl_compositor::WlCompositor, UserData = ()> + 'static,
+{
+    fn new_global(
+        &mut self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        name: u32,
+        interface: &str,
+        version: u32,
+        handle: &mut RegistryHandle,
+    ) {
+        if interface == "wl_compositor" {
+            let compositor = handle
+                .bind_once::<wl_compositor::WlCompositor, _, _>(
+                    cx,
+                    qh,
+                    name,
+                    u32::min(version, 4),
+                    (),
+                )
+                .expect("Failed to bind global");
+
+            self.wl_compositor = Some((name, compositor));
+        }
+    }
+
+    fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32) {
+        if self
+            .wl_compositor
+            .as_ref()
+            .map(|(compositor_name, _)| *compositor_name == name)
+            .unwrap_or(false)
+        {
+            self.wl_compositor.take();
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum SurfaceRole {
+    /// No role.
+    None,
+
+    /// Toplevel surface.
+    Toplevel,
+
+    /// Popup surface.
+    Popup,
 }
