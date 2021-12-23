@@ -32,4 +32,5 @@ default = ["calloop"]
 pkg-config = "0.3"
 
 [dev-dependencies]
-image = "0.24"
+image = "0.23"
+env_logger = "0.9.0"

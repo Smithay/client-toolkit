@@ -100,6 +100,28 @@ where
     }
 }
 
+impl<H: ShmHandler> DelegateDispatchBase<wl_shm_pool::WlShmPool> for ShmDispatch<'_, H> {
+    type UserData = ();
+}
+
+impl<D, H> DelegateDispatch<wl_shm_pool::WlShmPool, D> for ShmDispatch<'_, H>
+where
+    H: ShmHandler,
+    D: Dispatch<wl_shm_pool::WlShmPool, UserData = Self::UserData>,
+{
+    fn event(
+        &mut self,
+        _: &wl_shm_pool::WlShmPool,
+        _: wl_shm_pool::Event,
+        _: &(),
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<D>,
+        _: &mut DataInit<'_>,
+    ) {
+        unreachable!("wl_shm_pool has no events")
+    }
+}
+
 impl<D> RegistryHandler<D> for ShmState
 where
     D: Dispatch<wl_shm::WlShm, UserData = ()> + 'static,
