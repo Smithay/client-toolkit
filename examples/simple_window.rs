@@ -12,7 +12,10 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     delegate_dispatch,
-    protocol::{wl_buffer, wl_compositor, wl_output, wl_registry, wl_shm, wl_shm_pool, wl_surface},
+    protocol::{
+        wl_buffer, wl_callback, wl_compositor, wl_output, wl_registry, wl_shm, wl_shm_pool,
+        wl_surface,
+    },
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
 use wayland_protocols::{
@@ -41,6 +44,7 @@ fn main() {
     let mut simple_window = SimpleWindow {
         inner: InnerApp {
             exit: false,
+            first_configure: false,
             pool: None,
             width: 256,
             height: 256,
@@ -83,6 +87,8 @@ fn main() {
 
     simple_window.inner.window = Some(window);
 
+    // We don't draw immediately, the configure will indicate to us when to first draw.
+
     loop {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
 
@@ -104,6 +110,7 @@ struct SimpleWindow {
 
 struct InnerApp {
     exit: bool,
+    first_configure: bool,
     pool: Option<RawPool>,
     width: u32,
     height: u32,
@@ -142,7 +149,7 @@ impl ShellHandler<SimpleWindow> for InnerApp {
         qh: &QueueHandle<SimpleWindow>,
         size: (u32, u32),
         _: Vec<State>, // We don't particularly care for the states at the moment.
-        window: &Window,
+        _: &Window,
     ) {
         if size == (0, 0) {
             self.width = 256;
@@ -152,62 +159,75 @@ impl ShellHandler<SimpleWindow> for InnerApp {
             self.height = size.1;
         }
 
-        println!("Configure: ({}x{})", size.0, size.1);
-
-        // Ensure the pool is big enough to hold the new buffer.
-        self.pool
-            .as_mut()
-            .unwrap()
-            .resize((self.width * self.height * 4) as usize, cx)
-            .expect("resize pool");
-
-        // Destroy the old buffer.
-        // FIXME: Integrate this into the pool logic.
-        self.buffer.take().map(|buffer| {
-            buffer.destroy(cx);
-        });
-
-        let (buffer, wl_buffer) = self
-            .pool
-            .as_mut()
-            .unwrap()
-            .create_buffer(
-                0,
-                self.width as i32,
-                self.height as i32,
-                self.width as i32 * 4,
-                wl_shm::Format::Argb8888,
-                (),
-                cx,
-                &qh,
-            )
-            .expect("create buffer");
-
-        // Draw to the window:
-        {
-            let width = self.width;
-            let height = self.height;
-
-            buffer.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
-                let x = (index / width as usize) as u32;
-                let y = (index % height as usize) as u32;
-
-                let a = 0xFF;
-                let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
-                let g = u32::min((x * 0xFF) / width, ((height - y) * 0xFF) / height);
-                let b = u32::min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
-                let color = (a << 24) + (r << 16) + (g << 8) + b;
-
-                let array: &mut [u8; 4] = chunk.try_into().unwrap();
-                *array = color.to_le_bytes();
-            });
+        // Initiate the first draw.
+        if !self.first_configure {
+            self.draw(cx, qh);
         }
+    }
+}
 
-        self.buffer = Some(wl_buffer.clone());
+impl InnerApp {
+    pub fn draw(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
+        if let Some(window) = self.window.as_ref() {
+            // Ensure the pool is big enough to hold the new buffer.
+            self.pool
+                .as_mut()
+                .unwrap()
+                .resize((self.width * self.height * 4) as usize, cx)
+                .expect("resize pool");
 
-        assert!(self.buffer.is_some(), "No buffer?");
-        window.wl_surface().attach(cx, self.buffer.clone(), 0, 0);
-        window.wl_surface().commit(cx);
+            // Destroy the old buffer.
+            // FIXME: Integrate this into the pool logic.
+            self.buffer.take().map(|buffer| {
+                buffer.destroy(cx);
+            });
+
+            let (buffer, wl_buffer) = self
+                .pool
+                .as_mut()
+                .unwrap()
+                .create_buffer(
+                    0,
+                    self.width as i32,
+                    self.height as i32,
+                    self.width as i32 * 4,
+                    wl_shm::Format::Argb8888,
+                    (),
+                    cx,
+                    &qh,
+                )
+                .expect("create buffer");
+
+            // Draw to the window:
+            {
+                let width = self.width;
+                let height = self.height;
+
+                buffer.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
+                    let x = (index / width as usize) as u32;
+                    let y = (index % height as usize) as u32;
+
+                    let a = 0xFF;
+                    let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
+                    let g = u32::min((x * 0xFF) / width, ((height - y) * 0xFF) / height);
+                    let b = u32::min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
+                    let color = (a << 24) + (r << 16) + (g << 8) + b;
+
+                    let array: &mut [u8; 4] = chunk.try_into().unwrap();
+                    *array = color.to_le_bytes();
+                });
+            }
+
+            self.buffer = Some(wl_buffer.clone());
+
+            // Request our next frame
+            window.wl_surface().frame(cx, qh, ()).expect("create callback");
+
+            assert!(self.buffer.is_some(), "No buffer?");
+            // Attach and commit to present.
+            window.wl_surface().attach(cx, self.buffer.clone(), 0, 0);
+            window.wl_surface().commit(cx);
+        }
     }
 }
 
@@ -248,6 +268,24 @@ delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_registry::WlRegistry] => Re
 
     &mut RegistryDispatch(&mut app.registry_handle, handles)
 });
+
+impl Dispatch<wl_callback::WlCallback> for SimpleWindow {
+    type UserData = ();
+
+    fn event(
+        &mut self,
+        _: &wl_callback::WlCallback,
+        event: wl_callback::Event,
+        _: &Self::UserData,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        _: &mut wayland_client::DataInit<'_>,
+    ) {
+        if let wl_callback::Event::Done { .. } = event {
+            self.inner.draw(cx, qh);
+        }
+    }
+}
 
 // TODO
 impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {
