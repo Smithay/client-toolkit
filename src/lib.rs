@@ -332,7 +332,7 @@ macro_rules! new_default_environment {
             $(with=($display, $queue),)?
             fields = [
                 sctk_shell: $crate::shell::ShellHandler::new(),
-                sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(),
+                sctk_decoration_mgr: $crate::environment::SimpleGlobal::new(1),
                 $($(
                     $fname: $fval,
                 )*)?
@@ -350,8 +350,8 @@ macro_rules! new_default_environment {
 
             let display = $crate::reexports::client::Proxy::clone(&$display);
             let env = $crate::environment::Environment::new(&display.attach($queue.token()), &mut $queue,$env_name {
-                sctk_compositor: $crate::environment::SimpleGlobal::new(),
-                sctk_subcompositor: $crate::environment::SimpleGlobal::new(),
+                sctk_compositor: $crate::environment::SimpleGlobal::new(5),
+                sctk_subcompositor: $crate::environment::SimpleGlobal::new(5),
                 sctk_shm: $crate::shm::ShmHandler::new(),
                 sctk_outputs: $crate::output::OutputHandler::new(),
                 sctk_seats,

@@ -32,6 +32,7 @@
 //! [`default_environment!`](../macro.default_environment.html) macro to quickly setup things and bring
 //! in all SCTK modules.
 
+use std::cmp::min;
 use std::io::Result;
 use std::rc::Rc;
 use std::{cell::RefCell, fmt};
@@ -266,12 +267,13 @@ pub trait InnerEnv {
 #[derive(Debug)]
 pub struct SimpleGlobal<I: Interface> {
     global: Option<Attached<I>>,
+    max_version: u32,
 }
 
 impl<I: Interface> SimpleGlobal<I> {
     /// Create a new handler
-    pub fn new() -> SimpleGlobal<I> {
-        SimpleGlobal { global: None }
+    pub fn new(max_version: u32) -> SimpleGlobal<I> {
+        SimpleGlobal { global: None, max_version }
     }
 }
 
@@ -283,6 +285,7 @@ impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> GlobalHandler<I> f
         version: u32,
         _: DispatchData,
     ) {
+        let version = min(version, min(I::VERSION, self.max_version));
         self.global = Some((*registry.bind::<I>(version, id)).clone())
     }
     fn get(&self) -> Option<Attached<I>> {

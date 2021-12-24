@@ -134,7 +134,7 @@ impl Drop for Surface {
 
 fn main() {
     let (env, display, queue) =
-        new_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(),])
+        new_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(4),])
             .expect("Initial roundtrip failed!");
 
     let surfaces = Rc::new(RefCell::new(Vec::new()));

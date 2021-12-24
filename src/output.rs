@@ -566,7 +566,7 @@ impl<E: crate::environment::MultiGlobalHandler<WlOutput>> crate::environment::En
 ///  let (sctk_outputs, sctk_xdg_out) = smithay_client_toolkit::output::XdgOutputHandler::new_output_handlers();
 ///
 ///  let env = smithay_client_toolkit::environment::Environment::new(&wl_display, &mut wl_queue, Globals {
-///      sctk_compositor: SimpleGlobal::new(),
+///      sctk_compositor: SimpleGlobal::new(5),
 ///      sctk_shm: smithay_client_toolkit::shm::ShmHandler::new(),
 ///      sctk_seats : smithay_client_toolkit::seat::SeatHandler::new(),
 ///      sctk_shell : smithay_client_toolkit::shell::ShellHandler::new(),
