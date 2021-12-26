@@ -6,7 +6,7 @@ use calloop::{
     TokenFactory,
 };
 
-use wayland_client::EventQueue;
+use wayland_client::{EventQueue, ReadEventsGuard};
 
 /// An adapter to insert a Wayland `EventQueue` into a calloop event loop
 ///
@@ -22,13 +22,18 @@ use wayland_client::EventQueue;
 pub struct WaylandSource {
     queue: EventQueue,
     fd: Generic<Fd>,
+    read_guard: Option<ReadEventsGuard>,
 }
 
 impl WaylandSource {
     /// Wrap an `EventQueue` as a `WaylandSource`.
     pub fn new(queue: EventQueue) -> WaylandSource {
         let fd = queue.display().get_connection_fd();
-        WaylandSource { queue, fd: Generic::from_fd(fd, Interest::READ, Mode::Level) }
+        WaylandSource {
+            queue,
+            fd: Generic::from_fd(fd, Interest::READ, Mode::Level),
+            read_guard: None,
+        }
     }
 
     /// Insert this source into given event loop with an adapter that panics on orphan events
@@ -79,32 +84,26 @@ impl EventSource for WaylandSource {
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {
         let queue = &mut self.queue;
+        let read_guard = &mut self.read_guard;
         self.fd.process_events(readiness, token, |_, _| {
-            // in case of readiness of the wayland socket we do the following in a loop, until nothing
-            // more can be read:
-            loop {
-                // 1. read events from the socket if any are available
-                if let Some(guard) = queue.prepare_read() {
-                    // might be None if some other thread read events before us, concurently
-                    if let Err(e) = guard.read_events() {
-                        if e.kind() != io::ErrorKind::WouldBlock {
-                            return Err(e);
-                        }
+            // 1. read events from the socket if any are available
+            if let Some(guard) = read_guard.take() {
+                // might be None if some other thread read events before us, concurently
+                if let Err(e) = guard.read_events() {
+                    if e.kind() != io::ErrorKind::WouldBlock {
+                        return Err(e);
                     }
                 }
-                // 2. dispatch any pending event in the queue
-                // propagate orphan events to the user
-                let ret = callback((), queue);
-                match ret {
-                    Ok(0) => {
-                        // no events were dispatched even after reading the socket,
-                        // nothing more to do, stop here
+            }
+            // 2. dispatch any pending event in the queue (that's callback's job)
+            loop {
+                match queue.prepare_read() {
+                    Some(guard) => {
+                        *read_guard = Some(guard);
                         break;
                     }
-                    Ok(_) => {}
-                    Err(e) => {
-                        // in case of error, forward it and fast-exit
-                        return Err(e);
+                    None => {
+                        callback((), queue)?;
                     }
                 }
             }
@@ -140,5 +139,44 @@ impl EventSource for WaylandSource {
 
     fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
         self.fd.unregister(poll)
+    }
+
+    fn pre_run<F>(&mut self, mut callback: F) -> std::io::Result<()>
+    where
+        F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
+    {
+        debug_assert!(self.read_guard.is_none());
+        // flush the display before starting to poll
+        if let Err(e) = self.queue.display().flush() {
+            if e.kind() != io::ErrorKind::WouldBlock {
+                // in case of error, don't prepare a read, if the error is persitent,
+                // it'll trigger in other wayland methods anyway
+                log::error!("Error trying to flush the wayland display: {}", e);
+                return Err(e);
+            }
+        }
+
+        loop {
+            match self.queue.prepare_read() {
+                Some(guard) => {
+                    self.read_guard = Some(guard);
+                    break;
+                }
+                None => {
+                    callback((), &mut self.queue)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn post_run<F>(&mut self, _: F) -> std::io::Result<()>
+    where
+        F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
+    {
+        // the destructor of ReadEventsGuard does the cleanup
+        self.read_guard = None;
+        Ok(())
     }
 }

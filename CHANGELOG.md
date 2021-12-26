@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- SCTK now correctly interacts with the wayland socket being conccurently poolled from
+  other threads.
+
 ## 0.15.2 - 2021-10-27
 
 - Most types are now `Debug`
