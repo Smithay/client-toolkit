@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.15.3 - 2021-12-27
+
 #### Bugfixes
 
 - SCTK now correctly interacts with the wayland socket being conccurently poolled from
