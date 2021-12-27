@@ -330,12 +330,12 @@
         <span class="ident">theme</span>: <span class="ident">ThemeSpec</span>,
         <span class="ident">compositor</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span><span class="op">&gt;</span>,
         <span class="ident">shm</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ThemeManager</span> {
+    ) -&gt; <span class="ident">ThemeManager</span> {
         <span class="ident">ThemeManager</span> { <span class="ident">compositor</span>, <span class="ident">themes</span>: <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">ScaledThemeList::new</span>(<span class="ident">theme</span>, <span class="ident">shm</span>))) }
     }
 
     <span class="doccomment">/// Wrap a pointer to theme it</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">theme_pointer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pointer</span>: <span class="ident">wl_pointer::WlPointer</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ThemedPointer</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">theme_pointer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pointer</span>: <span class="ident">wl_pointer::WlPointer</span>) -&gt; <span class="ident">ThemedPointer</span> {
         <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">compositor</span>.<span class="ident">create_surface</span>();
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">PointerInner</span> {
             <span class="ident">surface</span>: <span class="ident">surface</span>.<span class="ident">detach</span>(),
@@ -371,7 +371,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span>,
         <span class="kw-2">mut</span> <span class="ident">callback</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ThemedPointer</span>
+    ) -&gt; <span class="ident">ThemedPointer</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">wl_pointer::Event</span>, <span class="ident">ThemedPointer</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
@@ -418,10 +418,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ScaledThemeList</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">theme</span>: <span class="ident">ThemeSpec</span>, <span class="ident">shm</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ScaledThemeList</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">theme</span>: <span class="ident">ThemeSpec</span>, <span class="ident">shm</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span>) -&gt; <span class="ident">ScaledThemeList</span> {
         <span class="kw">let</span> (<span class="ident">name</span>, <span class="ident">size</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">theme</span> {
-            <span class="ident">ThemeSpec::Precise</span> { <span class="ident">name</span>, <span class="ident">size</span> } <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">name</span>.<span class="ident">into</span>(), <span class="ident">size</span>),
-            <span class="ident">ThemeSpec::System</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ThemeSpec::Precise</span> { <span class="ident">name</span>, <span class="ident">size</span> } =&gt; (<span class="ident">name</span>.<span class="ident">into</span>(), <span class="ident">size</span>),
+            <span class="ident">ThemeSpec::System</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">std::env::var</span>(<span class="string">&quot;XCURSOR_THEME&quot;</span>).<span class="ident">ok</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;default&quot;</span>.<span class="ident">into</span>());
                 <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span>
                     <span class="ident">std::env::var</span>(<span class="string">&quot;XCURSOR_SIZE&quot;</span>).<span class="ident">ok</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">parse</span>().<span class="ident">ok</span>()).<span class="ident">unwrap_or</span>(<span class="number">24</span>);
@@ -431,9 +431,9 @@
         <span class="ident">ScaledThemeList</span> { <span class="ident">shm</span>, <span class="ident">name</span>, <span class="ident">size</span>, <span class="ident">themes</span>: <span class="macro">vec!</span>[] }
     }
 
-    <span class="kw">fn</span> <span class="ident">get_cursor</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">scale</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Cursor</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_cursor</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">scale</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Cursor</span><span class="op">&gt;</span> {
         <span class="comment">// Check if we already loaded the theme for this scale factor</span>
-        <span class="kw">let</span> <span class="ident">opt_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">themes</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">s</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">s</span> <span class="op">=</span><span class="op">=</span> <span class="ident">scale</span>);
+        <span class="kw">let</span> <span class="ident">opt_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">themes</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">s</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">s</span> <span class="op">==</span> <span class="ident">scale</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idx</span>) <span class="op">=</span> <span class="ident">opt_index</span> {
             <span class="self">self</span>.<span class="ident">themes</span>[<span class="ident">idx</span>].<span class="number">1</span>.<span class="ident">get_cursor</span>(<span class="ident">name</span>)
         } <span class="kw">else</span> {
@@ -445,7 +445,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">ScaledThemeList</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;ScaledThemeList&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;shm&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">shm</span>)
             .<span class="ident">field</span>(<span class="string">&quot;name&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>)
@@ -466,7 +466,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PointerInner</span> {
-    <span class="kw">fn</span> <span class="ident">update_cursor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">wl_pointer::WlPointer</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CursorNotFound</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">update_cursor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">wl_pointer::WlPointer</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CursorNotFound</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">themes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">themes</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">scale_factor</span> <span class="kw">as</span> <span class="ident">u32</span>;
         <span class="kw">let</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="ident">themes</span>.<span class="ident">get_cursor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">current_cursor</span>, <span class="ident">scale</span>).<span class="ident">ok_or</span>(<span class="ident">CursorNotFound</span>)<span class="question-mark">?</span>;
@@ -514,7 +514,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If this is done as an answer to an input event, you need to provide</span>
     <span class="doccomment">/// the associated serial otherwise the server may ignore the request.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_cursor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CursorNotFound</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_cursor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CursorNotFound</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">serial</span> {
             <span class="ident">inner</span>.<span class="ident">last_serial</span> <span class="op">=</span> <span class="ident">s</span>;
@@ -526,7 +526,7 @@
 
 <span class="kw">impl</span> <span class="ident">Deref</span> <span class="kw">for</span> <span class="ident">ThemedPointer</span> {
     <span class="kw">type</span> <span class="ident">Target</span> <span class="op">=</span> <span class="ident">wl_pointer::WlPointer</span>;
-    <span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">wl_pointer::WlPointer</span> {
+    <span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_pointer::WlPointer</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pointer</span>
     }
 }
@@ -544,7 +544,7 @@
 <span class="kw">impl</span> <span class="ident">std::error::Error</span> <span class="kw">for</span> <span class="ident">CursorNotFound</span> {}
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">CursorNotFound</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="string">&quot;cursor not found&quot;</span>)
     }
 }

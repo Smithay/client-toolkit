@@ -376,7 +376,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">SeatData</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;SeatData&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;name&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>)
             .<span class="ident">field</span>(<span class="string">&quot;has_pointer&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">has_pointer</span>)
@@ -388,7 +388,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SeatData</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SeatData</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">SeatData</span> {
         <span class="ident">SeatData</span> {
             <span class="ident">name</span>: <span class="ident">String::new</span>(),
             <span class="ident">has_pointer</span>: <span class="bool-val">false</span>,
@@ -413,13 +413,13 @@
 
 <span class="kw">impl</span> <span class="ident">SeatHandler</span> {
     <span class="doccomment">/// Create a new SeatHandler</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SeatHandler</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">SeatHandler</span> {
         <span class="ident">SeatHandler</span> { <span class="ident">seats</span>: <span class="ident">Vec::new</span>(), <span class="ident">listeners</span>: <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">Vec::new</span>())) }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">SeatHandler</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;SeatHandler&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;seats&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">seats</span>)
             .<span class="ident">field</span>(<span class="string">&quot;listeners&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;Fn(..) -&gt; { ... }&quot;</span>)
@@ -475,13 +475,13 @@
             }
         });
     }
-    <span class="kw">fn</span> <span class="ident">get_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">s</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">SeatListener</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;SeatListener&quot;</span>).<span class="ident">field</span>(<span class="string">&quot;_cb&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;Fn(..) -&gt; { ... }&quot;</span>).<span class="ident">finish</span>()
     }
 }
@@ -496,17 +496,17 @@
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_seat::Event::Name</span> { <span class="ident">name</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">wl_seat::Event::Name</span> { <span class="ident">name</span> } =&gt; {
                 <span class="ident">guard</span>.<span class="ident">state</span>.<span class="ident">set</span>(<span class="ident">SeatDataState::GOT_NAME</span>, <span class="bool-val">true</span>);
                 <span class="ident">guard</span>.<span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>;
             }
-            <span class="ident">wl_seat::Event::Capabilities</span> { <span class="ident">capabilities</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">wl_seat::Event::Capabilities</span> { <span class="ident">capabilities</span> } =&gt; {
                 <span class="ident">guard</span>.<span class="ident">state</span>.<span class="ident">set</span>(<span class="ident">SeatDataState::GOT_CAPABILITIES</span>, <span class="bool-val">true</span>);
                 <span class="ident">guard</span>.<span class="ident">has_pointer</span> <span class="op">=</span> <span class="ident">capabilities</span>.<span class="ident">contains</span>(<span class="ident">wl_seat::Capability::Pointer</span>);
                 <span class="ident">guard</span>.<span class="ident">has_keyboard</span> <span class="op">=</span> <span class="ident">capabilities</span>.<span class="ident">contains</span>(<span class="ident">wl_seat::Capability::Keyboard</span>);
                 <span class="ident">guard</span>.<span class="ident">has_touch</span> <span class="op">=</span> <span class="ident">capabilities</span>.<span class="ident">contains</span>(<span class="ident">wl_seat::Capability::Touch</span>);
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
         }
         <span class="ident">guard</span>.<span class="ident">clone</span>()
     };
@@ -530,7 +530,7 @@
 <span class="doccomment">/// If the seat has been removed by the compositor, the `defunct` field of the `SeatData`</span>
 <span class="doccomment">/// will be set to `true`. This handler will not automatically detroy the output by calling its</span>
 <span class="doccomment">/// `release` method, to avoid interfering with your logic.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_seat_data</span>(<span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_seat_data</span>(<span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
         <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="prelude-val">Some</span>(<span class="ident">udata</span>.<span class="ident">clone</span>())
@@ -549,7 +549,7 @@
 <span class="doccomment">/// If the seat has been removed by the compositor, the `defunct` field of the `SeatData`</span>
 <span class="doccomment">/// will be set to `true`. This handler will not automatically detroy the output by calling its</span>
 <span class="doccomment">/// `release` method, to avoid interfering with your logic.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_seat_data</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">SeatData</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_seat_data</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">SeatData</span>) -&gt; <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
         <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="prelude-val">Some</span>(<span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">udata</span>))
@@ -569,14 +569,14 @@
     <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">SeatData</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SeatListener</span>;
+    ) -&gt; <span class="ident">SeatListener</span>;
 }
 
 <span class="kw">impl</span> <span class="ident">SeatHandling</span> <span class="kw">for</span> <span class="ident">SeatHandler</span> {
     <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">SeatData</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SeatListener</span> {
+    ) -&gt; <span class="ident">SeatListener</span> {
         <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">f</span>)) <span class="kw">as</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>;
         <span class="self">self</span>.<span class="ident">listeners</span>.<span class="ident">borrow_mut</span>().<span class="ident">push</span>(<span class="ident">Rc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">rc</span>));
         <span class="ident">SeatListener</span> { <span class="ident">_cb</span>: <span class="ident">rc</span> }
@@ -601,7 +601,7 @@
     <span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SeatListener</span> {
+    ) -&gt; <span class="ident">SeatListener</span> {
         <span class="self">self</span>.<span class="ident">with_inner</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">SeatHandling::listen</span>(<span class="ident">inner</span>, <span class="ident">f</span>))
     }
 }
@@ -610,7 +610,7 @@
     <span class="ident"><span class="kw">crate</span>::environment::Environment</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>
 {
     <span class="doccomment">/// Shorthand method to retrieve the list of seats</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_all_seats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_all_seats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_all_globals</span>::<span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>().<span class="ident">collect</span>()
     }
 }

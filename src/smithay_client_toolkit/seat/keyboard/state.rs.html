@@ -500,7 +500,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ModifiersState</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ModifiersState</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">ModifiersState</span> {
         <span class="ident">ModifiersState::default</span>()
     }
 
@@ -592,14 +592,14 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_one_sym_raw</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">keycode</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_one_sym_raw</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">keycode</span>: <span class="ident">u32</span>) -&gt; <span class="ident">u32</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">ready</span>() {
             <span class="kw">return</span> <span class="number">0</span>;
         }
         <span class="kw">unsafe</span> { <span class="macro">ffi_dispatch!</span>(<span class="ident">XKBH</span>, <span class="ident">xkb_state_key_get_one_sym</span>, <span class="self">self</span>.<span class="ident">xkb_state</span>, <span class="ident">keycode</span> <span class="op">+</span> <span class="number">8</span>) }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_utf8_raw</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">keycode</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_utf8_raw</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">keycode</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">ready</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
@@ -634,21 +634,21 @@
         <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="ident">String::from_utf8_unchecked</span>(<span class="ident">buffer</span>) })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compose_feed</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">keysym</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ffi::xkb_compose_feed_result</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compose_feed</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">keysym</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ffi::xkb_compose_feed_result</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">ready</span>() <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">xkb_compose_state</span>.<span class="ident">is_null</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
         <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="macro">ffi_dispatch!</span>(<span class="ident">XKBH</span>, <span class="ident">xkb_compose_state_feed</span>, <span class="self">self</span>.<span class="ident">xkb_compose_state</span>, <span class="ident">keysym</span>) })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compose_status</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ffi::xkb_compose_status</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compose_status</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ffi::xkb_compose_status</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">ready</span>() <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">xkb_compose_state</span>.<span class="ident">is_null</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
         <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="macro">ffi_dispatch!</span>(<span class="ident">XKBH</span>, <span class="ident">xkb_compose_state_get_status</span>, <span class="self">self</span>.<span class="ident">xkb_compose_state</span>) })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compose_get_utf8</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compose_get_utf8</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">ready</span>() <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">xkb_compose_state</span>.<span class="ident">is_null</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
@@ -681,7 +681,7 @@
         <span class="prelude-val">Some</span>(<span class="kw">unsafe</span> { <span class="ident">String::from_utf8_unchecked</span>(<span class="ident">buffer</span>) })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KbState</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KbState</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;dlopen&quot;</span>)]</span>
         {
             <span class="kw">if</span> <span class="ident">ffi::XKBCOMMON_OPTION</span>.<span class="ident">as_ref</span>().<span class="ident">is_none</span>() {
@@ -712,8 +712,8 @@
         <span class="prelude-val">Ok</span>(<span class="ident">me</span>)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_rmlvo</span>(<span class="ident">rmlvo</span>: <span class="ident">RMLVO</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KbState</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">fn</span> <span class="ident">to_cstring</span>(<span class="ident">s</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CString</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_rmlvo</span>(<span class="ident">rmlvo</span>: <span class="ident">RMLVO</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KbState</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">to_cstring</span>(<span class="ident">s</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CString</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
             <span class="ident">s</span>.<span class="ident">map_or</span>(<span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>), <span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">CString::new</span>(<span class="ident">s</span>).<span class="ident">map</span>(<span class="ident">Option::Some</span>)).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error::BadNames</span>)
         }
 
@@ -817,7 +817,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">init_with_rmlvo</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">names</span>: <span class="ident">ffi::xkb_rule_names</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">keymap</span> <span class="op">=</span> <span class="macro">ffi_dispatch!</span>(
             <span class="ident">XKBH</span>,
             <span class="ident">xkb_keymap_new_from_names</span>,
@@ -835,22 +835,22 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">key_repeats</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">xkb_keycode_t</span>: <span class="ident">ffi::xkb_keycode_t</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="macro">ffi_dispatch!</span>(<span class="ident">XKBH</span>, <span class="ident">xkb_keymap_key_repeats</span>, <span class="self">self</span>.<span class="ident">xkb_keymap</span>, <span class="ident">xkb_keycode_t</span>) <span class="op">=</span><span class="op">=</span> <span class="number">1</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">key_repeats</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">xkb_keycode_t</span>: <span class="ident">ffi::xkb_keycode_t</span>) -&gt; <span class="ident">bool</span> {
+        <span class="macro">ffi_dispatch!</span>(<span class="ident">XKBH</span>, <span class="ident">xkb_keymap_key_repeats</span>, <span class="self">self</span>.<span class="ident">xkb_keymap</span>, <span class="ident">xkb_keycode_t</span>) <span class="op">==</span> <span class="number">1</span>
     }
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ready</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ready</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="op">!</span><span class="self">self</span>.<span class="ident">xkb_state</span>.<span class="ident">is_null</span>()
     }
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">locked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">locked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">locked</span>
     }
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">mods_state</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ModifiersState</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">mods_state</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ModifiersState</span> {
         <span class="self">self</span>.<span class="ident">mods_state</span>
     }
 }

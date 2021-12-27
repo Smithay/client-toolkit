@@ -1042,7 +1042,7 @@
         <span class="ident">compositor</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span><span class="op">&gt;</span>,
         <span class="ident">subcompositor</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_subcompositor::WlSubcompositor</span><span class="op">&gt;</span>,
         <span class="ident">inner</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Part</span> {
+    ) -&gt; <span class="ident">Part</span> {
         <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="ident">inner</span> {
             <span class="ident"><span class="kw">crate</span>::surface::setup_surface</span>(
                 <span class="ident">compositor</span>.<span class="ident">create_surface</span>(),
@@ -1098,7 +1098,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Inner</span> {
-    <span class="kw">fn</span> <span class="ident">find_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Location</span> {
+    <span class="kw">fn</span> <span class="ident">find_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span>) -&gt; <span class="ident">Location</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">parts</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="ident">Location::None</span>;
         }
@@ -1120,7 +1120,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Inner</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Inner&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;parts&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">parts</span>)
             .<span class="ident">field</span>(<span class="string">&quot;size&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">size</span>)
@@ -1133,11 +1133,11 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">precise_location</span>(<span class="ident">old</span>: <span class="ident">Location</span>, <span class="ident">width</span>: <span class="ident">u32</span>, <span class="ident">x</span>: <span class="ident">f64</span>, <span class="ident">y</span>: <span class="ident">f64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Location</span> {
+<span class="kw">fn</span> <span class="ident">precise_location</span>(<span class="ident">old</span>: <span class="ident">Location</span>, <span class="ident">width</span>: <span class="ident">u32</span>, <span class="ident">x</span>: <span class="ident">f64</span>, <span class="ident">y</span>: <span class="ident">f64</span>) -&gt; <span class="ident">Location</span> {
     <span class="kw">match</span> <span class="ident">old</span> {
-        <span class="ident">Location::Head</span> <span class="op">|</span> <span class="ident">Location::Button</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">find_button</span>(<span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">width</span>),
+        <span class="ident">Location::Head</span> <span class="op">|</span> <span class="ident">Location::Button</span>(<span class="kw">_</span>) =&gt; <span class="ident">find_button</span>(<span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">width</span>),
 
-        <span class="ident">Location::Top</span> <span class="op">|</span> <span class="ident">Location::TopLeft</span> <span class="op">|</span> <span class="ident">Location::TopRight</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Top</span> <span class="op">|</span> <span class="ident">Location::TopLeft</span> <span class="op">|</span> <span class="ident">Location::TopRight</span> =&gt; {
             <span class="kw">if</span> <span class="ident">x</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">BORDER_SIZE</span>) {
                 <span class="ident">Location::TopLeft</span>
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">width</span> <span class="op">+</span> <span class="ident">BORDER_SIZE</span>) {
@@ -1147,7 +1147,7 @@
             }
         }
 
-        <span class="ident">Location::Bottom</span> <span class="op">|</span> <span class="ident">Location::BottomLeft</span> <span class="op">|</span> <span class="ident">Location::BottomRight</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Bottom</span> <span class="op">|</span> <span class="ident">Location::BottomLeft</span> <span class="op">|</span> <span class="ident">Location::BottomRight</span> =&gt; {
             <span class="kw">if</span> <span class="ident">x</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">BORDER_SIZE</span>) {
                 <span class="ident">Location::BottomLeft</span>
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">width</span> <span class="op">+</span> <span class="ident">BORDER_SIZE</span>) {
@@ -1157,11 +1157,11 @@
             }
         }
 
-        <span class="ident">other</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">other</span>,
+        <span class="ident">other</span> =&gt; <span class="ident">other</span>,
     }
 }
 
-<span class="kw">fn</span> <span class="ident">find_button</span>(<span class="ident">x</span>: <span class="ident">f64</span>, <span class="ident">y</span>: <span class="ident">f64</span>, <span class="ident">w</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Location</span> {
+<span class="kw">fn</span> <span class="ident">find_button</span>(<span class="ident">x</span>: <span class="ident">f64</span>, <span class="ident">y</span>: <span class="ident">f64</span>, <span class="ident">w</span>: <span class="ident">u32</span>) -&gt; <span class="ident">Location</span> {
     <span class="kw">if</span> (<span class="ident">w</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">HEADER_SIZE</span>)
         <span class="op">&amp;&amp;</span> (<span class="ident">x</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">w</span> <span class="op">-</span> <span class="ident">HEADER_SIZE</span>))
         <span class="op">&amp;&amp;</span> (<span class="ident">x</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">w</span>))
@@ -1224,7 +1224,7 @@
         <span class="ident">shm</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span>,
         <span class="ident">theme_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ThemeManager</span><span class="op">&gt;</span>,
         <span class="ident">implementation</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">FrameRequest</span>, <span class="ident">u32</span>, <span class="ident">DispatchData</span>)<span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FallbackFrame</span>, <span class="ident">::std::io::Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FallbackFrame</span>, <span class="ident">::std::io::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">themer</span>, <span class="ident">theme_over_surface</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">theme_manager</span>) <span class="op">=</span> <span class="ident">theme_manager</span> {
             (<span class="ident">theme_manager</span>, <span class="bool-val">false</span>)
         } <span class="kw">else</span> {
@@ -1267,7 +1267,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">match</span> <span class="ident">event</span> {
-                    <span class="ident">Event::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">surface_x</span>, <span class="ident">surface_y</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Event::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">surface_x</span>, <span class="ident">surface_y</span> } =&gt; {
                         <span class="ident">data</span>.<span class="ident">location</span> <span class="op">=</span> <span class="ident">precise_location</span>(
                             <span class="ident">inner</span>.<span class="ident">find_surface</span>(<span class="kw-2">&amp;</span><span class="ident">surface</span>),
                             <span class="ident">inner</span>.<span class="ident">size</span>.<span class="number">0</span>,
@@ -1277,22 +1277,22 @@
                         <span class="ident">data</span>.<span class="ident">position</span> <span class="op">=</span> (<span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
                         <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">inner</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>))
                     }
-                    <span class="ident">Event::Leave</span> { <span class="ident">serial</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Event::Leave</span> { <span class="ident">serial</span>, .. } =&gt; {
                         <span class="ident">data</span>.<span class="ident">location</span> <span class="op">=</span> <span class="ident">Location::None</span>;
                         <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">inner</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">Some</span>(<span class="ident">serial</span>));
                         (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>.<span class="ident">implem</span>)(<span class="ident">FrameRequest::Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
                     }
-                    <span class="ident">Event::Motion</span> { <span class="ident">surface_x</span>, <span class="ident">surface_y</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Event::Motion</span> { <span class="ident">surface_x</span>, <span class="ident">surface_y</span>, .. } =&gt; {
                         <span class="ident">data</span>.<span class="ident">position</span> <span class="op">=</span> (<span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
                         <span class="kw">let</span> <span class="ident">newpos</span> <span class="op">=</span>
                             <span class="ident">precise_location</span>(<span class="ident">data</span>.<span class="ident">location</span>, <span class="ident">inner</span>.<span class="ident">size</span>.<span class="number">0</span>, <span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
                         <span class="kw">if</span> <span class="ident">newpos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">data</span>.<span class="ident">location</span> {
                             <span class="kw">match</span> (<span class="ident">newpos</span>, <span class="ident">data</span>.<span class="ident">location</span>) {
-                                (<span class="ident">Location::Button</span>(<span class="kw">_</span>), <span class="kw">_</span>) <span class="op">|</span> (<span class="kw">_</span>, <span class="ident">Location::Button</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                                (<span class="ident">Location::Button</span>(<span class="kw">_</span>), <span class="kw">_</span>) <span class="op">|</span> (<span class="kw">_</span>, <span class="ident">Location::Button</span>(<span class="kw">_</span>)) =&gt; {
                                     <span class="comment">// pointer movement involves a button, request refresh</span>
                                     (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">inner</span>.<span class="ident">implem</span>)(<span class="ident">FrameRequest::Refresh</span>, <span class="number">0</span>, <span class="ident">ddata</span>);
                                 }
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
+                                <span class="kw">_</span> =&gt; (),
                             }
                             <span class="comment">// we changed of part of the decoration, pointer image</span>
                             <span class="comment">// may need to be changed</span>
@@ -1300,18 +1300,18 @@
                             <span class="ident">change_pointer</span>(<span class="kw-2">&amp;</span><span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">inner</span>, <span class="ident">data</span>.<span class="ident">location</span>, <span class="prelude-val">None</span>)
                         }
                     }
-                    <span class="ident">Event::Button</span> { <span class="ident">serial</span>, <span class="ident">button</span>, <span class="ident">state</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">if</span> <span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">wl_pointer::ButtonState::Pressed</span> {
+                    <span class="ident">Event::Button</span> { <span class="ident">serial</span>, <span class="ident">button</span>, <span class="ident">state</span>, .. } =&gt; {
+                        <span class="kw">if</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">wl_pointer::ButtonState::Pressed</span> {
                             <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">button</span> {
                                 <span class="comment">// Left mouse button.</span>
-                                <span class="number">0x110</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">request_for_location_on_lmb</span>(
+                                <span class="number">0x110</span> =&gt; <span class="ident">request_for_location_on_lmb</span>(
                                     <span class="kw-2">&amp;</span><span class="ident">data</span>,
                                     <span class="ident">inner</span>.<span class="ident">maximized</span>,
                                     <span class="ident">inner</span>.<span class="ident">resizable</span>,
                                 ),
                                 <span class="comment">// Right mouse button.</span>
-                                <span class="number">0x111</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">request_for_location_on_rmb</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>),
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                                <span class="number">0x111</span> =&gt; <span class="ident">request_for_location_on_rmb</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>),
+                                <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
                             };
 
                             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">request</span>) <span class="op">=</span> <span class="ident">request</span> {
@@ -1319,7 +1319,7 @@
                             }
                         }
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                    <span class="kw">_</span> =&gt; {}
                 }
             },
         );
@@ -1337,7 +1337,7 @@
         <span class="self">self</span>.<span class="ident">pointers</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">pointer</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">user_data</span> <span class="op">=</span> <span class="ident">pointer</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">PointerUserData</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">user_data</span>.<span class="ident">borrow_mut</span>();
-            <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">guard</span>.<span class="ident">seat</span> <span class="op">=</span><span class="op">=</span> <span class="ident">seat</span> {
+            <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">guard</span>.<span class="ident">seat</span> <span class="op">==</span> <span class="ident">seat</span> {
                 <span class="ident">pointer</span>.<span class="ident">release</span>();
                 <span class="bool-val">false</span>
             } <span class="kw">else</span> {
@@ -1346,7 +1346,7 @@
         });
     }
 
-    <span class="kw">fn</span> <span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">states</span>: <span class="kw-2">&amp;</span>[<span class="ident">State</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">states</span>: <span class="kw-2">&amp;</span>[<span class="ident">State</span>]) -&gt; <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">need_redraw</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
@@ -1435,7 +1435,7 @@
 
         {
             <span class="comment">// Create the buffers and draw</span>
-            <span class="kw">let</span> <span class="ident">color</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> <span class="op">=</span><span class="op">=</span> <span class="ident">WindowState::Active</span> {
+            <span class="kw">let</span> <span class="ident">color</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> <span class="op">==</span> <span class="ident">WindowState::Active</span> {
                 <span class="ident">PRIMARY_COLOR_ACTIVE</span>.<span class="ident">to_ne_bytes</span>()
             } <span class="kw">else</span> {
                 <span class="ident">PRIMARY_COLOR_INACTIVE</span>.<span class="ident">to_ne_bytes</span>()
@@ -1638,7 +1638,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">subtract_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
+    <span class="kw">fn</span> <span class="ident">subtract_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) -&gt; (<span class="ident">i32</span>, <span class="ident">i32</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>().<span class="ident">fullscreened</span> {
             (<span class="ident">width</span>, <span class="ident">height</span>)
         } <span class="kw">else</span> {
@@ -1646,7 +1646,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">add_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
+    <span class="kw">fn</span> <span class="ident">add_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) -&gt; (<span class="ident">i32</span>, <span class="ident">i32</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>().<span class="ident">fullscreened</span> {
             (<span class="ident">width</span>, <span class="ident">height</span>)
         } <span class="kw">else</span> {
@@ -1654,7 +1654,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">location</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
+    <span class="kw">fn</span> <span class="ident">location</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">i32</span>, <span class="ident">i32</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">hidden</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>().<span class="ident">fullscreened</span> {
             (<span class="number">0</span>, <span class="number">0</span>)
         } <span class="kw">else</span> {
@@ -1679,22 +1679,22 @@
 
 <span class="kw">fn</span> <span class="ident">change_pointer</span>(<span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">ThemedPointer</span>, <span class="ident">inner</span>: <span class="kw-2">&amp;</span><span class="ident">Inner</span>, <span class="ident">location</span>: <span class="ident">Location</span>, <span class="ident">serial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) {
     <span class="comment">// Prevent theming of the surface if it was requested.</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">theme_over_surface</span> <span class="op">&amp;&amp;</span> <span class="ident">location</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location::None</span> {
+    <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">theme_over_surface</span> <span class="op">&amp;&amp;</span> <span class="ident">location</span> <span class="op">==</span> <span class="ident">Location::None</span> {
         <span class="kw">return</span>;
     }
 
     <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">location</span> {
         <span class="comment">// If we can&#39;t resize a frame we shouldn&#39;t show resize cursors.</span>
-        <span class="kw">_</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;left_ptr&quot;</span>,
-        <span class="ident">Location::Top</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_side&quot;</span>,
-        <span class="ident">Location::TopRight</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_right_corner&quot;</span>,
-        <span class="ident">Location::Right</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;right_side&quot;</span>,
-        <span class="ident">Location::BottomRight</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;bottom_right_corner&quot;</span>,
-        <span class="ident">Location::Bottom</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;bottom_side&quot;</span>,
-        <span class="ident">Location::BottomLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;bottom_left_corner&quot;</span>,
-        <span class="ident">Location::Left</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;left_side&quot;</span>,
-        <span class="ident">Location::TopLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;top_left_corner&quot;</span>,
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;left_ptr&quot;</span>,
+        <span class="kw">_</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">resizable</span> =&gt; <span class="string">&quot;left_ptr&quot;</span>,
+        <span class="ident">Location::Top</span> =&gt; <span class="string">&quot;top_side&quot;</span>,
+        <span class="ident">Location::TopRight</span> =&gt; <span class="string">&quot;top_right_corner&quot;</span>,
+        <span class="ident">Location::Right</span> =&gt; <span class="string">&quot;right_side&quot;</span>,
+        <span class="ident">Location::BottomRight</span> =&gt; <span class="string">&quot;bottom_right_corner&quot;</span>,
+        <span class="ident">Location::Bottom</span> =&gt; <span class="string">&quot;bottom_side&quot;</span>,
+        <span class="ident">Location::BottomLeft</span> =&gt; <span class="string">&quot;bottom_left_corner&quot;</span>,
+        <span class="ident">Location::Left</span> =&gt; <span class="string">&quot;left_side&quot;</span>,
+        <span class="ident">Location::TopLeft</span> =&gt; <span class="string">&quot;top_left_corner&quot;</span>,
+        <span class="kw">_</span> =&gt; <span class="string">&quot;left_ptr&quot;</span>,
     };
 
     <span class="kw">if</span> <span class="ident">pointer</span>.<span class="ident">set_cursor</span>(<span class="ident">name</span>, <span class="ident">serial</span>).<span class="ident">is_err</span>() {
@@ -1706,56 +1706,56 @@
     <span class="ident">pointer_data</span>: <span class="kw-2">&amp;</span><span class="ident">PointerUserData</span>,
     <span class="ident">maximized</span>: <span class="ident">bool</span>,
     <span class="ident">resizable</span>: <span class="ident">bool</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FrameRequest</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FrameRequest</span><span class="op">&gt;</span> {
     <span class="kw">use</span> <span class="ident">wayland_protocols::xdg_shell::client::xdg_toplevel::ResizeEdge</span>;
     <span class="kw">match</span> <span class="ident">pointer_data</span>.<span class="ident">location</span> {
-        <span class="ident">Location::Top</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Top</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::Top</span>))
         }
-        <span class="ident">Location::TopLeft</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::TopLeft</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::TopLeft</span>))
         }
-        <span class="ident">Location::Left</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Left</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::Left</span>))
         }
-        <span class="ident">Location::BottomLeft</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::BottomLeft</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::BottomLeft</span>))
         }
-        <span class="ident">Location::Bottom</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Bottom</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::Bottom</span>))
         }
-        <span class="ident">Location::BottomRight</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::BottomRight</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::BottomRight</span>))
         }
-        <span class="ident">Location::Right</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Right</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::Right</span>))
         }
-        <span class="ident">Location::TopRight</span> <span class="kw">if</span> <span class="ident">resizable</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::TopRight</span> <span class="kw">if</span> <span class="ident">resizable</span> =&gt; {
             <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Resize</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">ResizeEdge::TopRight</span>))
         }
-        <span class="ident">Location::Head</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Move</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>())),
-        <span class="ident">Location::Button</span>(<span class="ident">UIButton::Close</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Close</span>),
-        <span class="ident">Location::Button</span>(<span class="ident">UIButton::Maximize</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Location::Head</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Move</span>(<span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>())),
+        <span class="ident">Location::Button</span>(<span class="ident">UIButton::Close</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Close</span>),
+        <span class="ident">Location::Button</span>(<span class="ident">UIButton::Maximize</span>) =&gt; {
             <span class="kw">if</span> <span class="ident">maximized</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::UnMaximize</span>)
             } <span class="kw">else</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Maximize</span>)
             }
         }
-        <span class="ident">Location::Button</span>(<span class="ident">UIButton::Minimize</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Minimize</span>),
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+        <span class="ident">Location::Button</span>(<span class="ident">UIButton::Minimize</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::Minimize</span>),
+        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
     }
 }
 
-<span class="kw">fn</span> <span class="ident">request_for_location_on_rmb</span>(<span class="ident">pointer_data</span>: <span class="kw-2">&amp;</span><span class="ident">PointerUserData</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FrameRequest</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">request_for_location_on_rmb</span>(<span class="ident">pointer_data</span>: <span class="kw-2">&amp;</span><span class="ident">PointerUserData</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FrameRequest</span><span class="op">&gt;</span> {
     <span class="kw">match</span> <span class="ident">pointer_data</span>.<span class="ident">location</span> {
-        <span class="ident">Location::Head</span> <span class="op">|</span> <span class="ident">Location::Button</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::ShowMenu</span>(
+        <span class="ident">Location::Head</span> <span class="op">|</span> <span class="ident">Location::Button</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">FrameRequest::ShowMenu</span>(
             <span class="ident">pointer_data</span>.<span class="ident">seat</span>.<span class="ident">clone</span>(),
             <span class="ident">pointer_data</span>.<span class="ident">position</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">i32</span>,
             <span class="comment">// We must offset it by header size for precise position.</span>
             <span class="ident">pointer_data</span>.<span class="ident">position</span>.<span class="number">1</span> <span class="kw">as</span> <span class="ident">i32</span> <span class="op">-</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">i32</span>,
         )),
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
     }
 }
 
@@ -1771,13 +1771,13 @@
 
     <span class="kw">if</span> <span class="ident">width</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">HEADER_SIZE</span> {
         <span class="comment">// Draw the close button</span>
-        <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location::Button</span>(<span class="ident">UIButton::Close</span>)) {
+        <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">==</span> <span class="ident">Location::Button</span>(<span class="ident">UIButton::Close</span>)) {
             <span class="ident">ButtonState::Hovered</span>
         } <span class="kw">else</span> {
             <span class="ident">ButtonState::Idle</span>
         };
 
-        <span class="kw">if</span> <span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">WindowState::Active</span> <span class="op">&amp;&amp;</span> <span class="ident">btn_state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ButtonState::Hovered</span> {
+        <span class="kw">if</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">WindowState::Active</span> <span class="op">&amp;&amp;</span> <span class="ident">btn_state</span> <span class="op">==</span> <span class="ident">ButtonState::Hovered</span> {
             <span class="ident">draw_button</span>(<span class="ident">canvas</span>, <span class="number">0</span>, <span class="ident">scale</span>, <span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BTN_HOVER_BG</span>.<span class="ident">to_ne_bytes</span>());
         }
         <span class="ident">draw_icon</span>(<span class="ident">canvas</span>, <span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>, <span class="ident">scale</span>, <span class="ident">BTN_ICON_COLOR</span>.<span class="ident">to_ne_bytes</span>(), <span class="ident">Icon::Close</span>);
@@ -1786,13 +1786,13 @@
     <span class="kw">if</span> <span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span> {
         <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">maximizable</span> {
             <span class="ident">ButtonState::Disabled</span>
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location::Button</span>(<span class="ident">UIButton::Maximize</span>)) {
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">==</span> <span class="ident">Location::Button</span>(<span class="ident">UIButton::Maximize</span>)) {
             <span class="ident">ButtonState::Hovered</span>
         } <span class="kw">else</span> {
             <span class="ident">ButtonState::Idle</span>
         };
 
-        <span class="kw">if</span> <span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">WindowState::Active</span> <span class="op">&amp;&amp;</span> <span class="ident">btn_state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ButtonState::Hovered</span> {
+        <span class="kw">if</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">WindowState::Active</span> <span class="op">&amp;&amp;</span> <span class="ident">btn_state</span> <span class="op">==</span> <span class="ident">ButtonState::Hovered</span> {
             <span class="ident">draw_button</span>(
                 <span class="ident">canvas</span>,
                 <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span>,
@@ -1812,13 +1812,13 @@
     }
 
     <span class="kw">if</span> <span class="ident">width</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">3</span> <span class="op">*</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span> {
-        <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Location::Button</span>(<span class="ident">UIButton::Minimize</span>)) {
+        <span class="kw">let</span> <span class="ident">btn_state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">mouses</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">==</span> <span class="ident">Location::Button</span>(<span class="ident">UIButton::Minimize</span>)) {
             <span class="ident">ButtonState::Hovered</span>
         } <span class="kw">else</span> {
             <span class="ident">ButtonState::Idle</span>
         };
 
-        <span class="kw">if</span> <span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">WindowState::Active</span> <span class="op">&amp;&amp;</span> <span class="ident">btn_state</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ButtonState::Hovered</span> {
+        <span class="kw">if</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">WindowState::Active</span> <span class="op">&amp;&amp;</span> <span class="ident">btn_state</span> <span class="op">==</span> <span class="ident">ButtonState::Hovered</span> {
             <span class="ident">draw_button</span>(
                 <span class="ident">canvas</span>,
                 <span class="number">2</span> <span class="op">*</span> <span class="ident">HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span>,
@@ -1873,7 +1873,7 @@
     <span class="kw">let</span> <span class="ident">x_start</span> <span class="op">=</span> <span class="ident">width</span> <span class="op">-</span> <span class="ident">h</span> <span class="op">-</span> <span class="ident">x_offset</span>;
 
     <span class="kw">match</span> <span class="ident">icon</span> {
-        <span class="ident">Icon::Close</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Icon::Close</span> =&gt; {
             <span class="comment">// Draw black rectangle</span>
             <span class="kw">for</span> <span class="ident">y</span> <span class="kw">in</span> <span class="ident">sh</span> <span class="op">/</span> <span class="number">4</span>..<span class="number">3</span> <span class="op">*</span> <span class="ident">sh</span> <span class="op">/</span> <span class="number">4</span> {
                 <span class="kw">let</span> <span class="ident">line</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">canvas</span>[(<span class="ident">x_start</span> <span class="op">+</span> <span class="ident">y</span> <span class="op">*</span> <span class="ident">width</span> <span class="op">+</span> <span class="ident">h</span> <span class="op">/</span> <span class="number">4</span>) <span class="op">*</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">scale</span>
@@ -1886,7 +1886,7 @@
                 }
             }
         }
-        <span class="ident">Icon::Maximize</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Icon::Maximize</span> =&gt; {
             <span class="comment">// Draw an empty rectangle</span>
             <span class="kw">for</span> <span class="ident">y</span> <span class="kw">in</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">sh</span> <span class="op">/</span> <span class="number">8</span>..<span class="number">3</span> <span class="op">*</span> <span class="ident">sh</span> <span class="op">/</span> <span class="number">8</span> {
                 <span class="kw">let</span> <span class="ident">line</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">canvas</span>[(<span class="ident">x_start</span> <span class="op">+</span> <span class="ident">y</span> <span class="op">*</span> <span class="ident">width</span> <span class="op">+</span> <span class="ident">h</span> <span class="op">/</span> <span class="number">4</span>) <span class="op">*</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">scale</span>
@@ -1927,7 +1927,7 @@
                 }
             }
         }
-        <span class="ident">Icon::Minimize</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Icon::Minimize</span> =&gt; {
             <span class="comment">// Draw an underline</span>
             <span class="kw">for</span> <span class="ident">y</span> <span class="kw">in</span> <span class="number">5</span> <span class="op">*</span> <span class="ident">sh</span> <span class="op">/</span> <span class="number">8</span>..<span class="number">3</span> <span class="op">*</span> <span class="ident">sh</span> <span class="op">/</span> <span class="number">4</span> {
                 <span class="kw">let</span> <span class="ident">line</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">canvas</span>[(<span class="ident">x_start</span> <span class="op">+</span> <span class="ident">y</span> <span class="op">*</span> <span class="ident">width</span> <span class="op">+</span> <span class="ident">h</span> <span class="op">/</span> <span class="number">4</span>) <span class="op">*</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">scale</span>

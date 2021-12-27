@@ -133,16 +133,16 @@
         <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span>,
         <span class="ident">shell</span>: <span class="kw-2">&amp;</span><span class="ident">wl_shell::WlShell</span>,
         <span class="kw-2">mut</span> <span class="ident">implementation</span>: <span class="ident">Impl</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Wl</span>
+    ) -&gt; <span class="ident">Wl</span>
     <span class="kw">where</span>
         <span class="ident">Impl</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let</span> <span class="ident">shell_surface</span> <span class="op">=</span> <span class="ident">shell</span>.<span class="ident">get_shell_surface</span>(<span class="ident">surface</span>);
         <span class="ident">shell_surface</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">shell_surface</span>, <span class="ident">event</span>, <span class="ident">ddata</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_shell_surface::Event::Ping</span> { <span class="ident">serial</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">wl_shell_surface::Event::Ping</span> { <span class="ident">serial</span> } =&gt; {
                 <span class="ident">shell_surface</span>.<span class="ident">pong</span>(<span class="ident">serial</span>);
             }
-            <span class="ident">wl_shell_surface::Event::Configure</span> { <span class="ident">width</span>, <span class="ident">height</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">wl_shell_surface::Event::Configure</span> { <span class="ident">width</span>, <span class="ident">height</span>, .. } =&gt; {
                 <span class="kw">use</span> <span class="ident">std::cmp::max</span>;
                 <span class="ident">implementation</span>(
                     <span class="ident">Event::Configure</span> {
@@ -152,10 +152,10 @@
                     <span class="ident">ddata</span>,
                 );
             }
-            <span class="ident">wl_shell_surface::Event::PopupDone</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">wl_shell_surface::Event::PopupDone</span> =&gt; {
                 <span class="macro">unreachable!</span>();
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
         });
         <span class="ident">shell_surface</span>.<span class="ident">set_toplevel</span>();
         <span class="ident">Wl</span> { <span class="ident">shell_surface</span>: <span class="ident">shell_surface</span>.<span class="ident">detach</span>() }
@@ -165,16 +165,16 @@
 <span class="kw">impl</span> <span class="ident">ShellSurface</span> <span class="kw">for</span> <span class="ident">Wl</span> {
     <span class="kw">fn</span> <span class="ident">resize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">serial</span>: <span class="ident">u32</span>, <span class="ident">edges</span>: <span class="ident">xdg_toplevel::ResizeEdge</span>) {
         <span class="kw">let</span> <span class="ident">edges</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">edges</span> {
-            <span class="ident">xdg_toplevel::ResizeEdge::None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::None</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::Top</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::Top</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::Left</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::Left</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::Right</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::Right</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::Bottom</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::Bottom</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::TopLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::TopLeft</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::TopRight</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::TopRight</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::BottomLeft</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::BottomLeft</span>,
-            <span class="ident">xdg_toplevel::ResizeEdge::BottomRight</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">wl_shell_surface::Resize::BottomRight</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+            <span class="ident">xdg_toplevel::ResizeEdge::None</span> =&gt; <span class="ident">wl_shell_surface::Resize::None</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::Top</span> =&gt; <span class="ident">wl_shell_surface::Resize::Top</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::Left</span> =&gt; <span class="ident">wl_shell_surface::Resize::Left</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::Right</span> =&gt; <span class="ident">wl_shell_surface::Resize::Right</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::Bottom</span> =&gt; <span class="ident">wl_shell_surface::Resize::Bottom</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::TopLeft</span> =&gt; <span class="ident">wl_shell_surface::Resize::TopLeft</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::TopRight</span> =&gt; <span class="ident">wl_shell_surface::Resize::TopRight</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::BottomLeft</span> =&gt; <span class="ident">wl_shell_surface::Resize::BottomLeft</span>,
+            <span class="ident">xdg_toplevel::ResizeEdge::BottomRight</span> =&gt; <span class="ident">wl_shell_surface::Resize::BottomRight</span>,
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
         };
         <span class="self">self</span>.<span class="ident">shell_surface</span>.<span class="ident">resize</span>(<span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">edges</span>);
     }
@@ -226,7 +226,7 @@
         <span class="comment">/* not available */</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_xdg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_xdg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span><span class="op">&gt;</span> {
         <span class="prelude-val">None</span>
     }
 }

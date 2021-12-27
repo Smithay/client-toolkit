@@ -217,15 +217,15 @@
     <span class="doccomment">/// the selection.</span>
     <span class="kw">fn</span> <span class="ident">set_selection</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">offer</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrimarySelectionOfferImpl</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">offer</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">offer</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">offer</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">offer</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">offer</span>) =&gt; <span class="ident">offer</span>,
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// Drop the current offer if any.</span>
                 <span class="self">self</span>.<span class="ident">selection</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                 <span class="kw">return</span>;
             }
         };
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">know_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">=</span><span class="op">=</span> <span class="ident">offer</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">know_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">==</span> <span class="ident">offer</span>) {
             <span class="self">self</span>.<span class="ident">selection</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">know_offers</span>.<span class="ident">swap_remove</span>(<span class="ident">id</span>));
         } <span class="kw">else</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;Compositor set an unknown primary offer for a primary selection.&quot;</span>)
@@ -236,15 +236,15 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">PrimarySelectionDevice</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">device</span> {
-            <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">device</span>.<span class="ident">destroy</span>(),
-            <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">device</span>.<span class="ident">destroy</span>(),
+            <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) =&gt; <span class="ident">device</span>.<span class="ident">destroy</span>(),
+            <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) =&gt; <span class="ident">device</span>.<span class="ident">destroy</span>(),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">PrimarySelectionDevice</span> {
     <span class="doccomment">/// Create the `PrimarySelectionDevice` helper for this seat.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_for_seat</span>(<span class="ident">manager</span>: <span class="kw-2">&amp;</span><span class="ident">PrimarySelectionDeviceManager</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">WlSeat</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_for_seat</span>(<span class="ident">manager</span>: <span class="kw-2">&amp;</span><span class="ident">PrimarySelectionDeviceManager</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">WlSeat</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">PrimarySelectionDeviceInner</span> {
             <span class="ident">selection</span>: <span class="prelude-val">None</span>,
             <span class="ident">know_offers</span>: <span class="ident">Vec::new</span>(),
@@ -253,7 +253,7 @@
         <span class="kw">let</span> <span class="ident">inner2</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">clone</span>();
 
         <span class="kw">let</span> <span class="ident">device</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">manager</span> {
-            <span class="ident">PrimarySelectionDeviceManager::Zwp</span>(<span class="ident">zwp_manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceManager::Zwp</span>(<span class="ident">zwp_manager</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">device</span> <span class="op">=</span> <span class="ident">zwp_manager</span>.<span class="ident">get_device</span>(<span class="ident">seat</span>);
 
                 <span class="ident">device</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> {
@@ -261,20 +261,20 @@
 
                     <span class="kw">use</span> <span class="ident">zwp_primary_selection_device_v1::Event</span>;
                     <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">Event::DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">Event::DataOffer</span> { <span class="ident">offer</span> } =&gt; {
                             <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer::from_zwp</span>(<span class="ident">offer</span>))
                         }
-                        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } =&gt; {
                             <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl::Zwp</span>);
                             <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>);
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                     }
                 });
 
                 <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="ident">device</span>.<span class="ident">detach</span>())
             }
-            <span class="ident">PrimarySelectionDeviceManager::Gtk</span>(<span class="ident">gtk_manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceManager::Gtk</span>(<span class="ident">gtk_manager</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">device</span> <span class="op">=</span> <span class="ident">gtk_manager</span>.<span class="ident">get_device</span>(<span class="ident">seat</span>);
 
                 <span class="ident">device</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> {
@@ -282,14 +282,14 @@
 
                     <span class="kw">use</span> <span class="ident">gtk_primary_selection_device::Event</span>;
                     <span class="kw">match</span> <span class="ident">event</span> {
-                        <span class="ident">Event::DataOffer</span> { <span class="ident">offer</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">Event::DataOffer</span> { <span class="ident">offer</span> } =&gt; {
                             <span class="ident">inner</span>.<span class="ident">know_offers</span>.<span class="ident">push</span>(<span class="ident">PrimarySelectionOffer::from_gtk</span>(<span class="ident">offer</span>))
                         }
-                        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } =&gt; {
                             <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">map</span>(<span class="ident">PrimarySelectionOfferImpl::Gtk</span>);
                             <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>);
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                     }
                 });
                 <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="ident">device</span>.<span class="ident">detach</span>())
@@ -305,19 +305,19 @@
     <span class="doccomment">/// the selection.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_selection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrimarySelectionSource</span><span class="op">&gt;</span>, <span class="ident">serial</span>: <span class="ident">u32</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">device</span> {
-            <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">source</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">source</span>.<span class="ident">source</span> {
-                    <span class="ident">PrimarySelectionSourceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">source</span>,
+                    <span class="ident">PrimarySelectionSourceImpl::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) =&gt; <span class="ident">source</span>,
                     <span class="comment">// We can&#39;t reach `Gtk` source in `Zwp`.</span>
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                    <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                 });
                 <span class="ident">device</span>.<span class="ident">set_selection</span>(<span class="ident">source</span>, <span class="ident">serial</span>);
             }
-            <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">device</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">source</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">source</span>.<span class="ident">source</span> {
-                    <span class="ident">PrimarySelectionSourceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">source</span>,
+                    <span class="ident">PrimarySelectionSourceImpl::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">source</span>) =&gt; <span class="ident">source</span>,
                     <span class="comment">// We can&#39;t reach `Zwp` source in `Gtk`.</span>
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                    <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                 });
                 <span class="ident">device</span>.<span class="ident">set_selection</span>(<span class="ident">source</span>, <span class="ident">serial</span>);
             }
@@ -325,7 +325,7 @@
     }
 
     <span class="doccomment">/// Access the `PrimarySelectionOffer` currently associated with the primary selection buffer.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_selection</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PrimarySelectionOffer</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_selection</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PrimarySelectionOffer</span><span class="op">&gt;</span>) -&gt; <span class="ident">T</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">T</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="ident">f</span>(<span class="ident">inner</span>.<span class="ident">selection</span>.<span class="ident">as_ref</span>())
     }

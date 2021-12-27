@@ -166,7 +166,7 @@
         <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span>,
         <span class="ident">shell</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_wm_base::XdgWmBase</span>,
         <span class="ident">implementation</span>: <span class="ident">Impl</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Xdg</span>
+    ) -&gt; <span class="ident">Xdg</span>
     <span class="kw">where</span>
         <span class="ident">Impl</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
@@ -177,7 +177,7 @@
         <span class="kw">let</span> <span class="ident">implementation_2</span> <span class="op">=</span> <span class="ident">implementation</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">xdgs</span> <span class="op">=</span> <span class="ident">shell</span>.<span class="ident">get_xdg_surface</span>(<span class="ident">surface</span>);
         <span class="ident">xdgs</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">xdgs</span>, <span class="ident">evt</span>, <span class="ident">ddata</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">evt</span> {
-            <span class="ident">xdg_surface::Event::Configure</span> { <span class="ident">serial</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">xdg_surface::Event::Configure</span> { <span class="ident">serial</span> } =&gt; {
                 <span class="ident">xdgs</span>.<span class="ident">ack_configure</span>(<span class="ident">serial</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">new_size</span>, <span class="ident">states</span>)) <span class="op">=</span> <span class="ident">pending_configure_2</span>.<span class="ident">borrow_mut</span>().<span class="ident">take</span>() {
                     (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">implementation_2</span>.<span class="ident">borrow_mut</span>())(
@@ -186,17 +186,17 @@
                     );
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
         });
         <span class="kw">let</span> <span class="ident">toplevel</span> <span class="op">=</span> <span class="ident">xdgs</span>.<span class="ident">get_toplevel</span>();
         <span class="ident">toplevel</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">evt</span>, <span class="ident">ddata</span><span class="op">|</span> {
             <span class="kw">match</span> <span class="ident">evt</span> {
-                <span class="ident">xdg_toplevel::Event::Close</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">xdg_toplevel::Event::Close</span> =&gt; {
                     (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">implementation</span>.<span class="ident">borrow_mut</span>())(<span class="ident">Event::Close</span>, <span class="ident">ddata</span>)
                 }
-                <span class="ident">xdg_toplevel::Event::Configure</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">states</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">xdg_toplevel::Event::Configure</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">states</span> } =&gt; {
                     <span class="kw">use</span> <span class="ident">std::cmp::max</span>;
-                    <span class="kw">let</span> <span class="ident">new_size</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">width</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">height</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                    <span class="kw">let</span> <span class="ident">new_size</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">width</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">height</span> <span class="op">==</span> <span class="number">0</span> {
                         <span class="comment">// if either w or h is zero, then we get to choose our size</span>
                         <span class="prelude-val">None</span>
                     } <span class="kw">else</span> {
@@ -210,7 +210,7 @@
 
                     <span class="kw-2">*</span><span class="ident">pending_configure</span>.<span class="ident">borrow_mut</span>() <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">new_size</span>, <span class="ident">translated_states</span>));
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
             }
         });
         <span class="ident">surface</span>.<span class="ident">commit</span>();
@@ -279,7 +279,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">get_xdg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_xdg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span><span class="op">&gt;</span> {
         <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">toplevel</span>)
     }
 }

@@ -148,9 +148,9 @@
 
 <span class="kw">impl</span> <span class="ident">PrimarySelectionOffer</span> {
     <span class="doccomment">/// Access the list of mime types proposed by this offer.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_mime_types</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_mime_types</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">T</span>
     <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span>[<span class="ident">String</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span>,
+        <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span>[<span class="ident">String</span>]) -&gt; <span class="ident">T</span>,
     {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">mime_types</span>)
@@ -160,17 +160,17 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Note that you should **not** read the contents right away in a blocking way,</span>
     <span class="doccomment">/// as you may deadlock your application.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">receive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mime_type</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ReadPipe</span>, <span class="ident">std::io::Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">receive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mime_type</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ReadPipe</span>, <span class="ident">std::io::Error</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident">nix::fcntl::OFlag</span>;
         <span class="kw">use</span> <span class="ident">nix::unistd</span>::{<span class="ident">close</span>, <span class="ident">pipe2</span>};
         <span class="comment">// create a pipe</span>
         <span class="kw">let</span> (<span class="ident">readfd</span>, <span class="ident">writefd</span>) <span class="op">=</span> <span class="ident">pipe2</span>(<span class="ident">OFlag::O_CLOEXEC</span>)<span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">offer</span> {
-            <span class="ident">PrimarySelectionOfferImpl::Zwp</span>(<span class="ident">offer</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionOfferImpl::Zwp</span>(<span class="ident">offer</span>) =&gt; {
                 <span class="ident">offer</span>.<span class="ident">receive</span>(<span class="ident">mime_type</span>, <span class="ident">writefd</span>);
             }
-            <span class="ident">PrimarySelectionOfferImpl::Gtk</span>(<span class="ident">offer</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionOfferImpl::Gtk</span>(<span class="ident">offer</span>) =&gt; {
                 <span class="ident">offer</span>.<span class="ident">receive</span>(<span class="ident">mime_type</span>, <span class="ident">writefd</span>);
             }
         }
@@ -183,7 +183,7 @@
     }
 
     <span class="doccomment">/// Initialize `PrimarySelectionOffer` from the `Zwp` offer.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_zwp</span>(<span class="ident">offer</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">ZwpPrimarySelectionOfferV1</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_zwp</span>(<span class="ident">offer</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">ZwpPrimarySelectionOfferV1</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">PrimarySelectionOfferInner::new</span>()));
         <span class="kw">let</span> <span class="ident">inner2</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">clone</span>();
 
@@ -191,10 +191,10 @@
             <span class="kw">use</span> <span class="ident">zwp_primary_selection_offer_v1::Event</span>;
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner2</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
             <span class="kw">match</span> <span class="ident">event</span> {
-                <span class="ident">Event::Offer</span> { <span class="ident">mime_type</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Event::Offer</span> { <span class="ident">mime_type</span> } =&gt; {
                     <span class="ident">inner</span>.<span class="ident">mime_types</span>.<span class="ident">push</span>(<span class="ident">mime_type</span>);
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
             }
         });
 
@@ -202,7 +202,7 @@
     }
 
     <span class="doccomment">/// Initialize `PrimarySelectionOffer` from the `Gtk` offer.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_gtk</span>(<span class="ident">offer</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">GtkPrimarySelectionOffer</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_gtk</span>(<span class="ident">offer</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">GtkPrimarySelectionOffer</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">PrimarySelectionOfferInner::new</span>()));
         <span class="kw">let</span> <span class="ident">inner2</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">clone</span>();
 
@@ -210,10 +210,10 @@
             <span class="kw">use</span> <span class="ident">gtk_primary_selection_offer::Event</span>;
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner2</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
             <span class="kw">match</span> <span class="ident">event</span> {
-                <span class="ident">Event::Offer</span> { <span class="ident">mime_type</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Event::Offer</span> { <span class="ident">mime_type</span> } =&gt; {
                     <span class="ident">inner</span>.<span class="ident">mime_types</span>.<span class="ident">push</span>(<span class="ident">mime_type</span>);
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
             }
         });
 
@@ -224,8 +224,8 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">PrimarySelectionOffer</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">offer</span> {
-            <span class="ident">PrimarySelectionOfferImpl::Zwp</span>(<span class="ident">offer</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">offer</span>.<span class="ident">destroy</span>(),
-            <span class="ident">PrimarySelectionOfferImpl::Gtk</span>(<span class="ident">offer</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">offer</span>.<span class="ident">destroy</span>(),
+            <span class="ident">PrimarySelectionOfferImpl::Zwp</span>(<span class="ident">offer</span>) =&gt; <span class="ident">offer</span>.<span class="ident">destroy</span>(),
+            <span class="ident">PrimarySelectionOfferImpl::Gtk</span>(<span class="ident">offer</span>) =&gt; <span class="ident">offer</span>.<span class="ident">destroy</span>(),
         }
     }
 }
@@ -237,7 +237,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PrimarySelectionOfferInner</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident"><span class="self">Self</span>::default</span>()
     }
 }

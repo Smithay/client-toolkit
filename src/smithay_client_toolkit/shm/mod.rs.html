@@ -104,7 +104,7 @@
 
 <span class="kw">impl</span> <span class="ident">ShmHandler</span> {
     <span class="doccomment">/// Create a new ShmHandler</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ShmHandler</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">ShmHandler</span> {
         <span class="ident">ShmHandler</span> { <span class="ident">shm</span>: <span class="prelude-val">None</span>, <span class="ident">formats</span>: <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="macro">vec!</span>[])) }
     }
 }
@@ -121,14 +121,14 @@
         <span class="kw">let</span> <span class="ident">shm</span> <span class="op">=</span> <span class="ident">registry</span>.<span class="ident">bind</span>::<span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span>(<span class="number">1</span>, <span class="ident">id</span>);
         <span class="kw">let</span> <span class="ident">my_formats</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">formats</span>.<span class="ident">clone</span>();
         <span class="ident">shm</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">event</span>, <span class="kw">_</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_shm::Event::Format</span> { <span class="ident">format</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">wl_shm::Event::Format</span> { <span class="ident">format</span> } =&gt; {
                 <span class="ident">my_formats</span>.<span class="ident">borrow_mut</span>().<span class="ident">push</span>(<span class="ident">format</span>);
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
         });
         <span class="self">self</span>.<span class="ident">shm</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">shm</span>).<span class="ident">clone</span>());
     }
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">shm</span>.<span class="ident">clone</span>()
     }
 }
@@ -140,11 +140,11 @@
 <span class="doccomment">/// associated methods on your [`Environment`](../environment/struct.environment.html).</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ShmHandling</span> {
     <span class="doccomment">/// Access the list of SHM formats supported by the compositor</span>
-    <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_shm::Format</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_shm::Format</span><span class="op">&gt;</span>;
 }
 
 <span class="kw">impl</span> <span class="ident">ShmHandling</span> <span class="kw">for</span> <span class="ident">ShmHandler</span> {
-    <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_shm::Format</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_shm::Format</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">formats</span>.<span class="ident">borrow</span>().<span class="ident">clone</span>()
     }
 }
@@ -154,7 +154,7 @@
     <span class="ident">E</span>: <span class="ident">ShmHandling</span>,
 {
     <span class="doccomment">/// Access the list of SHM formats supported by the compositor</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_shm::Format</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shm_formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_shm::Format</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">with_inner</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">shm_formats</span>())
     }
 }

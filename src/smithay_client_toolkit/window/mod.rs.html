@@ -903,7 +903,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WindowState</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">b</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WindowState</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">b</span>: <span class="ident">bool</span>) -&gt; <span class="ident">WindowState</span> {
         <span class="kw">if</span> <span class="ident">b</span> {
             <span class="ident">WindowState::Active</span>
         } <span class="kw">else</span> {
@@ -913,10 +913,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">WindowState</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">bool</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">WindowState</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">WindowState</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="ident">s</span> {
-            <span class="ident">WindowState::Active</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="ident">WindowState::Inactive</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+            <span class="ident">WindowState::Active</span> =&gt; <span class="bool-val">true</span>,
+            <span class="ident">WindowState::Inactive</span> =&gt; <span class="bool-val">false</span>,
         }
     }
 }
@@ -991,7 +991,7 @@
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">fmt::Debug</span>,
 {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;WindowInner&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;frame&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">frame</span>)
             .<span class="ident">field</span>(<span class="string">&quot;shell_surface&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">shell_surface</span>)
@@ -1044,7 +1044,7 @@
         <span class="ident">theme_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ThemeManager</span><span class="op">&gt;</span>,
         <span class="ident">initial_dims</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>),
         <span class="ident">implementation</span>: <span class="ident">Impl</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">F::Error</span><span class="op">&gt;</span>
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">F::Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">Impl</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
         <span class="ident">E</span>: <span class="ident">GlobalHandler</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span><span class="op">&gt;</span>
@@ -1074,18 +1074,18 @@
             <span class="ident">Box::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">req</span>, <span class="ident">serial</span>, <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">inner</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">shell_inner</span>.<span class="ident">borrow_mut</span>() {
                     <span class="kw">match</span> <span class="ident">req</span> {
-                        <span class="ident">FrameRequest::Minimize</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">set_minimized</span>(),
-                        <span class="ident">FrameRequest::Maximize</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">set_maximized</span>(),
-                        <span class="ident">FrameRequest::UnMaximize</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">unset_maximized</span>(),
-                        <span class="ident">FrameRequest::Move</span>(<span class="ident">seat</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">move_</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>),
-                        <span class="ident">FrameRequest::Resize</span>(<span class="ident">seat</span>, <span class="ident">edges</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">FrameRequest::Minimize</span> =&gt; <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">set_minimized</span>(),
+                        <span class="ident">FrameRequest::Maximize</span> =&gt; <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">set_maximized</span>(),
+                        <span class="ident">FrameRequest::UnMaximize</span> =&gt; <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">unset_maximized</span>(),
+                        <span class="ident">FrameRequest::Move</span>(<span class="ident">seat</span>) =&gt; <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">move_</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>),
+                        <span class="ident">FrameRequest::Resize</span>(<span class="ident">seat</span>, <span class="ident">edges</span>) =&gt; {
                             <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">resize</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">edges</span>)
                         }
-                        <span class="ident">FrameRequest::ShowMenu</span>(<span class="ident">seat</span>, <span class="ident">x</span>, <span class="ident">y</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">FrameRequest::ShowMenu</span>(<span class="ident">seat</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; {
                             <span class="ident">inner</span>.<span class="ident">shell_surface</span>.<span class="ident">show_window_menu</span>(<span class="kw-2">&amp;</span><span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">x</span>, <span class="ident">y</span>)
                         }
-                        <span class="ident">FrameRequest::Close</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event::Close</span>, <span class="ident">ddata</span>),
-                        <span class="ident">FrameRequest::Refresh</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event::Refresh</span>, <span class="ident">ddata</span>),
+                        <span class="ident">FrameRequest::Close</span> =&gt; (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event::Close</span>, <span class="ident">ddata</span>),
+                        <span class="ident">FrameRequest::Refresh</span> =&gt; (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event::Refresh</span>, <span class="ident">ddata</span>),
                     }
                 }
             }) <span class="kw">as</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>,
@@ -1106,12 +1106,12 @@
             <span class="kw">move</span> <span class="op">|</span><span class="ident">event</span>, <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">frame_inner</span> <span class="op">=</span> <span class="ident">frame_inner</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">frame_inner</span>.<span class="ident">as_mut</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>,
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,
+                    <span class="prelude-val">Some</span>(<span class="ident">inner</span>) =&gt; <span class="ident">inner</span>,
+                    <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
                 };
 
                 <span class="kw">match</span> <span class="ident">event</span> {
-                    <span class="ident">shell::Event::Configure</span> { <span class="ident">states</span>, <span class="kw-2">mut</span> <span class="ident">new_size</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">shell::Event::Configure</span> { <span class="ident">states</span>, <span class="kw-2">mut</span> <span class="ident">new_size</span> } =&gt; {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">frame</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">frame</span>.<span class="ident">borrow_mut</span>();
 
                         <span class="comment">// Populate frame changes. We should do it before performing new_size</span>
@@ -1171,7 +1171,7 @@
                         }
                         (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event::Configure</span> { <span class="ident">states</span>, <span class="ident">new_size</span> }, <span class="ident">ddata</span>);
                     }
-                    <span class="ident">shell::Event::Close</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">shell::Event::Close</span> =&gt; {
                         (<span class="ident">inner</span>.<span class="ident">user_impl</span>)(<span class="ident">Event::Close</span>, <span class="ident">ddata</span>);
                     }
                 }
@@ -1250,10 +1250,10 @@
         <span class="ident">shell_surface</span>: <span class="kw-2">&amp;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">shell::ShellSurface</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">decoration_frame</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">decoration_inner</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ZxdgToplevelDecorationV1</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ZxdgToplevelDecorationV1</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">toplevel</span>, <span class="ident">mgr</span>) <span class="op">=</span> <span class="kw">match</span> (<span class="ident">shell_surface</span>.<span class="ident">get_xdg</span>(), <span class="ident">decoration_mgr</span>) {
-            (<span class="prelude-val">Some</span>(<span class="ident">toplevel</span>), <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">mgr</span>)) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">toplevel</span>, <span class="ident">mgr</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="prelude-val">Some</span>(<span class="ident">toplevel</span>), <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">mgr</span>)) =&gt; (<span class="ident">toplevel</span>, <span class="ident">mgr</span>),
+            <span class="kw">_</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
             }
         };
@@ -1265,10 +1265,10 @@
             <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Event::Configure</span> { <span class="ident">mode</span> } <span class="op">=</span> <span class="ident">event</span> { <span class="ident">mode</span> } <span class="kw">else</span> { <span class="macro">unreachable!</span>() };
 
             <span class="kw">match</span> <span class="ident">mode</span> {
-                <span class="ident">Mode::ServerSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Mode::ServerSide</span> =&gt; {
                     <span class="ident">decoration_frame</span>.<span class="ident">borrow_mut</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
                 }
-                <span class="ident">Mode::ClientSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Mode::ClientSide</span> =&gt; {
                     <span class="kw">let</span> <span class="ident">want_decorate</span> <span class="op">=</span> <span class="ident">decoration_inner</span>
                         .<span class="ident">borrow_mut</span>()
                         .<span class="ident">as_ref</span>()
@@ -1276,7 +1276,7 @@
                         .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
                     <span class="ident">decoration_frame</span>.<span class="ident">borrow_mut</span>().<span class="ident">set_hidden</span>(<span class="op">!</span><span class="ident">want_decorate</span>);
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
             }
         });
 
@@ -1284,7 +1284,7 @@
     }
 
     <span class="doccomment">/// Access the surface wrapped in this Window</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">surface</span>
     }
 
@@ -1354,7 +1354,7 @@
 
         <span class="comment">// Update inner.decorated state.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow_mut</span>().<span class="ident">as_mut</span>() {
-            <span class="kw">if</span> <span class="ident">Decorations::None</span> <span class="op">=</span><span class="op">=</span> <span class="ident">decorate</span> {
+            <span class="kw">if</span> <span class="ident">Decorations::None</span> <span class="op">==</span> <span class="ident">decorate</span> {
                 <span class="ident">inner</span>.<span class="ident">decorated</span> <span class="op">=</span> <span class="bool-val">false</span>;
             } <span class="kw">else</span> {
                 <span class="ident">inner</span>.<span class="ident">decorated</span> <span class="op">=</span> <span class="bool-val">true</span>;
@@ -1363,22 +1363,22 @@
 
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">decoration</span>.<span class="ident">as_ref</span>() {
             <span class="comment">// Server side decorations are there.</span>
-            <span class="prelude-val">Some</span>(<span class="ident">decoration</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">decoration</span>) =&gt; {
                 <span class="kw">match</span> <span class="ident">decorate</span> {
-                    <span class="ident">Decorations::ClientSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Decorations::ClientSide</span> =&gt; {
                         <span class="comment">// The user explicitly requested `ClientSide` decorations, we should destroy</span>
                         <span class="comment">// the server side decorations if some are presented.</span>
                         <span class="ident">decoration</span>.<span class="ident">destroy</span>();
                         <span class="self">self</span>.<span class="ident">decoration</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                         <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">borrow_mut</span>().<span class="ident">set_hidden</span>(<span class="bool-val">false</span>);
                     }
-                    <span class="ident">Decorations::ServerSide</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Decorations::ServerSide</span> =&gt; {
                         <span class="ident">decoration</span>.<span class="ident">set_mode</span>(<span class="ident">Mode::ServerSide</span>);
                     }
-                    <span class="ident">Decorations::FollowServer</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Decorations::FollowServer</span> =&gt; {
                         <span class="ident">decoration</span>.<span class="ident">unset_mode</span>();
                     }
-                    <span class="ident">Decorations::None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Decorations::None</span> =&gt; {
                         <span class="comment">// The user explicitly requested `None` decorations, however</span>
                         <span class="comment">// since we can&#39;t destroy and recreate decoration object on the fly switch</span>
                         <span class="comment">// them to `ClientSide` with the hidden frame. The server is free to ignore</span>
@@ -1389,16 +1389,16 @@
                 }
             }
             <span class="comment">// Server side decorations are not presented or were destroyed.</span>
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="kw">match</span> <span class="ident">decorate</span> {
                     <span class="comment">// We map `ServerSide` and `FollowServer` decorations to `ClientSide`, since</span>
                     <span class="comment">// server side decorations are no longer available.</span>
                     <span class="ident">Decorations::ClientSide</span>
                     <span class="op">|</span> <span class="ident">Decorations::ServerSide</span>
-                    <span class="op">|</span> <span class="ident">Decorations::FollowServer</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="op">|</span> <span class="ident">Decorations::FollowServer</span> =&gt; {
                         <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">borrow_mut</span>().<span class="ident">set_hidden</span>(<span class="bool-val">false</span>);
                     }
-                    <span class="ident">Decorations::None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">Decorations::None</span> =&gt; {
                         <span class="self">self</span>.<span class="ident">frame</span>.<span class="ident">borrow_mut</span>().<span class="ident">set_hidden</span>(<span class="bool-val">true</span>);
                     }
                 }
@@ -1567,7 +1567,7 @@
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">fmt::Debug</span>,
 {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Window&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;frame&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">frame</span>)
             .<span class="ident">field</span>(<span class="string">&quot;surface&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">surface</span>)
@@ -1624,7 +1624,7 @@
         <span class="ident">shm</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span><span class="op">&gt;</span>,
         <span class="ident">theme_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ThemeManager</span><span class="op">&gt;</span>,
         <span class="ident">callback</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">FrameRequest</span>, <span class="ident">u32</span>, <span class="ident">DispatchData</span>)<span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>;
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>;
     <span class="doccomment">/// Set the Window XDG states for the frame</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This notably includes information about whether the window is</span>
@@ -1633,7 +1633,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Calling this should *not* trigger a redraw, but return `true` if</span>
     <span class="doccomment">/// a redraw is needed.</span>
-    <span class="kw">fn</span> <span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">states</span>: <span class="kw-2">&amp;</span>[<span class="ident">State</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>;
+    <span class="kw">fn</span> <span class="ident">set_states</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">states</span>: <span class="kw-2">&amp;</span>[<span class="ident">State</span>]) -&gt; <span class="ident">bool</span>;
     <span class="doccomment">/// Hide or show the decorations</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Calling this should *not* trigger a redraw</span>
@@ -1655,13 +1655,13 @@
     <span class="doccomment">/// Redraw the decorations</span>
     <span class="kw">fn</span> <span class="ident">redraw</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>);
     <span class="doccomment">/// Subtracts the border dimensions from the given dimensions.</span>
-    <span class="kw">fn</span> <span class="ident">subtract_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>);
+    <span class="kw">fn</span> <span class="ident">subtract_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) -&gt; (<span class="ident">i32</span>, <span class="ident">i32</span>);
     <span class="doccomment">/// Adds the border dimensions to the given dimensions.</span>
-    <span class="kw">fn</span> <span class="ident">add_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>);
+    <span class="kw">fn</span> <span class="ident">add_borders</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) -&gt; (<span class="ident">i32</span>, <span class="ident">i32</span>);
     <span class="doccomment">/// Returns the coordinates of the top-left corner of the borders relative to the content</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Values should thus be negative</span>
-    <span class="kw">fn</span> <span class="ident">location</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">i32</span>, <span class="ident">i32</span>) {
+    <span class="kw">fn</span> <span class="ident">location</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">i32</span>, <span class="ident">i32</span>) {
         (<span class="number">0</span>, <span class="number">0</span>)
     }
     <span class="doccomment">/// Sets the configuration for the frame</span>
@@ -1695,7 +1695,7 @@
         <span class="ident">theme_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ThemeManager</span><span class="op">&gt;</span>,
         <span class="ident">initial_dims</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>),
         <span class="ident">callback</span>: <span class="ident">CB</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">F::Error</span><span class="op">&gt;</span>
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">F::Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">CB</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {

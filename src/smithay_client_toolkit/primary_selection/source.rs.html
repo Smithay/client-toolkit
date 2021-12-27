@@ -186,14 +186,14 @@
         <span class="ident">manager</span>: <span class="kw-2">&amp;</span><span class="ident">PrimarySelectionDeviceManager</span>,
         <span class="ident">mime_types</span>: <span class="ident">It</span>,
         <span class="kw-2">mut</span> <span class="ident">callback</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    ) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">PrimarySelectionSourceEvent</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
         <span class="ident">S</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">It</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">S</span><span class="op">&gt;</span>,
     {
         <span class="kw">match</span> <span class="ident">manager</span> {
-            <span class="ident">PrimarySelectionDeviceManager::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceManager::Zwp</span>(<span class="kw-2">ref</span> <span class="ident">manager</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">manager</span>.<span class="ident">create_source</span>();
                 <span class="ident">source</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">source</span>, <span class="ident">event</span>, <span class="ident">dispatch_data</span><span class="op">|</span> {
                     <span class="ident">zwp_primary_source_imp</span>(<span class="kw-2">&amp;</span><span class="ident">source</span>, <span class="ident">event</span>, <span class="ident">dispatch_data</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">callback</span>);
@@ -205,7 +205,7 @@
 
                 <span class="self">Self</span> { <span class="ident">source</span>: <span class="ident">PrimarySelectionSourceImpl::Zwp</span>(<span class="ident">source</span>.<span class="ident">detach</span>()) }
             }
-            <span class="ident">PrimarySelectionDeviceManager::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">manager</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">PrimarySelectionDeviceManager::Gtk</span>(<span class="kw-2">ref</span> <span class="ident">manager</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">manager</span>.<span class="ident">create_source</span>();
                 <span class="ident">source</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">source</span>, <span class="ident">event</span>, <span class="ident">dispatch_data</span><span class="op">|</span> {
                     <span class="ident">gtk_primary_source_imp</span>(<span class="kw-2">&amp;</span><span class="ident">source</span>, <span class="ident">event</span>, <span class="ident">dispatch_data</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">callback</span>);
@@ -238,15 +238,15 @@
 {
     <span class="kw">use</span> <span class="ident">gtk_primary_selection_source::Event</span>;
     <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">Event::Send</span> { <span class="ident">mime_type</span>, <span class="ident">fd</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PrimarySelectionSourceEvent::Send</span> {
+        <span class="ident">Event::Send</span> { <span class="ident">mime_type</span>, <span class="ident">fd</span> } =&gt; <span class="ident">PrimarySelectionSourceEvent::Send</span> {
             <span class="ident">mime_type</span>,
             <span class="ident">pipe</span>: <span class="kw">unsafe</span> { <span class="ident">FromRawFd::from_raw_fd</span>(<span class="ident">fd</span>) },
         },
-        <span class="ident">Event::Cancelled</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Cancelled</span> =&gt; {
             <span class="ident">source</span>.<span class="ident">destroy</span>();
             <span class="ident">PrimarySelectionSourceEvent::Cancelled</span>
         }
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
     };
 
     <span class="ident">implem</span>(<span class="ident">event</span>, <span class="ident">dispatch_data</span>);
@@ -262,15 +262,15 @@
 {
     <span class="kw">use</span> <span class="ident">zwp_primary_selection_source_v1::Event</span>;
     <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">Event::Send</span> { <span class="ident">mime_type</span>, <span class="ident">fd</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PrimarySelectionSourceEvent::Send</span> {
+        <span class="ident">Event::Send</span> { <span class="ident">mime_type</span>, <span class="ident">fd</span> } =&gt; <span class="ident">PrimarySelectionSourceEvent::Send</span> {
             <span class="ident">mime_type</span>,
             <span class="ident">pipe</span>: <span class="kw">unsafe</span> { <span class="ident">FromRawFd::from_raw_fd</span>(<span class="ident">fd</span>) },
         },
-        <span class="ident">Event::Cancelled</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Cancelled</span> =&gt; {
             <span class="ident">source</span>.<span class="ident">destroy</span>();
             <span class="ident">PrimarySelectionSourceEvent::Cancelled</span>
         }
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
     };
     <span class="ident">implem</span>(<span class="ident">event</span>, <span class="ident">dispatch_data</span>);
 }

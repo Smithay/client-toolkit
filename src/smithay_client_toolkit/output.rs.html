@@ -812,7 +812,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">OutputInfo</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">id</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputInfo</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">id</span>: <span class="ident">u32</span>) -&gt; <span class="ident">OutputInfo</span> {
         <span class="ident">OutputInfo</span> {
             <span class="ident">id</span>,
             <span class="ident">model</span>: <span class="ident">String::new</span>(),
@@ -867,7 +867,7 @@
 
 <span class="kw">impl</span> <span class="ident">OutputHandler</span> {
     <span class="doccomment">/// Create a new instance of this handler</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputHandler</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">OutputHandler</span> {
         <span class="ident">OutputHandler</span> {
             <span class="ident">outputs</span>: <span class="ident">Vec::new</span>(),
             <span class="ident">status_listeners</span>: <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">Vec::new</span>())),
@@ -929,13 +929,13 @@
             }
         });
     }
-    <span class="kw">fn</span> <span class="ident">get_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">o</span>)<span class="op">|</span> <span class="ident">o</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputHandler</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputHandler&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;outputs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">outputs</span>)
             .<span class="ident">field</span>(<span class="string">&quot;status_listeners&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;Fn() -&gt; { ... }&quot;</span>)
@@ -959,10 +959,10 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
     <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Event::Done</span> <span class="op">=</span> <span class="ident">event</span> {
         <span class="kw">let</span> (<span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">pending_events</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span> } =&gt; {
                 (<span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">std::mem::take</span>(<span class="ident">v</span>), <span class="ident">std::mem::take</span>(<span class="ident">cb</span>))
             }
-            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } =&gt; {
                 <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
                 <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
                 <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">info</span>.<span class="ident">clone</span>();
@@ -970,7 +970,7 @@
                 <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
                 <span class="kw">return</span>;
             }
-            <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } =&gt; {
                 <span class="comment">// a Done event on an output that is already ready was due to a</span>
                 <span class="comment">// status change (which was already merged)</span>
                 <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">callbacks</span>);
@@ -992,9 +992,9 @@
         <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
     } <span class="kw">else</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::Pending</span> { <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, .. } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">event</span>),
+            <span class="ident">OutputData::Pending</span> { <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, .. } =&gt; <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">event</span>),
             <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, .. }
-            <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, .. } =&gt; {
                 <span class="ident">merge_event</span>(<span class="ident">info</span>, <span class="ident">event</span>);
             }
         }
@@ -1018,13 +1018,13 @@
     }
     <span class="kw">let</span> (<span class="ident">id</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
         <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> }
-        <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } =&gt; {
             <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
             <span class="ident">notify</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
             <span class="ident">notify_status_listeners</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
             <span class="kw">return</span>;
         }
-        <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>, .. } <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">std::mem::take</span>(<span class="ident">cb</span>)),
+        <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>, .. } =&gt; (<span class="ident">id</span>, <span class="ident">std::mem::take</span>(<span class="ident">cb</span>)),
     };
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">OutputInfo::new</span>(<span class="ident">id</span>);
     <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
@@ -1044,7 +1044,7 @@
             <span class="ident">model</span>,
             <span class="ident">make</span>,
             <span class="ident">transform</span>,
-        } <span class="op">=</span><span class="op">&gt;</span> {
+        } =&gt; {
             <span class="ident">info</span>.<span class="ident">location</span> <span class="op">=</span> (<span class="ident">x</span>, <span class="ident">y</span>);
             <span class="ident">info</span>.<span class="ident">physical_size</span> <span class="op">=</span> (<span class="ident">physical_width</span>, <span class="ident">physical_height</span>);
             <span class="ident">info</span>.<span class="ident">subpixel</span> <span class="op">=</span> <span class="ident">subpixel</span>;
@@ -1052,15 +1052,15 @@
             <span class="ident">info</span>.<span class="ident">model</span> <span class="op">=</span> <span class="ident">model</span>;
             <span class="ident">info</span>.<span class="ident">make</span> <span class="op">=</span> <span class="ident">make</span>;
         }
-        <span class="ident">Event::Scale</span> { <span class="ident">factor</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Scale</span> { <span class="ident">factor</span> } =&gt; {
             <span class="ident">info</span>.<span class="ident">scale_factor</span> <span class="op">=</span> <span class="ident">factor</span>;
         }
-        <span class="ident">Event::Mode</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">refresh</span>, <span class="ident">flags</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Mode</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">refresh</span>, <span class="ident">flags</span> } =&gt; {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">found</span> <span class="op">=</span> <span class="bool-val">false</span>;
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mode</span>) <span class="op">=</span> <span class="ident">info</span>
                 .<span class="ident">modes</span>
                 .<span class="ident">iter_mut</span>()
-                .<span class="ident">find</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> <span class="ident">m</span>.<span class="ident">dimensions</span> <span class="op">=</span><span class="op">=</span> (<span class="ident">width</span>, <span class="ident">height</span>) <span class="op">&amp;&amp;</span> <span class="ident">m</span>.<span class="ident">refresh_rate</span> <span class="op">=</span><span class="op">=</span> <span class="ident">refresh</span>)
+                .<span class="ident">find</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> <span class="ident">m</span>.<span class="ident">dimensions</span> <span class="op">==</span> (<span class="ident">width</span>, <span class="ident">height</span>) <span class="op">&amp;&amp;</span> <span class="ident">m</span>.<span class="ident">refresh_rate</span> <span class="op">==</span> <span class="ident">refresh</span>)
             {
                 <span class="comment">// this mode already exists, update it</span>
                 <span class="ident">mode</span>.<span class="ident">is_preferred</span> <span class="op">=</span> <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Preferred</span>);
@@ -1078,7 +1078,7 @@
             }
         }
         <span class="comment">// ignore all other events</span>
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
+        <span class="kw">_</span> =&gt; (),
     }
 }
 
@@ -1125,14 +1125,14 @@
 <span class="doccomment">/// If the output has been removed by the compositor, the `obsolete` field of the `OutputInfo`</span>
 <span class="doccomment">/// will be set to `true`. This handler will not automatically detroy the output by calling its</span>
 <span class="doccomment">/// `release` method, to avoid interfering with your logic.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_output_info</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_output_info</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>) -&gt; <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
         <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } =&gt; {
                 <span class="prelude-val">Some</span>(<span class="ident">f</span>(<span class="ident">info</span>))
             }
-            <span class="ident">OutputData::Pending</span> { .. } <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            <span class="ident">OutputData::Pending</span> { .. } =&gt; <span class="prelude-val">None</span>,
         }
     } <span class="kw">else</span> {
         <span class="prelude-val">None</span>
@@ -1150,7 +1150,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_output_listener</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Fn</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
     <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
     <span class="ident">f</span>: <span class="ident">F</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputListener</span> {
+) -&gt; <span class="ident">OutputListener</span> {
     <span class="kw">let</span> <span class="ident">arc</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">f</span>) <span class="kw">as</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>;
 
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
@@ -1159,7 +1159,7 @@
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
             <span class="ident">OutputData::Pending</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. }
             <span class="op">|</span> <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. }
-            <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. } =&gt; {
                 <span class="ident">callbacks</span>.<span class="ident">push</span>(<span class="ident">Arc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">arc</span>));
             }
         }
@@ -1176,7 +1176,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputListener</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputListener&quot;</span>).<span class="ident">field</span>(<span class="string">&quot;_cb&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;fn() -&gt; { ... }&quot;</span>).<span class="ident">finish</span>()
     }
 }
@@ -1189,7 +1189,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputStatusListener</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputStatusListener&quot;</span>).<span class="ident">field</span>(<span class="string">&quot;_cb&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;fn() -&gt; { ... }&quot;</span>).<span class="ident">finish</span>()
     }
 }
@@ -1205,14 +1205,14 @@
     <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputStatusListener</span>;
+    ) -&gt; <span class="ident">OutputStatusListener</span>;
 }
 
 <span class="kw">impl</span> <span class="ident">OutputHandling</span> <span class="kw">for</span> <span class="ident">OutputHandler</span> {
     <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputStatusListener</span> {
+    ) -&gt; <span class="ident">OutputStatusListener</span> {
         <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">f</span>)) <span class="kw">as</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>;
         <span class="self">self</span>.<span class="ident">status_listeners</span>.<span class="ident">borrow_mut</span>().<span class="ident">push</span>(<span class="ident">Rc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">rc</span>));
         <span class="ident">OutputStatusListener</span> { <span class="ident">_cb</span>: <span class="ident">rc</span> }
@@ -1234,14 +1234,14 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">listen_for_outputs</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">f</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OutputStatusListener</span> {
+    ) -&gt; <span class="ident">OutputStatusListener</span> {
         <span class="self">self</span>.<span class="ident">with_inner</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">OutputHandling::listen</span>(<span class="ident">inner</span>, <span class="ident">f</span>))
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="ident"><span class="kw">crate</span>::environment::MultiGlobalHandler</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::environment::Environment</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Shorthand method to retrieve the list of outputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_all_outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_all_outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_all_globals</span>::<span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">detach</span>()).<span class="ident">collect</span>()
     }
 }
@@ -1282,7 +1282,7 @@
 
 <span class="kw">impl</span> <span class="ident">XdgOutputHandler</span> {
     <span class="doccomment">/// Create a new instance of this handler bound to the given OutputHandler.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">output_handler</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">OutputHandler</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">output_handler</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">OutputHandler</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span>
             <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">XdgOutputHandlerInner</span> { <span class="ident">xdg_manager</span>: <span class="prelude-val">None</span>, <span class="ident">outputs</span>: <span class="ident">Vec::new</span>() }));
         <span class="ident">output_handler</span>.<span class="ident">xdg_listener</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Rc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">inner</span>));
@@ -1290,7 +1290,7 @@
     }
 
     <span class="doccomment">/// Helper function to create a bound pair of OutputHandler and XdgOutputHandler.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_output_handlers</span>() <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">OutputHandler</span>, <span class="self">Self</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_output_handlers</span>() -&gt; (<span class="ident">OutputHandler</span>, <span class="self">Self</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oh</span> <span class="op">=</span> <span class="ident">OutputHandler::new</span>();
         <span class="kw">let</span> <span class="ident">xh</span> <span class="op">=</span> <span class="ident">XdgOutputHandler::new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">oh</span>);
         (<span class="ident">oh</span>, <span class="ident">xh</span>)
@@ -1302,7 +1302,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
         <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    ) -&gt; <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_manager</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">xdg_manager</span> {
             <span class="kw">let</span> <span class="ident">xdg_main</span> <span class="op">=</span> <span class="ident">xdg_manager</span>.<span class="ident">get_xdg_output</span>(<span class="ident">output</span>);
             <span class="kw">let</span> <span class="ident">wl_out</span> <span class="op">=</span> <span class="ident">output</span>.<span class="ident">clone</span>();
@@ -1342,18 +1342,18 @@
         .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
     <span class="kw">let</span> (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="ident">pending</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-        <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="bool-val">false</span>),
-        <span class="ident">OutputData::PendingXDG</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> } <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="bool-val">true</span>),
-        <span class="ident">OutputData::Pending</span> { .. } <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+        <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> } =&gt; (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="bool-val">false</span>),
+        <span class="ident">OutputData::PendingXDG</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> } =&gt; (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="bool-val">true</span>),
+        <span class="ident">OutputData::Pending</span> { .. } =&gt; <span class="macro">unreachable!</span>(),
     };
     <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">Event::Name</span> { <span class="ident">name</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Name</span> { <span class="ident">name</span> } =&gt; {
             <span class="ident">info</span>.<span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>;
         }
-        <span class="ident">Event::Description</span> { <span class="ident">description</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Description</span> { <span class="ident">description</span> } =&gt; {
             <span class="ident">info</span>.<span class="ident">description</span> <span class="op">=</span> <span class="ident">description</span>;
         }
-        <span class="ident">Event::Done</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Done</span> =&gt; {
             <span class="ident">notify</span>(<span class="ident">wl_out</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
             <span class="kw">if</span> <span class="ident">pending</span> {
                 <span class="ident">notify_status_listeners</span>(<span class="ident">wl_out</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
@@ -1362,7 +1362,7 @@
                 <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
             }
         }
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
+        <span class="kw">_</span> =&gt; (),
     }
 }
 
@@ -1379,7 +1379,7 @@
         <span class="kw">let</span> <span class="ident">xdg_manager</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">version</span>, <span class="ident">id</span>);
         <span class="ident">inner</span>.<span class="ident">xdg_manager</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_manager</span>.<span class="ident">into</span>());
     }
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>();
         <span class="ident">inner</span>.<span class="ident">xdg_manager</span>.<span class="ident">clone</span>()
     }

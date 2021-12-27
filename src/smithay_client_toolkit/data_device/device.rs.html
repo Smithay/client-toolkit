@@ -239,7 +239,7 @@
 
     <span class="kw">fn</span> <span class="ident">set_selection</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">offer</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_data_offer::WlDataOffer</span><span class="op">&gt;</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">offer</span>) <span class="op">=</span> <span class="ident">offer</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">=</span><span class="op">=</span> <span class="ident">offer</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">==</span> <span class="ident">offer</span>) {
                 <span class="self">self</span>.<span class="ident">selection</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">known_offers</span>.<span class="ident">swap_remove</span>(<span class="ident">id</span>));
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;Compositor set an unknown data_offer for selection.&quot;</span>);
@@ -252,7 +252,7 @@
 
     <span class="kw">fn</span> <span class="ident">set_dnd</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">offer</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_data_offer::WlDataOffer</span><span class="op">&gt;</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">offer</span>) <span class="op">=</span> <span class="ident">offer</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">=</span><span class="op">=</span> <span class="ident">offer</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_offers</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">offer</span> <span class="op">==</span> <span class="ident">offer</span>) {
                 <span class="self">self</span>.<span class="ident">current_dnd</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">known_offers</span>.<span class="ident">swap_remove</span>(<span class="ident">id</span>));
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;Compositor set an unknown data_offer for selection.&quot;</span>);
@@ -331,23 +331,23 @@
     <span class="kw">use</span> <span class="ident"><span class="self">self</span>::wl_data_device::Event</span>;
 
     <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">Event::DataOffer</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">new_offer</span>(<span class="ident">id</span>),
-        <span class="ident">Event::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::DataOffer</span> { <span class="ident">id</span> } =&gt; <span class="ident">inner</span>.<span class="ident">new_offer</span>(<span class="ident">id</span>),
+        <span class="ident">Event::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">id</span> } =&gt; {
             <span class="ident">inner</span>.<span class="ident">set_dnd</span>(<span class="ident">id</span>);
             <span class="ident">implem</span>(
                 <span class="ident">DndEvent::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">offer</span>: <span class="ident">inner</span>.<span class="ident">current_dnd</span>.<span class="ident">as_ref</span>() },
                 <span class="ident">ddata</span>,
             );
         }
-        <span class="ident">Event::Motion</span> { <span class="ident">time</span>, <span class="ident">x</span>, <span class="ident">y</span> } <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Motion</span> { <span class="ident">time</span>, <span class="ident">x</span>, <span class="ident">y</span> } =&gt; {
             <span class="ident">implem</span>(<span class="ident">DndEvent::Motion</span> { <span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">time</span>, <span class="ident">offer</span>: <span class="ident">inner</span>.<span class="ident">current_dnd</span>.<span class="ident">as_ref</span>() }, <span class="ident">ddata</span>);
         }
-        <span class="ident">Event::Leave</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">implem</span>(<span class="ident">DndEvent::Leave</span>, <span class="ident">ddata</span>),
-        <span class="ident">Event::Drop</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Event::Leave</span> =&gt; <span class="ident">implem</span>(<span class="ident">DndEvent::Leave</span>, <span class="ident">ddata</span>),
+        <span class="ident">Event::Drop</span> =&gt; {
             <span class="ident">implem</span>(<span class="ident">DndEvent::Drop</span> { <span class="ident">offer</span>: <span class="ident">inner</span>.<span class="ident">current_dnd</span>.<span class="ident">as_ref</span>() }, <span class="ident">ddata</span>);
         }
-        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>),
-        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
+        <span class="ident">Event::Selection</span> { <span class="ident">id</span> } =&gt; <span class="ident">inner</span>.<span class="ident">set_selection</span>(<span class="ident">id</span>),
+        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
     }
 }
 
@@ -360,7 +360,7 @@
         <span class="ident">manager</span>: <span class="kw-2">&amp;</span><span class="ident">wl_data_device_manager::WlDataDeviceManager</span>,
         <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
         <span class="kw-2">mut</span> <span class="ident">callback</span>: <span class="ident">F</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">DataDevice</span>
+    ) -&gt; <span class="ident">DataDevice</span>
     <span class="kw">where</span>
         <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">DndEvent</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
@@ -420,9 +420,9 @@
     }
 
     <span class="doccomment">/// Access the `DataOffer` currently associated with the selection buffer</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_selection</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_selection</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">T</span>
     <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">DataOffer</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">T</span>,
+        <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">DataOffer</span><span class="op">&gt;</span>) -&gt; <span class="ident">T</span>,
     {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="ident">f</span>(<span class="ident">inner</span>.<span class="ident">selection</span>.<span class="ident">as_ref</span>())
