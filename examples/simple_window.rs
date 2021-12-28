@@ -279,7 +279,6 @@ impl Dispatch<wl_callback::WlCallback> for SimpleWindow {
         _: &Self::UserData,
         cx: &mut ConnectionHandle,
         qh: &QueueHandle<Self>,
-        _: &mut wayland_client::DataInit<'_>,
     ) {
         if let wl_callback::Event::Done { .. } = event {
             self.inner.draw(cx, qh);
@@ -298,7 +297,6 @@ impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {
         _: &Self::UserData,
         _: &mut wayland_client::ConnectionHandle,
         _: &wayland_client::QueueHandle<Self>,
-        _: &mut wayland_client::DataInit<'_>,
     ) {
         // todo
     }

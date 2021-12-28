@@ -19,14 +19,16 @@ lazy_static = "1.0"
 memmap2 = "0.3.0"
 log = "0.4"
 thiserror = "1.0.30"
+wayland-backend = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 wayland-client = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 wayland-protocols = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317", features = ["client", "unstable_protocols"] }
-wayland-cursor = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
+#wayland-cursor = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 calloop = { version = "0.9.1", optional = true }
 
 [features]
-default = ["calloop"]
-#dlopen = ["wayland-client/dlopen"]
+default = ["calloop", "dlopen"]
+system = ["wayland-backend/client_system"]
+dlopen = ["wayland-backend/client_system", "wayland-backend/dlopen"]
 
 [build-dependencies]
 pkg-config = "0.3"

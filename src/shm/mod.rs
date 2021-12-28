@@ -2,8 +2,7 @@ pub mod pool;
 
 use wayland_client::{
     protocol::{wl_shm, wl_shm_pool},
-    ConnectionHandle, DataInit, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle,
-    WEnum,
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
 };
 
 use crate::registry::{RegistryHandle, RegistryHandler};
@@ -78,7 +77,6 @@ where
         _: &Self::UserData,
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             wl_shm::Event::Format { format } => {
@@ -116,7 +114,6 @@ where
         _: &(),
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         unreachable!("wl_shm_pool has no events")
     }

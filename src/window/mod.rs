@@ -7,7 +7,7 @@ use std::{
 };
 
 use wayland_client::{
-    backend::InvalidId, protocol::wl_surface, ConnectionHandle, DataInit, DelegateDispatch,
+    backend::InvalidId, protocol::wl_surface, ConnectionHandle, DelegateDispatch,
     DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_protocols::{
@@ -327,7 +327,6 @@ where
         _: &(),
         cx: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             xdg_wm_base::Event::Ping { serial } => {
@@ -359,7 +358,6 @@ where
         _: &(),
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         unreachable!("zxdg_decoration_manager_v1 has no events")
     }
@@ -383,7 +381,6 @@ where
         data: &Self::UserData,
         cx: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             xdg_surface::Event::Configure { serial } => {
@@ -444,7 +441,6 @@ where
         data: &Self::UserData,
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             // TODO: Configures
@@ -504,7 +500,6 @@ where
         data: &Self::UserData,
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             zxdg_toplevel_decoration_v1::Event::Configure { mode } => {
