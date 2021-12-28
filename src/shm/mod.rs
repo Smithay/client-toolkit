@@ -146,3 +146,35 @@ where
         }
     }
 }
+
+/// Delegates the handling of [`wl_shm`] and [`wl_shm_pool`] to some [`ShmState`].
+///
+/// This macro requires two things, the type that will delegate to [`ShmState`] and a closure specifying how
+/// to obtain the state object.
+///
+/// ```
+/// use smithay_client_toolkit::shm::ShmState;
+/// use smithay_client_toolkit::delegate_shm;
+///
+/// /// Define something that should dispatch.
+/// struct TestApp {
+///     /// The state object that will be our delegate.
+///     shm: ShmState,
+/// }
+///
+/// // Use the macro to delegate wl_shm and wl_shm_pool to ShmState.
+/// delegate_shm!(TestApp ; |app| {
+///     // This needs to return an `&mut ShmState` to dispatch events with.
+///     &mut app.shm
+/// });
+#[macro_export]
+macro_rules! delegate_shm {
+    ($ty: ty ; |$dispatcher: ident| $closure: block) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_shm::WlShm,
+                $crate::reexports::client::protocol::wl_shm_pool::WlShmPool
+            ] => ShmState ; |$dispatcher| { $closure }
+        );
+    };
+}
