@@ -68,7 +68,7 @@ impl RawPool {
     /// - `format`: the encoding format of the pixels.
     ///
     /// The encoding format of the pixels must be supported by the compositor or else a protocol error is
-    /// risen. You can ensure the format is supported by listening to [`ShmHandler::supported_format`](super::ShmHandler::supported_format).
+    /// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::shm::ShmState::formats).
     #[allow(clippy::too_many_arguments)]
     pub fn create_buffer<D, U>(
         &mut self,
