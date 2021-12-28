@@ -204,8 +204,8 @@ impl InnerApp {
                 let height = self.height;
 
                 buffer.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
-                    let x = (index / width as usize) as u32;
-                    let y = (index % height as usize) as u32;
+                    let x = (index % width as usize) as u32;
+                    let y = (index / width as usize) as u32;
 
                     let a = 0xFF;
                     let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
