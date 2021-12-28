@@ -1,12 +1,9 @@
 use smithay_client_toolkit::{
+    delegate_shm,
     registry::{RegistryDispatch, RegistryHandle, RegistryHandler},
     shm::ShmState,
 };
-use wayland_client::{
-    delegate_dispatch,
-    protocol::{wl_registry, wl_shm},
-    Connection,
-};
+use wayland_client::{delegate_dispatch, protocol::wl_registry, Connection};
 
 struct ListShmFormats {
     registry_handle: RegistryHandle,
@@ -36,7 +33,7 @@ fn main() {
     }
 }
 
-delegate_dispatch!(ListShmFormats: [wl_shm::WlShm] => ShmState ; |app| {
+delegate_shm!(ListShmFormats ; |app| {
     &mut app.shm_state
 });
 
