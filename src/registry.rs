@@ -6,8 +6,7 @@ use std::{
 use wayland_client::{
     backend::{InvalidId, ObjectId},
     protocol::wl_registry,
-    ConnectionHandle, DataInit, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy,
-    QueueHandle,
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
 /// A trait implemented by modular parts of a smithay's client toolkit and protocol delegates that may be used
@@ -179,7 +178,6 @@ where
         _: &(),
         cx: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             wl_registry::Event::Global { name, interface, version } => {

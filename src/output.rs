@@ -6,8 +6,7 @@ use std::{
 
 use wayland_client::{
     protocol::wl_output::{self, Subpixel, Transform},
-    ConnectionHandle, DataInit, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy,
-    QueueHandle, WEnum,
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_protocols::unstable::xdg_output::v1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
@@ -75,7 +74,6 @@ where
         data: &Self::UserData,
         _cxhandle: &mut ConnectionHandle,
         _qhandle: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             wl_output::Event::Geometry {
@@ -246,7 +244,6 @@ where
         _: &Self::UserData,
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         unreachable!("zxdg_output_manager_v1 has no events")
     }
@@ -270,7 +267,6 @@ where
         data: &Self::UserData,
         _cxhandle: &mut ConnectionHandle,
         _qhandle: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         match event {
             // Already provided by wl_output

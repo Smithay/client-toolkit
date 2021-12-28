@@ -5,8 +5,7 @@ use std::sync::{
 
 use wayland_client::{
     protocol::{wl_compositor, wl_output, wl_surface},
-    ConnectionHandle, DataInit, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy,
-    QueueHandle,
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
@@ -88,7 +87,6 @@ where
         data: &Self::UserData,
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         let mut outputs = data.outputs.lock().unwrap();
 
@@ -144,7 +142,6 @@ where
         _: &(),
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>,
-        _: &mut DataInit<'_>,
     ) {
         unreachable!("wl_compositor has no events")
     }
