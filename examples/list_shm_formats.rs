@@ -1,6 +1,6 @@
 use smithay_client_toolkit::{
     registry::{RegistryDispatch, RegistryHandle, RegistryHandler},
-    shm::{ShmDispatch, ShmHandler, ShmState},
+    shm::ShmState,
 };
 use wayland_client::{
     delegate_dispatch,
@@ -9,17 +9,8 @@ use wayland_client::{
 };
 
 struct ListShmFormats {
-    inner: InnerApp,
     registry_handle: RegistryHandle,
     shm_state: ShmState,
-}
-
-struct InnerApp;
-
-impl ShmHandler for InnerApp {
-    fn supported_format(&mut self, format: wl_shm::Format) {
-        println!("{:?}", format);
-    }
 }
 
 fn main() {
@@ -32,18 +23,21 @@ fn main() {
 
     let registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
     let mut list_formats = ListShmFormats {
-        inner: InnerApp,
         registry_handle: RegistryHandle::new(registry),
         shm_state: ShmState::new(),
     };
 
     event_queue.blocking_dispatch(&mut list_formats).unwrap();
-    println!("Supported formats:");
     event_queue.blocking_dispatch(&mut list_formats).unwrap();
+    println!("Supported formats:");
+
+    for format in list_formats.shm_state.formats() {
+        println!("{:?}", format);
+    }
 }
 
-delegate_dispatch!(ListShmFormats: <UserData = ()> [wl_shm::WlShm] => ShmDispatch<'_, InnerApp>; |app| {
-    &mut ShmDispatch(&mut app.shm_state, &mut app.inner)
+delegate_dispatch!(ListShmFormats: [wl_shm::WlShm] => ShmState ; |app| {
+    &mut app.shm_state
 });
 
 delegate_dispatch!(ListShmFormats: <UserData = ()> [wl_registry::WlRegistry] => RegistryDispatch<'_, ListShmFormats> ; |app| {
