@@ -4,7 +4,7 @@ use smithay_client_toolkit::{
     compositor::{CompositorState, SurfaceData, SurfaceDispatch, SurfaceHandler},
     output::{OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState},
     registry::{RegistryDispatch, RegistryHandle, RegistryHandler},
-    shm::{pool::raw::RawPool, ShmDispatch, ShmHandler, ShmState},
+    shm::{pool::raw::RawPool, ShmState},
     window::{
         DecorationMode, ShellHandler, Window, WindowData, XdgShellDispatch, XdgShellState,
         XdgSurfaceData,
@@ -116,12 +116,6 @@ struct InnerApp {
     height: u32,
     buffer: Option<wl_buffer::WlBuffer>,
     window: Option<Window>,
-}
-
-impl ShmHandler for InnerApp {
-    fn supported_format(&mut self, _format: wl_shm::Format) {
-        // TODO
-    }
 }
 
 impl SurfaceHandler for InnerApp {
@@ -244,8 +238,8 @@ delegate_dispatch!(SimpleWindow: <UserData = SurfaceData> [wl_surface::WlSurface
     &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner)
 });
 
-delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_shm::WlShm, wl_shm_pool::WlShmPool] => ShmDispatch<'_, InnerApp> ; |app| {
-    &mut ShmDispatch(&mut app.shm_state, &mut app.inner)
+delegate_dispatch!(SimpleWindow: [wl_shm::WlShm, wl_shm_pool::WlShmPool] => ShmState ; |app| {
+    &mut app.shm_state
 });
 
 delegate_dispatch!(SimpleWindow: <UserData = ()>
