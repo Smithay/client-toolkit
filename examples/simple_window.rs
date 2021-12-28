@@ -44,7 +44,7 @@ fn main() {
     let mut simple_window = SimpleWindow {
         inner: InnerApp {
             exit: false,
-            first_configure: false,
+            first_configure: true,
             pool: None,
             width: 256,
             height: 256,
@@ -160,7 +160,8 @@ impl ShellHandler<SimpleWindow> for InnerApp {
         }
 
         // Initiate the first draw.
-        if !self.first_configure {
+        if self.first_configure {
+            self.first_configure = false;
             self.draw(cx, qh);
         }
     }
