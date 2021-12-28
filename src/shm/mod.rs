@@ -9,19 +9,15 @@ use crate::registry::{RegistryHandle, RegistryHandler};
 
 use self::pool::{raw::RawPool, simple::SimplePool, CreatePoolError};
 
-pub trait ShmHandler {
-    /// Indicates the compositor supports an SHM pool with the specified format.
-    fn supported_format(&mut self, format: wl_shm::Format);
-}
-
 #[derive(Debug)]
 pub struct ShmState {
     wl_shm: Option<(u32, wl_shm::WlShm)>, // (name, global)
+    formats: Vec<wl_shm::Format>,
 }
 
 impl ShmState {
     pub fn new() -> ShmState {
-        ShmState { wl_shm: None }
+        ShmState { wl_shm: None, formats: vec![] }
     }
 
     pub fn new_simple_pool<D, U>(
@@ -56,18 +52,19 @@ impl ShmState {
 
         RawPool::new(len, shm, cx, qh, udata)
     }
+
+    /// Returns the formats supported in memory pools.
+    pub fn formats(&self) -> &[wl_shm::Format] {
+        &self.formats[..]
+    }
 }
 
-#[derive(Debug)]
-pub struct ShmDispatch<'s, H: ShmHandler>(pub &'s mut ShmState, pub &'s mut H);
-
-impl<H: ShmHandler> DelegateDispatchBase<wl_shm::WlShm> for ShmDispatch<'_, H> {
+impl DelegateDispatchBase<wl_shm::WlShm> for ShmState {
     type UserData = ();
 }
 
-impl<D, H> DelegateDispatch<wl_shm::WlShm, D> for ShmDispatch<'_, H>
+impl<D> DelegateDispatch<wl_shm::WlShm, D> for ShmState
 where
-    H: ShmHandler,
     D: Dispatch<wl_shm::WlShm, UserData = Self::UserData>,
 {
     fn event(
@@ -82,7 +79,7 @@ where
             wl_shm::Event::Format { format } => {
                 match format {
                     WEnum::Value(format) => {
-                        self.1.supported_format(format);
+                        self.formats.push(format);
                         log::debug!(target: "sctk", "supported wl_shm format {:?}", format);
                     }
 
@@ -98,13 +95,12 @@ where
     }
 }
 
-impl<H: ShmHandler> DelegateDispatchBase<wl_shm_pool::WlShmPool> for ShmDispatch<'_, H> {
+impl DelegateDispatchBase<wl_shm_pool::WlShmPool> for ShmState {
     type UserData = ();
 }
 
-impl<D, H> DelegateDispatch<wl_shm_pool::WlShmPool, D> for ShmDispatch<'_, H>
+impl<D> DelegateDispatch<wl_shm_pool::WlShmPool, D> for ShmState
 where
-    H: ShmHandler,
     D: Dispatch<wl_shm_pool::WlShmPool, UserData = Self::UserData>,
 {
     fn event(
