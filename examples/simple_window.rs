@@ -2,8 +2,9 @@ use std::{convert::TryInto, marker::PhantomData};
 
 use smithay_client_toolkit::{
     compositor::{CompositorState, SurfaceData, SurfaceDispatch, SurfaceHandler},
+    delegate_registry, delegate_shm,
     output::{OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState},
-    registry::{RegistryDispatch, RegistryHandle, RegistryHandler},
+    registry::RegistryHandle,
     shm::{pool::raw::RawPool, ShmState},
     window::{
         DecorationMode, ShellHandler, Window, WindowData, XdgShellDispatch, XdgShellState,
@@ -12,10 +13,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     delegate_dispatch,
-    protocol::{
-        wl_buffer, wl_callback, wl_compositor, wl_output, wl_registry, wl_shm, wl_shm_pool,
-        wl_surface,
-    },
+    protocol::{wl_buffer, wl_callback, wl_compositor, wl_output, wl_shm, wl_surface},
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
 use wayland_protocols::{
@@ -238,10 +236,6 @@ delegate_dispatch!(SimpleWindow: <UserData = SurfaceData> [wl_surface::WlSurface
     &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner)
 });
 
-delegate_dispatch!(SimpleWindow: [wl_shm::WlShm, wl_shm_pool::WlShmPool] => ShmState ; |app| {
-    &mut app.shm_state
-});
-
 delegate_dispatch!(SimpleWindow: <UserData = ()>
 [
     xdg_wm_base::XdgWmBase,
@@ -258,11 +252,20 @@ delegate_dispatch!(SimpleWindow: <UserData = WindowData> [xdg_toplevel::XdgTople
     &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
 });
 
-delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_registry::WlRegistry] => RegistryDispatch<'_, SimpleWindow> ; |app| {
-    let handles: Vec<&mut dyn RegistryHandler<SimpleWindow>> = vec![&mut app.xdg_shell, &mut app.shm_state, &mut app.compositor_state];
-
-    &mut RegistryDispatch(&mut app.registry_handle, handles)
+delegate_shm!(SimpleWindow: |app| {
+    &mut app.shm_state
 });
+
+delegate_registry!(SimpleWindow:
+    |app| {
+        &mut app.registry_handle
+    },
+    handlers = [
+        { &mut app.xdg_shell },
+        { &mut app.shm_state },
+        { &mut app.compositor_state }
+    ]
+);
 
 impl Dispatch<wl_callback::WlCallback> for SimpleWindow {
     type UserData = ();
