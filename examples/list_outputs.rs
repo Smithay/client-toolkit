@@ -1,14 +1,13 @@
+//! Test application to list all available outputs.
+
 use std::collections::HashMap;
 
 use smithay_client_toolkit::{
+    delegate_registry,
     output::{OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState},
-    registry::{RegistryDispatch, RegistryHandle, RegistryHandler},
+    registry::RegistryHandle,
 };
-use wayland_client::{
-    delegate_dispatch,
-    protocol::{wl_output, wl_registry},
-    Connection,
-};
+use wayland_client::{delegate_dispatch, protocol::wl_output, Connection};
 use wayland_protocols::unstable::xdg_output::v1::client::{zxdg_output_manager_v1, zxdg_output_v1};
 
 struct ListOutputs {
@@ -17,10 +16,12 @@ struct ListOutputs {
     output_state: OutputState,
 }
 
+/// The inner app to keep track of the current state of the outputs.
 struct InnerApp {
     outputs: HashMap<u32, OutputInfo>,
 }
 
+// OutputHandler's functions are called as outputs are made available, updated and destroyed.
 impl OutputHandler for InnerApp {
     fn new_output(&mut self, info: OutputInfo) {
         self.outputs.insert(info.id, info);
@@ -43,11 +44,15 @@ delegate_dispatch!(ListOutputs: <UserData = ()> [zxdg_output_manager_v1::ZxdgOut
     &mut OutputDispatch(&mut app.output_state, &mut app.inner)
 });
 
-delegate_dispatch!(ListOutputs: <UserData = ()> [wl_registry::WlRegistry] => RegistryDispatch<'_, ListOutputs> ; |app| {
-    let handles: Vec<&mut dyn RegistryHandler<ListOutputs>> = vec![&mut app.output_state];
-
-    &mut RegistryDispatch(&mut app.registry_handle, handles)
-});
+// Delegate wl_registry to provide the wl_output globals to OutputState
+delegate_registry!(ListOutputs:
+    |app| {
+        &mut app.registry_handle
+    },
+    handlers = [
+        { &mut app.output_state }
+    ]
+);
 
 fn main() {
     let cx = Connection::connect_to_env().unwrap();
@@ -61,6 +66,7 @@ fn main() {
 
     let mut list_outputs = ListOutputs {
         inner: InnerApp { outputs: HashMap::new() },
+
         registry_handle: RegistryHandle::new(registry),
         output_state: OutputState::new(),
     };
