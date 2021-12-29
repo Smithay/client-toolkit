@@ -31,7 +31,7 @@ fn main() {
     }
 }
 
-delegate_shm!(ListShmFormats ; |app| {
+delegate_shm!(ListShmFormats: |app| {
     &mut app.shm_state
 });
 
