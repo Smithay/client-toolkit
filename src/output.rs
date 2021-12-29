@@ -511,8 +511,9 @@ where
     }
 }
 
-impl<D> RegistryHandler<D> for OutputState
+impl<D, H> RegistryHandler<D> for OutputDispatch<'_, H>
 where
+    H: OutputHandler,
     D: Dispatch<wl_output::WlOutput, UserData = OutputData>
         + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
         + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = ()>
@@ -547,18 +548,18 @@ where
 
                     pending_info: OutputInfo::new(name),
                     pending_wl: true,
-                    pending_xdg: self.xdg.is_some(),
+                    pending_xdg: self.0.xdg.is_some(),
                 };
 
-                self.outputs.push(inner);
+                self.0.outputs.push(inner);
 
-                if self.xdg.is_some() {
-                    let xdg = self.xdg.as_ref().unwrap();
+                if self.0.xdg.is_some() {
+                    let xdg = self.0.xdg.as_ref().unwrap();
 
                     let data = wl_output.data::<OutputData>().unwrap().clone();
 
                     let xdg_output = xdg.get_xdg_output(cx, wl_output, qh, data).unwrap();
-                    self.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
+                    self.0.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
                 }
             }
 
@@ -573,13 +574,13 @@ where
                     )
                     .expect("Failed to bind global");
 
-                self.xdg = Some(global);
+                self.0.xdg = Some(global);
 
-                let xdg = self.xdg.as_ref().unwrap();
+                let xdg = self.0.xdg.as_ref().unwrap();
 
                 // Because the order in which globals are advertised is undefined, we need to get the extension of any
                 // wl_output we have already gotten.
-                self.outputs.iter_mut().for_each(|output| {
+                self.0.outputs.iter_mut().for_each(|output| {
                     let data = output.wl_output.data::<OutputData>().unwrap().clone();
 
                     let xdg_output =
@@ -593,7 +594,9 @@ where
     }
 
     fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32) {
-        self.outputs.retain(|inner| {
+        let mut destroyed = vec![];
+
+        self.0.outputs.retain(|inner| {
             let destroy = inner.name != name;
 
             if destroy {
@@ -602,12 +605,16 @@ where
                 }
 
                 inner.wl_output.release(cx);
+
+                destroyed.push(inner.wl_output.clone());
             }
 
-            // FIXME: How do we tell the client that the output was destroyed?
-
             destroy
-        })
+        });
+
+        for output in destroyed {
+            self.1.output_destroyed(self.0, output);
+        }
     }
 }
 
