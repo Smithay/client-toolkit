@@ -265,7 +265,6 @@ pub struct RegistryDispatch<'s, D>(
 ///     registry_handle: RegistryHandle,
 ///     shm_state: ShmState,
 /// }
-///
 /// # // Implement wl_shm so the example compiles
 /// # smithay_client_toolkit::delegate_shm!(ExampleApp ; |app| { &mut app.shm_state });
 ///
@@ -280,7 +279,7 @@ pub struct RegistryDispatch<'s, D>(
 ///     // The named parameter of the closure above may be used in the lower closures.
 ///     handlers = [
 ///         { &mut app.shm_state }
-///         // And more delegates that want to bind globals, all of these are comma seperated.
+///         // And more delegates that want to bind globals, all of these are comma separated.
 ///     ]
 /// );
 /// ```
