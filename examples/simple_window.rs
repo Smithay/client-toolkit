@@ -160,7 +160,7 @@ impl ShellHandler<SimpleWindow> for InnerApp {
 }
 
 impl InnerApp {
-    pub fn d0raw(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
+    pub fn draw(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
         if let Some(window) = self.window.as_ref() {
             // Ensure the pool is big enough to hold the new buffer.
             self.pool
