@@ -80,7 +80,7 @@ impl ShmState {
 /// });
 #[macro_export]
 macro_rules! delegate_shm {
-    ($ty: ty ; |$dispatcher: ident| $closure: block) => {
+    ($ty: ty: |$dispatcher: ident| $closure: block) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
                 $crate::reexports::client::protocol::wl_shm::WlShm,
