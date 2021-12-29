@@ -3,12 +3,12 @@
 use std::{
     convert::TryInto,
     marker::PhantomData,
-    sync::{atomic::Ordering, Arc, Mutex, Weak},
+    sync::{Arc, Mutex, Weak},
 };
 
 use wayland_client::{
     backend::InvalidId, protocol::wl_surface, ConnectionHandle, DelegateDispatch,
-    DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
 };
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::{
@@ -314,7 +314,7 @@ where
                                 .find(|window| &window.xdg_surface == surface)
                             {
                                 H::configure(
-                                    &mut self.1,
+                                    self.1,
                                     cx,
                                     qh,
                                     pending_configure.size,

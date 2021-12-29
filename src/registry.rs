@@ -80,15 +80,12 @@
 //! }
 //! ```
 
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    fmt::{self, Formatter},
-};
+use std::collections::{hash_map::Entry, HashMap};
 
 use wayland_client::{
     backend::{InvalidId, ObjectId},
     protocol::wl_registry,
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    ConnectionHandle, Dispatch, Proxy, QueueHandle,
 };
 
 /// A trait implemented by modular parts of a smithay's client toolkit and protocol delegates that may be used
@@ -243,12 +240,6 @@ impl RegistryHandle {
     }
 }
 
-/// The dispatch type of smithay client toolkit's registry handling.
-pub struct RegistryDispatch<'s, D>(
-    pub &'s mut RegistryHandle,
-    pub Vec<&'s mut dyn RegistryHandler<D>>,
-);
-
 /// Delegates the handling of [`wl_registry`].
 ///
 /// This macro takes a closure to obtain the [`RegistryHandle`] and a list of closures to obtain handlers for
@@ -266,7 +257,7 @@ pub struct RegistryDispatch<'s, D>(
 ///     shm_state: ShmState,
 /// }
 /// # // Implement wl_shm so the example compiles
-/// # smithay_client_toolkit::delegate_shm!(ExampleApp ; |app| { &mut app.shm_state });
+/// # smithay_client_toolkit::delegate_shm!(ExampleApp: |app| { &mut app.shm_state });
 ///
 /// // The delegate_registry macro implements `Dispatch<wl_registry::WlRegistry>` and sends events to the
 /// // handlers.
@@ -292,63 +283,50 @@ macro_rules! delegate_registry {
             $($get_handler: block),*
         ]
     ) => {
-        $crate::reexports::client::delegate_dispatch!(
-            $ty:
-            <UserData = ()> [$crate::reexports::client::protocol::wl_registry::WlRegistry] =>
-                $crate::registry::RegistryDispatch<'_, $ty>
-            ; |app| {
-                let $dispatcher = app;
+        impl
+            $crate::reexports::client::Dispatch<
+                $crate::reexports::client::protocol::wl_registry::WlRegistry,
+            > for $ty
+        {
+            type UserData = ();
 
-                let handles: Vec<&mut dyn $crate::registry::RegistryHandler<$ty>> = vec![
-                    $({ $get_handler }),*
-                ];
+            fn event(
+                &mut self,
+                registry: &$crate::reexports::client::protocol::wl_registry::WlRegistry,
+                event: $crate::reexports::client::protocol::wl_registry::Event,
+                _: &(),
+                cx: &mut $crate::reexports::client::ConnectionHandle<'_>,
+                qh: &$crate::reexports::client::QueueHandle<Self>,
+            ) {
+                use $crate::registry::RegistryHandler;
 
-                &mut $crate::registry::RegistryDispatch({ $closure }, handles)
-            }
-        );
-    };
-}
+                type Event = $crate::reexports::client::protocol::wl_registry::Event;
 
-impl<D> fmt::Debug for RegistryDispatch<'_, D> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RegistryDispatch").field("handle", &self.0).finish_non_exhaustive()
-    }
-}
+                let $dispatcher = self;
+                let handle = { $closure };
 
-impl<D> DelegateDispatchBase<wl_registry::WlRegistry> for RegistryDispatch<'_, D> {
-    type UserData = ();
-}
+                match event {
+                    Event::Global { name, interface, version } => {
+                        $(
+                            let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
+                            handler.new_global(cx, qh, name, &interface[..], version, handle);
+                        )*
+                    }
 
-impl<D> DelegateDispatch<wl_registry::WlRegistry, D> for RegistryDispatch<'_, D>
-where
-    D: Dispatch<wl_registry::WlRegistry, UserData = Self::UserData>,
-{
-    fn event(
-        &mut self,
-        _: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &(),
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-    ) {
-        match event {
-            wl_registry::Event::Global { name, interface, version } => {
-                for handler in self.1.iter_mut() {
-                    handler.new_global(cx, qh, name, &interface[..], version, self.0);
+                    Event::GlobalRemove { name } => {
+                        $(
+                            let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
+                            handler.remove_global(cx, name);
+                        )*
+
+                        handle.remove_cached_global(&name);
+                    }
+
+                    _ => unreachable!("wl_registry is frozen"),
                 }
             }
-
-            wl_registry::Event::GlobalRemove { name } => {
-                for handler in self.1.iter_mut() {
-                    handler.remove_global(cx, name);
-                }
-
-                self.0.cached_globals.remove(&name);
-            }
-
-            _ => unreachable!("wl_registry is frozen"),
         }
-    }
+    };
 }
 
 #[derive(Debug)]
@@ -357,4 +335,16 @@ struct CachedGlobal {
     _version: u32,
     interface: &'static str,
     id: ObjectId,
+}
+
+impl RegistryHandle {
+    /// Smithay client toolkit implementation detail.
+    ///
+    /// Library users should not invoke this function
+    ///
+    /// There are no stability guarantees for this function.
+    #[doc(hidden)]
+    pub fn remove_cached_global(&mut self, name: &u32) {
+        self.cached_globals.remove(name);
+    }
 }

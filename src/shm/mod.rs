@@ -74,7 +74,7 @@ impl ShmState {
 /// }
 ///
 /// // Use the macro to delegate wl_shm and wl_shm_pool to ShmState.
-/// delegate_shm!(ExampleApp ; |app| {
+/// delegate_shm!(ExampleApp: |app| {
 ///     // This needs to return an `&mut ShmState` to dispatch events with.
 ///     &mut app.shm
 /// });
