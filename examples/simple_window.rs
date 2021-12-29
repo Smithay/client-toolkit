@@ -160,7 +160,7 @@ impl ShellHandler<SimpleWindow> for InnerApp {
 }
 
 impl InnerApp {
-    pub fn draw(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
+    pub fn d0raw(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
         if let Some(window) = self.window.as_ref() {
             // Ensure the pool is big enough to hold the new buffer.
             self.pool
@@ -175,21 +175,26 @@ impl InnerApp {
                 buffer.destroy(cx);
             });
 
-            let (buffer, wl_buffer) = self
-                .pool
-                .as_mut()
-                .unwrap()
+            let offset = 0;
+            let stride = self.width as i32 * 4;
+            let pool = self.pool.as_mut().unwrap();
+
+            let wl_buffer = pool
                 .create_buffer(
-                    0,
+                    offset,
                     self.width as i32,
                     self.height as i32,
-                    self.width as i32 * 4,
+                    stride,
                     wl_shm::Format::Argb8888,
                     (),
                     cx,
                     &qh,
                 )
                 .expect("create buffer");
+
+            // TODO: Upgrade to a better pool type
+            let len = self.height as usize * stride as usize; // length of a row
+            let buffer = &mut pool.mmap()[offset as usize..][..len];
 
             // Draw to the window:
             {

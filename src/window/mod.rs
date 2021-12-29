@@ -3,7 +3,7 @@
 use std::{
     convert::TryInto,
     marker::PhantomData,
-    sync::{Arc, Mutex, Weak},
+    sync::{atomic::Ordering, Arc, Mutex, Weak},
 };
 
 use wayland_client::{
@@ -22,7 +22,7 @@ use wayland_protocols::{
 };
 
 use crate::{
-    compositor::{SurfaceData, SurfaceRole},
+    compositor::SurfaceData,
     registry::{RegistryHandle, RegistryHandler},
     window::inner::{WindowInner, XdgToplevelInner},
 };
@@ -73,7 +73,7 @@ pub trait ShellHandler<D> {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum XdgShellError {
+pub enum WindowError {
     /// Required globals are not present.
     #[error("xdg_wm_base global is not bound")]
     MissingXdgShellGlobal,
@@ -112,7 +112,7 @@ impl XdgShellState {
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
         decoration_mode: DecorationMode,
-    ) -> Result<Window, XdgShellError>
+    ) -> Result<Window, WindowError>
     where
         D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData>
             + Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData>
@@ -120,96 +120,8 @@ impl XdgShellState {
             + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
             + 'static,
     {
-        let wl_surface = surface.clone();
-        let surface_data = surface.data::<SurfaceData>().unwrap();
-        let mut role = surface_data.role.lock().unwrap();
-
-        match *role {
-            SurfaceRole::None => {
-                let (_, wm_base) =
-                    self.wm_base.as_ref().ok_or(XdgShellError::MissingXdgShellGlobal)?;
-                let decoration_manager =
-                    self.zxdg_decoration_manager.clone().map(|(_, manager)| manager);
-
-                let inner = Arc::new(Mutex::new(XdgSurfaceInner::Uninit));
-                let xdg_surface_data = XdgSurfaceData { inner };
-                let xdg_surface =
-                    wm_base.get_xdg_surface(cx, surface.clone(), qh, xdg_surface_data.clone())?;
-
-                let inner = Arc::new(Mutex::new(XdgToplevelInner {
-                    decoration_manager: decoration_manager.clone(),
-                    decoration: None,
-
-                    title: None,
-                    app_id: None,
-                    decoration_mode,
-                    min_size: (0, 0),
-                    max_size: (0, 0),
-                    pending_configure: None,
-                }));
-
-                {
-                    // Ugly but we need to give the xdg surface the toplevel's data.
-                    let mut data =
-                        xdg_surface.data::<XdgSurfaceData>().unwrap().inner.lock().unwrap();
-
-                    *data = XdgSurfaceInner::Window(inner.clone());
-                }
-
-                let window_data = WindowData { inner };
-                let xdg_toplevel = xdg_surface.get_toplevel(cx, qh, window_data.clone())?;
-
-                match decoration_mode {
-                    // Do not create the decoration manager.
-                    DecorationMode::None | DecorationMode::ClientSide => (),
-
-                    _ => {
-                        let decoration = decoration_manager
-                            .as_ref()
-                            .map(|manager| {
-                                manager.get_toplevel_decoration(
-                                    cx,
-                                    xdg_toplevel.clone(),
-                                    qh,
-                                    window_data.clone(),
-                                )
-                            })
-                            .transpose()?;
-
-                        if let Some(decoration) = decoration.clone() {
-                            // Explicitly ask the server for server side decorations
-                            if decoration_mode == DecorationMode::ServerSide {
-                                decoration
-                                    .set_mode(cx, zxdg_toplevel_decoration_v1::Mode::ServerSide);
-                            }
-
-                            window_data.inner.lock().unwrap().decoration = Some(decoration);
-                        }
-                    }
-                }
-
-                // Perform an initial commit without any buffer attached per the xdg_surface requirements.
-                wl_surface.commit(cx);
-
-                let window_inner = WindowInner {
-                    wl_surface,
-                    xdg_surface,
-                    toplevel: window_data.inner,
-                    xdg_toplevel,
-                };
-
-                // Now assign the role.
-                *role = SurfaceRole::Toplevel;
-                drop(role);
-
-                let inner = Arc::new(window_inner);
-                self.windows.push(Arc::downgrade(&inner));
-
-                Ok(Window(inner))
-            }
-
-            _ => Err(XdgShellError::HasRole),
-        }
+        let inner = WindowInner::new(self, cx, qh, surface, decoration_mode)?;
+        Ok(Window(inner))
     }
 }
 
@@ -229,13 +141,14 @@ pub struct Window(Arc<inner::WindowInner>);
 impl Window {
     /// Sets the minimum size of the window.
     ///
-    /// If the minimum size is `(0, 0)`, the minimum size is unset and the compositor may assume any window size is
-    /// valid.
+    /// If the minimum size is `(0, 0)`, the minimum size is unset and the compositor may assume any window
+    /// size is valid.
     ///
-    /// This value may actually be ignored by the compositor, but most compositors will try to respect this minimum
+    /// This value may actually be ignored by the compositor, but compositors can try to respect this minimum
     /// size value when sending configures.
     ///
-    /// Smithay's client toolkit will ensure the interactive resizes of the window will not go below the minimum size.
+    /// Smithay's client toolkit will ensure the interactive resizes of the window will not go below the
+    /// minimum size.
     ///
     /// ## Double buffering
     ///
