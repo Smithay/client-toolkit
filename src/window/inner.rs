@@ -49,8 +49,7 @@ impl WindowInner {
 
             let inner = Arc::new(Mutex::new(XdgSurfaceInner::Uninit));
             let xdg_surface_data = XdgSurfaceData { inner };
-            let xdg_surface =
-                wm_base.get_xdg_surface(cx, surface.clone(), qh, xdg_surface_data.clone())?;
+            let xdg_surface = wm_base.get_xdg_surface(cx, surface.clone(), qh, xdg_surface_data)?;
 
             let inner = Arc::new(Mutex::new(XdgToplevelInner {
                 decoration_manager: decoration_manager.clone(),
@@ -91,13 +90,13 @@ impl WindowInner {
                         })
                         .transpose()?;
 
-                    if let Some(decoration) = decoration.clone() {
+                    if let Some(decoration) = decoration.as_ref() {
                         // Explicitly ask the server for server side decorations
                         if decoration_mode == DecorationMode::ServerSide {
                             decoration.set_mode(cx, zxdg_toplevel_decoration_v1::Mode::ServerSide);
                         }
 
-                        window_data.inner.lock().unwrap().decoration = Some(decoration);
+                        window_data.inner.lock().unwrap().decoration = Some(decoration.clone());
                     }
                 }
             }
@@ -110,7 +109,6 @@ impl WindowInner {
 
             // Mark the surface as having a role.
             surface_data.has_role.store(true, Ordering::SeqCst);
-            drop(has_role);
 
             let inner = Arc::new(window_inner);
             shell.windows.push(Arc::downgrade(&inner));
