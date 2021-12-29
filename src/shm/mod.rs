@@ -85,7 +85,7 @@ macro_rules! delegate_shm {
             [
                 $crate::reexports::client::protocol::wl_shm::WlShm,
                 $crate::reexports::client::protocol::wl_shm_pool::WlShmPool
-            ] => ShmState ; |$dispatcher| { $closure }
+            ] => $crate::shm::ShmState ; |$dispatcher| { $closure }
         );
     };
 }

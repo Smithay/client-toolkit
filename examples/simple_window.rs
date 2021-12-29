@@ -2,8 +2,8 @@ use std::{convert::TryInto, marker::PhantomData};
 
 use smithay_client_toolkit::{
     compositor::{CompositorState, SurfaceData, SurfaceDispatch, SurfaceHandler},
-    delegate_registry, delegate_shm,
-    output::{OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState},
+    delegate_output, delegate_registry, delegate_shm,
+    output::{OutputDispatch, OutputHandler, OutputState},
     registry::RegistryHandle,
     shm::{pool::raw::RawPool, ShmState},
     window::{
@@ -123,11 +123,11 @@ impl SurfaceHandler for InnerApp {
 }
 
 impl OutputHandler for InnerApp {
-    fn new_output(&mut self, _info: OutputInfo) {}
+    fn new_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
 
-    fn update_output(&mut self, _info: OutputInfo) {}
+    fn update_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
 
-    fn output_destroyed(&mut self, _info: OutputInfo) {}
+    fn output_destroyed(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
 }
 
 impl ShellHandler<SimpleWindow> for InnerApp {
@@ -229,10 +229,6 @@ impl InnerApp {
     }
 }
 
-delegate_dispatch!(SimpleWindow: <UserData = OutputData> [wl_output::WlOutput] => OutputDispatch<'_, InnerApp> ; |app| {
-    &mut OutputDispatch(&mut app.output_state, &mut app.inner)
-});
-
 delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_compositor::WlCompositor] => SurfaceDispatch<'_, InnerApp> ; |app| {
     &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner)
 });
@@ -255,6 +251,10 @@ delegate_dispatch!(SimpleWindow: <UserData = XdgSurfaceData> [xdg_surface::XdgSu
 
 delegate_dispatch!(SimpleWindow: <UserData = WindowData> [xdg_toplevel::XdgToplevel, zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1] => XdgShellDispatch<'_, SimpleWindow, InnerApp> ; |app| {
     &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
+});
+
+delegate_output!(SimpleWindow => InnerApp: |app| {
+    &mut OutputDispatch(&mut app.output_state, &mut app.inner)
 });
 
 delegate_shm!(SimpleWindow: |app| {

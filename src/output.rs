@@ -1,6 +1,5 @@
 use std::{
     fmt::{self, Display, Formatter},
-    mem,
     sync::{Arc, Mutex},
 };
 
@@ -17,15 +16,15 @@ use crate::registry::{RegistryHandle, RegistryHandler};
 
 pub trait OutputHandler {
     /// A new output has been advertised.
-    fn new_output(&mut self, info: OutputInfo);
+    fn new_output(&mut self, _state: &OutputState, output: wl_output::WlOutput);
 
     /// An existing output has changed.
-    fn update_output(&mut self, info: OutputInfo);
+    fn update_output(&mut self, _state: &OutputState, output: wl_output::WlOutput);
 
     /// An output is no longer advertised.
     ///
     /// The info passed to this function was the state of the output before destruction.
-    fn output_destroyed(&mut self, info: OutputInfo);
+    fn output_destroyed(&mut self, _state: &OutputState, output: wl_output::WlOutput);
 }
 
 #[derive(Debug)]
@@ -37,6 +36,22 @@ pub struct OutputState {
 impl OutputState {
     pub fn new() -> OutputState {
         OutputState { xdg: None, outputs: vec![] }
+    }
+
+    /// Returns an iterator over all outputs.
+    pub fn outputs(&self) -> impl Iterator<Item = wl_output::WlOutput> {
+        self.outputs.iter().map(|output| &output.wl_output).cloned().collect::<Vec<_>>().into_iter()
+    }
+
+    /// Returns information about an output.
+    ///
+    /// This may be none if the output has been destroyed or the compositor has not sent information about the
+    /// output yet.
+    pub fn info(&self, output: &wl_output::WlOutput) -> Option<OutputInfo> {
+        self.outputs
+            .iter()
+            .find(|inner| &inner.wl_output == output)
+            .and_then(|inner| inner.current_info.clone())
     }
 }
 
@@ -52,382 +67,6 @@ impl OutputData {
         let guard = self.0.lock().unwrap();
 
         guard.as_ref().map(|info| info.scale_factor).unwrap_or(1)
-    }
-}
-
-#[derive(Debug)]
-pub struct OutputDispatch<'s, H: OutputHandler>(pub &'s mut OutputState, pub &'s mut H);
-
-impl<H: OutputHandler> DelegateDispatchBase<wl_output::WlOutput> for OutputDispatch<'_, H> {
-    type UserData = OutputData;
-}
-
-impl<D, H> DelegateDispatch<wl_output::WlOutput, D> for OutputDispatch<'_, H>
-where
-    H: OutputHandler,
-    D: Dispatch<wl_output::WlOutput, UserData = Self::UserData>,
-{
-    fn event(
-        &mut self,
-        output: &wl_output::WlOutput,
-        event: wl_output::Event,
-        data: &Self::UserData,
-        _cxhandle: &mut ConnectionHandle,
-        _qhandle: &QueueHandle<D>,
-    ) {
-        match event {
-            wl_output::Event::Geometry {
-                x,
-                y,
-                physical_width,
-                physical_height,
-                subpixel,
-                make,
-                model,
-                transform,
-            } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(true, false);
-
-                pending.info.location = (x, y);
-                pending.info.physical_size = (physical_width, physical_height);
-                pending.info.subpixel = match subpixel {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid subpixel value"),
-                };
-                pending.info.make = make;
-                pending.info.model = model;
-                pending.info.transform = match transform {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid transform value"),
-                };
-            }
-
-            wl_output::Event::Mode { flags, width, height, refresh } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(true, false);
-
-                if let Some((index, _)) = pending.info.modes.iter().enumerate().find(|(_, mode)| {
-                    mode.dimensions == (width, height) && mode.refresh_rate == refresh
-                }) {
-                    // We found a match, remove the old mode.
-                    pending.info.modes.remove(index);
-                }
-
-                let flags = match flags {
-                    WEnum::Value(flags) => flags,
-                    WEnum::Unknown(_) => panic!("Invalid flags"),
-                };
-
-                let current = flags.contains(wl_output::Mode::Current);
-                let preferred = flags.contains(wl_output::Mode::Preferred);
-
-                // Now create the new mode.
-                pending.info.modes.push(Mode {
-                    dimensions: (width, height),
-                    refresh_rate: refresh,
-                    current,
-                    preferred,
-                });
-
-                let index = pending.info.modes.len() - 1;
-
-                // Any mode that isn't current is deprecated, let's deprecate any existing modes that may be
-                // marked as current.
-                //
-                // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
-                pending.info.modes.iter_mut().enumerate().for_each(|(mode_index, mode)| {
-                    if index != mode_index {
-                        // This mode is no longer preferred.
-                        if mode.preferred && preferred {
-                            mode.preferred = false;
-                        }
-
-                        // This mode is no longer current.
-                        if mode.current && current {
-                            mode.current = false;
-                        }
-                    }
-                });
-            }
-
-            wl_output::Event::Scale { factor } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(true, false);
-                pending.info.scale_factor = factor;
-            }
-
-            wl_output::Event::Name { name } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(true, false);
-                pending.info.name = Some(name);
-            }
-
-            wl_output::Event::Description { description } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(true, false);
-                pending.info.description = Some(description);
-            }
-
-            wl_output::Event::Done => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
-                let info = inner.data.ready();
-
-                // Set the user data
-                data.set(info.clone());
-
-                if inner.just_created {
-                    inner.just_created = false;
-                    self.1.new_output(info);
-                } else {
-                    self.1.update_output(info);
-                }
-            }
-
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<H: OutputHandler> DelegateDispatchBase<zxdg_output_manager_v1::ZxdgOutputManagerV1>
-    for OutputDispatch<'_, H>
-{
-    type UserData = ();
-}
-
-impl<D, H> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, D>
-    for OutputDispatch<'_, H>
-where
-    H: OutputHandler,
-    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = Self::UserData>,
-{
-    fn event(
-        &mut self,
-        _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
-        _: zxdg_output_manager_v1::Event,
-        _: &Self::UserData,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<D>,
-    ) {
-        unreachable!("zxdg_output_manager_v1 has no events")
-    }
-}
-
-impl<H: OutputHandler> DelegateDispatchBase<zxdg_output_v1::ZxdgOutputV1>
-    for OutputDispatch<'_, H>
-{
-    type UserData = OutputData;
-}
-
-impl<D, H> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputDispatch<'_, H>
-where
-    H: OutputHandler,
-    D: Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = Self::UserData>,
-{
-    fn event(
-        &mut self,
-        output: &zxdg_output_v1::ZxdgOutputV1,
-        event: zxdg_output_v1::Event,
-        data: &Self::UserData,
-        _cxhandle: &mut ConnectionHandle,
-        _qhandle: &QueueHandle<D>,
-    ) {
-        match event {
-            // Already provided by wl_output
-            zxdg_output_v1::Event::LogicalPosition { x: _, y: _ } => (),
-            zxdg_output_v1::Event::LogicalSize { width: _, height: _ } => (),
-
-            zxdg_output_v1::Event::Name { name } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| inner.xdg_output.as_ref() == Some(output))
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(false, true);
-
-                pending.info.name = Some(name);
-            }
-
-            zxdg_output_v1::Event::Description { description } => {
-                let inner = self
-                    .0
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| inner.xdg_output.as_ref() == Some(output))
-                    .expect("Received event for dead output");
-
-                let pending = inner.data.pending(false, true);
-
-                pending.info.description = Some(description);
-            }
-
-            zxdg_output_v1::Event::Done => {
-                // This event is deprecated starting in version 3, wl_output::done should be sent instead.
-                if output.version() < 3 {
-                    let inner = self
-                        .0
-                        .outputs
-                        .iter_mut()
-                        .find(|inner| inner.xdg_output.as_ref() == Some(output))
-                        .expect("Received event for dead output");
-
-                    let info = inner.data.ready();
-
-                    // Set the user data
-                    data.set(info.clone());
-
-                    if inner.just_created {
-                        inner.just_created = false;
-                        self.1.new_output(info);
-                    } else {
-                        self.1.update_output(info);
-                    }
-                }
-            }
-
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<D> RegistryHandler<D> for OutputState
-where
-    D: Dispatch<wl_output::WlOutput, UserData = OutputData>
-        + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = ()>
-        + 'static,
-{
-    fn new_global(
-        &mut self,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        version: u32,
-        handle: &mut RegistryHandle,
-    ) {
-        match interface {
-            "wl_output" => {
-                let wl_output = handle
-                    .bind_cached::<wl_output::WlOutput, _, _, _>(cx, qh, name, || {
-                        (u32::min(version, 4), OutputData::new())
-                    })
-                    .expect("Failed to bind global");
-
-                let version = wl_output.version();
-
-                self.outputs.push(OutputInner {
-                    name,
-                    wl_output: wl_output.clone(),
-                    xdg_output: None,
-                    just_created: true,
-                    // wl_output::done was added in version 2.
-                    // If we have an output at version 1, assume the data was already sent.
-                    data: if version > 1 {
-                        OutputStatus::Pending(Pending {
-                            pending_wl: true,
-                            pending_xdg: self.xdg.is_some(),
-                            info: OutputInfo::new(name),
-                        })
-                    } else {
-                        OutputStatus::Ready { info: OutputInfo::new(name) }
-                    },
-                });
-
-                if self.xdg.is_some() {
-                    let xdg = self.xdg.as_ref().unwrap();
-
-                    let data = wl_output.data::<OutputData>().unwrap().clone();
-
-                    let xdg_output = xdg.get_xdg_output(cx, wl_output, qh, data).unwrap();
-                    self.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
-                }
-            }
-
-            "zxdg_output_manager_v1" => {
-                let global = handle
-                    .bind_once::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _, _>(
-                        cx,
-                        qh,
-                        name,
-                        u32::min(version, 3),
-                        (),
-                    )
-                    .expect("Failed to bind global");
-
-                self.xdg = Some(global);
-
-                let xdg = self.xdg.as_ref().unwrap();
-
-                // Because the order in which globals are advertised is undefined, we need to get the extension of any
-                // wl_output we have already gotten.
-                self.outputs.iter_mut().for_each(|output| {
-                    let data = output.wl_output.data::<OutputData>().unwrap().clone();
-
-                    let xdg_output =
-                        xdg.get_xdg_output(cx, output.wl_output.clone(), qh, data).unwrap();
-                    output.xdg_output = Some(xdg_output);
-                });
-            }
-
-            _ => (),
-        }
-    }
-
-    fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32) {
-        self.outputs.retain(|inner| {
-            let destroy = inner.name != name;
-
-            if destroy {
-                if let Some(xdg_output) = &inner.xdg_output {
-                    xdg_output.destroy(cx);
-                }
-
-                inner.wl_output.release(cx);
-            }
-
-            // FIXME: How do we tell the client that the output was destroyed?
-
-            destroy
-        })
     }
 }
 
@@ -478,12 +117,13 @@ impl Display for Mode {
     }
 }
 
+/// Information about an output.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct OutputInfo {
     /// The id of the output.
     ///
-    /// This corresponds to the global id of the wl_output.
+    /// This corresponds to the global `name` of the wl_output.
     pub id: u32,
 
     /// The model name of this output as advertised by the server.
@@ -551,6 +191,428 @@ pub struct OutputInfo {
     pub description: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct OutputDispatch<'s, H: OutputHandler>(pub &'s mut OutputState, pub &'s mut H);
+
+#[macro_export]
+macro_rules! delegate_output {
+    ($ty: ty => $inner: ty: |$dispatcher: ident| $closure: block) => {
+        type __WlOutput = $crate::reexports::client::protocol::wl_output::WlOutput;
+        type __ZxdgOutputV1 =
+            $crate::reexports::protocols::unstable::xdg_output::v1::client::zxdg_output_v1::ZxdgOutputV1;
+        type __ZxdgOutputManagerV1 =
+            $crate::reexports::protocols::unstable::xdg_output::v1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1;
+
+        $crate::reexports::client::delegate_dispatch!($ty: <UserData = $crate::output::OutputData> [
+            __WlOutput,
+            __ZxdgOutputV1
+        ] => $crate::output::OutputDispatch<'_, $inner> ; |$dispatcher| {
+            $closure
+        });
+
+        // Zxdg manager
+        $crate::reexports::client::delegate_dispatch!($ty: <UserData = ()> [
+            __ZxdgOutputManagerV1
+        ] => $crate::output::OutputDispatch<'_, $inner> ; |$dispatcher| {
+            $closure
+        });
+    };
+}
+
+impl<H: OutputHandler> DelegateDispatchBase<wl_output::WlOutput> for OutputDispatch<'_, H> {
+    type UserData = OutputData;
+}
+
+impl<D, H> DelegateDispatch<wl_output::WlOutput, D> for OutputDispatch<'_, H>
+where
+    H: OutputHandler,
+    D: Dispatch<wl_output::WlOutput, UserData = Self::UserData>,
+{
+    fn event(
+        &mut self,
+        output: &wl_output::WlOutput,
+        event: wl_output::Event,
+        data: &Self::UserData,
+        _cxhandle: &mut ConnectionHandle,
+        _qhandle: &QueueHandle<D>,
+    ) {
+        match event {
+            wl_output::Event::Geometry {
+                x,
+                y,
+                physical_width,
+                physical_height,
+                subpixel,
+                make,
+                model,
+                transform,
+            } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| &inner.wl_output == output)
+                    .expect("Received event for dead output");
+
+                inner.pending_info.location = (x, y);
+                inner.pending_info.physical_size = (physical_width, physical_height);
+                inner.pending_info.subpixel = match subpixel {
+                    WEnum::Value(subpixel) => subpixel,
+                    WEnum::Unknown(_) => todo!("Warn about invalid subpixel value"),
+                };
+                inner.pending_info.make = make;
+                inner.pending_info.model = model;
+                inner.pending_info.transform = match transform {
+                    WEnum::Value(subpixel) => subpixel,
+                    WEnum::Unknown(_) => todo!("Warn about invalid transform value"),
+                };
+                inner.pending_wl = true;
+            }
+
+            wl_output::Event::Mode { flags, width, height, refresh } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| &inner.wl_output == output)
+                    .expect("Received event for dead output");
+
+                if let Some((index, _)) =
+                    inner.pending_info.modes.iter().enumerate().find(|(_, mode)| {
+                        mode.dimensions == (width, height) && mode.refresh_rate == refresh
+                    })
+                {
+                    // We found a match, remove the old mode.
+                    inner.pending_info.modes.remove(index);
+                }
+
+                let flags = match flags {
+                    WEnum::Value(flags) => flags,
+                    WEnum::Unknown(_) => panic!("Invalid flags"),
+                };
+
+                let current = flags.contains(wl_output::Mode::Current);
+                let preferred = flags.contains(wl_output::Mode::Preferred);
+
+                // Now create the new mode.
+                inner.pending_info.modes.push(Mode {
+                    dimensions: (width, height),
+                    refresh_rate: refresh,
+                    current,
+                    preferred,
+                });
+
+                let index = inner.pending_info.modes.len() - 1;
+
+                // Any mode that isn't current is deprecated, let's deprecate any existing modes that may be
+                // marked as current.
+                //
+                // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
+                inner.pending_info.modes.iter_mut().enumerate().for_each(|(mode_index, mode)| {
+                    if index != mode_index {
+                        // This mode is no longer preferred.
+                        if mode.preferred && preferred {
+                            mode.preferred = false;
+                        }
+
+                        // This mode is no longer current.
+                        if mode.current && current {
+                            mode.current = false;
+                        }
+                    }
+                });
+
+                inner.pending_wl = true;
+            }
+
+            wl_output::Event::Scale { factor } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| &inner.wl_output == output)
+                    .expect("Received event for dead output");
+
+                inner.pending_info.scale_factor = factor;
+                inner.pending_wl = true;
+            }
+
+            wl_output::Event::Name { name } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| &inner.wl_output == output)
+                    .expect("Received event for dead output");
+
+                inner.pending_info.name = Some(name);
+                inner.pending_wl = true;
+            }
+
+            wl_output::Event::Description { description } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| &inner.wl_output == output)
+                    .expect("Received event for dead output");
+
+                inner.pending_info.description = Some(description);
+                inner.pending_wl = true;
+            }
+
+            wl_output::Event::Done => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| &inner.wl_output == output)
+                    .expect("Received event for dead output");
+
+                let info = inner.pending_info.clone();
+                inner.current_info = Some(info.clone());
+                inner.pending_wl = false;
+
+                if inner
+                    .xdg_output
+                    .as_ref()
+                    .map(Proxy::version)
+                    .map(|v| v > 3) // version 3 of xdg_output deprecates xdg_output::done
+                    .unwrap_or(false)
+                {
+                    inner.pending_xdg = false;
+                }
+
+                // Set the user data
+                data.set(info);
+
+                if inner.just_created {
+                    inner.just_created = false;
+                    self.1.new_output(self.0, output.clone());
+                } else {
+                    self.1.update_output(self.0, output.clone());
+                }
+            }
+
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<H: OutputHandler> DelegateDispatchBase<zxdg_output_manager_v1::ZxdgOutputManagerV1>
+    for OutputDispatch<'_, H>
+{
+    type UserData = ();
+}
+
+impl<D, H> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, D>
+    for OutputDispatch<'_, H>
+where
+    H: OutputHandler,
+    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = Self::UserData>,
+{
+    fn event(
+        &mut self,
+        _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
+        _: zxdg_output_manager_v1::Event,
+        _: &Self::UserData,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<D>,
+    ) {
+        unreachable!("zxdg_output_manager_v1 has no events")
+    }
+}
+
+impl<H: OutputHandler> DelegateDispatchBase<zxdg_output_v1::ZxdgOutputV1>
+    for OutputDispatch<'_, H>
+{
+    type UserData = OutputData;
+}
+
+impl<D, H> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputDispatch<'_, H>
+where
+    H: OutputHandler,
+    D: Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = Self::UserData>,
+{
+    fn event(
+        &mut self,
+        output: &zxdg_output_v1::ZxdgOutputV1,
+        event: zxdg_output_v1::Event,
+        data: &Self::UserData,
+        _cxhandle: &mut ConnectionHandle,
+        _qhandle: &QueueHandle<D>,
+    ) {
+        match event {
+            // Already provided by wl_output
+            zxdg_output_v1::Event::LogicalPosition { x: _, y: _ } => (),
+            zxdg_output_v1::Event::LogicalSize { width: _, height: _ } => (),
+
+            zxdg_output_v1::Event::Name { name } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| inner.xdg_output.as_ref() == Some(output))
+                    .expect("Received event for dead output");
+
+                inner.pending_info.name = Some(name);
+                inner.pending_xdg = true;
+            }
+
+            zxdg_output_v1::Event::Description { description } => {
+                let inner = self
+                    .0
+                    .outputs
+                    .iter_mut()
+                    .find(|inner| inner.xdg_output.as_ref() == Some(output))
+                    .expect("Received event for dead output");
+
+                inner.pending_info.description = Some(description);
+                inner.pending_xdg = true;
+            }
+
+            zxdg_output_v1::Event::Done => {
+                // This event is deprecated starting in version 3, wl_output::done should be sent instead.
+                if output.version() < 3 {
+                    let inner = self
+                        .0
+                        .outputs
+                        .iter_mut()
+                        .find(|inner| inner.xdg_output.as_ref() == Some(output))
+                        .expect("Received event for dead output");
+
+                    let info = inner.pending_info.clone();
+                    inner.current_info = Some(info.clone());
+                    inner.pending_xdg = false;
+
+                    // Set the user data
+                    data.set(info.clone());
+
+                    let pending_wl = inner.pending_wl;
+                    let just_created = inner.just_created;
+                    let output = inner.wl_output.clone();
+
+                    if just_created {
+                        inner.just_created = false;
+                    }
+
+                    drop(inner);
+
+                    if !pending_wl {
+                        if just_created {
+                            self.1.new_output(self.0, output);
+                        } else {
+                            self.1.update_output(self.0, output);
+                        }
+                    }
+                }
+            }
+
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<D> RegistryHandler<D> for OutputState
+where
+    D: Dispatch<wl_output::WlOutput, UserData = OutputData>
+        + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
+        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = ()>
+        + 'static,
+{
+    fn new_global(
+        &mut self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        name: u32,
+        interface: &str,
+        version: u32,
+        handle: &mut RegistryHandle,
+    ) {
+        match interface {
+            "wl_output" => {
+                let wl_output = handle
+                    .bind_cached::<wl_output::WlOutput, _, _, _>(cx, qh, name, || {
+                        (u32::min(version, 4), OutputData::new())
+                    })
+                    .expect("Failed to bind global");
+
+                let version = wl_output.version();
+                let inner = OutputInner {
+                    name,
+                    wl_output: wl_output.clone(),
+                    xdg_output: None,
+                    just_created: true,
+                    // wl_output::done was added in version 2.
+                    // If we have an output at version 1, assume the data was already sent.
+                    current_info: if version > 1 { None } else { Some(OutputInfo::new(name)) },
+
+                    pending_info: OutputInfo::new(name),
+                    pending_wl: true,
+                    pending_xdg: self.xdg.is_some(),
+                };
+
+                self.outputs.push(inner);
+
+                if self.xdg.is_some() {
+                    let xdg = self.xdg.as_ref().unwrap();
+
+                    let data = wl_output.data::<OutputData>().unwrap().clone();
+
+                    let xdg_output = xdg.get_xdg_output(cx, wl_output, qh, data).unwrap();
+                    self.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
+                }
+            }
+
+            "zxdg_output_manager_v1" => {
+                let global = handle
+                    .bind_once::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _, _>(
+                        cx,
+                        qh,
+                        name,
+                        u32::min(version, 3),
+                        (),
+                    )
+                    .expect("Failed to bind global");
+
+                self.xdg = Some(global);
+
+                let xdg = self.xdg.as_ref().unwrap();
+
+                // Because the order in which globals are advertised is undefined, we need to get the extension of any
+                // wl_output we have already gotten.
+                self.outputs.iter_mut().for_each(|output| {
+                    let data = output.wl_output.data::<OutputData>().unwrap().clone();
+
+                    let xdg_output =
+                        xdg.get_xdg_output(cx, output.wl_output.clone(), qh, data).unwrap();
+                    output.xdg_output = Some(xdg_output);
+                });
+            }
+
+            _ => (),
+        }
+    }
+
+    fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32) {
+        self.outputs.retain(|inner| {
+            let destroy = inner.name != name;
+
+            if destroy {
+                if let Some(xdg_output) = &inner.xdg_output {
+                    xdg_output.destroy(cx);
+                }
+
+                inner.wl_output.release(cx);
+            }
+
+            // FIXME: How do we tell the client that the output was destroyed?
+
+            destroy
+        })
+    }
+}
+
 impl OutputInfo {
     fn new(id: u32) -> OutputInfo {
         OutputInfo {
@@ -586,86 +648,8 @@ struct OutputInner {
     /// Whether this output was just created and has not an event yet.
     just_created: bool,
 
-    data: OutputStatus,
-}
-
-#[derive(Debug)]
-enum OutputStatus {
-    Ready {
-        info: OutputInfo,
-    },
-
-    Pending(Pending),
-
-    /// A variant of output data set while changing from Ready to pending.
-    ///
-    /// This is placed on the original memory of the Ready variant so the output info can be taken.
-    IntermediateState,
-}
-
-#[derive(Debug)]
-struct Pending {
+    current_info: Option<OutputInfo>,
+    pending_info: OutputInfo,
     pending_wl: bool,
     pending_xdg: bool,
-    info: OutputInfo,
-}
-
-impl Default for OutputStatus {
-    fn default() -> Self {
-        OutputStatus::IntermediateState
-    }
-}
-
-impl OutputStatus {
-    /// Returns the pending output data, converting the OutputData to pending if necessary.
-    fn pending(&mut self, wl: bool, xdg: bool) -> &mut Pending {
-        match self {
-            OutputStatus::Ready { .. } => {
-                // Round-about dance to take the OutputInfo out of Ready and place it into Pending.
-                let data = mem::take(self);
-                let info = match data {
-                    OutputStatus::Ready { info } => info,
-                    _ => unreachable!(),
-                };
-
-                *self = OutputStatus::Pending(Pending { pending_wl: wl, pending_xdg: xdg, info });
-            }
-
-            OutputStatus::Pending(Pending { pending_wl, pending_xdg, .. }) => {
-                *pending_wl |= wl;
-                *pending_xdg |= xdg;
-            }
-
-            OutputStatus::IntermediateState => unreachable!(),
-        }
-
-        match self {
-            OutputStatus::Pending(pending) => pending,
-            _ => unreachable!(),
-        }
-    }
-
-    /// Returns the output data, and changes the enum variant to ready.
-    fn ready(&mut self) -> OutputInfo {
-        match self {
-            // Already ready
-            OutputStatus::Ready { info } => info.clone(),
-
-            OutputStatus::Pending(_) => {
-                // Round-about dance to take the OutputInfo out of Pending and place it into Ready.
-                let pending = mem::take(self);
-                let pending = match pending {
-                    OutputStatus::Pending(pending) => pending,
-                    _ => unreachable!(),
-                };
-
-                let info = pending.info.clone();
-                *self = OutputStatus::Ready { info: pending.info };
-
-                info
-            }
-
-            OutputStatus::IntermediateState => unreachable!(),
-        }
-    }
 }
