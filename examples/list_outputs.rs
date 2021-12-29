@@ -1,14 +1,11 @@
 //! Test application to list all available outputs.
 
-use std::collections::HashMap;
-
 use smithay_client_toolkit::{
-    delegate_registry,
-    output::{OutputData, OutputDispatch, OutputHandler, OutputInfo, OutputState},
+    delegate_output, delegate_registry,
+    output::{OutputDispatch, OutputHandler, OutputInfo, OutputState},
     registry::RegistryHandle,
 };
-use wayland_client::{delegate_dispatch, protocol::wl_output, Connection};
-use wayland_protocols::unstable::xdg_output::v1::client::{zxdg_output_manager_v1, zxdg_output_v1};
+use wayland_client::{protocol::wl_output, Connection};
 
 struct ListOutputs {
     inner: InnerApp,
@@ -16,31 +13,18 @@ struct ListOutputs {
     output_state: OutputState,
 }
 
-/// The inner app to keep track of the current state of the outputs.
-struct InnerApp {
-    outputs: HashMap<u32, OutputInfo>,
-}
+struct InnerApp;
 
 // OutputHandler's functions are called as outputs are made available, updated and destroyed.
 impl OutputHandler for InnerApp {
-    fn new_output(&mut self, info: OutputInfo) {
-        self.outputs.insert(info.id, info);
-    }
+    fn new_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
 
-    fn update_output(&mut self, info: OutputInfo) {
-        self.outputs.insert(info.id, info);
-    }
+    fn update_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
 
-    fn output_destroyed(&mut self, info: OutputInfo) {
-        self.outputs.remove(&info.id);
-    }
+    fn output_destroyed(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
 }
 
-delegate_dispatch!(ListOutputs: <UserData = OutputData> [wl_output::WlOutput, zxdg_output_v1::ZxdgOutputV1] => OutputDispatch<'_, InnerApp> ; |app| {
-    &mut OutputDispatch(&mut app.output_state, &mut app.inner)
-});
-
-delegate_dispatch!(ListOutputs: <UserData = ()> [zxdg_output_manager_v1::ZxdgOutputManagerV1] => OutputDispatch<'_, InnerApp> ; |app| {
+delegate_output!(ListOutputs => InnerApp: |app| {
     &mut OutputDispatch(&mut app.output_state, &mut app.inner)
 });
 
@@ -65,7 +49,7 @@ fn main() {
     let registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
 
     let mut list_outputs = ListOutputs {
-        inner: InnerApp { outputs: HashMap::new() },
+        inner: InnerApp,
 
         registry_handle: RegistryHandle::new(registry),
         output_state: OutputState::new(),
@@ -73,8 +57,8 @@ fn main() {
     event_queue.blocking_dispatch(&mut list_outputs).unwrap();
     event_queue.blocking_dispatch(&mut list_outputs).unwrap();
 
-    for output in list_outputs.inner.outputs.values() {
-        print_output(output);
+    for output in list_outputs.output_state.outputs() {
+        print_output(&list_outputs.output_state.info(&output).unwrap());
     }
 }
 
