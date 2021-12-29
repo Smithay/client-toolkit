@@ -268,7 +268,8 @@ delegate_registry!(SimpleWindow:
     handlers = [
         { &mut app.xdg_shell },
         { &mut app.shm_state },
-        { &mut app.compositor_state }
+        { &mut app.compositor_state },
+        { &mut OutputDispatch(&mut app.output_state, &mut app.inner) }
     ]
 );
 

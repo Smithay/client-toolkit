@@ -319,7 +319,7 @@ macro_rules! delegate_registry {
                             handler.remove_global(cx, name);
                         )*
 
-                        handle.remove_cached_global(&name);
+                        handle._remove_cached_global(&name);
                     }
 
                     _ => unreachable!("wl_registry is frozen"),
@@ -344,7 +344,7 @@ impl RegistryHandle {
     ///
     /// There are no stability guarantees for this function.
     #[doc(hidden)]
-    pub fn remove_cached_global(&mut self, name: &u32) {
+    pub fn _remove_cached_global(&mut self, name: &u32) {
         self.cached_globals.remove(name);
     }
 }
