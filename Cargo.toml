@@ -22,11 +22,11 @@ thiserror = "1.0.30"
 wayland-backend = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 wayland-client = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 wayland-protocols = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317", features = ["client", "unstable_protocols"] }
-#wayland-cursor = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
+wayland-cursor = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
 calloop = { version = "0.9.1", optional = true }
 
 [features]
-default = ["calloop", "dlopen"]
+default = ["calloop", "system"]
 system = ["wayland-backend/client_system"]
 dlopen = ["wayland-backend/client_system", "wayland-backend/dlopen"]
 

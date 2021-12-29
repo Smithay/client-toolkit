@@ -29,7 +29,7 @@ use super::CreatePoolError;
 ///
 /// This type of pool will create the SHM memory pool and provide a way to resize the pool.
 ///
-/// This pool does not release of buffers. If you need this, use one of the higher level pools.
+/// This pool does not release buffers. If you need this, use one of the higher level pools.
 #[derive(Debug)]
 pub struct RawPool {
     pool: wl_shm_pool::WlShmPool,
@@ -68,7 +68,10 @@ impl RawPool {
     /// - `format`: the encoding format of the pixels.
     ///
     /// The encoding format of the pixels must be supported by the compositor or else a protocol error is
-    /// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::shm::ShmState::formats).
+    /// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::::ShmState::formats).
+    ///
+    /// Note this function only creates the wl_buffer object, you will need to write to the pixels using the
+    /// [`io::Write`] implementation or [`RawPool::mmap`].
     #[allow(clippy::too_many_arguments)]
     pub fn create_buffer<D, U>(
         &mut self,
@@ -80,17 +83,15 @@ impl RawPool {
         udata: U,
         cx: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-    ) -> Result<(&mut [u8], wl_buffer::WlBuffer), InvalidId>
+    ) -> Result<wl_buffer::WlBuffer, InvalidId>
     where
         D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
         U: Send + Sync + 'static,
     {
-        let len = height as usize * stride as usize; // length of a row
         let buffer =
             self.pool.create_buffer(cx, offset, width, height, stride, format, qh, udata)?;
-        let slice = &mut self.mmap()[offset as usize..][..len];
 
-        Ok((slice, buffer))
+        Ok(buffer)
     }
 
     /// Returns the pool object used to communicate with the server.
@@ -104,27 +105,6 @@ impl RawPool {
     /// existing buffers created from the pool to free the memory.
     pub fn destroy(self, cx: &mut ConnectionHandle) {
         self.pool.destroy(cx);
-    }
-
-    pub(crate) fn new<D, U>(
-        len: usize,
-        shm: &wl_shm::WlShm,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        udata: U,
-    ) -> Result<RawPool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
-        U: Send + Sync + 'static,
-    {
-        let shm_fd = RawPool::create_shm_fd()?;
-        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
-        mem_file.set_len(len as u64)?;
-
-        let pool = shm.create_pool(cx, shm_fd, len as i32, qh, udata)?;
-        let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
-
-        Ok(RawPool { pool, len, mem_file, mmap })
     }
 }
 
@@ -145,6 +125,27 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
+    pub(crate) fn new<D, U>(
+        len: usize,
+        shm: &wl_shm::WlShm,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        udata: U,
+    ) -> Result<RawPool, CreatePoolError>
+    where
+        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
+        U: Send + Sync + 'static,
+    {
+        let shm_fd = RawPool::create_shm_fd()?;
+        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
+        mem_file.set_len(len as u64)?;
+
+        let pool = shm.create_pool(cx, shm_fd, len as i32, qh, udata)?;
+        let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
+
+        Ok(RawPool { pool, len, mem_file, mmap })
+    }
+
     fn create_shm_fd() -> io::Result<RawFd> {
         #[cfg(target_os = "linux")]
         {

@@ -1,5 +1,5 @@
 use std::sync::{
-    atomic::{AtomicI32, Ordering},
+    atomic::{AtomicBool, AtomicI32, Ordering},
     Mutex,
 };
 
@@ -45,7 +45,7 @@ impl CompositorState {
                 SurfaceData {
                     scale_factor: AtomicI32::new(1),
                     outputs: Mutex::new(vec![]),
-                    role: Mutex::new(SurfaceRole::None),
+                    has_role: AtomicBool::new(false),
                 },
             )
             .expect("TODO: Error");
@@ -63,8 +63,8 @@ pub struct SurfaceData {
     /// The outputs the surface is currently inside.
     pub(crate) outputs: Mutex<Vec<wl_output::WlOutput>>,
 
-    /// The role object associated with the surface.
-    pub(crate) role: Mutex<SurfaceRole>,
+    /// Whether the surface has a role object.
+    pub(crate) has_role: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -185,16 +185,4 @@ where
             self.wl_compositor.take();
         }
     }
-}
-
-#[derive(Debug)]
-pub(crate) enum SurfaceRole {
-    /// No role.
-    None,
-
-    /// Toplevel surface.
-    Toplevel,
-
-    /// Popup surface.
-    Popup,
 }
