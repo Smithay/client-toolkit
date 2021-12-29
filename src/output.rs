@@ -486,7 +486,7 @@ where
                     inner.pending_xdg = false;
 
                     // Set the user data
-                    data.set(info.clone());
+                    data.set(info);
 
                     let pending_wl = inner.pending_wl;
                     let just_created = inner.just_created;
@@ -495,8 +495,6 @@ where
                     if just_created {
                         inner.just_created = false;
                     }
-
-                    drop(inner);
 
                     if !pending_wl {
                         if just_created {
