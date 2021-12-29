@@ -471,6 +471,7 @@ impl Display for Mode {
             "{}×{}px @ {}.{:03} Hz",
             self.dimensions.0,
             self.dimensions.1,
+            // Print the refresh rate in hertz since it is more familiar unit.
             self.refresh_rate / 1000,
             self.refresh_rate % 1000
         )
