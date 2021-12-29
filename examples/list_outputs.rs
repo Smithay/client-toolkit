@@ -34,7 +34,7 @@ delegate_registry!(ListOutputs:
         &mut app.registry_handle
     },
     handlers = [
-        { &mut app.output_state }
+        { &mut OutputDispatch(&mut app.output_state, &mut app.inner) }
     ]
 );
 
