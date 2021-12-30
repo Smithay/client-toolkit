@@ -52,7 +52,7 @@ pub trait ShellHandler<D> {
     /// A request to close the window has been received.
     ///
     /// This typically will be sent if
-    fn request_close(&mut self, window: &Window);
+    fn request_close(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<D>, window: &Window);
 
     /// Called when the compositor asks to resize a window and or change the state of the window.
     ///
@@ -352,8 +352,8 @@ where
         toplevel: &xdg_toplevel::XdgToplevel,
         event: xdg_toplevel::Event,
         data: &Self::UserData,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<D>,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
     ) {
         match event {
             // TODO: Configures
@@ -382,7 +382,7 @@ where
                     .filter_map(Weak::upgrade)
                     .find(|window| &window.xdg_toplevel == toplevel)
                 {
-                    self.1.request_close(&Window(window));
+                    self.1.request_close(cx, qh, &Window(window));
                 }
 
                 self.0.cleanup();
@@ -485,7 +485,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _name: u32) {
+    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
         todo!("xdg shell destruction")
     }
 }
