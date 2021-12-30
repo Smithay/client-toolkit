@@ -24,10 +24,10 @@ use wayland_protocols::{
 use crate::{
     compositor::SurfaceData,
     registry::{RegistryHandle, RegistryHandler},
-    window::inner::{WindowInner, XdgToplevelInner},
+    window::inner::XdgToplevelInner,
 };
 
-use self::inner::{PendingConfigure, XdgSurfaceInner};
+use self::inner::{PendingConfigure, WindowInner, XdgSurfaceInner};
 
 pub(crate) mod inner;
 
@@ -139,6 +139,18 @@ pub struct WindowData {
 pub struct Window(Arc<inner::WindowInner>);
 
 impl Window {
+    /// Maps the window.
+    ///
+    /// This function will send the initial commit to the server and will later result in an initial configure
+    /// being received.
+    ///
+    /// ## Protocol errors
+    ///
+    /// It is a protocol error to attach a buffer to the surface when sending the initial configure.
+    pub fn map(&self, cx: &mut ConnectionHandle) {
+        self.0.map(cx)
+    }
+
     /// Sets the minimum size of the window.
     ///
     /// If the minimum size is `(0, 0)`, the minimum size is unset and the compositor may assume any window
@@ -154,10 +166,7 @@ impl Window {
     ///
     /// This value is double buffered and will not be applied until the next commit of the window.
     pub fn set_min_size(&self, cx: &mut ConnectionHandle, min_size: (u32, u32)) {
-        self.0.xdg_toplevel.set_min_size(cx, min_size.0 as i32, min_size.1 as i32);
-
-        let mut toplevel = self.0.toplevel.lock().unwrap();
-        toplevel.min_size = min_size;
+        self.0.set_min_size(cx, min_size)
     }
 
     /// Sets the maximum size of the window.
@@ -174,38 +183,27 @@ impl Window {
     ///
     /// This value is double buffered and will not be applied until the next commit of the window.
     pub fn set_max_size(&self, cx: &mut ConnectionHandle, max_size: (u32, u32)) {
-        self.0.xdg_toplevel.set_max_size(cx, max_size.0 as i32, max_size.1 as i32);
-
-        let mut toplevel = self.0.toplevel.lock().unwrap();
-        toplevel.max_size = max_size;
+        self.0.set_max_size(cx, max_size)
     }
 
     pub fn set_title(&self, cx: &mut ConnectionHandle, title: impl Into<String>) {
-        let title = title.into();
-        self.0.xdg_toplevel.set_title(cx, title.clone());
-
-        let mut toplevel = self.0.toplevel.lock().unwrap();
-        toplevel.title = Some(title);
+        self.0.set_title(cx, title.into())
     }
 
     pub fn set_app_id(&self, cx: &mut ConnectionHandle, app_id: impl Into<String>) {
-        let app_id = app_id.into();
-        self.0.xdg_toplevel.set_app_id(cx, app_id.clone());
-
-        let mut toplevel = self.0.toplevel.lock().unwrap();
-        toplevel.app_id = Some(app_id);
+        self.0.set_app_id(cx, app_id.into())
     }
 
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
-        &self.0.xdg_toplevel
+        self.0.xdg_toplevel()
     }
 
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        &self.0.xdg_surface
+        self.0.xdg_surface()
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.0.wl_surface
+        self.0.wl_surface()
     }
 }
 
@@ -306,13 +304,7 @@ where
                         let mut inner = inner.lock().unwrap();
 
                         if let Some(pending_configure) = inner.pending_configure.take() {
-                            if let Some(window) = self
-                                .0
-                                .windows
-                                .iter()
-                                .filter_map(Weak::upgrade)
-                                .find(|window| &window.xdg_surface == surface)
-                            {
+                            if let Some(window) = self.0.window_inner_from_surface(surface) {
                                 H::configure(
                                     self.1,
                                     cx,
@@ -375,13 +367,7 @@ where
             }
 
             xdg_toplevel::Event::Close => {
-                if let Some(window) = self
-                    .0
-                    .windows
-                    .iter()
-                    .filter_map(Weak::upgrade)
-                    .find(|window| &window.xdg_toplevel == toplevel)
-                {
+                if let Some(window) = self.0.window_inner_from_toplevel(toplevel) {
                     self.1.request_close(cx, qh, &Window(window));
                 }
 
@@ -493,6 +479,26 @@ where
 impl XdgShellState {
     fn cleanup(&mut self) {
         // TODO: How do we want to deal with cleanup of dead windows and surfaces?
+    }
+
+    fn window_inner_from_surface(
+        &self,
+        xdg_surface: &xdg_surface::XdgSurface,
+    ) -> Option<Arc<WindowInner>> {
+        self.windows
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|window| window.xdg_surface() == xdg_surface)
+    }
+
+    fn window_inner_from_toplevel(
+        &self,
+        xdg_toplevel: &xdg_toplevel::XdgToplevel,
+    ) -> Option<Arc<WindowInner>> {
+        self.windows
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|window| window.xdg_toplevel() == xdg_toplevel)
     }
 }
 
