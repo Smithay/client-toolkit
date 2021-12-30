@@ -15,12 +15,10 @@ use crate::compositor::SurfaceData;
 
 use super::{DecorationMode, WindowData, WindowError, XdgShellState, XdgSurfaceData};
 
-#[derive(Debug, Clone)]
-pub(crate) struct WindowInner {
-    pub wl_surface: wl_surface::WlSurface,
-    pub xdg_surface: xdg_surface::XdgSurface,
-    pub toplevel: Arc<Mutex<XdgToplevelInner>>,
-    pub xdg_toplevel: xdg_toplevel::XdgToplevel,
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum WindowInner {
+    // TODO: Libdecor
+    Rust(RustWindow),
 }
 
 impl WindowInner {
@@ -31,6 +29,106 @@ impl WindowInner {
         surface: wl_surface::WlSurface,
         decoration_mode: DecorationMode,
     ) -> Result<Arc<WindowInner>, WindowError>
+    where
+        D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData>
+            + Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData>
+            + Dispatch<xdg_toplevel::XdgToplevel, UserData = WindowData>
+            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
+            + 'static,
+    {
+        let inner =
+            Arc::new(WindowInner::Rust(RustWindow::new(shell, cx, qh, surface, decoration_mode)?));
+
+        shell.windows.push(Arc::downgrade(&inner));
+
+        Ok(inner)
+    }
+
+    pub fn map(&self, cx: &mut ConnectionHandle) {
+        match self {
+            WindowInner::Rust(window) => window.wl_surface.commit(cx),
+        }
+    }
+
+    pub fn set_min_size(&self, cx: &mut ConnectionHandle, min_size: (u32, u32)) {
+        match self {
+            WindowInner::Rust(window) => {
+                window.xdg_toplevel.set_min_size(cx, min_size.0 as i32, min_size.1 as i32);
+
+                let mut toplevel = window.toplevel.lock().unwrap();
+                toplevel.min_size = min_size;
+            }
+        }
+    }
+
+    pub fn set_max_size(&self, cx: &mut ConnectionHandle, max_size: (u32, u32)) {
+        match self {
+            WindowInner::Rust(window) => {
+                window.xdg_toplevel.set_max_size(cx, max_size.0 as i32, max_size.1 as i32);
+
+                let mut toplevel = window.toplevel.lock().unwrap();
+                toplevel.max_size = max_size;
+            }
+        }
+    }
+
+    pub fn set_title(&self, cx: &mut ConnectionHandle, title: String) {
+        match self {
+            WindowInner::Rust(window) => {
+                window.xdg_toplevel.set_title(cx, title.clone());
+
+                let mut toplevel = window.toplevel.lock().unwrap();
+                toplevel.title = Some(title);
+            }
+        }
+    }
+
+    pub fn set_app_id(&self, cx: &mut ConnectionHandle, app_id: String) {
+        match self {
+            WindowInner::Rust(window) => {
+                window.xdg_toplevel.set_app_id(cx, app_id.clone());
+
+                let mut toplevel = window.toplevel.lock().unwrap();
+                toplevel.app_id = Some(app_id);
+            }
+        }
+    }
+
+    pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
+        match self {
+            WindowInner::Rust(window) => &window.xdg_toplevel,
+        }
+    }
+
+    pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
+        match self {
+            WindowInner::Rust(window) => &window.xdg_surface,
+        }
+    }
+
+    pub fn wl_surface(&self) -> &wl_surface::WlSurface {
+        match self {
+            WindowInner::Rust(window) => &window.wl_surface,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct RustWindow {
+    pub wl_surface: wl_surface::WlSurface,
+    pub xdg_surface: xdg_surface::XdgSurface,
+    pub toplevel: Arc<Mutex<XdgToplevelInner>>,
+    pub xdg_toplevel: xdg_toplevel::XdgToplevel,
+}
+
+impl RustWindow {
+    pub fn new<D>(
+        shell: &mut XdgShellState,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        surface: wl_surface::WlSurface,
+        decoration_mode: DecorationMode,
+    ) -> Result<RustWindow, WindowError>
     where
         D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData>
             + Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData>
@@ -101,26 +199,20 @@ impl WindowInner {
                 }
             }
 
-            // Perform an initial commit without any buffer attached per the xdg_surface requirements.
-            wl_surface.commit(cx);
-
             let window_inner =
-                WindowInner { wl_surface, xdg_surface, toplevel: window_data.inner, xdg_toplevel };
+                RustWindow { wl_surface, xdg_surface, toplevel: window_data.inner, xdg_toplevel };
 
             // Mark the surface as having a role.
             surface_data.has_role.store(true, Ordering::SeqCst);
 
-            let inner = Arc::new(window_inner);
-            shell.windows.push(Arc::downgrade(&inner));
-
-            Ok(inner)
+            Ok(window_inner)
         } else {
             Err(WindowError::HasRole)
         }
     }
 }
 
-impl PartialEq for WindowInner {
+impl PartialEq for RustWindow {
     fn eq(&self, other: &Self) -> bool {
         self.xdg_surface == other.xdg_surface && self.xdg_toplevel == other.xdg_toplevel
     }
