@@ -83,6 +83,9 @@ fn main() {
     window.set_app_id(&mut cx.handle(), "io.github.smithay.client-toolkit.SimpleWindow");
     window.set_min_size(&mut cx.handle(), (256, 256));
 
+    // Map the window so we receive the initial configure and can render.
+    window.map(&mut cx.handle());
+
     simple_window.inner.window = Some(window);
 
     // We don't draw immediately, the configure will indicate to us when to first draw.
