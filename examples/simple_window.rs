@@ -116,9 +116,27 @@ struct InnerApp {
     window: Option<Window>,
 }
 
-impl SurfaceHandler for InnerApp {
-    fn scale_factor_changed(&mut self, _surface: &wl_surface::WlSurface, _new_factor: i32) {
+impl SurfaceHandler<SimpleWindow> for InnerApp {
+    fn scale_factor_changed(
+        &mut self,
+        _: &mut CompositorState,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<SimpleWindow>,
+        _surface: &wl_surface::WlSurface,
+        _new_factor: i32,
+    ) {
         // TODO
+    }
+
+    fn frame(
+        &mut self,
+        _: &mut CompositorState,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<SimpleWindow>,
+        _surface: &wl_surface::WlSurface,
+        _time: u32,
+    ) {
+        self.draw(cx, qh);
     }
 }
 
@@ -245,7 +263,10 @@ impl InnerApp {
             self.buffer = Some(wl_buffer.clone());
 
             // Request our next frame
-            window.wl_surface().frame(cx, qh, ()).expect("create callback");
+            window
+                .wl_surface()
+                .frame(cx, qh, window.wl_surface().clone())
+                .expect("create callback");
 
             assert!(self.buffer.is_some(), "No buffer?");
             // Attach and commit to present.
@@ -255,12 +276,16 @@ impl InnerApp {
     }
 }
 
-delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_compositor::WlCompositor] => SurfaceDispatch<'_, InnerApp> ; |app| {
-    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner)
+delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_compositor::WlCompositor] => SurfaceDispatch<'_, SimpleWindow, InnerApp> ; |app| {
+    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner, PhantomData)
 });
 
-delegate_dispatch!(SimpleWindow: <UserData = SurfaceData> [wl_surface::WlSurface] => SurfaceDispatch<'_, InnerApp> ; |app| {
-    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner)
+delegate_dispatch!(SimpleWindow: <UserData = SurfaceData> [wl_surface::WlSurface] => SurfaceDispatch<'_, SimpleWindow, InnerApp> ; |app| {
+    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner, PhantomData)
+});
+
+delegate_dispatch!(SimpleWindow: <UserData = wl_surface::WlSurface> [wl_callback::WlCallback] => SurfaceDispatch<'_, SimpleWindow, InnerApp> ; |app| {
+    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner, PhantomData)
 });
 
 delegate_dispatch!(SimpleWindow: <UserData = ()>
@@ -299,22 +324,22 @@ delegate_registry!(SimpleWindow:
     ]
 );
 
-impl Dispatch<wl_callback::WlCallback> for SimpleWindow {
-    type UserData = ();
+// impl Dispatch<wl_callback::WlCallback> for SimpleWindow {
+//     type UserData = ();
 
-    fn event(
-        &mut self,
-        _: &wl_callback::WlCallback,
-        event: wl_callback::Event,
-        _: &Self::UserData,
-        cx: &mut ConnectionHandle,
-        qh: &QueueHandle<Self>,
-    ) {
-        if let wl_callback::Event::Done { .. } = event {
-            self.inner.draw(cx, qh);
-        }
-    }
-}
+//     fn event(
+//         &mut self,
+//         _: &wl_callback::WlCallback,
+//         event: wl_callback::Event,
+//         _: &Self::UserData,
+//         cx: &mut ConnectionHandle,
+//         qh: &QueueHandle<Self>,
+//     ) {
+//         if let wl_callback::Event::Done { .. } = event {
+//             self.inner.draw(cx, qh);
+//         }
+//     }
+// }
 
 // TODO
 impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {

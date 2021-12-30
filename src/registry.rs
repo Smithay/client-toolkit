@@ -7,8 +7,7 @@
 //! a global regularly is accomplished through [`RegistryHandle::bind_once`]. For caching a bound global use
 //! [`RegistryHandle::bind_cached`].
 //!
-//! [`RegistryHandle`] is dispatched in an event queue using [`RegistryDispatch`]. The [`delegate_registry`]
-//! macro is used to delegate [`wl_registry`] to [`RegistryDispatch`].
+//! The [`delegate_registry`] macro is used to implement handling for [`wl_registry`].
 //!
 //! ## Sample implementation of [`RegistryHandler`]
 //!

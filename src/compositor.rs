@@ -1,10 +1,14 @@
-use std::sync::{
-    atomic::{AtomicBool, AtomicI32, Ordering},
-    Mutex,
+use std::{
+    marker::PhantomData,
+    sync::{
+        atomic::{AtomicBool, AtomicI32, Ordering},
+        Mutex,
+    },
 };
 
+use wayland_backend::client::InvalidId;
 use wayland_client::{
-    protocol::{wl_compositor, wl_output, wl_surface},
+    protocol::{wl_callback, wl_compositor, wl_output, wl_surface},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
@@ -13,9 +17,41 @@ use crate::{
     registry::{RegistryHandle, RegistryHandler},
 };
 
-pub trait SurfaceHandler {
+/// An error caused by creating a surface.
+#[derive(Debug, thiserror::Error)]
+pub enum SurfaceError {
+    /// The compositor global is not available.
+    #[error("the compositor global is not available")]
+    MissingCompositorGlobal,
+
+    /// Protocol error.
+    #[error(transparent)]
+    Protocol(#[from] InvalidId),
+}
+
+pub trait SurfaceHandler<D> {
     /// The surface has either been moved into or out of an output and the output has a different scale factor.
-    fn scale_factor_changed(&mut self, surface: &wl_surface::WlSurface, new_factor: i32);
+    fn scale_factor_changed(
+        &mut self,
+        state: &mut CompositorState,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        surface: &wl_surface::WlSurface,
+        new_factor: i32,
+    );
+
+    /// A frame callback has been completed.
+    ///
+    /// This function will be called after sending a [`WlSurface::frame`](wl_surface::WlSurface::frame) request
+    /// and committing the surface.
+    fn frame(
+        &mut self,
+        state: &mut CompositorState,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        surface: &wl_surface::WlSurface,
+        time: u32,
+    );
 }
 
 #[derive(Debug)]
@@ -32,23 +68,22 @@ impl CompositorState {
         &self,
         cx: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-    ) -> Result<wl_surface::WlSurface, ()>
+    ) -> Result<wl_surface::WlSurface, SurfaceError>
     where
         D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData> + 'static,
     {
-        let (_, compositor) = self.wl_compositor.as_ref().ok_or(())?;
+        let (_, compositor) =
+            self.wl_compositor.as_ref().ok_or(SurfaceError::MissingCompositorGlobal)?;
 
-        let surface = compositor
-            .create_surface(
-                cx,
-                qh,
-                SurfaceData {
-                    scale_factor: AtomicI32::new(1),
-                    outputs: Mutex::new(vec![]),
-                    has_role: AtomicBool::new(false),
-                },
-            )
-            .expect("TODO: Error");
+        let surface = compositor.create_surface(
+            cx,
+            qh,
+            SurfaceData {
+                scale_factor: AtomicI32::new(1),
+                outputs: Mutex::new(vec![]),
+                has_role: AtomicBool::new(false),
+            },
+        )?;
 
         Ok(surface)
     }
@@ -68,15 +103,21 @@ pub struct SurfaceData {
 }
 
 #[derive(Debug)]
-pub struct SurfaceDispatch<'s, H: SurfaceHandler>(pub &'s mut CompositorState, pub &'s mut H);
+pub struct SurfaceDispatch<'s, D, H: SurfaceHandler<D>>(
+    pub &'s mut CompositorState,
+    pub &'s mut H,
+    pub PhantomData<D>,
+);
 
-impl<H: SurfaceHandler> DelegateDispatchBase<wl_surface::WlSurface> for SurfaceDispatch<'_, H> {
+impl<D, H: SurfaceHandler<D>> DelegateDispatchBase<wl_surface::WlSurface>
+    for SurfaceDispatch<'_, D, H>
+{
     type UserData = SurfaceData;
 }
 
-impl<D, H> DelegateDispatch<wl_surface::WlSurface, D> for SurfaceDispatch<'_, H>
+impl<D, H> DelegateDispatch<wl_surface::WlSurface, D> for SurfaceDispatch<'_, D, H>
 where
-    H: SurfaceHandler,
+    H: SurfaceHandler<D>,
     D: Dispatch<wl_surface::WlSurface, UserData = Self::UserData>
         + Dispatch<wl_output::WlOutput, UserData = OutputData>,
 {
@@ -85,8 +126,8 @@ where
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
         data: &Self::UserData,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<D>,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
     ) {
         let mut outputs = data.outputs.lock().unwrap();
 
@@ -118,21 +159,21 @@ where
             data.scale_factor.store(factor, Ordering::SeqCst);
 
             if current != factor {
-                self.1.scale_factor_changed(surface, factor);
+                self.1.scale_factor_changed(self.0, cx, qh, surface, factor);
             }
         }
     }
 }
 
-impl<H: SurfaceHandler> DelegateDispatchBase<wl_compositor::WlCompositor>
-    for SurfaceDispatch<'_, H>
+impl<D, H: SurfaceHandler<D>> DelegateDispatchBase<wl_compositor::WlCompositor>
+    for SurfaceDispatch<'_, D, H>
 {
     type UserData = ();
 }
 
-impl<D, H> DelegateDispatch<wl_compositor::WlCompositor, D> for SurfaceDispatch<'_, H>
+impl<D, H> DelegateDispatch<wl_compositor::WlCompositor, D> for SurfaceDispatch<'_, D, H>
 where
-    H: SurfaceHandler,
+    H: SurfaceHandler<D>,
     D: Dispatch<wl_compositor::WlCompositor, UserData = Self::UserData>,
 {
     fn event(
@@ -144,6 +185,35 @@ where
         _: &QueueHandle<D>,
     ) {
         unreachable!("wl_compositor has no events")
+    }
+}
+
+impl<D, H: SurfaceHandler<D>> DelegateDispatchBase<wl_callback::WlCallback>
+    for SurfaceDispatch<'_, D, H>
+{
+    type UserData = wl_surface::WlSurface;
+}
+
+impl<D, H> DelegateDispatch<wl_callback::WlCallback, D> for SurfaceDispatch<'_, D, H>
+where
+    H: SurfaceHandler<D>,
+    D: Dispatch<wl_callback::WlCallback, UserData = Self::UserData>,
+{
+    fn event(
+        &mut self,
+        _: &wl_callback::WlCallback,
+        event: wl_callback::Event,
+        surface: &Self::UserData,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+    ) {
+        match event {
+            wl_callback::Event::Done { callback_data } => {
+                self.1.frame(self.0, cx, qh, surface, callback_data);
+            }
+
+            _ => unreachable!(),
+        }
     }
 }
 
