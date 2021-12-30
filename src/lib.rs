@@ -17,5 +17,5 @@ pub mod output;
 pub mod registry;
 #[macro_use]
 pub mod shm;
+pub mod shell;
 pub mod surface;
-pub mod window;

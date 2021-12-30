@@ -5,11 +5,11 @@ use smithay_client_toolkit::{
     delegate_output, delegate_registry, delegate_shm,
     output::{OutputDispatch, OutputHandler, OutputState},
     registry::RegistryHandle,
-    shm::{pool::raw::RawPool, ShmState},
-    window::{
+    shell::window::{
         DecorationMode, ShellHandler, Window, WindowData, XdgShellDispatch, XdgShellState,
         XdgSurfaceData,
     },
+    shm::{pool::raw::RawPool, ShmState},
 };
 use wayland_client::{
     delegate_dispatch,
