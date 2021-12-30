@@ -24,12 +24,14 @@ use wayland_protocols::{
 use crate::{
     compositor::SurfaceData,
     registry::{RegistryHandle, RegistryHandler},
-    window::inner::XdgToplevelInner,
 };
 
-use self::inner::{PendingConfigure, WindowInner, XdgSurfaceInner};
+use self::inner::{PendingConfigure, WindowInner, XdgToplevelInner};
+
+use super::xdg_inner::XdgSurfaceInner;
 
 pub(crate) mod inner;
+mod rust;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecorationMode {
