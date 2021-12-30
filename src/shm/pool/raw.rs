@@ -68,7 +68,7 @@ impl RawPool {
     /// - `format`: the encoding format of the pixels.
     ///
     /// The encoding format of the pixels must be supported by the compositor or else a protocol error is
-    /// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::::ShmState::formats).
+    /// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::shm::ShmState::formats).
     ///
     /// Note this function only creates the wl_buffer object, you will need to write to the pixels using the
     /// [`io::Write`] implementation or [`RawPool::mmap`].
