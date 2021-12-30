@@ -1,11 +1,13 @@
 //! Test application to list all available outputs.
 
+use std::marker::PhantomData;
+
 use smithay_client_toolkit::{
     delegate_output, delegate_registry,
     output::{OutputDispatch, OutputHandler, OutputInfo, OutputState},
     registry::RegistryHandle,
 };
-use wayland_client::{protocol::wl_output, Connection};
+use wayland_client::{protocol::wl_output, Connection, ConnectionHandle, QueueHandle};
 
 struct ListOutputs {
     inner: InnerApp,
@@ -16,16 +18,37 @@ struct ListOutputs {
 struct InnerApp;
 
 // OutputHandler's functions are called as outputs are made available, updated and destroyed.
-impl OutputHandler for InnerApp {
-    fn new_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
+impl OutputHandler<ListOutputs> for InnerApp {
+    fn new_output(
+        &mut self,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<ListOutputs>,
+        _state: &OutputState,
+        _output: wl_output::WlOutput,
+    ) {
+    }
 
-    fn update_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
+    fn update_output(
+        &mut self,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<ListOutputs>,
+        _state: &OutputState,
+        _output: wl_output::WlOutput,
+    ) {
+    }
 
-    fn output_destroyed(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
+    fn output_destroyed(
+        &mut self,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<ListOutputs>,
+        _state: &OutputState,
+        _output: wl_output::WlOutput,
+    ) {
+    }
 }
 
 delegate_output!(ListOutputs => InnerApp: |app| {
-    &mut OutputDispatch(&mut app.output_state, &mut app.inner)
+    &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData)
 });
 
 // Delegate wl_registry to provide the wl_output globals to OutputState
@@ -34,7 +57,7 @@ delegate_registry!(ListOutputs:
         &mut app.registry_handle
     },
     handlers = [
-        { &mut OutputDispatch(&mut app.output_state, &mut app.inner) }
+        { &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData) }
     ]
 );
 

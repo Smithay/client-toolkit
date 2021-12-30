@@ -1,5 +1,6 @@
 use std::{
     fmt::{self, Display, Formatter},
+    marker::PhantomData,
     sync::{Arc, Mutex},
 };
 
@@ -14,17 +15,35 @@ use wayland_protocols::unstable::xdg_output::v1::client::{
 
 use crate::registry::{RegistryHandle, RegistryHandler};
 
-pub trait OutputHandler {
+pub trait OutputHandler<D> {
     /// A new output has been advertised.
-    fn new_output(&mut self, _state: &OutputState, output: wl_output::WlOutput);
+    fn new_output(
+        &mut self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        state: &OutputState,
+        output: wl_output::WlOutput,
+    );
 
     /// An existing output has changed.
-    fn update_output(&mut self, _state: &OutputState, output: wl_output::WlOutput);
+    fn update_output(
+        &mut self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        state: &OutputState,
+        output: wl_output::WlOutput,
+    );
 
     /// An output is no longer advertised.
     ///
     /// The info passed to this function was the state of the output before destruction.
-    fn output_destroyed(&mut self, _state: &OutputState, output: wl_output::WlOutput);
+    fn output_destroyed(
+        &mut self,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        state: &OutputState,
+        output: wl_output::WlOutput,
+    );
 }
 
 #[derive(Debug)]
@@ -192,7 +211,11 @@ pub struct OutputInfo {
 }
 
 #[derive(Debug)]
-pub struct OutputDispatch<'s, H: OutputHandler>(pub &'s mut OutputState, pub &'s mut H);
+pub struct OutputDispatch<'s, D, H: OutputHandler<D>>(
+    pub &'s mut OutputState,
+    pub &'s mut H,
+    pub PhantomData<D>,
+);
 
 #[macro_export]
 macro_rules! delegate_output {
@@ -206,26 +229,28 @@ macro_rules! delegate_output {
         $crate::reexports::client::delegate_dispatch!($ty: <UserData = $crate::output::OutputData> [
             __WlOutput,
             __ZxdgOutputV1
-        ] => $crate::output::OutputDispatch<'_, $inner> ; |$dispatcher| {
+        ] => $crate::output::OutputDispatch<'_, $ty, $inner> ; |$dispatcher| {
             $closure
         });
 
         // Zxdg manager
         $crate::reexports::client::delegate_dispatch!($ty: <UserData = ()> [
             __ZxdgOutputManagerV1
-        ] => $crate::output::OutputDispatch<'_, $inner> ; |$dispatcher| {
+        ] => $crate::output::OutputDispatch<'_, $ty, $inner> ; |$dispatcher| {
             $closure
         });
     };
 }
 
-impl<H: OutputHandler> DelegateDispatchBase<wl_output::WlOutput> for OutputDispatch<'_, H> {
+impl<D, H: OutputHandler<D>> DelegateDispatchBase<wl_output::WlOutput>
+    for OutputDispatch<'_, D, H>
+{
     type UserData = OutputData;
 }
 
-impl<D, H> DelegateDispatch<wl_output::WlOutput, D> for OutputDispatch<'_, H>
+impl<D, H> DelegateDispatch<wl_output::WlOutput, D> for OutputDispatch<'_, D, H>
 where
-    H: OutputHandler,
+    H: OutputHandler<D>,
     D: Dispatch<wl_output::WlOutput, UserData = Self::UserData>,
 {
     fn event(
@@ -233,8 +258,8 @@ where
         output: &wl_output::WlOutput,
         event: wl_output::Event,
         data: &Self::UserData,
-        _cxhandle: &mut ConnectionHandle,
-        _qhandle: &QueueHandle<D>,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
     ) {
         match event {
             wl_output::Event::Geometry {
@@ -388,9 +413,9 @@ where
 
                 if inner.just_created {
                     inner.just_created = false;
-                    self.1.new_output(self.0, output.clone());
+                    self.1.new_output(cx, qh, self.0, output.clone());
                 } else {
-                    self.1.update_output(self.0, output.clone());
+                    self.1.update_output(cx, qh, self.0, output.clone());
                 }
             }
 
@@ -399,16 +424,16 @@ where
     }
 }
 
-impl<H: OutputHandler> DelegateDispatchBase<zxdg_output_manager_v1::ZxdgOutputManagerV1>
-    for OutputDispatch<'_, H>
+impl<D, H: OutputHandler<D>> DelegateDispatchBase<zxdg_output_manager_v1::ZxdgOutputManagerV1>
+    for OutputDispatch<'_, D, H>
 {
     type UserData = ();
 }
 
 impl<D, H> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, D>
-    for OutputDispatch<'_, H>
+    for OutputDispatch<'_, D, H>
 where
-    H: OutputHandler,
+    H: OutputHandler<D>,
     D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = Self::UserData>,
 {
     fn event(
@@ -423,15 +448,15 @@ where
     }
 }
 
-impl<H: OutputHandler> DelegateDispatchBase<zxdg_output_v1::ZxdgOutputV1>
-    for OutputDispatch<'_, H>
+impl<D, H: OutputHandler<D>> DelegateDispatchBase<zxdg_output_v1::ZxdgOutputV1>
+    for OutputDispatch<'_, D, H>
 {
     type UserData = OutputData;
 }
 
-impl<D, H> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputDispatch<'_, H>
+impl<D, H> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputDispatch<'_, D, H>
 where
-    H: OutputHandler,
+    H: OutputHandler<D>,
     D: Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = Self::UserData>,
 {
     fn event(
@@ -439,8 +464,8 @@ where
         output: &zxdg_output_v1::ZxdgOutputV1,
         event: zxdg_output_v1::Event,
         data: &Self::UserData,
-        _cxhandle: &mut ConnectionHandle,
-        _qhandle: &QueueHandle<D>,
+        cx: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
     ) {
         match event {
             // Already provided by wl_output
@@ -498,9 +523,9 @@ where
 
                     if !pending_wl {
                         if just_created {
-                            self.1.new_output(self.0, output);
+                            self.1.new_output(cx, qh, self.0, output);
                         } else {
-                            self.1.update_output(self.0, output);
+                            self.1.update_output(cx, qh, self.0, output);
                         }
                     }
                 }
@@ -511,9 +536,9 @@ where
     }
 }
 
-impl<D, H> RegistryHandler<D> for OutputDispatch<'_, H>
+impl<D, H> RegistryHandler<D> for OutputDispatch<'_, D, H>
 where
-    H: OutputHandler,
+    H: OutputHandler<D>,
     D: Dispatch<wl_output::WlOutput, UserData = OutputData>
         + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
         + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = ()>
@@ -593,7 +618,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32) {
+    fn remove_global(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
         let mut destroyed = vec![];
 
         self.0.outputs.retain(|inner| {
@@ -613,7 +638,7 @@ where
         });
 
         for output in destroyed {
-            self.1.output_destroyed(self.0, output);
+            self.1.output_destroyed(cx, qh, self.0, output);
         }
     }
 }

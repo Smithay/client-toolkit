@@ -73,7 +73,7 @@
 //!     }
 //!
 //!     // When a global is no longer advertised, this function is called to let handlers clean up.
-//!     fn remove_global(&mut self, _cx: &mut ConnectionHandle, _name: u32) {
+//!     fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
 //!         // Do nothing since the compositor is a capability. Peripherals should implement this to avoid
 //!         // keeping around dead objects.
 //!     }
@@ -108,7 +108,7 @@ pub trait RegistryHandler<D> {
     );
 
     /// Called when a global has been destroyed by the compositor.
-    fn remove_global(&mut self, cx: &mut ConnectionHandle, name: u32);
+    fn remove_global(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32);
 }
 
 /// An error when binding a global.
@@ -316,7 +316,7 @@ macro_rules! delegate_registry {
                     Event::GlobalRemove { name } => {
                         $(
                             let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
-                            handler.remove_global(cx, name);
+                            handler.remove_global(cx, qh, name);
                         )*
 
                         handle._remove_cached_global(&name);
