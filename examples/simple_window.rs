@@ -122,16 +122,42 @@ impl SurfaceHandler for InnerApp {
     }
 }
 
-impl OutputHandler for InnerApp {
-    fn new_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
+impl OutputHandler<SimpleWindow> for InnerApp {
+    fn new_output(
+        &mut self,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<SimpleWindow>,
+        _state: &OutputState,
+        _output: wl_output::WlOutput,
+    ) {
+    }
 
-    fn update_output(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
+    fn update_output(
+        &mut self,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<SimpleWindow>,
+        _state: &OutputState,
+        _output: wl_output::WlOutput,
+    ) {
+    }
 
-    fn output_destroyed(&mut self, _state: &OutputState, _output: wl_output::WlOutput) {}
+    fn output_destroyed(
+        &mut self,
+        _cx: &mut ConnectionHandle,
+        _qh: &QueueHandle<SimpleWindow>,
+        _state: &OutputState,
+        _output: wl_output::WlOutput,
+    ) {
+    }
 }
 
 impl ShellHandler<SimpleWindow> for InnerApp {
-    fn request_close(&mut self, _: &Window) {
+    fn request_close(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &Window,
+    ) {
         self.exit = true;
     }
 
@@ -254,7 +280,7 @@ delegate_dispatch!(SimpleWindow: <UserData = WindowData> [xdg_toplevel::XdgTople
 });
 
 delegate_output!(SimpleWindow => InnerApp: |app| {
-    &mut OutputDispatch(&mut app.output_state, &mut app.inner)
+    &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData)
 });
 
 delegate_shm!(SimpleWindow: |app| {
@@ -269,7 +295,7 @@ delegate_registry!(SimpleWindow:
         { &mut app.xdg_shell },
         { &mut app.shm_state },
         { &mut app.compositor_state },
-        { &mut OutputDispatch(&mut app.output_state, &mut app.inner) }
+        { &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData) }
     ]
 );
 

@@ -175,7 +175,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, _cx: &mut ConnectionHandle, name: u32) {
+    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
         if self
             .wl_compositor
             .as_ref()

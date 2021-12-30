@@ -168,7 +168,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, _cx: &mut ConnectionHandle, name: u32) {
+    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
         if let Some((bound_name, _)) = &self.wl_shm {
             if *bound_name == name {
                 // No destructor, simply toss the contents of the option.
