@@ -54,7 +54,7 @@ pub trait ShellHandler<D> {
     /// A request to close the window has been received.
     ///
     /// This typically will be sent if
-    fn request_close(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<D>, window: &Window);
+    fn request_close(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, window: &Window);
 
     /// Called when the compositor asks to resize a window and or change the state of the window.
     ///
@@ -66,7 +66,7 @@ pub trait ShellHandler<D> {
     /// the last one of the batch
     fn configure(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         size: (u32, u32),
         states: Vec<State>,
@@ -110,7 +110,7 @@ impl XdgShellState {
     /// window.
     pub fn create_window<D>(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
         decoration_mode: DecorationMode,
@@ -122,7 +122,7 @@ impl XdgShellState {
             + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
             + 'static,
     {
-        let inner = WindowInner::new(self, cx, qh, surface, decoration_mode)?;
+        let inner = WindowInner::new(self, conn, qh, surface, decoration_mode)?;
         Ok(Window(inner))
     }
 }
@@ -149,8 +149,8 @@ impl Window {
     /// ## Protocol errors
     ///
     /// It is a protocol error to attach a buffer to the surface when sending the initial configure.
-    pub fn map(&self, cx: &mut ConnectionHandle) {
-        self.0.map(cx)
+    pub fn map(&self, conn: &mut ConnectionHandle) {
+        self.0.map(conn)
     }
 
     /// Sets the minimum size of the window.
@@ -167,8 +167,8 @@ impl Window {
     /// ## Double buffering
     ///
     /// This value is double buffered and will not be applied until the next commit of the window.
-    pub fn set_min_size(&self, cx: &mut ConnectionHandle, min_size: (u32, u32)) {
-        self.0.set_min_size(cx, min_size)
+    pub fn set_min_size(&self, conn: &mut ConnectionHandle, min_size: (u32, u32)) {
+        self.0.set_min_size(conn, min_size)
     }
 
     /// Sets the maximum size of the window.
@@ -184,16 +184,16 @@ impl Window {
     /// ## Double buffering
     ///
     /// This value is double buffered and will not be applied until the next commit of the window.
-    pub fn set_max_size(&self, cx: &mut ConnectionHandle, max_size: (u32, u32)) {
-        self.0.set_max_size(cx, max_size)
+    pub fn set_max_size(&self, conn: &mut ConnectionHandle, max_size: (u32, u32)) {
+        self.0.set_max_size(conn, max_size)
     }
 
-    pub fn set_title(&self, cx: &mut ConnectionHandle, title: impl Into<String>) {
-        self.0.set_title(cx, title.into())
+    pub fn set_title(&self, conn: &mut ConnectionHandle, title: impl Into<String>) {
+        self.0.set_title(conn, title.into())
     }
 
-    pub fn set_app_id(&self, cx: &mut ConnectionHandle, app_id: impl Into<String>) {
-        self.0.set_app_id(cx, app_id.into())
+    pub fn set_app_id(&self, conn: &mut ConnectionHandle, app_id: impl Into<String>) {
+        self.0.set_app_id(conn, app_id.into())
     }
 
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
@@ -238,12 +238,12 @@ where
         wm_base: &xdg_wm_base::XdgWmBase,
         event: xdg_wm_base::Event,
         _: &(),
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         _: &QueueHandle<D>,
     ) {
         match event {
             xdg_wm_base::Event::Ping { serial } => {
-                wm_base.pong(cx, serial);
+                wm_base.pong(conn, serial);
             }
 
             _ => unreachable!(),
@@ -292,12 +292,12 @@ where
         surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
         data: &Self::UserData,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         match event {
             xdg_surface::Event::Configure { serial } => {
-                surface.ack_configure(cx, serial);
+                surface.ack_configure(conn, serial);
 
                 let data = data.inner.lock().unwrap();
 
@@ -309,7 +309,7 @@ where
                             if let Some(window) = self.0.window_inner_from_surface(surface) {
                                 H::configure(
                                     self.1,
-                                    cx,
+                                    conn,
                                     qh,
                                     pending_configure.size,
                                     pending_configure.states,
@@ -346,7 +346,7 @@ where
         toplevel: &xdg_toplevel::XdgToplevel,
         event: xdg_toplevel::Event,
         data: &Self::UserData,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -370,7 +370,7 @@ where
 
             xdg_toplevel::Event::Close => {
                 if let Some(window) = self.0.window_inner_from_toplevel(toplevel) {
-                    self.1.request_close(cx, qh, &Window(window));
+                    self.1.request_close(conn, qh, &Window(window));
                 }
 
                 self.0.cleanup();
@@ -431,7 +431,7 @@ where
 {
     fn new_global(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -442,7 +442,7 @@ where
             "xdg_wm_base" => {
                 let wm_base = handle
                     .bind_once::<xdg_wm_base::XdgWmBase, _, _>(
-                        cx,
+                        conn,
                         qh,
                         name,
                         u32::min(version, 3),
@@ -456,7 +456,7 @@ where
             "zxdg_decoration_manager_v1" => {
                 let zxdg_decoration_manager = handle
                     .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
-                        cx,
+                        conn,
                         qh,
                         name,
                         1,
@@ -473,7 +473,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
+    fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
         todo!("xdg shell destruction")
     }
 }

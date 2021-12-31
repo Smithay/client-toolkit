@@ -19,7 +19,7 @@ pub trait OutputHandler<D> {
     /// A new output has been advertised.
     fn new_output(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         state: &OutputState,
         output: wl_output::WlOutput,
@@ -28,7 +28,7 @@ pub trait OutputHandler<D> {
     /// An existing output has changed.
     fn update_output(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         state: &OutputState,
         output: wl_output::WlOutput,
@@ -39,7 +39,7 @@ pub trait OutputHandler<D> {
     /// The info passed to this function was the state of the output before destruction.
     fn output_destroyed(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         state: &OutputState,
         output: wl_output::WlOutput,
@@ -258,7 +258,7 @@ where
         output: &wl_output::WlOutput,
         event: wl_output::Event,
         data: &Self::UserData,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -413,9 +413,9 @@ where
 
                 if inner.just_created {
                     inner.just_created = false;
-                    self.1.new_output(cx, qh, self.0, output.clone());
+                    self.1.new_output(conn, qh, self.0, output.clone());
                 } else {
-                    self.1.update_output(cx, qh, self.0, output.clone());
+                    self.1.update_output(conn, qh, self.0, output.clone());
                 }
             }
 
@@ -464,7 +464,7 @@ where
         output: &zxdg_output_v1::ZxdgOutputV1,
         event: zxdg_output_v1::Event,
         data: &Self::UserData,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -523,9 +523,9 @@ where
 
                     if !pending_wl {
                         if just_created {
-                            self.1.new_output(cx, qh, self.0, output);
+                            self.1.new_output(conn, qh, self.0, output);
                         } else {
-                            self.1.update_output(cx, qh, self.0, output);
+                            self.1.update_output(conn, qh, self.0, output);
                         }
                     }
                 }
@@ -546,7 +546,7 @@ where
 {
     fn new_global(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -556,7 +556,7 @@ where
         match interface {
             "wl_output" => {
                 let wl_output = handle
-                    .bind_cached::<wl_output::WlOutput, _, _, _>(cx, qh, name, || {
+                    .bind_cached::<wl_output::WlOutput, _, _, _>(conn, qh, name, || {
                         (u32::min(version, 4), OutputData::new())
                     })
                     .expect("Failed to bind global");
@@ -583,7 +583,7 @@ where
 
                     let data = wl_output.data::<OutputData>().unwrap().clone();
 
-                    let xdg_output = xdg.get_xdg_output(cx, wl_output, qh, data).unwrap();
+                    let xdg_output = xdg.get_xdg_output(conn, wl_output, qh, data).unwrap();
                     self.0.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
                 }
             }
@@ -591,7 +591,7 @@ where
             "zxdg_output_manager_v1" => {
                 let global = handle
                     .bind_once::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _, _>(
-                        cx,
+                        conn,
                         qh,
                         name,
                         u32::min(version, 3),
@@ -609,7 +609,7 @@ where
                     let data = output.wl_output.data::<OutputData>().unwrap().clone();
 
                     let xdg_output =
-                        xdg.get_xdg_output(cx, output.wl_output.clone(), qh, data).unwrap();
+                        xdg.get_xdg_output(conn, output.wl_output.clone(), qh, data).unwrap();
                     output.xdg_output = Some(xdg_output);
                 });
             }
@@ -618,7 +618,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
+    fn remove_global(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
         let mut destroyed = vec![];
 
         self.0.outputs.retain(|inner| {
@@ -626,10 +626,10 @@ where
 
             if destroy {
                 if let Some(xdg_output) = &inner.xdg_output {
-                    xdg_output.destroy(cx);
+                    xdg_output.destroy(conn);
                 }
 
-                inner.wl_output.release(cx);
+                inner.wl_output.release(conn);
 
                 destroyed.push(inner.wl_output.clone());
             }
@@ -638,7 +638,7 @@ where
         });
 
         for output in destroyed {
-            self.1.output_destroyed(cx, qh, self.0, output);
+            self.1.output_destroyed(conn, qh, self.0, output);
         }
     }
 }

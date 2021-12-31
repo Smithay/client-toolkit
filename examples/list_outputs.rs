@@ -21,7 +21,7 @@ struct InnerApp;
 impl OutputHandler<ListOutputs> for InnerApp {
     fn new_output(
         &mut self,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<ListOutputs>,
         _state: &OutputState,
         _output: wl_output::WlOutput,
@@ -30,7 +30,7 @@ impl OutputHandler<ListOutputs> for InnerApp {
 
     fn update_output(
         &mut self,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<ListOutputs>,
         _state: &OutputState,
         _output: wl_output::WlOutput,
@@ -39,7 +39,7 @@ impl OutputHandler<ListOutputs> for InnerApp {
 
     fn output_destroyed(
         &mut self,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<ListOutputs>,
         _state: &OutputState,
         _output: wl_output::WlOutput,
@@ -62,14 +62,14 @@ delegate_registry!(ListOutputs:
 );
 
 fn main() {
-    let cx = Connection::connect_to_env().unwrap();
+    let conn = Connection::connect_to_env().unwrap();
 
-    let display = cx.handle().display();
+    let display = conn.handle().display();
 
-    let mut event_queue = cx.new_event_queue();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
 
     let mut list_outputs = ListOutputs {
         inner: InnerApp,
