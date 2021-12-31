@@ -23,7 +23,7 @@ impl ShmState {
     pub fn new_simple_pool<D, U>(
         &self,
         len: usize,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         udata: U,
     ) -> Result<SimplePool, CreatePoolError>
@@ -31,7 +31,7 @@ impl ShmState {
         D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
         U: Send + Sync + 'static,
     {
-        Ok(SimplePool { inner: self.new_raw_pool(len, cx, qh, udata)? })
+        Ok(SimplePool { inner: self.new_raw_pool(len, conn, qh, udata)? })
     }
 
     /// Creates a new raw pool.
@@ -40,7 +40,7 @@ impl ShmState {
     pub fn new_raw_pool<D, U>(
         &self,
         len: usize,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         udata: U,
     ) -> Result<RawPool, CreatePoolError>
@@ -50,7 +50,7 @@ impl ShmState {
     {
         let (_, shm) = self.wl_shm.as_ref().ok_or(CreatePoolError::MissingShmGlobal)?;
 
-        RawPool::new(len, shm, cx, qh, udata)
+        RawPool::new(len, shm, conn, qh, udata)
     }
 
     /// Returns the formats supported in memory pools.
@@ -152,7 +152,7 @@ where
 {
     fn new_global(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -161,14 +161,14 @@ where
     ) {
         if interface == "wl_shm" {
             let shm = handle
-                .bind_once::<wl_shm::WlShm, _, _>(cx, qh, name, 1, ())
+                .bind_once::<wl_shm::WlShm, _, _>(conn, qh, name, 1, ())
                 .expect("Failed to bind global");
 
             self.wl_shm = Some((name, shm));
         }
     }
 
-    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
+    fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
         if let Some((bound_name, _)) = &self.wl_shm {
             if *bound_name == name {
                 // No destructor, simply toss the contents of the option.

@@ -23,7 +23,7 @@ pub(crate) struct RustWindow {
 impl RustWindow {
     pub fn new<D>(
         shell: &mut XdgShellState,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
         decoration_mode: DecorationMode,
@@ -46,7 +46,8 @@ impl RustWindow {
 
             let inner = Arc::new(Mutex::new(XdgSurfaceInner::Uninit));
             let xdg_surface_data = XdgSurfaceData { inner };
-            let xdg_surface = wm_base.get_xdg_surface(cx, surface.clone(), qh, xdg_surface_data)?;
+            let xdg_surface =
+                wm_base.get_xdg_surface(conn, surface.clone(), qh, xdg_surface_data)?;
 
             let inner = Arc::new(Mutex::new(XdgToplevelInner {
                 decoration_manager: decoration_manager.clone(),
@@ -68,7 +69,7 @@ impl RustWindow {
             }
 
             let window_data = WindowData { inner };
-            let xdg_toplevel = xdg_surface.get_toplevel(cx, qh, window_data.clone())?;
+            let xdg_toplevel = xdg_surface.get_toplevel(conn, qh, window_data.clone())?;
 
             match decoration_mode {
                 // Do not create the decoration manager.
@@ -79,7 +80,7 @@ impl RustWindow {
                         .as_ref()
                         .map(|manager| {
                             manager.get_toplevel_decoration(
-                                cx,
+                                conn,
                                 xdg_toplevel.clone(),
                                 qh,
                                 window_data.clone(),
@@ -90,7 +91,8 @@ impl RustWindow {
                     if let Some(decoration) = decoration.as_ref() {
                         // Explicitly ask the server for server side decorations
                         if decoration_mode == DecorationMode::ServerSide {
-                            decoration.set_mode(cx, zxdg_toplevel_decoration_v1::Mode::ServerSide);
+                            decoration
+                                .set_mode(conn, zxdg_toplevel_decoration_v1::Mode::ServerSide);
                         }
 
                         window_data.inner.lock().unwrap().decoration = Some(decoration.clone());

@@ -30,14 +30,14 @@ use wayland_protocols::{
 fn main() {
     env_logger::init();
 
-    let cx = Connection::connect_to_env().unwrap();
+    let conn = Connection::connect_to_env().unwrap();
 
-    let display = cx.handle().display();
+    let display = conn.handle().display();
 
-    let mut event_queue = cx.new_event_queue();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
 
     let mut simple_window = SimpleWindow {
         inner: InnerApp {
@@ -64,27 +64,27 @@ fn main() {
         .shm_state
         .new_raw_pool(
             simple_window.inner.width as usize * simple_window.inner.height as usize * 4,
-            &mut cx.handle(),
+            &mut conn.handle(),
             &qh,
             (),
         )
         .expect("Failed to create pool");
     simple_window.inner.pool = Some(pool);
 
-    let surface = simple_window.compositor_state.create_surface(&mut cx.handle(), &qh).unwrap();
+    let surface = simple_window.compositor_state.create_surface(&mut conn.handle(), &qh).unwrap();
 
     let window = simple_window
         .xdg_shell
-        .create_window(&mut cx.handle(), &qh, surface.clone(), DecorationMode::ServerDecides)
+        .create_window(&mut conn.handle(), &qh, surface.clone(), DecorationMode::ServerDecides)
         .expect("window");
 
-    window.set_title(&mut cx.handle(), "A wayland window");
+    window.set_title(&mut conn.handle(), "A wayland window");
     // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-    window.set_app_id(&mut cx.handle(), "io.github.smithay.client-toolkit.SimpleWindow");
-    window.set_min_size(&mut cx.handle(), (256, 256));
+    window.set_app_id(&mut conn.handle(), "io.github.smithay.client-toolkit.SimpleWindow");
+    window.set_min_size(&mut conn.handle(), (256, 256));
 
     // Map the window so we receive the initial configure and can render.
-    window.map(&mut cx.handle());
+    window.map(&mut conn.handle());
 
     simple_window.inner.window = Some(window);
 
@@ -123,7 +123,7 @@ impl SurfaceHandler<SimpleWindow> for InnerApp {
     fn scale_factor_changed(
         &mut self,
         _: &mut CompositorState,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<SimpleWindow>,
         _surface: &wl_surface::WlSurface,
         _new_factor: i32,
@@ -134,19 +134,19 @@ impl SurfaceHandler<SimpleWindow> for InnerApp {
     fn frame(
         &mut self,
         _: &mut CompositorState,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<SimpleWindow>,
         _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.draw(cx, qh);
+        self.draw(conn, qh);
     }
 }
 
 impl OutputHandler<SimpleWindow> for InnerApp {
     fn new_output(
         &mut self,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<SimpleWindow>,
         _state: &OutputState,
         _output: wl_output::WlOutput,
@@ -155,7 +155,7 @@ impl OutputHandler<SimpleWindow> for InnerApp {
 
     fn update_output(
         &mut self,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<SimpleWindow>,
         _state: &OutputState,
         _output: wl_output::WlOutput,
@@ -164,7 +164,7 @@ impl OutputHandler<SimpleWindow> for InnerApp {
 
     fn output_destroyed(
         &mut self,
-        _cx: &mut ConnectionHandle,
+        _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<SimpleWindow>,
         _state: &OutputState,
         _output: wl_output::WlOutput,
@@ -184,7 +184,7 @@ impl ShellHandler<SimpleWindow> for InnerApp {
 
     fn configure(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<SimpleWindow>,
         size: (u32, u32),
         _: Vec<State>, // We don't particularly care for the states at the moment.
@@ -201,25 +201,25 @@ impl ShellHandler<SimpleWindow> for InnerApp {
         // Initiate the first draw.
         if self.first_configure {
             self.first_configure = false;
-            self.draw(cx, qh);
+            self.draw(conn, qh);
         }
     }
 }
 
 impl InnerApp {
-    pub fn draw(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
+    pub fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
         if let Some(window) = self.window.as_ref() {
             // Ensure the pool is big enough to hold the new buffer.
             self.pool
                 .as_mut()
                 .unwrap()
-                .resize((self.width * self.height * 4) as usize, cx)
+                .resize((self.width * self.height * 4) as usize, conn)
                 .expect("resize pool");
 
             // Destroy the old buffer.
             // FIXME: Integrate this into the pool logic.
             self.buffer.take().map(|buffer| {
-                buffer.destroy(cx);
+                buffer.destroy(conn);
             });
 
             let offset = 0;
@@ -234,7 +234,7 @@ impl InnerApp {
                     stride,
                     wl_shm::Format::Argb8888,
                     (),
-                    cx,
+                    conn,
                     &qh,
                 )
                 .expect("create buffer");
@@ -268,13 +268,13 @@ impl InnerApp {
             // Request our next frame
             window
                 .wl_surface()
-                .frame(cx, qh, window.wl_surface().clone())
+                .frame(conn, qh, window.wl_surface().clone())
                 .expect("create callback");
 
             assert!(self.buffer.is_some(), "No buffer?");
             // Attach and commit to present.
-            window.wl_surface().attach(cx, self.buffer.clone(), 0, 0);
-            window.wl_surface().commit(cx);
+            window.wl_surface().attach(conn, self.buffer.clone(), 0, 0);
+            window.wl_surface().commit(conn);
         }
     }
 }
@@ -335,11 +335,11 @@ delegate_registry!(SimpleWindow:
 //         _: &wl_callback::WlCallback,
 //         event: wl_callback::Event,
 //         _: &Self::UserData,
-//         cx: &mut ConnectionHandle,
+//         conn: &mut ConnectionHandle,
 //         qh: &QueueHandle<Self>,
 //     ) {
 //         if let wl_callback::Event::Done { .. } = event {
-//             self.inner.draw(cx, qh);
+//             self.inner.draw(conn, qh);
 //         }
 //     }
 // }

@@ -9,14 +9,14 @@ struct ListShmFormats {
 }
 
 fn main() {
-    let cx = Connection::connect_to_env().unwrap();
+    let conn = Connection::connect_to_env().unwrap();
 
-    let display = cx.handle().display();
+    let display = conn.handle().display();
 
-    let mut event_queue = cx.new_event_queue();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&mut cx.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
     let mut list_formats = ListShmFormats {
         registry_handle: RegistryHandle::new(registry),
         shm_state: ShmState::new(),

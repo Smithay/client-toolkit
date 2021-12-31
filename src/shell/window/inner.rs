@@ -26,7 +26,7 @@ pub(crate) enum WindowInner {
 impl WindowInner {
     pub fn new<D>(
         shell: &mut XdgShellState,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
         decoration_mode: DecorationMode,
@@ -38,24 +38,29 @@ impl WindowInner {
             + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
             + 'static,
     {
-        let inner =
-            Arc::new(WindowInner::Rust(RustWindow::new(shell, cx, qh, surface, decoration_mode)?));
+        let inner = Arc::new(WindowInner::Rust(RustWindow::new(
+            shell,
+            conn,
+            qh,
+            surface,
+            decoration_mode,
+        )?));
 
         shell.windows.push(Arc::downgrade(&inner));
 
         Ok(inner)
     }
 
-    pub fn map(&self, cx: &mut ConnectionHandle) {
+    pub fn map(&self, conn: &mut ConnectionHandle) {
         match self {
-            WindowInner::Rust(window) => window.wl_surface.commit(cx),
+            WindowInner::Rust(window) => window.wl_surface.commit(conn),
         }
     }
 
-    pub fn set_min_size(&self, cx: &mut ConnectionHandle, min_size: (u32, u32)) {
+    pub fn set_min_size(&self, conn: &mut ConnectionHandle, min_size: (u32, u32)) {
         match self {
             WindowInner::Rust(window) => {
-                window.xdg_toplevel.set_min_size(cx, min_size.0 as i32, min_size.1 as i32);
+                window.xdg_toplevel.set_min_size(conn, min_size.0 as i32, min_size.1 as i32);
 
                 let mut toplevel = window.toplevel.lock().unwrap();
                 toplevel.min_size = min_size;
@@ -63,10 +68,10 @@ impl WindowInner {
         }
     }
 
-    pub fn set_max_size(&self, cx: &mut ConnectionHandle, max_size: (u32, u32)) {
+    pub fn set_max_size(&self, conn: &mut ConnectionHandle, max_size: (u32, u32)) {
         match self {
             WindowInner::Rust(window) => {
-                window.xdg_toplevel.set_max_size(cx, max_size.0 as i32, max_size.1 as i32);
+                window.xdg_toplevel.set_max_size(conn, max_size.0 as i32, max_size.1 as i32);
 
                 let mut toplevel = window.toplevel.lock().unwrap();
                 toplevel.max_size = max_size;
@@ -74,10 +79,10 @@ impl WindowInner {
         }
     }
 
-    pub fn set_title(&self, cx: &mut ConnectionHandle, title: String) {
+    pub fn set_title(&self, conn: &mut ConnectionHandle, title: String) {
         match self {
             WindowInner::Rust(window) => {
-                window.xdg_toplevel.set_title(cx, title.clone());
+                window.xdg_toplevel.set_title(conn, title.clone());
 
                 let mut toplevel = window.toplevel.lock().unwrap();
                 toplevel.title = Some(title);
@@ -85,10 +90,10 @@ impl WindowInner {
         }
     }
 
-    pub fn set_app_id(&self, cx: &mut ConnectionHandle, app_id: String) {
+    pub fn set_app_id(&self, conn: &mut ConnectionHandle, app_id: String) {
         match self {
             WindowInner::Rust(window) => {
-                window.xdg_toplevel.set_app_id(cx, app_id.clone());
+                window.xdg_toplevel.set_app_id(conn, app_id.clone());
 
                 let mut toplevel = window.toplevel.lock().unwrap();
                 toplevel.app_id = Some(app_id);
