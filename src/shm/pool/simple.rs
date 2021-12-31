@@ -16,7 +16,7 @@ impl SimplePool {
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
     /// current size of the pool, this function will do nothing.
-    pub fn resize(&mut self, size: usize, cx: &mut ConnectionHandle) -> io::Result<()> {
-        self.inner.resize(size, cx)
+    pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
+        self.inner.resize(size, conn)
     }
 }

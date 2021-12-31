@@ -43,11 +43,11 @@ impl RawPool {
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
     /// current size of the pool, this function will do nothing.
-    pub fn resize(&mut self, size: usize, cx: &mut ConnectionHandle) -> io::Result<()> {
+    pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
         if size > self.len {
             self.len = size;
             self.mem_file.set_len(size as u64)?;
-            self.pool.resize(cx, size as i32);
+            self.pool.resize(conn, size as i32);
             self.mmap = unsafe { MmapMut::map_mut(&self.mem_file) }?;
         }
 
@@ -81,7 +81,7 @@ impl RawPool {
         stride: i32,
         format: wl_shm::Format,
         udata: U,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) -> Result<wl_buffer::WlBuffer, InvalidId>
     where
@@ -89,7 +89,7 @@ impl RawPool {
         U: Send + Sync + 'static,
     {
         let buffer =
-            self.pool.create_buffer(cx, offset, width, height, stride, format, qh, udata)?;
+            self.pool.create_buffer(conn, offset, width, height, stride, format, qh, udata)?;
 
         Ok(buffer)
     }
@@ -103,8 +103,8 @@ impl RawPool {
     ///
     /// This will not free the memory associated with any created buffers. You will need to destroy any
     /// existing buffers created from the pool to free the memory.
-    pub fn destroy(self, cx: &mut ConnectionHandle) {
-        self.pool.destroy(cx);
+    pub fn destroy(self, conn: &mut ConnectionHandle) {
+        self.pool.destroy(conn);
     }
 }
 
@@ -128,7 +128,7 @@ impl RawPool {
     pub(crate) fn new<D, U>(
         len: usize,
         shm: &wl_shm::WlShm,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         udata: U,
     ) -> Result<RawPool, CreatePoolError>
@@ -140,7 +140,7 @@ impl RawPool {
         let mem_file = unsafe { File::from_raw_fd(shm_fd) };
         mem_file.set_len(len as u64)?;
 
-        let pool = shm.create_pool(cx, shm_fd, len as i32, qh, udata)?;
+        let pool = shm.create_pool(conn, shm_fd, len as i32, qh, udata)?;
         let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
 
         Ok(RawPool { pool, len, mem_file, mmap })

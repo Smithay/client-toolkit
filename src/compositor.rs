@@ -34,7 +34,7 @@ pub trait SurfaceHandler<D> {
     fn scale_factor_changed(
         &mut self,
         state: &mut CompositorState,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         surface: &wl_surface::WlSurface,
         new_factor: i32,
@@ -47,7 +47,7 @@ pub trait SurfaceHandler<D> {
     fn frame(
         &mut self,
         state: &mut CompositorState,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         surface: &wl_surface::WlSurface,
         time: u32,
@@ -66,7 +66,7 @@ impl CompositorState {
 
     pub fn create_surface<D>(
         &self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) -> Result<wl_surface::WlSurface, SurfaceError>
     where
@@ -76,7 +76,7 @@ impl CompositorState {
             self.wl_compositor.as_ref().ok_or(SurfaceError::MissingCompositorGlobal)?;
 
         let surface = compositor.create_surface(
-            cx,
+            conn,
             qh,
             SurfaceData {
                 scale_factor: AtomicI32::new(1),
@@ -126,7 +126,7 @@ where
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
         data: &Self::UserData,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         let mut outputs = data.outputs.lock().unwrap();
@@ -159,7 +159,7 @@ where
             data.scale_factor.store(factor, Ordering::SeqCst);
 
             if current != factor {
-                self.1.scale_factor_changed(self.0, cx, qh, surface, factor);
+                self.1.scale_factor_changed(self.0, conn, qh, surface, factor);
             }
         }
     }
@@ -204,12 +204,12 @@ where
         _: &wl_callback::WlCallback,
         event: wl_callback::Event,
         surface: &Self::UserData,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         match event {
             wl_callback::Event::Done { callback_data } => {
-                self.1.frame(self.0, cx, qh, surface, callback_data);
+                self.1.frame(self.0, conn, qh, surface, callback_data);
             }
 
             _ => unreachable!(),
@@ -223,7 +223,7 @@ where
 {
     fn new_global(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -233,7 +233,7 @@ where
         if interface == "wl_compositor" {
             let compositor = handle
                 .bind_once::<wl_compositor::WlCompositor, _, _>(
-                    cx,
+                    conn,
                     qh,
                     name,
                     u32::min(version, 4),
@@ -245,7 +245,7 @@ where
         }
     }
 
-    fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
+    fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
         if self
             .wl_compositor
             .as_ref()

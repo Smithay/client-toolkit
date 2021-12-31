@@ -40,7 +40,7 @@
 //!     // When a global is advertised, this function is called to let handlers see the new global.
 //!     fn new_global(
 //!         &mut self,
-//!         cx: &mut ConnectionHandle,
+//!         conn: &mut ConnectionHandle,
 //!         qh: &QueueHandle<D>,
 //!         name: u32,
 //!         interface: &str,
@@ -50,7 +50,7 @@
 //!         if interface == "wl_compositor" {
 //!             // You can bind a global like normal.
 //!             let _compositor = handle.bind_once::<wl_compositor::WlCompositor, _, _>(
-//!                 cx,
+//!                 conn,
 //!                 qh,
 //!                 name,
 //!                 1, // we want to bind version 1 of the global.
@@ -59,7 +59,7 @@
 //!
 //!             // Or you can cache the bound global if it will be bound by multiple delegates.
 //!             let _cached_compositor = handle.bind_cached::<wl_compositor::WlCompositor, _, _, _>(
-//!                 cx,
+//!                 conn,
 //!                 qh,
 //!                 name,
 //!                 || {
@@ -72,7 +72,7 @@
 //!     }
 //!
 //!     // When a global is no longer advertised, this function is called to let handlers clean up.
-//!     fn remove_global(&mut self, _cx: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
+//!     fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
 //!         // Do nothing since the compositor is a capability. Peripherals should implement this to avoid
 //!         // keeping around dead objects.
 //!     }
@@ -98,7 +98,7 @@ pub trait RegistryHandler<D> {
     /// The provided registry handle may be used to bind the global.
     fn new_global(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -107,7 +107,7 @@ pub trait RegistryHandler<D> {
     );
 
     /// Called when a global has been destroyed by the compositor.
-    fn remove_global(&mut self, cx: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32);
+    fn remove_global(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32);
 }
 
 /// An error when binding a global.
@@ -152,7 +152,7 @@ impl RegistryHandle {
     /// A protocol error will be risen if the global has not yet been advertised.
     pub fn bind_once<I, D, U>(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         version: u32,
@@ -174,7 +174,7 @@ impl RegistryHandle {
             );
         }
 
-        let global = self.registry.bind::<I, _>(cx, name, version, qh, udata)?;
+        let global = self.registry.bind::<I, _>(conn, name, version, qh, udata)?;
 
         log::debug!(target: "sctk", "Bound new global [{}] {} v{}", name, I::interface().name, version);
 
@@ -192,7 +192,7 @@ impl RegistryHandle {
     /// A protocol error will be risen if the global has not yet been advertised.
     pub fn bind_cached<I, D, F, U>(
         &mut self,
-        cx: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         f: F,
@@ -208,7 +208,7 @@ impl RegistryHandle {
                 // Ensure the requested interface is the same.
                 if I::interface().name == cached.interface {
                     // Create a new handle for the existing global.
-                    Ok(I::from_id(cx, cached.id.clone())?)
+                    Ok(I::from_id(conn, cached.id.clone())?)
                 } else {
                     Err(BindError::IncorrectInterface)
                 }
@@ -217,7 +217,7 @@ impl RegistryHandle {
             // First bind of a global.
             None => {
                 let (version, udata) = f();
-                let global = self.registry.bind::<I, _>(cx, name, version, qh, udata)?;
+                let global = self.registry.bind::<I, _>(conn, name, version, qh, udata)?;
 
                 log::debug!(target: "sctk", "Bound new cached global [{}] {} v{}", name, I::interface().name, version);
 
@@ -294,7 +294,7 @@ macro_rules! delegate_registry {
                 registry: &$crate::reexports::client::protocol::wl_registry::WlRegistry,
                 event: $crate::reexports::client::protocol::wl_registry::Event,
                 _: &(),
-                cx: &mut $crate::reexports::client::ConnectionHandle<'_>,
+                conn: &mut $crate::reexports::client::ConnectionHandle<'_>,
                 qh: &$crate::reexports::client::QueueHandle<Self>,
             ) {
                 use $crate::registry::RegistryHandler;
@@ -308,14 +308,14 @@ macro_rules! delegate_registry {
                     Event::Global { name, interface, version } => {
                         $(
                             let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
-                            handler.new_global(cx, qh, name, &interface[..], version, handle);
+                            handler.new_global(conn, qh, name, &interface[..], version, handle);
                         )*
                     }
 
                     Event::GlobalRemove { name } => {
                         $(
                             let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
-                            handler.remove_global(cx, qh, name);
+                            handler.remove_global(conn, qh, name);
                         )*
 
                         handle._remove_cached_global(&name);
