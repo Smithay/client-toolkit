@@ -5,9 +5,8 @@ use smithay_client_toolkit::{
     delegate_output, delegate_registry, delegate_shm,
     output::{OutputDispatch, OutputHandler, OutputState},
     registry::RegistryHandle,
-    shell::window::{
-        DecorationMode, ShellHandler, Window, WindowData, XdgShellDispatch, XdgShellState,
-        XdgSurfaceData,
+    shell::xdg::{
+        window::Window, XdgShellDispatch, XdgShellHandler, XdgShellState, XdgSurfaceData,
     },
     shm::{pool::raw::RawPool, ShmState},
 };
@@ -75,16 +74,16 @@ fn main() {
 
     let window = simple_window
         .xdg_shell
-        .create_window(&mut conn.handle(), &qh, surface.clone(), DecorationMode::ServerDecides)
+        .create_window(&mut conn.handle(), &qh, surface.clone())
         .expect("window");
 
     window.set_title(&mut conn.handle(), "A wayland window");
     // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
     window.set_app_id(&mut conn.handle(), "io.github.smithay.client-toolkit.SimpleWindow");
-    window.set_min_size(&mut conn.handle(), (256, 256));
+    window.set_min_size(&mut conn.handle(), Some((256, 256)));
 
     // Map the window so we receive the initial configure and can render.
-    window.map(&mut conn.handle());
+    window.map(&mut conn.handle(), &qh);
 
     simple_window.inner.window = Some(window);
 
@@ -172,30 +171,35 @@ impl OutputHandler<SimpleWindow> for InnerApp {
     }
 }
 
-impl ShellHandler<SimpleWindow> for InnerApp {
-    fn request_close(
+impl XdgShellHandler<SimpleWindow> for InnerApp {
+    fn request_close_window(
         &mut self,
         _: &mut ConnectionHandle,
         _: &QueueHandle<SimpleWindow>,
+        _: &mut XdgShellState,
         _: &Window,
     ) {
         self.exit = true;
     }
 
-    fn configure(
+    fn configure_window(
         &mut self,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<SimpleWindow>,
-        size: (u32, u32),
+        size: Option<(u32, u32)>,
         _: Vec<State>, // We don't particularly care for the states at the moment.
+        _: &mut XdgShellState,
         _: &Window,
     ) {
-        if size == (0, 0) {
-            self.width = 256;
-            self.height = 256;
-        } else {
-            self.width = size.0;
-            self.height = size.1;
+        match size {
+            Some(size) => {
+                self.width = size.0;
+                self.height = size.1;
+            }
+            None => {
+                self.width = 256;
+                self.height = 256;
+            }
         }
 
         // Initiate the first draw.
@@ -273,7 +277,7 @@ impl InnerApp {
 
             assert!(self.buffer.is_some(), "No buffer?");
             // Attach and commit to present.
-            window.wl_surface().attach(conn, self.buffer.clone(), 0, 0);
+            window.wl_surface().attach(conn, self.buffer.as_ref(), 0, 0);
             window.wl_surface().commit(conn);
         }
     }
@@ -303,7 +307,7 @@ delegate_dispatch!(SimpleWindow: <UserData = XdgSurfaceData> [xdg_surface::XdgSu
     &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
 });
 
-delegate_dispatch!(SimpleWindow: <UserData = WindowData> [xdg_toplevel::XdgToplevel, zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1] => XdgShellDispatch<'_, SimpleWindow, InnerApp> ; |app| {
+delegate_dispatch!(SimpleWindow: <UserData = XdgSurfaceData> [xdg_toplevel::XdgToplevel, zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1] => XdgShellDispatch<'_, SimpleWindow, InnerApp> ; |app| {
     &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
 });
 
