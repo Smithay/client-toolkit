@@ -583,7 +583,7 @@ where
 
                     let data = wl_output.data::<OutputData>().unwrap().clone();
 
-                    let xdg_output = xdg.get_xdg_output(conn, wl_output, qh, data).unwrap();
+                    let xdg_output = xdg.get_xdg_output(conn, &wl_output, qh, data).unwrap();
                     self.0.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
                 }
             }
@@ -608,8 +608,7 @@ where
                 self.0.outputs.iter_mut().for_each(|output| {
                     let data = output.wl_output.data::<OutputData>().unwrap().clone();
 
-                    let xdg_output =
-                        xdg.get_xdg_output(conn, output.wl_output.clone(), qh, data).unwrap();
+                    let xdg_output = xdg.get_xdg_output(conn, &output.wl_output, qh, data).unwrap();
                     output.xdg_output = Some(xdg_output);
                 });
             }
