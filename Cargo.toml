@@ -19,10 +19,10 @@ lazy_static = "1.0"
 memmap2 = "0.3.0"
 log = "0.4"
 thiserror = "1.0.30"
-wayland-backend = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
-wayland-client = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
-wayland-protocols = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317", features = ["client", "unstable_protocols"] }
-wayland-cursor = { git = "https://github.com/Smithay/wayland-rs", branch = "rework-317" }
+wayland-backend = "0.1.0-alpha1"
+wayland-client = "0.30.0-alpha1"
+wayland-protocols = { version = "0.30.0-alpha1", features = ["client", "unstable_protocols"] }
+wayland-cursor = "0.30.0-alpha1"
 calloop = { version = "0.9.1", optional = true }
 
 [features]
