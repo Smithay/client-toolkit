@@ -339,6 +339,29 @@ impl SeatHandler<SimpleWindow> for InnerApp {
         _: u32,
     ) {
     }
+
+    fn pointer_focus(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<SimpleWindow>,
+        state: &mut SeatState,
+        pointer: &wayland_client::protocol::wl_pointer::WlPointer,
+        surface: &wl_surface::WlSurface,
+        entered: (f64, f64),
+    ) {
+        todo!()
+    }
+
+    fn pointer_release_focus(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<SimpleWindow>,
+        state: &mut SeatState,
+        pointer: &wayland_client::protocol::wl_pointer::WlPointer,
+        surface: &wl_surface::WlSurface,
+    ) {
+        todo!()
+    }
 }
 
 impl InnerApp {
