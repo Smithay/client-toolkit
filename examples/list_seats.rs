@@ -102,7 +102,7 @@ impl SeatHandler<ListSeats> for InnerApp {
         _: &wl_keyboard::WlKeyboard,
         _: &wl_surface::WlSurface,
     ) {
-        todo!()
+        unreachable!()
     }
 
     fn keyboard_release_focus(
@@ -113,7 +113,7 @@ impl SeatHandler<ListSeats> for InnerApp {
         _: &wl_keyboard::WlKeyboard,
         _: &wl_surface::WlSurface,
     ) {
-        todo!()
+        unreachable!()
     }
 
     fn keyboard_press_key(
@@ -125,7 +125,7 @@ impl SeatHandler<ListSeats> for InnerApp {
         _: u32,
         _: u32,
     ) {
-        todo!()
+        unreachable!()
     }
 
     fn keyboard_release_key(
@@ -137,7 +137,7 @@ impl SeatHandler<ListSeats> for InnerApp {
         _: u32,
         _: u32,
     ) {
-        todo!()
+        unreachable!()
     }
 
     fn keyboard_update_modifiers(
@@ -148,7 +148,7 @@ impl SeatHandler<ListSeats> for InnerApp {
         _: &wl_keyboard::WlKeyboard,
         // TODO: Other params
     ) {
-        todo!()
+        unreachable!()
     }
 
     fn keyboard_update_repeat_info(
@@ -160,7 +160,30 @@ impl SeatHandler<ListSeats> for InnerApp {
         _: u32,
         _: u32,
     ) {
-        todo!()
+        unreachable!()
+    }
+
+    fn pointer_focus(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<ListSeats>,
+        _: &mut SeatState,
+        _: &wayland_client::protocol::wl_pointer::WlPointer,
+        _: &wl_surface::WlSurface,
+        _: (f64, f64),
+    ) {
+        unreachable!()
+    }
+
+    fn pointer_release_focus(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<ListSeats>,
+        _: &mut SeatState,
+        _: &wayland_client::protocol::wl_pointer::WlPointer,
+        _: &wl_surface::WlSurface,
+    ) {
+        unreachable!()
     }
 }
 
