@@ -359,10 +359,11 @@ enum PointerFrame {
 }
 
 impl PointerFrame {
+    /// Initializes a frame as having some
     pub fn axis(time: u32, frame: &mut Option<PointerFrame>) -> AxisFrame<'_> {
         match frame {
-            Some(PointerFrame::Axis { time, horizontal_axe, vertical_axe, .. }) => {
-                AxisFrame { time, horizontal_axe, vertical_axe }
+            Some(PointerFrame::Axis { time, horizontal_axe, vertical_axe, source }) => {
+                AxisFrame { time, horizontal_axe, vertical_axe, source }
             }
 
             Some(_) => panic!("Different type of pointer frame already exists"),
@@ -375,10 +376,10 @@ impl PointerFrame {
                     source: None,
                 });
 
-                if let PointerFrame::Axis { time, horizontal_axe, vertical_axe, .. } =
+                if let PointerFrame::Axis { time, horizontal_axe, vertical_axe, source } =
                     frame.as_mut().unwrap()
                 {
-                    AxisFrame { time, horizontal_axe, vertical_axe }
+                    AxisFrame { time, horizontal_axe, vertical_axe, source }
                 } else {
                     unreachable!()
                 }
@@ -403,6 +404,7 @@ struct AxisFrame<'f> {
     time: &'f mut u32,
     horizontal_axe: &'f mut Option<Axis>,
     vertical_axe: &'f mut Option<Axis>,
+    source: &'f mut Option<wl_pointer::AxisSource>,
 }
 
 impl<D, H> DelegateDispatchBase<wl_seat::WlSeat> for SeatDispatch<'_, D, H>
@@ -686,25 +688,10 @@ where
 
             wl_pointer::Event::AxisSource { axis_source } => match axis_source {
                 WEnum::Value(axis_source) => {
-                    /*
-                    We can assume there must be an axis frame per the protocol:
+                    let mut guard = data.pointer_frame.lock().unwrap();
+                    let frame = PointerFrame::axis(0, &mut *guard);
 
-                    > This event does not occur on its own.
-                    > It is sent before a wl_pointer.frame event and carries the source information for
-                    > all events within that frame.
-
-                    Since the protocol says there must
-                    */
-                    if let Some(PointerFrame::Axis { source, .. }) =
-                        &mut *data.pointer_frame.lock().unwrap()
-                    {
-                        *source = Some(axis_source);
-                    } else {
-                        log::error!(
-                            target: "sctk",
-                            "likely non-compliant compositor sending axis source before any other events in the frame"
-                        );
-                    }
+                    *frame.source = Some(axis_source);
                 }
 
                 WEnum::Unknown(unknown) => {
