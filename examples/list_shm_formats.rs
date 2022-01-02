@@ -9,6 +9,7 @@ struct ListShmFormats {
 }
 
 fn main() {
+    env_logger::init();
     let conn = Connection::connect_to_env().unwrap();
 
     let display = conn.handle().display();
