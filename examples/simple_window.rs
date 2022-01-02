@@ -5,6 +5,7 @@ use smithay_client_toolkit::{
     delegate_output, delegate_registry, delegate_shm,
     output::{OutputDispatch, OutputHandler, OutputState},
     registry::RegistryHandle,
+    seat::{Capability, SeatData, SeatDispatch, SeatHandler, SeatState},
     shell::xdg::{
         window::Window, XdgShellDispatch, XdgShellHandler, XdgShellState, XdgSurfaceData,
     },
@@ -12,7 +13,9 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     delegate_dispatch,
-    protocol::{wl_buffer, wl_callback, wl_compositor, wl_output, wl_shm, wl_surface},
+    protocol::{
+        wl_buffer, wl_callback, wl_compositor, wl_keyboard, wl_output, wl_seat, wl_shm, wl_surface,
+    },
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
 use wayland_protocols::{
@@ -47,9 +50,12 @@ fn main() {
             height: 256,
             buffer: None,
             window: None,
+            keyboard: None,
+            keyboard_focus: false,
         },
 
         registry_handle: RegistryHandle::new(registry),
+        seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
         shm_state: ShmState::new(),
@@ -101,7 +107,9 @@ fn main() {
 
 struct SimpleWindow {
     inner: InnerApp,
+
     registry_handle: RegistryHandle,
+    seat_state: SeatState,
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: ShmState,
@@ -116,6 +124,8 @@ struct InnerApp {
     height: u32,
     buffer: Option<wl_buffer::WlBuffer>,
     window: Option<Window>,
+    keyboard: Option<wl_keyboard::WlKeyboard>,
+    keyboard_focus: bool,
 }
 
 impl SurfaceHandler<SimpleWindow> for InnerApp {
@@ -127,7 +137,7 @@ impl SurfaceHandler<SimpleWindow> for InnerApp {
         _surface: &wl_surface::WlSurface,
         _new_factor: i32,
     ) {
-        // TODO
+        // Not needed for this example.
     }
 
     fn frame(
@@ -207,6 +217,127 @@ impl XdgShellHandler<SimpleWindow> for InnerApp {
             self.first_configure = false;
             self.draw(conn, qh);
         }
+    }
+}
+
+impl SeatHandler<SimpleWindow> for InnerApp {
+    fn new_seat(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: wl_seat::WlSeat,
+    ) {
+    }
+
+    fn new_capability(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<SimpleWindow>,
+        state: &mut SeatState,
+        seat: wl_seat::WlSeat,
+        capability: Capability,
+    ) {
+        if capability == Capability::Keyboard && self.keyboard.is_none() {
+            println!("Set keyboard capability");
+            let keyboard = state.get_keyboard(conn, qh, &seat).expect("Failed to create keyboard");
+            self.keyboard = Some(keyboard);
+        }
+    }
+
+    fn remove_capability(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: wl_seat::WlSeat,
+        capability: Capability,
+    ) {
+        if capability == Capability::Keyboard && self.keyboard.is_some() {
+            println!("Unset keyboard capability");
+        }
+    }
+
+    fn remove_seat(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: wl_seat::WlSeat,
+    ) {
+    }
+
+    fn keyboard_focus(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: &wl_keyboard::WlKeyboard,
+        surface: &wl_surface::WlSurface,
+    ) {
+        if Some(surface) == self.window.as_ref().map(Window::wl_surface) {
+            println!("Keyboard focus on window");
+            self.keyboard_focus = true;
+        }
+    }
+
+    fn keyboard_release_focus(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: &wl_keyboard::WlKeyboard,
+        surface: &wl_surface::WlSurface,
+    ) {
+        if Some(surface) == self.window.as_ref().map(Window::wl_surface) {
+            println!("Release keyboard focus on window");
+            self.keyboard_focus = false;
+        }
+    }
+
+    fn keyboard_press_key(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: &wl_keyboard::WlKeyboard,
+        time: u32,
+        key: u32,
+    ) {
+        println!("Key press: {} @ {}", key, time);
+    }
+
+    fn keyboard_release_key(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: &wl_keyboard::WlKeyboard,
+        time: u32,
+        key: u32,
+    ) {
+        println!("Key release: {} @ {}", key, time);
+    }
+
+    fn keyboard_update_modifiers(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: &wl_keyboard::WlKeyboard,
+        // TODO: Other params
+    ) {
+    }
+
+    fn keyboard_update_repeat_info(
+        &mut self,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<SimpleWindow>,
+        _: &mut SeatState,
+        _: &wl_keyboard::WlKeyboard,
+        _: u32,
+        _: u32,
+    ) {
     }
 }
 
@@ -311,6 +442,10 @@ delegate_dispatch!(SimpleWindow: <UserData = XdgSurfaceData> [xdg_toplevel::XdgT
     &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
 });
 
+delegate_dispatch!(SimpleWindow: <UserData = SeatData> [wl_seat::WlSeat, wl_keyboard::WlKeyboard] => SeatDispatch<'_, SimpleWindow, InnerApp> ; |app| {
+    &mut SeatDispatch(&mut app.seat_state, &mut app.inner, PhantomData)
+});
+
 delegate_output!(SimpleWindow => InnerApp: |app| {
     &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData)
 });
@@ -327,26 +462,10 @@ delegate_registry!(SimpleWindow:
         { &mut app.xdg_shell },
         { &mut app.shm_state },
         { &mut app.compositor_state },
-        { &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData) }
+        { &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData) },
+        { &mut SeatDispatch(&mut app.seat_state, &mut app.inner, PhantomData) }
     ]
 );
-
-// impl Dispatch<wl_callback::WlCallback> for SimpleWindow {
-//     type UserData = ();
-
-//     fn event(
-//         &mut self,
-//         _: &wl_callback::WlCallback,
-//         event: wl_callback::Event,
-//         _: &Self::UserData,
-//         conn: &mut ConnectionHandle,
-//         qh: &QueueHandle<Self>,
-//     ) {
-//         if let wl_callback::Event::Done { .. } = event {
-//             self.inner.draw(conn, qh);
-//         }
-//     }
-// }
 
 // TODO
 impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {
