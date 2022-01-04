@@ -5,6 +5,19 @@ use wayland_client::{
 
 use super::{SeatData, SeatHandler, SeatState};
 
+/// Describes a kind of pointer axis event.
+#[derive(Debug, Clone, Copy)]
+pub enum AxisKind {
+    /// The axis scrolling is in an absolute number of pixels.
+    Absolute(f64),
+
+    /// The axis scrolling is in discrete units of lines or columns.
+    Discrete(i32),
+
+    /// The axis scrolling was stopped.
+    Stop,
+}
+
 pub trait PointerHandler: SeatHandler + Sized {
     /// The pointer focus is set to a surface.
     ///
@@ -27,9 +40,54 @@ pub trait PointerHandler: SeatHandler + Sized {
         pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
     );
-}
 
-pub(crate) struct InvalidFrame;
+    /// The pointer has moved.
+    ///
+    /// The position is in surface relative coordinates.
+    fn pointer_motion(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        time: u32,
+        position: (f64, f64),
+    );
+
+    /// A pointer button is pressed.
+    fn pointer_press_button(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        time: u32,
+        button: u32,
+    );
+
+    /// A pointer button is released.
+    fn pointer_release_button(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        time: u32,
+        button: u32,
+    );
+
+    /// A pointer's axis has scrolled.
+    ///
+    /// Note that one event is sent per axis.
+    #[allow(clippy::too_many_arguments)]
+    fn pointer_axis(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        time: u32,
+        source: Option<wl_pointer::AxisSource>,
+        axis: wl_pointer::Axis,
+        kind: AxisKind,
+    );
+}
 
 /// Accumulation of multiple pointer events ended by a wl_pointer::frame event.
 #[derive(Debug)]
@@ -62,7 +120,7 @@ impl PointerFrame {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct AxisFrame {
     /// The time which an axis frame occurs at.
     ///
@@ -84,6 +142,22 @@ pub(crate) struct AxisFrame {
     ///
     /// Either this or discrete will be some.
     discrete: Option<i32>,
+}
+
+impl AxisFrame {
+    pub fn kind(self) -> Option<AxisKind> {
+        self.time?;
+
+        if self.stop {
+            Some(AxisKind::Stop)
+        } else if let Some(discrete) = self.discrete {
+            Some(AxisKind::Discrete(discrete))
+        } else if let Some(absolute) = self.absolute {
+            Some(AxisKind::Absolute(absolute))
+        } else {
+            unreachable!()
+        }
+    }
 }
 
 impl DelegateDispatchBase<wl_pointer::WlPointer> for SeatState {
@@ -136,42 +210,55 @@ where
                 }
 
                 frame.is_single_event_logical_group = true;
-                // TODO: Emit event on pointer handler trait
+
+                state.pointer_motion(conn, qh, pointer, time, (surface_x, surface_y));
             }
 
-            wl_pointer::Event::Button { time, button, state, .. } => match state {
-                /*
-                The protocol says the following regarding a frame:
+            wl_pointer::Event::Button { time, button, state: button_state, .. } => {
+                match button_state {
+                    /*
+                    The protocol says the following regarding a frame:
 
-                > A wl_pointer.frame event is sent for every logical event group, even if the group only
-                > contains a single wl_pointer event.
+                    > A wl_pointer.frame event is sent for every logical event group, even if the group only
+                    > contains a single wl_pointer event.
 
-                This means that wl_pointer::button (this event) should be followed by a wl_pointer::frame event.
-                However since this is the only event of the logical group for button press/release, we can
-                immediately invoke the handler trait to indicate pointer motion has occurred and simply
-                swallow the incoming wl_pointer::frame event.
-                */
-                WEnum::Value(state) => {
-                    // Warn if we have an invalid frame
-                    let mut frame = data.pointer_frame.lock().unwrap();
+                    This means that wl_pointer::button (this event) should be followed by a wl_pointer::frame event.
+                    However since this is the only event of the logical group for button press/release, we can
+                    immediately invoke the handler trait to indicate pointer motion has occurred and simply
+                    swallow the incoming wl_pointer::frame event.
+                    */
+                    WEnum::Value(button_state) => {
+                        // Warn if we have an invalid frame
+                        let mut frame = data.pointer_frame.lock().unwrap();
 
-                    if frame.is_single_event_logical_group
-                        || frame.horizontal_axe.is_some()
-                        || frame.vertical_axe.is_some()
-                        || frame.axis_source.is_some()
-                    {
-                        log::warn!(target: "sctk", "wl_pointer::button sent during a different frame. emitting anyways.");
+                        if frame.is_single_event_logical_group
+                            || frame.horizontal_axe.is_some()
+                            || frame.vertical_axe.is_some()
+                            || frame.axis_source.is_some()
+                        {
+                            log::warn!(target: "sctk", "wl_pointer::button sent during a different frame. emitting anyways.");
+                        }
+
+                        frame.is_single_event_logical_group = true;
+
+                        match button_state {
+                            wl_pointer::ButtonState::Released => {
+                                state.pointer_press_button(conn, qh, pointer, time, button)
+                            }
+
+                            wl_pointer::ButtonState::Pressed => {
+                                state.pointer_release_button(conn, qh, pointer, time, button)
+                            }
+
+                            _ => unreachable!(),
+                        }
                     }
 
-                    frame.is_single_event_logical_group = true;
-
-                    // TODO: Emit event on pointer handler trait
+                    WEnum::Unknown(unknown) => {
+                        log::warn!(target: "sctk", "{}: compositor sends invalid button state: {:x}", pointer.id(), unknown);
+                    }
                 }
-
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: compositor sends invalid button state: {:x}", pointer.id(), unknown);
-                }
-            },
+            }
 
             /*
             Axis logical events.
@@ -355,11 +442,35 @@ where
                 drop(guard);
 
                 if let Some(horizontal) = frame.horizontal_axe {
-                    // TODO: Emit event on pointer handler trait
+                    if let Some(kind) = horizontal.kind() {
+                        state.pointer_axis(
+                            conn,
+                            qh,
+                            pointer,
+                            horizontal.time.unwrap(),
+                            frame.axis_source,
+                            wl_pointer::Axis::HorizontalScroll,
+                            kind,
+                        );
+                    } else {
+                        todo!("No time provided because of incomplete frame")
+                    }
                 }
 
                 if let Some(vertical) = frame.vertical_axe {
-                    // TODO: Emit event on pointer handler trait
+                    if let Some(kind) = vertical.kind() {
+                        state.pointer_axis(
+                            conn,
+                            qh,
+                            pointer,
+                            vertical.time.unwrap(),
+                            frame.axis_source,
+                            wl_pointer::Axis::VerticalScroll,
+                            kind,
+                        );
+                    } else {
+                        todo!("No time provided because of incomplete frame")
+                    }
                 }
             }
 
