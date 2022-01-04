@@ -250,6 +250,17 @@ pub struct SeatData {
     pointer_frame: Arc<Mutex<PointerFrame>>,
 }
 
+#[macro_export]
+macro_rules! delegate_seat {
+    ($ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_seat::WlSeat
+            ] => $crate::seat::SeatState
+        );
+    };
+}
+
 #[derive(Debug)]
 struct SeatInner {
     global_name: u32,
