@@ -1,11 +1,9 @@
 use smithay_client_toolkit::{
-    delegate_registry,
+    delegate_registry, delegate_seat,
     registry::{ProvidesRegistryState, RegistryState},
     seat::{Capability, SeatHandler, SeatState},
 };
-use wayland_client::{
-    delegate_dispatch, protocol::wl_seat, Connection, ConnectionHandle, QueueHandle,
-};
+use wayland_client::{protocol::wl_seat, Connection, ConnectionHandle, QueueHandle};
 
 fn main() {
     env_logger::init();
@@ -71,6 +69,8 @@ impl SeatHandler for ListSeats {
     }
 }
 
+delegate_seat!(ListSeats);
+
 delegate_registry!(ListSeats: [
     SeatState,
 ]);
@@ -80,5 +80,3 @@ impl ProvidesRegistryState for ListSeats {
         &mut self.registry_state
     }
 }
-
-delegate_dispatch!(ListSeats: [wl_seat::WlSeat] => SeatState);
