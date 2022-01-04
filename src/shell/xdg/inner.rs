@@ -11,11 +11,11 @@ use wayland_protocols::{
     xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base},
 };
 
-use crate::registry::{RegistryState, RegistryHandler};
+use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use super::{
-    window::{inner::WindowInner, Window},
-    XdgShellDispatch, XdgShellHandler, XdgShellState, XdgSurfaceData,
+    window::{inner::WindowInner, Window, WindowHandler},
+    XdgShellHandler, XdgShellState, XdgSurfaceData,
 };
 
 const MAX_XDG_WM_BASE: u32 = 3;
@@ -81,14 +81,9 @@ impl XdgSurfaceData {
         }
     }
 
-    fn configure<D, H>(
-        &self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut XdgShellState,
-        handler: &mut H,
-    ) where
-        H: XdgShellHandler<D>,
+    fn configure<D>(&self, handler: &mut D, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)
+    where
+        D: WindowHandler,
     {
         let inner = self.0.lock().unwrap();
 
@@ -103,7 +98,6 @@ impl XdgSurfaceData {
                     qh,
                     pending_configure.new_size,
                     pending_configure.states,
-                    state,
                     &Window(window.clone()),
                 );
             }
@@ -119,25 +113,27 @@ where
         + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, UserData = ()>
         // Decoration late-init
         + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = XdgSurfaceData>
+        + XdgShellHandler
+        + ProvidesRegistryState
         + 'static,
 {
     fn new_global(
-        &mut self,
+        state: &mut D,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryState,
     ) {
         match interface {
             "xdg_wm_base" => {
-                if self.xdg_wm_base.is_some() {
+                if state.xdg_shell_state().xdg_wm_base.is_some() {
                     log::warn!(target: "sctk", "compositor advertises xdg_wm_base but one is already bound");
                     return;
                 }
 
-                let xdg_wm_base = handle
+                let xdg_wm_base = state
+                    .registry()
                     .bind_once::<xdg_wm_base::XdgWmBase, _, _>(
                         conn,
                         qh,
@@ -147,16 +143,17 @@ where
                     )
                     .expect("failed to bind global");
 
-                self.xdg_wm_base = Some((name, xdg_wm_base));
+                state.xdg_shell_state().xdg_wm_base = Some((name, xdg_wm_base));
             }
 
             "zxdg_decoration_manager_v1" => {
-                if self.zxdg_decoration_manager_v1.is_some() {
+                if state.xdg_shell_state().zxdg_decoration_manager_v1.is_some() {
                     log::warn!(target: "sctk", "compositor advertises zxdg_decoration_manager_v1 but one is already bound");
                     return;
                 }
 
-                let zxdg_decoration_manager_v1 = handle
+                let zxdg_decoration_manager_v1 = state
+                    .registry()
                     .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
                         conn,
                         qh,
@@ -166,24 +163,32 @@ where
                     )
                     .expect("failed to bind global");
 
-                self.zxdg_decoration_manager_v1 = Some((name, zxdg_decoration_manager_v1));
+                state.xdg_shell_state().zxdg_decoration_manager_v1 =
+                    Some((name, zxdg_decoration_manager_v1));
 
                 // Since the order in which globals are advertised is undefined, we need to ensure we enable
                 // server side decorations if the decoration manager is advertised after any surfaces are
                 // created.
-                self.init_decorations(conn, qh);
+                state.xdg_shell_state().init_decorations(conn, qh);
             }
 
             _ => (),
         }
     }
 
-    fn remove_global(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<D>, name: u32) {
-        if self.xdg_wm_base.as_ref().filter(|(global_name, _)| global_name == &name).is_some() {
+    fn remove_global(state: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, name: u32) {
+        if state
+            .xdg_shell_state()
+            .xdg_wm_base
+            .as_ref()
+            .filter(|(global_name, _)| global_name == &name)
+            .is_some()
+        {
             todo!("XDG shell global destruction")
         }
 
-        if self
+        if state
+            .xdg_shell_state()
             .zxdg_decoration_manager_v1
             .as_ref()
             .filter(|(global_name, _)| global_name == &name)
@@ -196,20 +201,16 @@ where
 
 /* Delegate trait impls */
 
-impl<D, H> DelegateDispatchBase<xdg_wm_base::XdgWmBase> for XdgShellDispatch<'_, D, H>
-where
-    H: XdgShellHandler<D>,
-{
+impl DelegateDispatchBase<xdg_wm_base::XdgWmBase> for XdgShellState {
     type UserData = ();
 }
 
-impl<D, H> DelegateDispatch<xdg_wm_base::XdgWmBase, D> for XdgShellDispatch<'_, D, H>
+impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, D> for XdgShellState
 where
-    D: Dispatch<xdg_wm_base::XdgWmBase, UserData = Self::UserData>,
-    H: XdgShellHandler<D>,
+    D: Dispatch<xdg_wm_base::XdgWmBase, UserData = Self::UserData> + XdgShellHandler,
 {
     fn event(
-        &mut self,
+        _: &mut D,
         xdg_wm_base: &xdg_wm_base::XdgWmBase,
         event: xdg_wm_base::Event,
         _: &(),
@@ -226,20 +227,16 @@ where
     }
 }
 
-impl<D, H> DelegateDispatchBase<xdg_surface::XdgSurface> for XdgShellDispatch<'_, D, H>
-where
-    H: XdgShellHandler<D>,
-{
+impl DelegateDispatchBase<xdg_surface::XdgSurface> for XdgShellState {
     type UserData = XdgSurfaceData;
 }
 
-impl<D, H> DelegateDispatch<xdg_surface::XdgSurface, D> for XdgShellDispatch<'_, D, H>
+impl<D> DelegateDispatch<xdg_surface::XdgSurface, D> for XdgShellState
 where
-    D: Dispatch<xdg_surface::XdgSurface, UserData = Self::UserData>,
-    H: XdgShellHandler<D>,
+    D: Dispatch<xdg_surface::XdgSurface, UserData = Self::UserData> + WindowHandler,
 {
     fn event(
-        &mut self,
+        state: &mut D,
         surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
         data: &Self::UserData,
@@ -250,7 +247,7 @@ where
             xdg_surface::Event::Configure { serial } => {
                 // Ack the configure
                 surface.ack_configure(conn, serial);
-                data.configure(conn, qh, self.0, self.1);
+                data.configure(state, conn, qh);
             }
 
             _ => unreachable!(),

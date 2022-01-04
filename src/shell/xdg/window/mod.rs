@@ -4,16 +4,37 @@ use wayland_backend::client::InvalidId;
 use wayland_client::{protocol::wl_surface, ConnectionHandle, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::zxdg_toplevel_decoration_v1,
-    xdg_shell::client::{xdg_surface, xdg_toplevel},
+    xdg_shell::client::{
+        xdg_surface,
+        xdg_toplevel::{self, State},
+    },
 };
 
 use crate::compositor::SurfaceData;
 
 use self::inner::WindowInner;
 
-use super::{XdgShellState, XdgSurfaceData};
+use super::{XdgShellHandler, XdgShellState, XdgSurfaceData};
 
 pub(super) mod inner;
+
+pub trait WindowHandler: XdgShellHandler + Sized {
+    fn configure_window(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        new_size: Option<(u32, u32)>,
+        states: Vec<State>,
+        window: &Window,
+    );
+
+    fn request_close_window(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        window: &Window,
+    );
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecorationMode {
