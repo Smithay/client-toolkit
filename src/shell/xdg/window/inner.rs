@@ -7,8 +7,8 @@ use std::{
 };
 
 use wayland_client::{
-    protocol::wl_surface, ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch,
-    Proxy, QueueHandle,
+    protocol::{wl_output, wl_surface},
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::{
@@ -23,7 +23,7 @@ use wayland_protocols::{
 
 use crate::shell::xdg::{inner::XdgSurfaceDataInner, XdgShellState, XdgSurfaceData};
 
-use super::{DecorationMode, WindowHandler};
+use super::{DecorationMode, Window, WindowHandler};
 
 #[derive(Debug)]
 pub struct WindowInner {
@@ -98,6 +98,34 @@ impl WindowInner {
     pub fn set_max_size(&self, conn: &mut ConnectionHandle, max_size: Option<(u32, u32)>) {
         let max_size = max_size.unwrap_or((0, 0));
         self.xdg_toplevel.set_max_size(conn, max_size.0 as i32, max_size.1 as i32)
+    }
+
+    pub fn set_parent(&self, conn: &mut ConnectionHandle, parent: Option<&Window>) {
+        self.xdg_toplevel.set_parent(conn, parent.map(Window::xdg_toplevel))
+    }
+
+    pub fn set_maximized(&self, conn: &mut ConnectionHandle) {
+        self.xdg_toplevel.set_maximized(conn)
+    }
+
+    pub fn unset_maximized(&self, conn: &mut ConnectionHandle) {
+        self.xdg_toplevel.unset_maximized(conn)
+    }
+
+    pub fn set_minmized(&self, conn: &mut ConnectionHandle) {
+        self.xdg_toplevel.set_minimized(conn)
+    }
+
+    pub fn set_fullscreen(
+        &self,
+        conn: &mut ConnectionHandle,
+        output: Option<&wl_output::WlOutput>,
+    ) {
+        self.xdg_toplevel.set_fullscreen(conn, output)
+    }
+
+    pub fn unset_fullscreen(&self, conn: &mut ConnectionHandle) {
+        self.xdg_toplevel.unset_fullscreen(conn)
     }
 
     fn maybe_create_decoration<D>(&self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)

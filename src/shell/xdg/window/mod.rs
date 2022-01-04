@@ -1,7 +1,10 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use wayland_backend::client::InvalidId;
-use wayland_client::{protocol::wl_surface, ConnectionHandle, Dispatch, Proxy, QueueHandle};
+use wayland_client::{
+    protocol::{wl_output, wl_surface},
+    ConnectionHandle, Dispatch, Proxy, QueueHandle,
+};
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::zxdg_toplevel_decoration_v1,
     xdg_shell::client::{
@@ -108,7 +111,9 @@ impl Window {
 
     // TODO: Change decoration mode
 
-    // TODO: Set parent
+    pub fn set_parent(&self, conn: &mut ConnectionHandle, parent: Option<&Window>) {
+        self.0.set_parent(conn, parent)
+    }
 
     // TODO: Show window menu
 
@@ -116,9 +121,29 @@ impl Window {
 
     // TODO: Resize
 
-    // TODO: Maximize
+    pub fn set_maximized(&self, conn: &mut ConnectionHandle) {
+        self.0.set_maximized(conn)
+    }
 
-    // TODO: Fullscreen
+    pub fn unset_maximized(&self, conn: &mut ConnectionHandle) {
+        self.0.unset_maximized(conn)
+    }
+
+    pub fn set_mimimized(&self, conn: &mut ConnectionHandle) {
+        self.0.set_minmized(conn)
+    }
+
+    pub fn set_fullscreen(
+        &self,
+        conn: &mut ConnectionHandle,
+        output: Option<&wl_output::WlOutput>,
+    ) {
+        self.0.set_fullscreen(conn, output)
+    }
+
+    pub fn unset_fullscreen(&self, conn: &mut ConnectionHandle) {
+        self.0.unset_fullscreen(conn)
+    }
 
     /// Returns the surface wrapped in this window.
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
