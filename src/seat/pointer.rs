@@ -1,9 +1,33 @@
 use wayland_client::{
-    protocol::wl_pointer, ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch,
-    Proxy, QueueHandle, WEnum,
+    protocol::{wl_pointer, wl_surface},
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use super::{SeatData, SeatDispatch, SeatHandler};
+use super::{SeatData, SeatHandler, SeatState};
+
+pub trait PointerHandler: SeatHandler + Sized {
+    /// The pointer focus is set to a surface.
+    ///
+    /// The `entered` parameter are the surface local coordinates from the top left corner where the cursor
+    /// has entered.
+    fn pointer_focus(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        surface: &wl_surface::WlSurface,
+        entered: (f64, f64),
+    );
+
+    /// The pointer focus is released from the surface.
+    fn pointer_release_focus(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        pointer: &wl_pointer::WlPointer,
+        surface: &wl_surface::WlSurface,
+    );
+}
 
 pub(crate) struct InvalidFrame;
 
@@ -62,20 +86,16 @@ pub(crate) struct AxisFrame {
     discrete: Option<i32>,
 }
 
-impl<D, H> DelegateDispatchBase<wl_pointer::WlPointer> for SeatDispatch<'_, D, H>
-where
-    H: SeatHandler<D>,
-{
+impl DelegateDispatchBase<wl_pointer::WlPointer> for SeatState {
     type UserData = SeatData;
 }
 
-impl<D, H> DelegateDispatch<wl_pointer::WlPointer, D> for SeatDispatch<'_, D, H>
+impl<D> DelegateDispatch<wl_pointer::WlPointer, D> for SeatState
 where
-    D: Dispatch<wl_pointer::WlPointer, UserData = Self::UserData>,
-    H: SeatHandler<D>,
+    D: Dispatch<wl_pointer::WlPointer, UserData = Self::UserData> + PointerHandler,
 {
     fn event(
-        &mut self,
+        state: &mut D,
         pointer: &wl_pointer::WlPointer,
         event: wl_pointer::Event,
         data: &Self::UserData,
@@ -84,11 +104,11 @@ where
     ) {
         match event {
             wl_pointer::Event::Enter { surface, surface_x, surface_y, .. } => {
-                self.1.pointer_focus(conn, qh, self.0, pointer, &surface, (surface_x, surface_y));
+                state.pointer_focus(conn, qh, pointer, &surface, (surface_x, surface_y));
             }
 
             wl_pointer::Event::Leave { surface, .. } => {
-                self.1.pointer_release_focus(conn, qh, self.0, pointer, &surface);
+                state.pointer_release_focus(conn, qh, pointer, &surface);
             }
 
             wl_pointer::Event::Motion { time, surface_x, surface_y } => {
