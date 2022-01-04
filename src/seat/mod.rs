@@ -187,12 +187,20 @@ pub trait SeatHandler: Sized {
     );
 }
 
+/// Description of a seat.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct SeatInfo {
+    /// The name of the seat.
     pub name: Option<String>,
+
+    /// Does the seat support a keyboard.
     pub has_keyboard: bool,
+
+    /// Does the seat support a pointer.
     pub has_pointer: bool,
+
+    /// Does the seat support touch input.
     pub has_touch: bool,
 }
 

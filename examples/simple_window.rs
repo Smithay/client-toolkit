@@ -323,11 +323,11 @@ impl KeyboardHandler for SimpleWindow {
 
     fn keyboard_update_repeat_info(
         &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<Self>,
-        _: &wl_keyboard::WlKeyboard,
-        _: u32,
-        _: u32,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        _rate: u32,
+        _delay: u32,
     ) {
     }
 }
@@ -335,21 +335,67 @@ impl KeyboardHandler for SimpleWindow {
 impl PointerHandler for SimpleWindow {
     fn pointer_focus(
         &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<Self>,
-        _: &wl_pointer::WlPointer,
-        _: &wl_surface::WlSurface,
-        _: (f64, f64),
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        _surface: &wl_surface::WlSurface,
+        _entered: (f64, f64),
     ) {
         todo!()
     }
 
     fn pointer_release_focus(
         &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<Self>,
-        _: &wl_pointer::WlPointer,
-        _: &wl_surface::WlSurface,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        _surface: &wl_surface::WlSurface,
+    ) {
+        todo!()
+    }
+
+    fn pointer_motion(
+        &mut self,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        _time: u32,
+        _position: (f64, f64),
+    ) {
+        todo!()
+    }
+
+    fn pointer_press_button(
+        &mut self,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        _time: u32,
+        _button: u32,
+    ) {
+        todo!()
+    }
+
+    fn pointer_release_button(
+        &mut self,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        _time: u32,
+        _button: u32,
+    ) {
+        todo!()
+    }
+
+    fn pointer_axis(
+        &mut self,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
+        _pointer: &wl_pointer::WlPointer,
+        _time: u32,
+        _source: Option<wl_pointer::AxisSource>,
+        _axis: wl_pointer::Axis,
+        _kind: smithay_client_toolkit::seat::pointer::AxisKind,
     ) {
         todo!()
     }
