@@ -99,6 +99,23 @@ pub struct SurfaceData {
     pub(crate) has_role: AtomicBool,
 }
 
+#[macro_export]
+macro_rules! delegate_compositor {
+    ($ty: ty) => {
+        type __WlCompositor = $crate::reexports::client::protocol::wl_compositor::WlCompositor;
+        type __WlSurface = $crate::reexports::client::protocol::wl_surface::WlSurface;
+        type __WlCallback = $crate::reexports::client::protocol::wl_callback::WlCallback;
+
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                __WlCompositor,
+                __WlSurface,
+                __WlCallback
+            ] => $crate::compositor::CompositorState
+        );
+    };
+}
+
 impl DelegateDispatchBase<wl_surface::WlSurface> for CompositorState {
     type UserData = SurfaceData;
 }
