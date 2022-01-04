@@ -1,14 +1,10 @@
-use std::marker::PhantomData;
-
 use smithay_client_toolkit::{
     delegate_registry,
-    registry::RegistryState,
-    seat::{Capability, SeatData, SeatDispatch, SeatHandler, SeatState},
+    registry::{ProvidesRegistryState, RegistryState},
+    seat::{Capability, SeatHandler, SeatState},
 };
 use wayland_client::{
-    delegate_dispatch,
-    protocol::{wl_keyboard, wl_seat, wl_surface},
-    Connection, ConnectionHandle, QueueHandle,
+    delegate_dispatch, protocol::wl_seat, Connection, ConnectionHandle, QueueHandle,
 };
 
 fn main() {
@@ -21,12 +17,8 @@ fn main() {
     let qh = event_queue.handle();
     let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
 
-    let mut list_seats = ListSeats {
-        inner: InnerApp,
-
-        registry_handle: RegistryState::new(registry),
-        seat_state: SeatState::new(),
-    };
+    let mut list_seats =
+        ListSeats { registry_state: RegistryState::new(registry), seat_state: SeatState::new() };
 
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
@@ -41,30 +33,23 @@ fn main() {
 }
 
 struct ListSeats {
-    inner: InnerApp,
-
     seat_state: SeatState,
-    registry_handle: RegistryState,
+    registry_state: RegistryState,
 }
 
-struct InnerApp;
+impl SeatHandler for ListSeats {
+    fn seat_state(&mut self) -> &mut SeatState {
+        &mut self.seat_state
+    }
 
-impl SeatHandler<ListSeats> for InnerApp {
-    fn new_seat(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: wl_seat::WlSeat,
-    ) {
+    fn new_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
         // Not applicable
     }
 
     fn new_capability(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         _: Capability,
     ) {
@@ -74,128 +59,26 @@ impl SeatHandler<ListSeats> for InnerApp {
     fn remove_capability(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         _: Capability,
     ) {
         // Not applicable
     }
 
-    fn remove_seat(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: wl_seat::WlSeat,
-    ) {
+    fn remove_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
         // Not applicable
-    }
-
-    // Functions not needed for the tests
-
-    fn keyboard_focus(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wl_keyboard::WlKeyboard,
-        _: &wl_surface::WlSurface,
-    ) {
-        unreachable!()
-    }
-
-    fn keyboard_release_focus(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wl_keyboard::WlKeyboard,
-        _: &wl_surface::WlSurface,
-    ) {
-        unreachable!()
-    }
-
-    fn keyboard_press_key(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wl_keyboard::WlKeyboard,
-        _: u32,
-        _: u32,
-    ) {
-        unreachable!()
-    }
-
-    fn keyboard_release_key(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wl_keyboard::WlKeyboard,
-        _: u32,
-        _: u32,
-    ) {
-        unreachable!()
-    }
-
-    fn keyboard_update_modifiers(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wl_keyboard::WlKeyboard,
-        // TODO: Other params
-    ) {
-        unreachable!()
-    }
-
-    fn keyboard_update_repeat_info(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wl_keyboard::WlKeyboard,
-        _: u32,
-        _: u32,
-    ) {
-        unreachable!()
-    }
-
-    fn pointer_focus(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wayland_client::protocol::wl_pointer::WlPointer,
-        _: &wl_surface::WlSurface,
-        _: (f64, f64),
-    ) {
-        unreachable!()
-    }
-
-    fn pointer_release_focus(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<ListSeats>,
-        _: &mut SeatState,
-        _: &wayland_client::protocol::wl_pointer::WlPointer,
-        _: &wl_surface::WlSurface,
-    ) {
-        unreachable!()
     }
 }
 
-delegate_registry!(ListSeats:
-    |app| {
-        &mut app.registry_handle
-    },
-    handlers = [
-        { &mut SeatDispatch(&mut app.seat_state, &mut app.inner, PhantomData) }
-    ]
-);
+delegate_registry!(ListSeats: [
+    SeatState,
+]);
 
-delegate_dispatch!(ListSeats: <UserData = SeatData> [wl_seat::WlSeat] => SeatDispatch<'_, ListSeats, InnerApp> ; |app| {
-    &mut SeatDispatch(&mut app.seat_state, &mut app.inner, PhantomData)
-});
+impl ProvidesRegistryState for ListSeats {
+    fn registry(&mut self) -> &mut RegistryState {
+        &mut self.registry_state
+    }
+}
+
+delegate_dispatch!(ListSeats: [wl_seat::WlSeat] => SeatState);
