@@ -61,6 +61,17 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     );
 }
 
+#[macro_export]
+macro_rules! delegate_keyboard {
+    ($ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard
+            ] => $crate::seat::SeatState
+        );
+    };
+}
+
 impl DelegateDispatchBase<wl_keyboard::WlKeyboard> for SeatState {
     type UserData = SeatData;
 }
