@@ -4,7 +4,7 @@ use smithay_client_toolkit::{
     compositor::{CompositorState, SurfaceData, SurfaceDispatch, SurfaceHandler},
     delegate_output, delegate_registry, delegate_shm,
     output::{OutputDispatch, OutputHandler, OutputState},
-    registry::RegistryHandle,
+    registry::RegistryState,
     seat::{Capability, SeatData, SeatDispatch, SeatHandler, SeatState},
     shell::xdg::{
         window::Window, XdgShellDispatch, XdgShellHandler, XdgShellState, XdgSurfaceData,
@@ -54,7 +54,7 @@ fn main() {
             keyboard_focus: false,
         },
 
-        registry_handle: RegistryHandle::new(registry),
+        registry_handle: RegistryState::new(registry),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
@@ -108,7 +108,7 @@ fn main() {
 struct SimpleWindow {
     inner: InnerApp,
 
-    registry_handle: RegistryHandle,
+    registry_handle: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     compositor_state: CompositorState,

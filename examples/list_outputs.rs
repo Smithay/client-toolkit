@@ -1,29 +1,92 @@
 //! Test application to list all available outputs.
 
-use std::marker::PhantomData;
+use std::error::Error;
 
 use smithay_client_toolkit::{
     delegate_output, delegate_registry,
-    output::{OutputDispatch, OutputHandler, OutputInfo, OutputState},
-    registry::RegistryHandle,
+    output::{OutputHandler, OutputInfo, OutputState},
+    registry::{ProvidesRegistryState, RegistryState},
 };
 use wayland_client::{protocol::wl_output, Connection, ConnectionHandle, QueueHandle};
 
+fn main() -> Result<(), Box<dyn Error>> {
+    // We initialize the logger for the purpose of debugging.
+    // Set `RUST_LOG=debug` to see extra debug information.
+    env_logger::init();
+
+    // Try to connect to the Wayland server.
+    let conn = Connection::connect_to_env()?;
+
+    // Now create an event queue and a handle to the queue so we can create objects.
+    let mut event_queue = conn.new_event_queue();
+    let qh = event_queue.handle();
+
+    // Get the display so we can create a registry.
+    let display = conn.handle().display();
+
+    // Create the registry using the display.
+    let registry = display.get_registry(&mut conn.handle(), &qh, ())?;
+
+    // Initialize the delegate for registry handling so other parts of Smithay's client toolkit may bind
+    // globals.
+    let registry_state = RegistryState::new(registry);
+
+    // Initialize the delegate we will use for outputs.
+    let output_delegate = OutputState::new();
+
+    // Set up application state.
+    //
+    // This is where you will store your delegates and any data you wish to access/mutate while the
+    // application is running.
+    let mut list_outputs = ListOutputs { registry_state, output_state: output_delegate };
+
+    // Send requests to the server and block until we receive events from the server.
+    event_queue.blocking_dispatch(&mut list_outputs)?;
+
+    // We do this again here because the first time we let the delegates bind their globals.
+    //
+    // After the delegates have bound their globals and created the necessary objects, we need to dispatch
+    // again so that events may be sent to the newly created objects.
+    event_queue.blocking_dispatch(&mut list_outputs)?;
+
+    // Now our outputs have been initialized with data, we may access what outputs exist and information about
+    // said outputs using the output delegate.
+    for output in list_outputs.output_state.outputs() {
+        print_output(
+            &list_outputs.output_state.info(&output).ok_or("output has no info".to_owned())?,
+        );
+    }
+
+    Ok(())
+}
+
+/// Application data.
+///
+/// This type is where the delegates for some parts of the protocol and any application specific data will
+/// live.
 struct ListOutputs {
-    inner: InnerApp,
-    registry_handle: RegistryHandle,
+    registry_state: RegistryState,
     output_state: OutputState,
 }
 
-struct InnerApp;
+// In order to use OutputDelegate, we must implement this trait to indicate when something has happened to an
+// output and to provide an instance of the output state to the delegate when dispatching events.
+impl OutputHandler for ListOutputs {
+    // First we need to provide a way to access the delegate.
+    //
+    // This is needed because delegate implementations for handling events use the application data type in
+    // their function signatures. This allows the implementation to access an instance of the type.
+    fn output_state(&mut self) -> &mut OutputState {
+        &mut self.output_state
+    }
 
-// OutputHandler's functions are called as outputs are made available, updated and destroyed.
-impl OutputHandler<ListOutputs> for InnerApp {
+    // Then there exist these functions that indicate the lifecycle of an output.
+    // These will be called as appropriate by the delegate implementation.
+
     fn new_output(
         &mut self,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<ListOutputs>,
-        _state: &OutputState,
+        _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
     }
@@ -31,8 +94,7 @@ impl OutputHandler<ListOutputs> for InnerApp {
     fn update_output(
         &mut self,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<ListOutputs>,
-        _state: &OutputState,
+        _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
     }
@@ -40,53 +102,39 @@ impl OutputHandler<ListOutputs> for InnerApp {
     fn output_destroyed(
         &mut self,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<ListOutputs>,
-        _state: &OutputState,
+        _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
     }
 }
 
-delegate_output!(ListOutputs => InnerApp: |app| {
-    &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData)
-});
+// Now we need to say we are delegating the responsibility of output related events for our application data
+// type to the requisite delegate.
+delegate_output!(ListOutputs);
 
-// Delegate wl_registry to provide the wl_output globals to OutputState
-delegate_registry!(ListOutputs:
-    |app| {
-        &mut app.registry_handle
-    },
-    handlers = [
-        { &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData) }
-    ]
-);
+// In order for our delegate to know of the existence of globals, we need to do two things that this macro
+// provides.
+//
+// First we need to implement registry handling for the program. This trait will forward events to the
+// RegistryHandler trait implementations.
+//
+// Next we need to indicate which delegates will get told about globals being created. We specify the types
+// of the delegates inside the array.
+delegate_registry!(ListOutputs: [
+    // Here we specify that OutputState needs to receive events regarding the creation and destruction of
+    // globals.
+    OutputState,
+]);
 
-fn main() {
-    env_logger::init();
-
-    let conn = Connection::connect_to_env().unwrap();
-
-    let display = conn.handle().display();
-
-    let mut event_queue = conn.new_event_queue();
-    let qh = event_queue.handle();
-
-    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
-
-    let mut list_outputs = ListOutputs {
-        inner: InnerApp,
-
-        registry_handle: RegistryHandle::new(registry),
-        output_state: OutputState::new(),
-    };
-    event_queue.blocking_dispatch(&mut list_outputs).unwrap();
-    event_queue.blocking_dispatch(&mut list_outputs).unwrap();
-
-    for output in list_outputs.output_state.outputs() {
-        print_output(&list_outputs.output_state.info(&output).unwrap());
+// In order for delegate_registry to work, our application data type needs to provide a way for the
+// implementation to access the registry state.
+impl ProvidesRegistryState for ListOutputs {
+    fn registry(&mut self) -> &mut RegistryState {
+        &mut self.registry_state
     }
 }
 
+/// Prints some [`OutputInfo`].
 fn print_output(info: &OutputInfo) {
     println!("{}", info.model);
 

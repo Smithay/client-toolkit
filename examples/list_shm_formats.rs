@@ -1,10 +1,10 @@
 use smithay_client_toolkit::{
-    delegate_registry, delegate_shm, registry::RegistryHandle, shm::ShmState,
+    delegate_registry, delegate_shm, registry::RegistryState, shm::ShmState,
 };
 use wayland_client::Connection;
 
 struct ListShmFormats {
-    registry_handle: RegistryHandle,
+    registry_handle: RegistryState,
     shm_state: ShmState,
 }
 
@@ -19,7 +19,7 @@ fn main() {
 
     let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
     let mut list_formats = ListShmFormats {
-        registry_handle: RegistryHandle::new(registry),
+        registry_handle: RegistryState::new(registry),
         shm_state: ShmState::new(),
     };
 

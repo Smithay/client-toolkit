@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use smithay_client_toolkit::{
     delegate_registry,
-    registry::RegistryHandle,
+    registry::RegistryState,
     seat::{Capability, SeatData, SeatDispatch, SeatHandler, SeatState},
 };
 use wayland_client::{
@@ -24,7 +24,7 @@ fn main() {
     let mut list_seats = ListSeats {
         inner: InnerApp,
 
-        registry_handle: RegistryHandle::new(registry),
+        registry_handle: RegistryState::new(registry),
         seat_state: SeatState::new(),
     };
 
@@ -44,7 +44,7 @@ struct ListSeats {
     inner: InnerApp,
 
     seat_state: SeatState,
-    registry_handle: RegistryHandle,
+    registry_handle: RegistryState,
 }
 
 struct InnerApp;
