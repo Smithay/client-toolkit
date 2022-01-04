@@ -1,20 +1,24 @@
-use std::{convert::TryInto, marker::PhantomData};
+use std::convert::TryInto;
 
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState, SurfaceData, SurfaceDispatch},
+    compositor::{CompositorHandler, CompositorState},
     delegate_output, delegate_registry, delegate_shm,
-    output::{OutputDispatch, OutputHandler, OutputState},
-    registry::RegistryState,
-    seat::{Capability, SeatData, SeatDispatch, SeatHandler, SeatState},
-    shell::xdg::{
-        window::Window, XdgShellDispatch, XdgShellHandler, XdgShellState, XdgSurfaceData,
+    output::{OutputHandler, OutputState},
+    registry::{ProvidesRegistryState, RegistryState},
+    seat::{
+        keyboard::KeyboardHandler, pointer::PointerHandler, Capability, SeatHandler, SeatState,
     },
-    shm::{pool::raw::RawPool, ShmState},
+    shell::xdg::{
+        window::{Window, WindowHandler},
+        XdgShellHandler, XdgShellState,
+    },
+    shm::{pool::raw::RawPool, ShmHandler, ShmState},
 };
 use wayland_client::{
     delegate_dispatch,
     protocol::{
-        wl_buffer, wl_callback, wl_compositor, wl_keyboard, wl_output, wl_seat, wl_shm, wl_surface,
+        wl_buffer, wl_callback, wl_compositor, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm,
+        wl_surface,
     },
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
@@ -42,24 +46,22 @@ fn main() {
     let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
 
     let mut simple_window = SimpleWindow {
-        inner: InnerApp {
-            exit: false,
-            first_configure: true,
-            pool: None,
-            width: 256,
-            height: 256,
-            buffer: None,
-            window: None,
-            keyboard: None,
-            keyboard_focus: false,
-        },
-
-        registry_handle: RegistryState::new(registry),
+        registry_state: RegistryState::new(registry),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
         shm_state: ShmState::new(),
-        xdg_shell: XdgShellState::new(),
+        xdg_shell_state: XdgShellState::new(),
+
+        exit: false,
+        first_configure: true,
+        pool: None,
+        width: 256,
+        height: 256,
+        buffer: None,
+        window: None,
+        keyboard: None,
+        keyboard_focus: false,
     };
 
     event_queue.blocking_dispatch(&mut simple_window).unwrap();
@@ -68,18 +70,18 @@ fn main() {
     let pool = simple_window
         .shm_state
         .new_raw_pool(
-            simple_window.inner.width as usize * simple_window.inner.height as usize * 4,
+            simple_window.width as usize * simple_window.height as usize * 4,
             &mut conn.handle(),
             &qh,
             (),
         )
         .expect("Failed to create pool");
-    simple_window.inner.pool = Some(pool);
+    simple_window.pool = Some(pool);
 
     let surface = simple_window.compositor_state.create_surface(&mut conn.handle(), &qh).unwrap();
 
     let window = simple_window
-        .xdg_shell
+        .xdg_shell_state
         .create_window(&mut conn.handle(), &qh, surface.clone())
         .expect("window");
 
@@ -91,14 +93,14 @@ fn main() {
     // Map the window so we receive the initial configure and can render.
     window.map(&mut conn.handle(), &qh);
 
-    simple_window.inner.window = Some(window);
+    simple_window.window = Some(window);
 
     // We don't draw immediately, the configure will indicate to us when to first draw.
 
     loop {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
 
-        if simple_window.inner.exit {
+        if simple_window.exit {
             println!("exiting example");
             break;
         }
@@ -106,17 +108,13 @@ fn main() {
 }
 
 struct SimpleWindow {
-    inner: InnerApp,
-
-    registry_handle: RegistryState,
+    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: ShmState,
-    xdg_shell: XdgShellState,
-}
+    xdg_shell_state: XdgShellState,
 
-struct InnerApp {
     exit: bool,
     first_configure: bool,
     pool: Option<RawPool>,
@@ -128,12 +126,15 @@ struct InnerApp {
     keyboard_focus: bool,
 }
 
-impl CompositorHandler<SimpleWindow> for InnerApp {
+impl CompositorHandler for SimpleWindow {
+    fn compositor_state(&mut self) -> &mut CompositorState {
+        &mut self.compositor_state
+    }
+
     fn scale_factor_changed(
         &mut self,
-        _: &mut CompositorState,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<SimpleWindow>,
+        _qh: &QueueHandle<Self>,
         _surface: &wl_surface::WlSurface,
         _new_factor: i32,
     ) {
@@ -142,9 +143,8 @@ impl CompositorHandler<SimpleWindow> for InnerApp {
 
     fn frame(
         &mut self,
-        _: &mut CompositorState,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<SimpleWindow>,
+        qh: &QueueHandle<Self>,
         _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
@@ -152,12 +152,15 @@ impl CompositorHandler<SimpleWindow> for InnerApp {
     }
 }
 
-impl OutputHandler<SimpleWindow> for InnerApp {
+impl OutputHandler for SimpleWindow {
+    fn output_state(&mut self) -> &mut OutputState {
+        &mut self.output_state
+    }
+
     fn new_output(
         &mut self,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<SimpleWindow>,
-        _state: &OutputState,
+        _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
     }
@@ -165,8 +168,7 @@ impl OutputHandler<SimpleWindow> for InnerApp {
     fn update_output(
         &mut self,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<SimpleWindow>,
-        _state: &OutputState,
+        _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
     }
@@ -174,31 +176,25 @@ impl OutputHandler<SimpleWindow> for InnerApp {
     fn output_destroyed(
         &mut self,
         _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<SimpleWindow>,
-        _state: &OutputState,
+        _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
     }
 }
 
-impl XdgShellHandler<SimpleWindow> for InnerApp {
-    fn request_close_window(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut XdgShellState,
-        _: &Window,
-    ) {
-        self.exit = true;
+impl XdgShellHandler for SimpleWindow {
+    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
+        &mut self.xdg_shell_state
     }
+}
 
+impl WindowHandler for SimpleWindow {
     fn configure_window(
         &mut self,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<SimpleWindow>,
+        qh: &QueueHandle<Self>,
         size: Option<(u32, u32)>,
         _: Vec<State>, // We don't particularly care for the states at the moment.
-        _: &mut XdgShellState,
         _: &Window,
     ) {
         match size {
@@ -218,29 +214,35 @@ impl XdgShellHandler<SimpleWindow> for InnerApp {
             self.draw(conn, qh);
         }
     }
-}
 
-impl SeatHandler<SimpleWindow> for InnerApp {
-    fn new_seat(
+    fn request_close_window(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
-        _: wl_seat::WlSeat,
+        _: &QueueHandle<Self>,
+        _: &Window,
     ) {
+        self.exit = true;
     }
+}
+
+impl SeatHandler for SimpleWindow {
+    fn seat_state(&mut self) -> &mut SeatState {
+        &mut self.seat_state
+    }
+
+    fn new_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 
     fn new_capability(
         &mut self,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<SimpleWindow>,
-        state: &mut SeatState,
+        qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
         capability: Capability,
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             println!("Set keyboard capability");
-            let keyboard = state.get_keyboard(conn, qh, &seat).expect("Failed to create keyboard");
+            let keyboard =
+                self.seat_state.get_keyboard(conn, qh, &seat).expect("Failed to create keyboard");
             self.keyboard = Some(keyboard);
         }
     }
@@ -248,8 +250,7 @@ impl SeatHandler<SimpleWindow> for InnerApp {
     fn remove_capability(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         capability: Capability,
     ) {
@@ -258,20 +259,15 @@ impl SeatHandler<SimpleWindow> for InnerApp {
         }
     }
 
-    fn remove_seat(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
-        _: wl_seat::WlSeat,
-    ) {
+    fn remove_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
     }
+}
 
+impl KeyboardHandler for SimpleWindow {
     fn keyboard_focus(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
     ) {
@@ -284,8 +280,7 @@ impl SeatHandler<SimpleWindow> for InnerApp {
     fn keyboard_release_focus(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
     ) {
@@ -298,8 +293,7 @@ impl SeatHandler<SimpleWindow> for InnerApp {
     fn keyboard_press_key(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         time: u32,
         key: u32,
@@ -310,8 +304,7 @@ impl SeatHandler<SimpleWindow> for InnerApp {
     fn keyboard_release_key(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         time: u32,
         key: u32,
@@ -322,8 +315,7 @@ impl SeatHandler<SimpleWindow> for InnerApp {
     fn keyboard_update_modifiers(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         // TODO: Other params
     ) {
@@ -332,40 +324,45 @@ impl SeatHandler<SimpleWindow> for InnerApp {
     fn keyboard_update_repeat_info(
         &mut self,
         _: &mut ConnectionHandle,
-        _: &QueueHandle<SimpleWindow>,
-        _: &mut SeatState,
+        _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
         _: u32,
     ) {
     }
+}
 
+impl PointerHandler for SimpleWindow {
     fn pointer_focus(
         &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<SimpleWindow>,
-        state: &mut SeatState,
-        pointer: &wayland_client::protocol::wl_pointer::WlPointer,
-        surface: &wl_surface::WlSurface,
-        entered: (f64, f64),
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<Self>,
+        _: &wl_pointer::WlPointer,
+        _: &wl_surface::WlSurface,
+        _: (f64, f64),
     ) {
         todo!()
     }
 
     fn pointer_release_focus(
         &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<SimpleWindow>,
-        state: &mut SeatState,
-        pointer: &wayland_client::protocol::wl_pointer::WlPointer,
-        surface: &wl_surface::WlSurface,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<Self>,
+        _: &wl_pointer::WlPointer,
+        _: &wl_surface::WlSurface,
     ) {
         todo!()
     }
 }
 
-impl InnerApp {
-    pub fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<SimpleWindow>) {
+impl ShmHandler for SimpleWindow {
+    fn shm_state(&mut self) -> &mut ShmState {
+        &mut self.shm_state
+    }
+}
+
+impl SimpleWindow {
+    pub fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<Self>) {
         if let Some(window) = self.window.as_ref() {
             // Ensure the pool is big enough to hold the new buffer.
             self.pool
@@ -393,7 +390,7 @@ impl InnerApp {
                     wl_shm::Format::Argb8888,
                     (),
                     conn,
-                    &qh,
+                    qh,
                 )
                 .expect("create buffer");
 
@@ -437,58 +434,30 @@ impl InnerApp {
     }
 }
 
-delegate_dispatch!(SimpleWindow: <UserData = ()> [wl_compositor::WlCompositor] => SurfaceDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner, PhantomData)
-});
+delegate_dispatch!(SimpleWindow: [wl_compositor::WlCompositor, wl_surface::WlSurface, wl_callback::WlCallback] => CompositorState);
 
-delegate_dispatch!(SimpleWindow: <UserData = SurfaceData> [wl_surface::WlSurface] => SurfaceDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner, PhantomData)
-});
+delegate_dispatch!(SimpleWindow: [xdg_wm_base::XdgWmBase, xdg_surface::XdgSurface] => XdgShellState);
+delegate_dispatch!(SimpleWindow: [xdg_toplevel::XdgToplevel, zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, zxdg_decoration_manager_v1::ZxdgDecorationManagerV1] => XdgShellState);
 
-delegate_dispatch!(SimpleWindow: <UserData = wl_surface::WlSurface> [wl_callback::WlCallback] => SurfaceDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut SurfaceDispatch(&mut app.compositor_state, &mut app.inner, PhantomData)
-});
+delegate_dispatch!(SimpleWindow: [wl_seat::WlSeat, wl_keyboard::WlKeyboard] => SeatState);
 
-delegate_dispatch!(SimpleWindow: <UserData = ()>
-[
-    xdg_wm_base::XdgWmBase,
-    zxdg_decoration_manager_v1::ZxdgDecorationManagerV1
-] => XdgShellDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
-});
+delegate_output!(SimpleWindow);
 
-delegate_dispatch!(SimpleWindow: <UserData = XdgSurfaceData> [xdg_surface::XdgSurface] => XdgShellDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
-});
+delegate_shm!(SimpleWindow);
 
-delegate_dispatch!(SimpleWindow: <UserData = XdgSurfaceData> [xdg_toplevel::XdgToplevel, zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1] => XdgShellDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut XdgShellDispatch(&mut app.xdg_shell, &mut app.inner, PhantomData)
-});
+delegate_registry!(SimpleWindow: [
+    ShmState,
+    OutputState,
+    SeatState,
+    XdgShellState,
+    CompositorState,
+]);
 
-delegate_dispatch!(SimpleWindow: <UserData = SeatData> [wl_seat::WlSeat, wl_keyboard::WlKeyboard] => SeatDispatch<'_, SimpleWindow, InnerApp> ; |app| {
-    &mut SeatDispatch(&mut app.seat_state, &mut app.inner, PhantomData)
-});
-
-delegate_output!(SimpleWindow => InnerApp: |app| {
-    &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData)
-});
-
-delegate_shm!(SimpleWindow: |app| {
-    &mut app.shm_state
-});
-
-delegate_registry!(SimpleWindow:
-    |app| {
-        &mut app.registry_handle
-    },
-    handlers = [
-        { &mut app.xdg_shell },
-        { &mut app.shm_state },
-        { &mut app.compositor_state },
-        { &mut OutputDispatch(&mut app.output_state, &mut app.inner, PhantomData) },
-        { &mut SeatDispatch(&mut app.seat_state, &mut app.inner, PhantomData) }
-    ]
-);
+impl ProvidesRegistryState for SimpleWindow {
+    fn registry(&mut self) -> &mut RegistryState {
+        &mut self.registry_state
+    }
+}
 
 // TODO
 impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {
