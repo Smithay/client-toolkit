@@ -15,7 +15,7 @@ use wayland_client::{
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use crate::registry::{RegistryHandle, RegistryHandler};
+use crate::registry::{RegistryState, RegistryHandler};
 
 use self::pointer::PointerFrame;
 
@@ -558,7 +558,7 @@ where
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryHandle,
+        handle: &mut RegistryState,
     ) {
         if interface == "wl_seat" {
             let seat = handle

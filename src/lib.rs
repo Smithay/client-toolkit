@@ -12,9 +12,9 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
 }
 
-pub mod compositor;
+//pub mod compositor;
 pub mod output;
 pub mod registry;
-pub mod seat;
-pub mod shell;
-pub mod shm;
+//pub mod seat;
+//pub mod shell;
+//pub mod shm;

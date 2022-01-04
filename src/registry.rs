@@ -92,22 +92,36 @@ use wayland_client::{
 ///
 /// Delegates that choose to implement this trait may be used in [`delegate_registry`] which automatically
 /// notifies delegates about the creation and destruction of globals, with the choice to bind the global.
-pub trait RegistryHandler<D> {
+///
+/// Note that in order to delegate registry handling to a type which implements this trait, your `D` data type
+/// must implement [`AsMut`] (`AsMut<RegistryState>`).
+pub trait RegistryHandler<D>
+where
+    D: ProvidesRegistryState,
+{
     /// Called when a new global has been advertised by the compositor.
     ///
     /// The provided registry handle may be used to bind the global.
     fn new_global(
-        &mut self,
+        data: &mut D,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryHandle,
     );
 
     /// Called when a global has been destroyed by the compositor.
-    fn remove_global(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32);
+    fn remove_global(data: &mut D, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32);
+}
+
+/// Trait which asserts a data type may provide a mutable reference to the registry state.
+///
+/// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
+/// to access the registry utilities provided by Smithay's client toolkit.
+pub trait ProvidesRegistryState {
+    /// Returns a mutable reference to the registry state.
+    fn registry(&mut self) -> &mut RegistryState;
 }
 
 /// An error when binding a global.
@@ -130,17 +144,17 @@ pub enum BindError {
 ///
 /// This object provides utilities to cache bound globals that are needed by multiple modules.
 #[derive(Debug)]
-pub struct RegistryHandle {
+pub struct RegistryState {
     registry: wl_registry::WlRegistry,
     cached_globals: HashMap<u32, CachedGlobal>,
 }
 
-impl RegistryHandle {
+impl RegistryState {
     /// Creates a new registry handle.
     ///
     /// This type may be used to bind globals as they are advertised.
-    pub fn new(registry: wl_registry::WlRegistry) -> RegistryHandle {
-        RegistryHandle { registry, cached_globals: HashMap::new() }
+    pub fn new(registry: wl_registry::WlRegistry) -> RegistryState {
+        RegistryState { registry, cached_globals: HashMap::new() }
     }
 
     /// Binds a global, returning a new object associated with the global.
@@ -276,11 +290,7 @@ impl RegistryHandle {
 #[macro_export]
 macro_rules! delegate_registry {
     (
-        $ty: ty:
-        |$dispatcher: ident| $closure: block,
-        handlers = [
-            $($get_handler: block),*
-        ]
+        $ty: ty: [$($handler_ty: ty),* $(,)?]
     ) => {
         impl
             $crate::reexports::client::Dispatch<
@@ -297,28 +307,23 @@ macro_rules! delegate_registry {
                 conn: &mut $crate::reexports::client::ConnectionHandle<'_>,
                 qh: &$crate::reexports::client::QueueHandle<Self>,
             ) {
-                use $crate::registry::RegistryHandler;
+                use $crate::registry::{RegistryHandler, ProvidesRegistryState};
 
                 type Event = $crate::reexports::client::protocol::wl_registry::Event;
-
-                let $dispatcher = self;
-                let handle = { $closure };
 
                 match event {
                     Event::Global { name, interface, version } => {
                         $(
-                            let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
-                            handler.new_global(conn, qh, name, &interface[..], version, handle);
+                            <$handler_ty>::new_global(self, conn, qh, name, &interface[..], version);
                         )*
                     }
 
                     Event::GlobalRemove { name } => {
                         $(
-                            let handler: &mut dyn RegistryHandler<Self> = { $get_handler };
-                            handler.remove_global(conn, qh, name);
+                            <$handler_ty>::remove_global(self, conn, qh, name);
                         )*
 
-                        handle._remove_cached_global(&name);
+                        self.registry()._remove_cached_global(&name);
                     }
 
                     _ => unreachable!("wl_registry is frozen"),
@@ -336,7 +341,7 @@ struct CachedGlobal {
     id: ObjectId,
 }
 
-impl RegistryHandle {
+impl RegistryState {
     /// Smithay client toolkit implementation detail.
     ///
     /// Library users should not invoke this function

@@ -5,7 +5,7 @@ use wayland_client::{
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
 };
 
-use crate::registry::{RegistryHandle, RegistryHandler};
+use crate::registry::{RegistryState, RegistryHandler};
 
 use self::pool::{raw::RawPool, simple::SimplePool, CreatePoolError};
 
@@ -157,7 +157,7 @@ where
         name: u32,
         interface: &str,
         _: u32,
-        handle: &mut RegistryHandle,
+        handle: &mut RegistryState,
     ) {
         if interface == "wl_shm" {
             let shm = handle
