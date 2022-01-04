@@ -1,9 +1,6 @@
-use std::{
-    marker::PhantomData,
-    sync::{
-        atomic::{AtomicBool, AtomicI32, Ordering},
-        Mutex,
-    },
+use std::sync::{
+    atomic::{AtomicBool, AtomicI32, Ordering},
+    Mutex,
 };
 
 use wayland_backend::client::InvalidId;
@@ -14,7 +11,7 @@ use wayland_client::{
 
 use crate::{
     output::OutputData,
-    registry::{RegistryState, RegistryHandler},
+    registry::{ProvidesRegistryState, RegistryHandler},
 };
 
 /// An error caused by creating a surface.
@@ -29,13 +26,14 @@ pub enum SurfaceError {
     Protocol(#[from] InvalidId),
 }
 
-pub trait SurfaceHandler<D> {
+pub trait CompositorHandler: Sized {
+    fn compositor_state(&mut self) -> &mut CompositorState;
+
     /// The surface has either been moved into or out of an output and the output has a different scale factor.
     fn scale_factor_changed(
         &mut self,
-        state: &mut CompositorState,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
+        qh: &QueueHandle<Self>,
         surface: &wl_surface::WlSurface,
         new_factor: i32,
     );
@@ -46,9 +44,8 @@ pub trait SurfaceHandler<D> {
     /// and committing the surface.
     fn frame(
         &mut self,
-        state: &mut CompositorState,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
+        qh: &QueueHandle<Self>,
         surface: &wl_surface::WlSurface,
         time: u32,
     );
@@ -102,27 +99,18 @@ pub struct SurfaceData {
     pub(crate) has_role: AtomicBool,
 }
 
-#[derive(Debug)]
-pub struct SurfaceDispatch<'s, D, H: SurfaceHandler<D>>(
-    pub &'s mut CompositorState,
-    pub &'s mut H,
-    pub PhantomData<D>,
-);
-
-impl<D, H: SurfaceHandler<D>> DelegateDispatchBase<wl_surface::WlSurface>
-    for SurfaceDispatch<'_, D, H>
-{
+impl DelegateDispatchBase<wl_surface::WlSurface> for CompositorState {
     type UserData = SurfaceData;
 }
 
-impl<D, H> DelegateDispatch<wl_surface::WlSurface, D> for SurfaceDispatch<'_, D, H>
+impl<D> DelegateDispatch<wl_surface::WlSurface, D> for CompositorState
 where
-    H: SurfaceHandler<D>,
     D: Dispatch<wl_surface::WlSurface, UserData = Self::UserData>
-        + Dispatch<wl_output::WlOutput, UserData = OutputData>,
+        + Dispatch<wl_output::WlOutput, UserData = OutputData>
+        + CompositorHandler,
 {
     fn event(
-        &mut self,
+        state: &mut D,
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
         data: &Self::UserData,
@@ -159,25 +147,22 @@ where
             data.scale_factor.store(factor, Ordering::SeqCst);
 
             if current != factor {
-                self.1.scale_factor_changed(self.0, conn, qh, surface, factor);
+                state.scale_factor_changed(conn, qh, surface, factor);
             }
         }
     }
 }
 
-impl<D, H: SurfaceHandler<D>> DelegateDispatchBase<wl_compositor::WlCompositor>
-    for SurfaceDispatch<'_, D, H>
-{
+impl DelegateDispatchBase<wl_compositor::WlCompositor> for CompositorState {
     type UserData = ();
 }
 
-impl<D, H> DelegateDispatch<wl_compositor::WlCompositor, D> for SurfaceDispatch<'_, D, H>
+impl<D> DelegateDispatch<wl_compositor::WlCompositor, D> for CompositorState
 where
-    H: SurfaceHandler<D>,
-    D: Dispatch<wl_compositor::WlCompositor, UserData = Self::UserData>,
+    D: Dispatch<wl_compositor::WlCompositor, UserData = Self::UserData> + CompositorHandler,
 {
     fn event(
-        &mut self,
+        _: &mut D,
         _: &wl_compositor::WlCompositor,
         _: wl_compositor::Event,
         _: &(),
@@ -188,19 +173,16 @@ where
     }
 }
 
-impl<D, H: SurfaceHandler<D>> DelegateDispatchBase<wl_callback::WlCallback>
-    for SurfaceDispatch<'_, D, H>
-{
+impl DelegateDispatchBase<wl_callback::WlCallback> for CompositorState {
     type UserData = wl_surface::WlSurface;
 }
 
-impl<D, H> DelegateDispatch<wl_callback::WlCallback, D> for SurfaceDispatch<'_, D, H>
+impl<D> DelegateDispatch<wl_callback::WlCallback, D> for CompositorState
 where
-    H: SurfaceHandler<D>,
-    D: Dispatch<wl_callback::WlCallback, UserData = Self::UserData>,
+    D: Dispatch<wl_callback::WlCallback, UserData = Self::UserData> + CompositorHandler,
 {
     fn event(
-        &mut self,
+        state: &mut D,
         _: &wl_callback::WlCallback,
         event: wl_callback::Event,
         surface: &Self::UserData,
@@ -209,7 +191,7 @@ where
     ) {
         match event {
             wl_callback::Event::Done { callback_data } => {
-                self.1.frame(self.0, conn, qh, surface, callback_data);
+                state.frame(conn, qh, surface, callback_data);
             }
 
             _ => unreachable!(),
@@ -219,19 +201,22 @@ where
 
 impl<D> RegistryHandler<D> for CompositorState
 where
-    D: Dispatch<wl_compositor::WlCompositor, UserData = ()> + 'static,
+    D: Dispatch<wl_compositor::WlCompositor, UserData = ()>
+        + CompositorHandler
+        + ProvidesRegistryState
+        + 'static,
 {
     fn new_global(
-        &mut self,
+        state: &mut D,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryState,
     ) {
         if interface == "wl_compositor" {
-            let compositor = handle
+            let compositor = state
+                .registry()
                 .bind_once::<wl_compositor::WlCompositor, _, _>(
                     conn,
                     qh,
@@ -241,18 +226,19 @@ where
                 )
                 .expect("Failed to bind global");
 
-            self.wl_compositor = Some((name, compositor));
+            state.compositor_state().wl_compositor = Some((name, compositor));
         }
     }
 
-    fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
-        if self
+    fn remove_global(state: &mut D, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
+        if state
+            .compositor_state()
             .wl_compositor
             .as_ref()
             .map(|(compositor_name, _)| *compositor_name == name)
             .unwrap_or(false)
         {
-            self.wl_compositor.take();
+            state.compositor_state().wl_compositor.take();
         }
     }
 }

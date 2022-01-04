@@ -1,7 +1,7 @@
 use std::{convert::TryInto, marker::PhantomData};
 
 use smithay_client_toolkit::{
-    compositor::{CompositorState, SurfaceData, SurfaceDispatch, SurfaceHandler},
+    compositor::{CompositorHandler, CompositorState, SurfaceData, SurfaceDispatch},
     delegate_output, delegate_registry, delegate_shm,
     output::{OutputDispatch, OutputHandler, OutputState},
     registry::RegistryState,
@@ -128,7 +128,7 @@ struct InnerApp {
     keyboard_focus: bool,
 }
 
-impl SurfaceHandler<SimpleWindow> for InnerApp {
+impl CompositorHandler<SimpleWindow> for InnerApp {
     fn scale_factor_changed(
         &mut self,
         _: &mut CompositorState,
