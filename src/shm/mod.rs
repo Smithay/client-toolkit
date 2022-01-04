@@ -5,9 +5,13 @@ use wayland_client::{
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
 };
 
-use crate::registry::{RegistryState, RegistryHandler};
+use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::pool::{raw::RawPool, simple::SimplePool, CreatePoolError};
+
+pub trait ShmHandler {
+    fn shm_state(&mut self) -> &mut ShmState;
+}
 
 #[derive(Debug)]
 pub struct ShmState {
@@ -80,12 +84,12 @@ impl ShmState {
 /// });
 #[macro_export]
 macro_rules! delegate_shm {
-    ($ty: ty: |$dispatcher: ident| $closure: block) => {
+    ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
                 $crate::reexports::client::protocol::wl_shm::WlShm,
                 $crate::reexports::client::protocol::wl_shm_pool::WlShmPool
-            ] => $crate::shm::ShmState ; |$dispatcher| { $closure }
+            ] => $crate::shm::ShmState
         );
     };
 }
@@ -96,10 +100,10 @@ impl DelegateDispatchBase<wl_shm::WlShm> for ShmState {
 
 impl<D> DelegateDispatch<wl_shm::WlShm, D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, UserData = Self::UserData>,
+    D: Dispatch<wl_shm::WlShm, UserData = Self::UserData> + ShmHandler,
 {
     fn event(
-        &mut self,
+        state: &mut D,
         _proxy: &wl_shm::WlShm,
         event: wl_shm::Event,
         _: &Self::UserData,
@@ -110,7 +114,7 @@ where
             wl_shm::Event::Format { format } => {
                 match format {
                     WEnum::Value(format) => {
-                        self.formats.push(format);
+                        state.shm_state().formats.push(format);
                         log::debug!(target: "sctk", "supported wl_shm format {:?}", format);
                     }
 
@@ -132,10 +136,10 @@ impl DelegateDispatchBase<wl_shm_pool::WlShmPool> for ShmState {
 
 impl<D> DelegateDispatch<wl_shm_pool::WlShmPool, D> for ShmState
 where
-    D: Dispatch<wl_shm_pool::WlShmPool, UserData = Self::UserData>,
+    D: Dispatch<wl_shm_pool::WlShmPool, UserData = Self::UserData> + ShmHandler,
 {
     fn event(
-        &mut self,
+        _: &mut D,
         _: &wl_shm_pool::WlShmPool,
         _: wl_shm_pool::Event,
         _: &(),
@@ -148,31 +152,31 @@ where
 
 impl<D> RegistryHandler<D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, UserData = ()> + 'static,
+    D: Dispatch<wl_shm::WlShm, UserData = ()> + ShmHandler + ProvidesRegistryState + 'static,
 {
     fn new_global(
-        &mut self,
+        state: &mut D,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
         _: u32,
-        handle: &mut RegistryState,
     ) {
         if interface == "wl_shm" {
-            let shm = handle
+            let shm = state
+                .registry()
                 .bind_once::<wl_shm::WlShm, _, _>(conn, qh, name, 1, ())
                 .expect("Failed to bind global");
 
-            self.wl_shm = Some((name, shm));
+            state.shm_state().wl_shm = Some((name, shm));
         }
     }
 
-    fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
-        if let Some((bound_name, _)) = &self.wl_shm {
+    fn remove_global(state: &mut D, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
+        if let Some((bound_name, _)) = &state.shm_state().wl_shm {
             if *bound_name == name {
                 // No destructor, simply toss the contents of the option.
-                self.wl_shm.take();
+                state.shm_state().wl_shm.take();
             }
         }
     }

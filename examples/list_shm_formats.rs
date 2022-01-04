@@ -1,10 +1,12 @@
 use smithay_client_toolkit::{
-    delegate_registry, delegate_shm, registry::RegistryState, shm::ShmState,
+    delegate_registry, delegate_shm,
+    registry::{ProvidesRegistryState, RegistryState},
+    shm::{ShmHandler, ShmState},
 };
 use wayland_client::Connection;
 
 struct ListShmFormats {
-    registry_handle: RegistryState,
+    registry_state: RegistryState,
     shm_state: ShmState,
 }
 
@@ -18,10 +20,8 @@ fn main() {
     let qh = event_queue.handle();
 
     let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
-    let mut list_formats = ListShmFormats {
-        registry_handle: RegistryState::new(registry),
-        shm_state: ShmState::new(),
-    };
+    let mut list_formats =
+        ListShmFormats { registry_state: RegistryState::new(registry), shm_state: ShmState::new() };
 
     event_queue.blocking_dispatch(&mut list_formats).unwrap();
     event_queue.blocking_dispatch(&mut list_formats).unwrap();
@@ -32,15 +32,20 @@ fn main() {
     }
 }
 
-delegate_shm!(ListShmFormats: |app| {
-    &mut app.shm_state
-});
+impl ShmHandler for ListShmFormats {
+    fn shm_state(&mut self) -> &mut ShmState {
+        &mut self.shm_state
+    }
+}
 
-delegate_registry!(ListShmFormats:
-    |app| {
-        &mut app.registry_handle
-    },
-    handlers = [
-        { &mut app.shm_state }
-    ]
-);
+delegate_shm!(ListShmFormats);
+
+delegate_registry!(ListShmFormats: [
+    ShmState,
+]);
+
+impl ProvidesRegistryState for ListShmFormats {
+    fn registry(&mut self) -> &mut RegistryState {
+        &mut self.registry_state
+    }
+}
