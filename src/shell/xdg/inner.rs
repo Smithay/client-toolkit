@@ -11,7 +11,7 @@ use wayland_protocols::{
     xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base},
 };
 
-use crate::registry::{RegistryHandle, RegistryHandler};
+use crate::registry::{RegistryState, RegistryHandler};
 
 use super::{
     window::{inner::WindowInner, Window},
@@ -128,7 +128,7 @@ where
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryHandle,
+        handle: &mut RegistryState,
     ) {
         match interface {
             "xdg_wm_base" => {

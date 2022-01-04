@@ -14,7 +14,7 @@ use wayland_client::{
 
 use crate::{
     output::OutputData,
-    registry::{RegistryHandle, RegistryHandler},
+    registry::{RegistryState, RegistryHandler},
 };
 
 /// An error caused by creating a surface.
@@ -228,7 +228,7 @@ where
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryHandle,
+        handle: &mut RegistryState,
     ) {
         if interface == "wl_compositor" {
             let compositor = handle
