@@ -1,8 +1,8 @@
-mod pointer;
+pub mod keyboard;
+pub mod pointer;
 
 use std::{
     fmt::{self, Display, Formatter},
-    marker::PhantomData,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -11,13 +11,16 @@ use std::{
 
 use wayland_backend::client::InvalidId;
 use wayland_client::{
-    protocol::{wl_keyboard, wl_pointer, wl_seat, wl_surface},
+    protocol::{wl_keyboard, wl_pointer, wl_seat},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use crate::registry::{RegistryState, RegistryHandler};
+use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
-use self::pointer::PointerFrame;
+use self::{
+    keyboard::KeyboardHandler,
+    pointer::{PointerFrame, PointerHandler},
+};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,7 +101,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_keyboard::WlKeyboard, SeatError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, UserData = SeatData> + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, UserData = SeatData> + KeyboardHandler + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -123,7 +126,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, UserData = SeatData> + 'static,
+        D: Dispatch<wl_pointer::WlPointer, UserData = SeatData> + PointerHandler + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -137,7 +140,9 @@ impl SeatState {
     }
 }
 
-pub trait SeatHandler<D> {
+pub trait SeatHandler: Sized {
+    fn seat_state(&mut self) -> &mut SeatState;
+
     /// A new seat has been created.
     ///
     /// This function only indicates that a seat has been created, you will need to wait for [`new_capability`](SeatHandle::new_capability)
@@ -145,8 +150,7 @@ pub trait SeatHandler<D> {
     fn new_seat(
         &mut self,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
+        qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
     );
 
@@ -156,8 +160,7 @@ pub trait SeatHandler<D> {
     fn new_capability(
         &mut self,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
+        qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
         capability: Capability,
     );
@@ -168,8 +171,7 @@ pub trait SeatHandler<D> {
     fn remove_capability(
         &mut self,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
+        qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
         capability: Capability,
     );
@@ -180,93 +182,8 @@ pub trait SeatHandler<D> {
     fn remove_seat(
         &mut self,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
+        qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
-    );
-
-    /// The keyboard focus is set to a surface.
-    fn keyboard_focus(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        keyboard: &wl_keyboard::WlKeyboard,
-        surface: &wl_surface::WlSurface,
-    );
-
-    /// The keyboard focus is removed from a surface.
-    fn keyboard_release_focus(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        keyboard: &wl_keyboard::WlKeyboard,
-        surface: &wl_surface::WlSurface,
-    );
-
-    fn keyboard_press_key(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        keyboard: &wl_keyboard::WlKeyboard,
-        time: u32,
-        key: u32,
-    );
-
-    fn keyboard_release_key(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        keyboard: &wl_keyboard::WlKeyboard,
-        time: u32,
-        key: u32,
-    );
-
-    fn keyboard_update_modifiers(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        keyboard: &wl_keyboard::WlKeyboard,
-        // TODO: Other params
-    );
-
-    /// The keyboard has updated the rate and delay between repeating key inputs.
-    fn keyboard_update_repeat_info(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        keyboard: &wl_keyboard::WlKeyboard,
-        rate: u32,
-        delay: u32,
-    );
-
-    /// The pointer focus is set to a surface.
-    ///
-    /// The `entered` parameter are the surface local coordinates from the top left corner where the cursor
-    /// has entered.
-    fn pointer_focus(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        pointer: &wl_pointer::WlPointer,
-        surface: &wl_surface::WlSurface,
-        entered: (f64, f64),
-    );
-
-    /// The pointer focus is released from the surface.
-    fn pointer_release_focus(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        state: &mut SeatState,
-        pointer: &wl_pointer::WlPointer,
-        surface: &wl_surface::WlSurface,
     );
 }
 
@@ -315,13 +232,6 @@ impl Display for SeatInfo {
     }
 }
 
-#[derive(Debug)]
-pub struct SeatDispatch<'s, D, H: SeatHandler<D>>(
-    pub &'s mut SeatState,
-    pub &'s mut H,
-    pub PhantomData<D>,
-);
-
 #[derive(Debug, Clone)]
 pub struct SeatData {
     has_keyboard: Arc<AtomicBool>,
@@ -339,20 +249,16 @@ struct SeatInner {
     data: SeatData,
 }
 
-impl<D, H> DelegateDispatchBase<wl_seat::WlSeat> for SeatDispatch<'_, D, H>
-where
-    H: SeatHandler<D>,
-{
+impl DelegateDispatchBase<wl_seat::WlSeat> for SeatState {
     type UserData = SeatData;
 }
 
-impl<D, H> DelegateDispatch<wl_seat::WlSeat, D> for SeatDispatch<'_, D, H>
+impl<D> DelegateDispatch<wl_seat::WlSeat, D> for SeatState
 where
-    D: Dispatch<wl_seat::WlSeat, UserData = Self::UserData>,
-    H: SeatHandler<D>,
+    D: Dispatch<wl_seat::WlSeat, UserData = Self::UserData> + SeatHandler,
 {
     fn event(
-        &mut self,
+        state: &mut D,
         seat: &wl_seat::WlSeat,
         event: wl_seat::Event,
         data: &Self::UserData,
@@ -383,20 +289,10 @@ where
                     data.has_keyboard.store(keyboard, Ordering::SeqCst);
 
                     match keyboard {
-                        true => self.1.new_capability(
-                            conn,
-                            qh,
-                            self.0,
-                            seat.clone(),
-                            Capability::Keyboard,
-                        ),
-                        false => self.1.remove_capability(
-                            conn,
-                            qh,
-                            self.0,
-                            seat.clone(),
-                            Capability::Keyboard,
-                        ),
+                        true => state.new_capability(conn, qh, seat.clone(), Capability::Keyboard),
+                        false => {
+                            state.remove_capability(conn, qh, seat.clone(), Capability::Keyboard)
+                        }
                     }
                 }
 
@@ -404,20 +300,10 @@ where
                     data.has_pointer.store(pointer, Ordering::SeqCst);
 
                     match pointer {
-                        true => self.1.new_capability(
-                            conn,
-                            qh,
-                            self.0,
-                            seat.clone(),
-                            Capability::Pointer,
-                        ),
-                        false => self.1.remove_capability(
-                            conn,
-                            qh,
-                            self.0,
-                            seat.clone(),
-                            Capability::Pointer,
-                        ),
+                        true => state.new_capability(conn, qh, seat.clone(), Capability::Pointer),
+                        false => {
+                            state.remove_capability(conn, qh, seat.clone(), Capability::Pointer)
+                        }
                     }
                 }
 
@@ -425,16 +311,8 @@ where
                     data.has_touch.store(touch, Ordering::SeqCst);
 
                     match touch {
-                        true => {
-                            self.1.new_capability(conn, qh, self.0, seat.clone(), Capability::Touch)
-                        }
-                        false => self.1.remove_capability(
-                            conn,
-                            qh,
-                            self.0,
-                            seat.clone(),
-                            Capability::Touch,
-                        ),
+                        true => state.new_capability(conn, qh, seat.clone(), Capability::Touch),
+                        false => state.remove_capability(conn, qh, seat.clone(), Capability::Touch),
                     }
                 }
             }
@@ -448,120 +326,24 @@ where
     }
 }
 
-impl<D, H> DelegateDispatchBase<wl_keyboard::WlKeyboard> for SeatDispatch<'_, D, H>
+impl<D> RegistryHandler<D> for SeatState
 where
-    H: SeatHandler<D>,
-{
-    type UserData = SeatData;
-}
-
-impl<D, H> DelegateDispatch<wl_keyboard::WlKeyboard, D> for SeatDispatch<'_, D, H>
-where
-    D: Dispatch<wl_keyboard::WlKeyboard, UserData = Self::UserData>,
-    H: SeatHandler<D>,
-{
-    fn event(
-        &mut self,
-        keyboard: &wl_keyboard::WlKeyboard,
-        event: wl_keyboard::Event,
-        _data: &Self::UserData,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-    ) {
-        match event {
-            wl_keyboard::Event::Keymap { format, fd: _, size: _ } => {
-                match format {
-                    WEnum::Value(format) => match format {
-                        wl_keyboard::KeymapFormat::NoKeymap => {
-                            log::warn!(target: "sctk", "non-xkb compatible keymap, assuming platform codes");
-                        }
-
-                        wl_keyboard::KeymapFormat::XkbV1 => {
-                            // TODO: Load keymap
-                        }
-
-                        _ => unreachable!(),
-                    },
-
-                    WEnum::Unknown(value) => {
-                        log::warn!(target: "sctk", "Unknown keymap format {:x}", value)
-                    }
-                }
-            }
-
-            wl_keyboard::Event::Enter { serial: _, surface, keys: _ } => {
-                // Notify of focus.
-                self.1.keyboard_focus(conn, qh, self.0, keyboard, &surface);
-
-                // TODO: Send events to notify of keys being pressed in this event
-            }
-
-            wl_keyboard::Event::Leave { serial: _, surface } => {
-                // We can send this event without any other checks in the protocol will guarantee a leave is\
-                // sent before entering a new surface.
-                self.1.keyboard_release_focus(conn, qh, self.0, keyboard, &surface);
-            }
-
-            wl_keyboard::Event::Key { serial: _, time, key, state } => match state {
-                WEnum::Value(state) => match state {
-                    wl_keyboard::KeyState::Released => {
-                        self.1.keyboard_release_key(conn, qh, self.0, keyboard, time, key);
-                    }
-
-                    wl_keyboard::KeyState::Pressed => {
-                        self.1.keyboard_press_key(conn, qh, self.0, keyboard, time, key);
-                    }
-
-                    _ => unreachable!(),
-                },
-
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: compositor sends invalid key state: {:x}", keyboard.id(), unknown);
-                }
-            },
-
-            wl_keyboard::Event::Modifiers {
-                serial: _,
-                mods_depressed: _,
-                mods_latched: _,
-                mods_locked: _,
-                group: _,
-            } => {
-                log::error!(target: "sctk", "TODO: modifiers");
-            }
-
-            wl_keyboard::Event::RepeatInfo { rate, delay } => {
-                self.1.keyboard_update_repeat_info(
-                    conn,
-                    qh,
-                    self.0,
-                    keyboard,
-                    rate as u32,
-                    delay as u32,
-                );
-            }
-
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<D, H> RegistryHandler<D> for SeatDispatch<'_, D, H>
-where
-    D: Dispatch<wl_seat::WlSeat, UserData = SeatData> + 'static,
-    H: SeatHandler<D>,
+    D: Dispatch<wl_seat::WlSeat, UserData = SeatData>
+        + SeatHandler
+        + ProvidesRegistryState
+        + 'static,
 {
     fn new_global(
-        &mut self,
+        state: &mut D,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
         version: u32,
-        handle: &mut RegistryState,
     ) {
         if interface == "wl_seat" {
-            let seat = handle
+            let seat = state
+                .registry()
                 .bind_cached(conn, qh, name, || {
                     (
                         u32::min(version, 7),
@@ -583,16 +365,17 @@ where
 
             let data = seat.data::<SeatData>().unwrap().clone();
 
-            self.0.seats.push(SeatInner { global_name: name, seat, data });
+            state.seat_state().seats.push(SeatInner { global_name: name, seat, data });
         }
     }
 
-    fn remove_global(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
-        if let Some(seat) = self.0.seats.iter().find(|inner| inner.global_name == name) {
+    fn remove_global(state: &mut D, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
+        if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.global_name == name)
+        {
             let seat = seat.seat.clone();
-            self.1.remove_seat(conn, qh, self.0, seat);
 
-            self.0.seats.retain(|inner| inner.global_name != name);
+            state.remove_seat(conn, qh, seat);
+            state.seat_state().seats.retain(|inner| inner.global_name != name);
         }
     }
 }

@@ -15,6 +15,6 @@ pub mod reexports {
 //pub mod compositor;
 pub mod output;
 pub mod registry;
-//pub mod seat;
+pub mod seat;
 //pub mod shell;
 //pub mod shm;
