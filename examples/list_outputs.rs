@@ -53,7 +53,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // said outputs using the output delegate.
     for output in list_outputs.output_state.outputs() {
         print_output(
-            &list_outputs.output_state.info(&output).ok_or("output has no info".to_owned())?,
+            &list_outputs
+                .output_state
+                .info(&output)
+                .ok_or_else(|| "output has no info".to_owned())?,
         );
     }
 

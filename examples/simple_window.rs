@@ -82,7 +82,7 @@ fn main() {
 
     let window = simple_window
         .xdg_shell_state
-        .create_window(&mut conn.handle(), &qh, surface.clone())
+        .create_window(&mut conn.handle(), &qh, surface)
         .expect("window");
 
     window.set_title(&mut conn.handle(), "A wayland window");
@@ -373,9 +373,9 @@ impl SimpleWindow {
 
             // Destroy the old buffer.
             // FIXME: Integrate this into the pool logic.
-            self.buffer.take().map(|buffer| {
+            if let Some(buffer) = self.buffer.take() {
                 buffer.destroy(conn);
-            });
+            }
 
             let offset = 0;
             let stride = self.width as i32 * 4;
@@ -418,7 +418,7 @@ impl SimpleWindow {
                 });
             }
 
-            self.buffer = Some(wl_buffer.clone());
+            self.buffer = Some(wl_buffer);
 
             // Request our next frame
             window
