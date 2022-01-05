@@ -13,6 +13,8 @@ pub mod reexports {
 }
 
 pub mod compositor;
+#[cfg(feature = "calloop")]
+pub mod event_loop;
 pub mod output;
 pub mod registry;
 pub mod seat;

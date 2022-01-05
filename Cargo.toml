@@ -19,11 +19,11 @@ lazy_static = "1.0"
 memmap2 = "0.5.0"
 log = "0.4"
 thiserror = "1.0.30"
-wayland-backend = { git = "https://github.com/Smithay/wayland-rs/", branch = "vberger/dispatch-asref" }
-wayland-client = { git = "https://github.com/Smithay/wayland-rs/", branch = "vberger/dispatch-asref" }
-wayland-protocols = { git = "https://github.com/Smithay/wayland-rs/", branch = "vberger/dispatch-asref", features = ["client", "unstable_protocols"] }
-wayland-cursor = { git = "https://github.com/Smithay/wayland-rs/", branch = "vberger/dispatch-asref" }
-calloop = { version = "0.9.1", optional = true }
+wayland-backend = { git = "https://github.com/Smithay/wayland-rs/" }
+wayland-client = { git = "https://github.com/Smithay/wayland-rs/" }
+wayland-protocols = { git = "https://github.com/Smithay/wayland-rs/", features = ["client", "unstable_protocols"] }
+wayland-cursor = { git = "https://github.com/Smithay/wayland-rs/" }
+calloop = { version = "0.9", optional = true }
 
 [features]
 default = ["calloop", "system"]
@@ -35,4 +35,4 @@ pkg-config = "0.3"
 
 [dev-dependencies]
 image = "0.23"
-env_logger = "0.9.0"
+env_logger = "0.9"
