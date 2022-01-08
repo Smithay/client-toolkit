@@ -10,6 +10,7 @@ use wayland_protocols::{
 
 use self::{inner::XdgSurfaceDataInner, window::inner::WindowInner};
 
+mod inner;
 pub mod popup;
 pub mod window;
 
@@ -36,4 +37,28 @@ pub trait XdgShellHandler: Sized {
 #[derive(Debug, Clone)]
 pub struct XdgSurfaceData(Arc<Mutex<XdgSurfaceDataInner>>);
 
-mod inner;
+#[macro_export]
+macro_rules! delegate_xdg_shell {
+    ($ty: ty) => {
+        type __XdgWmBase = $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase;
+        type __XdgSurface = $crate::reexports::protocols::xdg_shell::client::xdg_surface::XdgSurface;
+
+        // Toplevel
+        type __XdgToplevel = $crate::reexports::protocols::xdg_shell::client::xdg_toplevel::XdgToplevel;
+        type __ZxdgDecorationManagerV1 =
+            $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1;
+        type __ZxdgToplevelDecorationV1 =
+            $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
+
+        // TODO: Popups
+
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            __XdgWmBase,
+            __XdgSurface,
+
+            __XdgToplevel,
+            __ZxdgDecorationManagerV1,
+            __ZxdgToplevelDecorationV1
+        ] => $crate::shell::xdg::XdgShellState);
+    };
+}
