@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_registry, delegate_seat,
-    delegate_shm,
+    delegate_shm, delegate_xdg_shell,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     seat::{
@@ -16,20 +16,10 @@ use smithay_client_toolkit::{
     shm::{pool::raw::RawPool, ShmHandler, ShmState},
 };
 use wayland_client::{
-    delegate_dispatch,
     protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
-use wayland_protocols::{
-    unstable::xdg_decoration::v1::client::{
-        zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
-    },
-    xdg_shell::client::{
-        xdg_surface,
-        xdg_toplevel::{self, State},
-        xdg_wm_base,
-    },
-};
+use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
 
 fn main() {
     env_logger::init();
@@ -485,8 +475,7 @@ delegate_shm!(SimpleWindow);
 delegate_seat!(SimpleWindow);
 delegate_keyboard!(SimpleWindow);
 
-delegate_dispatch!(SimpleWindow: [xdg_wm_base::XdgWmBase, xdg_surface::XdgSurface] => XdgShellState);
-delegate_dispatch!(SimpleWindow: [xdg_toplevel::XdgToplevel, zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, zxdg_decoration_manager_v1::ZxdgDecorationManagerV1] => XdgShellState);
+delegate_xdg_shell!(SimpleWindow);
 
 delegate_registry!(SimpleWindow: [
     CompositorState,
