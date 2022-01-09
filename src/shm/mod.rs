@@ -69,7 +69,7 @@ impl ShmState {
 /// to obtain the state object.
 ///
 /// ```
-/// use smithay_client_toolkit::shm::ShmState;
+/// use smithay_client_toolkit::shm::{ShmHandler, ShmState};
 /// use smithay_client_toolkit::delegate_shm;
 ///
 /// struct ExampleApp {
@@ -78,10 +78,14 @@ impl ShmState {
 /// }
 ///
 /// // Use the macro to delegate wl_shm and wl_shm_pool to ShmState.
-/// delegate_shm!(ExampleApp: |app| {
-///     // This needs to return an `&mut ShmState` to dispatch events with.
-///     &mut app.shm
-/// });
+/// delegate_shm!(ExampleApp);
+///
+/// // You must implement the ShmHandler trait to provide a way to access the ShmState from your data type.
+/// impl ShmHandler for ExampleApp {
+///     fn shm_state(&mut self) -> &mut ShmState {
+///         &mut self.shm
+///     }
+/// }
 #[macro_export]
 macro_rules! delegate_shm {
     ($ty: ty) => {
