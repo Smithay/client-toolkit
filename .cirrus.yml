@@ -14,7 +14,7 @@ task:
   setup_script:
     - fetch https://sh.rustup.rs -o rustup.sh
     - sh rustup.sh -y --profile=minimal --default-toolchain stable
-    - pkg install -y cmake fontconfig pkgconf
+    - pkg install -y cmake fontconfig pkgconf libxkbcommon
   test_script:
     - . $HOME/.cargo/env
     - mkdir -p $HOME/sockets
