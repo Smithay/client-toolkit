@@ -1,11 +1,11 @@
 //! Utilities for binding globals with [`wl_registry`] in delegates.
 //!
-//! This module is based around the [`RegistryHandler`] trait and [`RegistryHandle`].
+//! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].
 //!
-//! [`RegistryHandle`] provides an interface to bind globals regularly, creating an object with each new
+//! [`RegistryState`] provides an interface to bind globals regularly, creating an object with each new
 //! instantiation or caching bound globals to prevent duplicate object instances from being created. Binding
-//! a global regularly is accomplished through [`RegistryHandle::bind_once`]. For caching a bound global use
-//! [`RegistryHandle::bind_cached`].
+//! a global regularly is accomplished through [`RegistryState::bind_once`]. For caching a bound global use
+//! [`RegistryState::bind_cached`].
 //!
 //! The [`delegate_registry`] macro is used to implement handling for [`wl_registry`].
 //!
@@ -20,11 +20,11 @@
 //!     protocol::wl_compositor,
 //! };
 //!
-//! use smithay_client_toolkit::registry::{RegistryHandle, RegistryHandler};
+//! use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryHandler, RegistryState};
 //!
 //! struct ExampleApp {
-//!     /// The registry handle is needed to use the global abstractions.
-//!     registry_handle: RegistryHandle,
+//!     /// The registry state is needed to use the global abstractions.
+//!     registry_state: RegistryState,
 //!     /// This is a type we want to delegate global handling to.
 //!     delegate_that_wants_registry: Delegate,
 //! }
@@ -32,24 +32,28 @@
 //! /// The delegate a global should be provided to.
 //! struct Delegate;
 //!
-//! // When implementing RegistryHandler, you must be able to dispatch any type you could bind using the registry handle.
+//! // When implementing RegistryHandler, you must be able to dispatch any type you could bind using the registry state.
 //! impl<D> RegistryHandler<D> for Delegate
 //! where
-//!     D: Dispatch<wl_compositor::WlCompositor, UserData = ()> + 'static,
+//!     // In order to bind a global, you must statically assert the global may be handled with the data type.
+//!     D: Dispatch<wl_compositor::WlCompositor, UserData = ()>
+//!         // ProvidesRegistryState provides a function to access the RegistryState within the impl.
+//!         + ProvidesRegistryState
+//!         + 'static,
 //! {
 //!     // When a global is advertised, this function is called to let handlers see the new global.
 //!     fn new_global(
-//!         &mut self,
+//!         data: &mut D,
 //!         conn: &mut ConnectionHandle,
 //!         qh: &QueueHandle<D>,
 //!         name: u32,
 //!         interface: &str,
 //!         version: u32,
-//!         handle: &mut RegistryHandle,
 //!     ) {
 //!         if interface == "wl_compositor" {
-//!             // You can bind a global like normal.
-//!             let _compositor = handle.bind_once::<wl_compositor::WlCompositor, _, _>(
+//!             // You can bind a global like normal, which will result in an object for each time a global is
+//!             // bound.
+//!             let _compositor = data.registry().bind_once::<wl_compositor::WlCompositor, _, _>(
 //!                 conn,
 //!                 qh,
 //!                 name,
@@ -58,21 +62,24 @@
 //!             ).unwrap();
 //!
 //!             // Or you can cache the bound global if it will be bound by multiple delegates.
-//!             let _cached_compositor = handle.bind_cached::<wl_compositor::WlCompositor, _, _, _>(
-//!                 conn,
-//!                 qh,
-//!                 name,
-//!                 || {
-//!                     // If the global is bound for the first time, this closure is invoked to provide the
-//!                     // version of the global to bind and user data.
-//!                     (1, ())
-//!                 }
-//!             ).unwrap();
+//!             let _cached_compositor = data
+//!                 .registry()
+//!                 .bind_cached::<wl_compositor::WlCompositor, _, _, _>(
+//!                     conn,
+//!                     qh,
+//!                     name,
+//!                     || {
+//!                         // If the global is bound for the first time, this closure is invoked to provide the
+//!                         // version of the global to bind and user data.
+//!                         (1, ())
+//!                     }
+//!                 )
+//!                 .unwrap();
 //!         }
 //!     }
 //!
 //!     // When a global is no longer advertised, this function is called to let handlers clean up.
-//!     fn remove_global(&mut self, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
+//!     fn remove_global(_data: &mut D, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
 //!         // Do nothing since the compositor is a capability. Peripherals should implement this to avoid
 //!         // keeping around dead objects.
 //!     }
@@ -161,7 +168,7 @@ impl RegistryState {
     ///
     /// This function may be used for any global, but should be avoided if the global being bound may be used
     /// by multiple modules of smithay's client toolkit. If multiple modules need a global, use
-    /// [`RegistryHandle::bind_cached`] instead.
+    /// [`RegistryState::bind_cached`] instead.
     ///
     /// A protocol error will be risen if the global has not yet been advertised.
     pub fn bind_once<I, D, U>(
@@ -255,37 +262,42 @@ impl RegistryState {
 
 /// Delegates the handling of [`wl_registry`].
 ///
-/// This macro takes a closure to obtain the [`RegistryHandle`] and a list of closures to obtain handlers for
-/// registry events.
-///
 /// Anything which implements [`RegistryHandler`] may be used in the delegate.
 ///
 /// ## Usage
 ///
 /// ```
-/// use smithay_client_toolkit::{delegate_registry, shm::ShmState, registry::RegistryHandle};
+/// use smithay_client_toolkit::{
+///     delegate_registry, delegate_shm, shm::{ShmHandler, ShmState},
+///     registry::{RegistryState, ProvidesRegistryState}
+/// };
 ///
 /// struct ExampleApp {
-///     registry_handle: RegistryHandle,
+///     registry_state: RegistryState,
 ///     shm_state: ShmState,
 /// }
-/// # // Implement wl_shm so the example compiles
-/// # smithay_client_toolkit::delegate_shm!(ExampleApp: |app| { &mut app.shm_state });
 ///
-/// // The delegate_registry macro implements `Dispatch<wl_registry::WlRegistry>` and sends events to the
-/// // handlers.
-/// delegate_registry!(ExampleApp:
-///     // First we need to provide the instance of the registry handle to dispatch with.
-///     |app| {
-///         &mut app.registry_handle
-///     },
-///     // Delegates to need to be provided using a closure syntax.
-///     // The named parameter of the closure above may be used in the lower closures.
-///     handlers = [
-///         { &mut app.shm_state }
-///         // And more delegates that want to bind globals, all of these are comma separated.
-///     ]
-/// );
+/// // Here we specify the types of the delegates which should handle registry events.
+/// delegate_registry!(ExampleApp: [
+///     ShmState
+/// ]);
+///
+/// // In order to use the registry delegate, we need to provide a way to access the registry state from your
+/// // data type.
+/// impl ProvidesRegistryState for ExampleApp {
+///     fn registry(&mut self) -> &mut RegistryState {
+///         &mut self.registry_state
+///     }
+/// }
+///
+/// // Here is the implementation of wl_shm to compile:
+/// delegate_shm!(ExampleApp);
+///
+/// impl ShmHandler for ExampleApp {
+///     fn shm_state(&mut self) -> &mut ShmState {
+///         &mut self.shm_state
+///     }
+/// }
 /// ```
 #[macro_export]
 macro_rules! delegate_registry {

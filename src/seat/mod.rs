@@ -145,7 +145,7 @@ pub trait SeatHandler: Sized {
 
     /// A new seat has been created.
     ///
-    /// This function only indicates that a seat has been created, you will need to wait for [`new_capability`](SeatHandle::new_capability)
+    /// This function only indicates that a seat has been created, you will need to wait for [`new_capability`](SeatHandler::new_capability)
     /// to be called before creating any keyboards,
     fn new_seat(
         &mut self,
