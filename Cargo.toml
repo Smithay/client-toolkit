@@ -26,8 +26,13 @@ wayland-cursor = { git = "https://github.com/Smithay/wayland-rs/" }
 calloop = { version = "0.9", optional = true }
 
 [features]
-default = ["calloop", "system"]
+default = ["calloop"]
+
+# Link with the system libwayland-client library.
 system = ["wayland-backend/client_system"]
+
+# Dynamically link with the libwayland-client library.
+# This should be used where failing to load a Wayland environment is acceptable.
 dlopen = ["wayland-backend/client_system", "wayland-backend/dlopen"]
 
 [build-dependencies]

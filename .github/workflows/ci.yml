@@ -11,8 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: ['1.42.0', 'stable', 'beta']
-      
+        rust: ['1.53.0', 'stable', 'beta']
+
     runs-on: ubuntu-latest
 
     steps:
@@ -31,21 +31,21 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - name: Install libxkbcommon
-        run: sudo apt-get install libxkbcommon-dev
+      - name: Install system dependencies
+        run: sudo apt-get install libxkbcommon-dev libwayland-dev
 
       - name: Test lib no features
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --no-default-features --lib
- 
+
       - name: Test doc no features
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --no-default-features --doc
-      
+
       - name: Test full features
         uses: actions-rs/cargo@v1
         with:
@@ -65,9 +65,12 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
-      
+
       - name: Cargo fmt
         run: cargo fmt --all -- --check
-      
+
+      - name: Install system dependencies
+        run: sudo apt-get install libxkbcommon-dev
+
       - name: Clippy
         run: cargo clippy -- -D warnings
