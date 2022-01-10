@@ -19,7 +19,7 @@ use wayland_client::{
     protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
-use wayland_protocols::xdg_shell::client::xdg_toplevel::State;
+use wayland_protocols::xdg_shell::client::xdg_surface;
 
 fn main() {
     env_logger::init();
@@ -174,18 +174,20 @@ impl XdgShellHandler for SimpleWindow {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
         &mut self.xdg_shell_state
     }
-}
 
-impl WindowHandler for SimpleWindow {
-    fn configure_window(
+    fn configure(
         &mut self,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<Self>,
-        size: Option<(u32, u32)>,
-        _: Vec<State>, // We don't particularly care for the states at the moment.
-        _: &Window,
+        // The only surface we can ever have in this example is our one window, so configure the window.
+        //
+        // If you have more than one surface, you'll need to use this to lookup the surface you need.
+        _: &xdg_surface::XdgSurface,
     ) {
-        match size {
+        let window = self.window.as_mut().unwrap();
+        let configure = window.configure().unwrap();
+
+        match configure.new_size {
             Some(size) => {
                 self.width = size.0;
                 self.height = size.1;
@@ -202,7 +204,9 @@ impl WindowHandler for SimpleWindow {
             self.draw(conn, qh);
         }
     }
+}
 
+impl WindowHandler for SimpleWindow {
     fn request_close_window(
         &mut self,
         _: &mut ConnectionHandle,
