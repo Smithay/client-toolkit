@@ -1,14 +1,15 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::Weak;
 
+use wayland_client::{ConnectionHandle, QueueHandle};
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1,
-    xdg_shell::client::xdg_wm_base,
+    xdg_shell::client::{xdg_surface, xdg_wm_base},
 };
 
-use self::{inner::XdgSurfaceDataInner, window::inner::WindowInner};
+use self::window::inner::WindowInner;
 
 mod inner;
 pub mod popup;
@@ -31,11 +32,21 @@ impl XdgShellState {
 
 pub trait XdgShellHandler: Sized {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState;
-}
 
-/// Data associated with an XDG surface created by Smithay's client toolkit.
-#[derive(Debug, Clone)]
-pub struct XdgSurfaceData(Arc<Mutex<XdgSurfaceDataInner>>);
+    /// Called when the compositor has sent a configure event to an XdgSurface
+    ///
+    /// A configure atomically indicates that a sequence of events describing how a surface has changed have
+    /// all been sent.
+    ///
+    /// When this event is received, you can get information about the configure off the extending type of
+    /// the XdgSurface. For example, the window's configure is available by calling [`Window::get_configure`].
+    fn configure(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<Self>,
+        surface: &xdg_surface::XdgSurface,
+    );
+}
 
 #[macro_export]
 macro_rules! delegate_xdg_shell {
@@ -61,4 +72,9 @@ macro_rules! delegate_xdg_shell {
             __ZxdgToplevelDecorationV1
         ] => $crate::shell::xdg::XdgShellState);
     };
+}
+
+#[macro_export]
+macro_rules! delegate_xdg_window {
+    ($ty: ty) => {};
 }
