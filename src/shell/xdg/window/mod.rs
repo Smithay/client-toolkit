@@ -17,20 +17,17 @@ use crate::compositor::SurfaceData;
 
 use self::inner::WindowInner;
 
-use super::{XdgShellHandler, XdgShellState, XdgSurfaceData};
+use super::{XdgShellHandler, XdgShellState};
 
 pub(super) mod inner;
 
-pub trait WindowHandler: XdgShellHandler + Sized {
-    fn configure_window(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<Self>,
-        new_size: Option<(u32, u32)>,
-        states: Vec<State>,
-        window: &Window,
-    );
+#[derive(Debug, Clone)]
+pub struct WindowConfigure {
+    pub new_size: Option<(u32, u32)>,
+    pub states: Vec<State>,
+}
 
+pub trait WindowHandler: XdgShellHandler + Sized {
     fn request_close_window(
         &mut self,
         conn: &mut ConnectionHandle,
@@ -82,12 +79,15 @@ impl Window {
     /// [`WlSurface`]: wl_surface::WlSurface
     pub fn map<D>(&self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)
     where
-        D: Dispatch<
-                zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
-                UserData = XdgSurfaceData,
-            > + 'static,
+        D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
+            + 'static,
     {
         self.0.map(conn, qh)
+    }
+
+    #[must_use]
+    pub fn configure(&self) -> Option<WindowConfigure> {
+        self.0.configure()
     }
 
     pub fn set_title(&self, conn: &mut ConnectionHandle, title: impl Into<String>) {
@@ -156,8 +156,16 @@ impl Window {
     }
 
     /// Returns the xdg toplevel wrapped in this window.
-    pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
-        &self.0.xdg_toplevel
+    pub fn xdg_toplevel(&self) -> impl AsRef<xdg_toplevel::XdgToplevel> {
+        struct Hack(xdg_toplevel::XdgToplevel);
+
+        impl AsRef<xdg_toplevel::XdgToplevel> for Hack {
+            fn as_ref(&self) -> &xdg_toplevel::XdgToplevel {
+                &self.0
+            }
+        }
+
+        Hack(self.0.xdg_toplevel.lock().unwrap().clone().unwrap())
     }
 }
 
@@ -195,8 +203,8 @@ impl XdgShellState {
     ) -> Result<Window, CreateWindowError>
     where
         D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData>
-            + Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData>
-            + Dispatch<xdg_toplevel::XdgToplevel, UserData = XdgSurfaceData>
+            + Dispatch<xdg_surface::XdgSurface, UserData = ()>
+            + Dispatch<xdg_toplevel::XdgToplevel, UserData = WindowData>
             + 'static,
     {
         // We don't know if an un-managed surface has a role object.
@@ -212,23 +220,16 @@ impl XdgShellState {
         let zxdg_decoration_manager =
             self.zxdg_decoration_manager_v1.clone().map(|(_, global)| global);
 
-        let xdg_surface_data = XdgSurfaceData::uninit();
-        let xdg_surface =
-            xdg_wm_base.get_xdg_surface(conn, &wl_surface, qh, xdg_surface_data.clone())?;
-        let xdg_toplevel = xdg_surface.get_toplevel(conn, qh, xdg_surface_data.clone())?;
+        let xdg_surface = xdg_wm_base.get_xdg_surface(conn, &wl_surface, qh, ())?;
+        let inner = WindowInner::new(conn, qh, &wl_surface, &xdg_surface, zxdg_decoration_manager)?;
 
         // Mark the surface has having a role object.
         let surface_data = wl_surface.data::<SurfaceData>().unwrap();
         surface_data.has_role.store(true, Ordering::SeqCst);
 
-        let inner = xdg_surface_data.init_window(
-            self,
-            wl_surface,
-            xdg_surface,
-            xdg_toplevel,
-            zxdg_decoration_manager,
-        );
-
         Ok(Window(inner))
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct WindowData(pub(crate) Arc<WindowInner>);
