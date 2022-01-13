@@ -15,7 +15,7 @@ use wayland_protocols::{
 
 use crate::compositor::SurfaceData;
 
-use self::inner::WindowInner;
+use self::inner::{WindowDataInner, WindowInner};
 
 use super::{XdgShellHandler, XdgShellState};
 
@@ -156,16 +156,8 @@ impl Window {
     }
 
     /// Returns the xdg toplevel wrapped in this window.
-    pub fn xdg_toplevel(&self) -> impl AsRef<xdg_toplevel::XdgToplevel> {
-        struct Hack(xdg_toplevel::XdgToplevel);
-
-        impl AsRef<xdg_toplevel::XdgToplevel> for Hack {
-            fn as_ref(&self) -> &xdg_toplevel::XdgToplevel {
-                &self.0
-            }
-        }
-
-        Hack(self.0.xdg_toplevel.lock().unwrap().clone().unwrap())
+    pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
+        &self.0.xdg_toplevel
     }
 }
 
@@ -227,9 +219,11 @@ impl XdgShellState {
         let surface_data = wl_surface.data::<SurfaceData>().unwrap();
         surface_data.has_role.store(true, Ordering::SeqCst);
 
+        self.windows.push(Arc::downgrade(&inner));
+
         Ok(Window(inner))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct WindowData(pub(crate) Arc<WindowInner>);
+pub struct WindowData(pub(crate) Arc<WindowDataInner>);

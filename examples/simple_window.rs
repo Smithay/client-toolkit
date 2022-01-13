@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_registry, delegate_seat,
-    delegate_shm, delegate_xdg_shell,
+    delegate_shm, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     seat::{
@@ -480,6 +480,7 @@ delegate_seat!(SimpleWindow);
 delegate_keyboard!(SimpleWindow);
 
 delegate_xdg_shell!(SimpleWindow);
+delegate_xdg_window!(SimpleWindow);
 
 delegate_registry!(SimpleWindow: [
     CompositorState,
