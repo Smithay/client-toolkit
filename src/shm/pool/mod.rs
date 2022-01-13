@@ -1,4 +1,5 @@
 pub mod raw;
+pub mod multi;
 pub mod simple;
 
 use std::io;

@@ -33,7 +33,7 @@ use super::CreatePoolError;
 #[derive(Debug)]
 pub struct RawPool {
     pool: wl_shm_pool::WlShmPool,
-    len: usize,
+    pub(crate) len: usize,
     mem_file: File,
     mmap: MmapMut,
 }
@@ -125,7 +125,7 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
-    pub(crate) fn new<D, U>(
+    pub fn new<D, U>(
         len: usize,
         shm: &wl_shm::WlShm,
         conn: &mut ConnectionHandle,
