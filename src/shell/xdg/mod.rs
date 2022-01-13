@@ -6,10 +6,13 @@ use std::sync::Weak;
 use wayland_client::{ConnectionHandle, QueueHandle};
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1,
-    xdg_shell::client::{xdg_surface, xdg_wm_base},
+    xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base},
 };
 
-use self::window::inner::WindowInner;
+use self::window::{
+    inner::{WindowInner, WindowRef},
+    Window,
+};
 
 mod inner;
 pub mod popup;
@@ -27,6 +30,32 @@ pub struct XdgShellState {
 impl XdgShellState {
     pub fn new() -> XdgShellState {
         XdgShellState { xdg_wm_base: None, zxdg_decoration_manager_v1: None, windows: vec![] }
+    }
+
+    pub fn window_by_surface(
+        &self,
+        surface: &xdg_surface::XdgSurface,
+    ) -> Option<impl AsRef<Window>> {
+        self.windows
+            .iter()
+            .map(Weak::upgrade)
+            .flatten()
+            .find(|window| &window.xdg_surface == surface)
+            .map(Window)
+            .map(WindowRef)
+    }
+
+    pub fn window_by_toplevel(
+        &self,
+        toplevel: &xdg_toplevel::XdgToplevel,
+    ) -> Option<impl AsRef<Window>> {
+        self.windows
+            .iter()
+            .map(Weak::upgrade)
+            .flatten()
+            .find(|window| &window.xdg_toplevel == toplevel)
+            .map(Window)
+            .map(WindowRef)
     }
 }
 
@@ -54,6 +83,18 @@ macro_rules! delegate_xdg_shell {
         type __XdgWmBase = $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase;
         type __XdgSurface = $crate::reexports::protocols::xdg_shell::client::xdg_surface::XdgSurface;
 
+        // TODO: Popups
+
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            __XdgWmBase,
+            __XdgSurface
+        ] => $crate::shell::xdg::XdgShellState);
+    };
+}
+
+#[macro_export]
+macro_rules! delegate_xdg_window {
+    ($ty: ty) => {
         // Toplevel
         type __XdgToplevel = $crate::reexports::protocols::xdg_shell::client::xdg_toplevel::XdgToplevel;
         type __ZxdgDecorationManagerV1 =
@@ -61,20 +102,10 @@ macro_rules! delegate_xdg_shell {
         type __ZxdgToplevelDecorationV1 =
             $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
 
-        // TODO: Popups
-
         $crate::reexports::client::delegate_dispatch!($ty: [
-            __XdgWmBase,
-            __XdgSurface,
-
             __XdgToplevel,
             __ZxdgDecorationManagerV1,
             __ZxdgToplevelDecorationV1
         ] => $crate::shell::xdg::XdgShellState);
     };
-}
-
-#[macro_export]
-macro_rules! delegate_xdg_window {
-    ($ty: ty) => {};
 }
