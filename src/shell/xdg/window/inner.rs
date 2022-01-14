@@ -2,7 +2,7 @@ use std::{
     convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex,
     },
 };
 
@@ -26,12 +26,25 @@ use crate::shell::xdg::XdgShellState;
 
 use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler};
 
-#[derive(Debug)]
-pub(crate) struct WindowRef(pub(crate) Window);
+impl Window {
+    /// Clone is an implementation detail of Window.
+    ///
+    /// This function creates another window handle that is not marked as a primary handle.
+    pub(crate) fn impl_clone(&self) -> Window {
+        Window {
+            inner: self.inner.clone(),
+            primary: false,
+            death_signal: self.death_signal.clone(),
+        }
+    }
+}
 
-impl AsRef<Window> for WindowRef {
-    fn as_ref(&self) -> &Window {
-        &self.0
+impl Drop for Window {
+    fn drop(&mut self) {
+        // If we are the primary handle (an owned value given to the user), mark ourselves for cleanup.
+        if self.primary {
+            self.death_signal.store(true, Ordering::SeqCst);
+        }
     }
 }
 
@@ -194,10 +207,10 @@ impl XdgShellState {
         D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
             + 'static,
     {
-        for window in self.windows.iter().filter_map(Weak::upgrade) {
+        for window in self.windows.iter() {
             // Only create decorations if the window is live.
-            if !window.data.first_configure.load(Ordering::SeqCst) {
-                window.maybe_create_decoration(conn, qh);
+            if !window.inner.data.first_configure.load(Ordering::SeqCst) {
+                window.inner.maybe_create_decoration(conn, qh);
             }
         }
     }
@@ -251,7 +264,9 @@ where
 
             xdg_toplevel::Event::Close => {
                 if let Some(window) = data.xdg_shell_state().window_by_toplevel(toplevel) {
-                    data.request_close_window(conn, qh, window.as_ref());
+                    let window = window.impl_clone();
+
+                    data.request_close_window(conn, qh, &window);
                 } else {
                     log::warn!(target: "sctk", "closed event received for dead window: {}", toplevel.id());
                 }
@@ -259,6 +274,9 @@ where
 
             _ => unreachable!(),
         }
+
+        // Perform cleanup as necessary
+        data.xdg_shell_state().cleanup(conn);
     }
 }
 
