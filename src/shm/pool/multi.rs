@@ -90,6 +90,8 @@ impl MultiPool {
 
         if found_surface {
             offset = self.buffer_list[index?].offset;
+        } else if let Some(b) = self.buffer_list.last() {
+            offset += b.size;
         }
 
         if offset + size as usize > self.inner.len {
@@ -108,6 +110,7 @@ impl MultiPool {
         if found_surface {
             self.buffer_list[index?].buffer = buffer.clone();
         } else if index.is_none() {
+            index = Some(self.buffer_list.len());
             let buffer = Buffer {
                 offset,
                 free: AtomicBool::new(true),
@@ -115,7 +118,6 @@ impl MultiPool {
                 size: size as usize,
                 surface: surface.clone()
             };
-            index = Some(self.buffer_list.len());
             self.buffer_list.push(buffer);
         }
 
