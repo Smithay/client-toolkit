@@ -1,18 +1,13 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
-use std::sync::Weak;
-
 use wayland_client::{ConnectionHandle, QueueHandle};
 use wayland_protocols::{
     unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1,
     xdg_shell::client::{xdg_surface, xdg_toplevel, xdg_wm_base},
 };
 
-use self::window::{
-    inner::{WindowInner, WindowRef},
-    Window,
-};
+use self::window::Window;
 
 mod inner;
 pub mod popup;
@@ -24,7 +19,8 @@ pub struct XdgShellState {
     xdg_wm_base: Option<(u32, xdg_wm_base::XdgWmBase)>,
     zxdg_decoration_manager_v1: Option<(u32, zxdg_decoration_manager_v1::ZxdgDecorationManagerV1)>,
 
-    windows: Vec<Weak<WindowInner>>,
+    /// We hold strong references to the window
+    windows: Vec<Window>,
 }
 
 impl XdgShellState {
@@ -32,30 +28,12 @@ impl XdgShellState {
         XdgShellState { xdg_wm_base: None, zxdg_decoration_manager_v1: None, windows: vec![] }
     }
 
-    pub fn window_by_surface(
-        &self,
-        surface: &xdg_surface::XdgSurface,
-    ) -> Option<impl AsRef<Window>> {
-        self.windows
-            .iter()
-            .map(Weak::upgrade)
-            .flatten()
-            .find(|window| &window.xdg_surface == surface)
-            .map(Window)
-            .map(WindowRef)
+    pub fn window_by_surface(&self, surface: &xdg_surface::XdgSurface) -> Option<&Window> {
+        self.windows.iter().find(|window| window.xdg_surface() == surface)
     }
 
-    pub fn window_by_toplevel(
-        &self,
-        toplevel: &xdg_toplevel::XdgToplevel,
-    ) -> Option<impl AsRef<Window>> {
-        self.windows
-            .iter()
-            .map(Weak::upgrade)
-            .flatten()
-            .find(|window| &window.xdg_toplevel == toplevel)
-            .map(Window)
-            .map(WindowRef)
+    pub fn window_by_toplevel(&self, toplevel: &xdg_toplevel::XdgToplevel) -> Option<&Window> {
+        self.windows.iter().find(|window| window.xdg_toplevel() == toplevel)
     }
 }
 
@@ -68,7 +46,7 @@ pub trait XdgShellHandler: Sized {
     /// all been sent.
     ///
     /// When this event is received, you can get information about the configure off the extending type of
-    /// the XdgSurface. For example, the window's configure is available by calling [`Window::get_configure`].
+    /// the XdgSurface. For example, the window's configure is available by calling [`Window::configure`].
     fn configure(
         &mut self,
         conn: &mut ConnectionHandle,
