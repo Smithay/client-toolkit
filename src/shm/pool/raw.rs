@@ -125,7 +125,7 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
-    pub fn new<D, U>(
+    pub(crate) fn new<D, U>(
         len: usize,
         shm: &wl_shm::WlShm,
         conn: &mut ConnectionHandle,
