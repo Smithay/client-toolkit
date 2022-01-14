@@ -1,4 +1,7 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use wayland_backend::client::InvalidId;
 use wayland_client::{
@@ -63,7 +66,18 @@ pub enum CreateWindowError {
 }
 
 #[derive(Debug)]
-pub struct Window(pub(crate) Arc<WindowInner>);
+pub struct Window {
+    pub(crate) inner: Arc<WindowInner>,
+
+    /// Whether this is the primary handle to the window.
+    pub(crate) primary: bool,
+
+    /// Indicates whether the primary handle to the window has been destroyed.
+    ///
+    /// Since we can't destroy wayland objects without a connection handle, we need to mark the window for
+    /// cleanup.
+    pub(crate) death_signal: Arc<AtomicBool>,
+}
 
 impl Window {
     /// Map the window.
@@ -82,37 +96,37 @@ impl Window {
         D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
             + 'static,
     {
-        self.0.map(conn, qh)
+        self.inner.map(conn, qh)
     }
 
     #[must_use]
     pub fn configure(&self) -> Option<WindowConfigure> {
-        self.0.configure()
+        self.inner.configure()
     }
 
     pub fn set_title(&self, conn: &mut ConnectionHandle, title: impl Into<String>) {
-        self.0.set_title(conn, title.into())
+        self.inner.set_title(conn, title.into())
     }
 
     pub fn set_app_id(&self, conn: &mut ConnectionHandle, app_id: impl Into<String>) {
-        self.0.set_app_id(conn, app_id.into())
+        self.inner.set_app_id(conn, app_id.into())
     }
 
     pub fn set_min_size(&self, conn: &mut ConnectionHandle, min_size: Option<(u32, u32)>) {
-        self.0.set_min_size(conn, min_size)
+        self.inner.set_min_size(conn, min_size)
     }
 
     /// ## Protocol errors
     ///
     /// The maximum size of the window may not be smaller than the minimum size.
     pub fn set_max_size(&self, conn: &mut ConnectionHandle, max_size: Option<(u32, u32)>) {
-        self.0.set_max_size(conn, max_size)
+        self.inner.set_max_size(conn, max_size)
     }
 
     // TODO: Change decoration mode
 
     pub fn set_parent(&self, conn: &mut ConnectionHandle, parent: Option<&Window>) {
-        self.0.set_parent(conn, parent)
+        self.inner.set_parent(conn, parent)
     }
 
     // TODO: Show window menu
@@ -122,15 +136,15 @@ impl Window {
     // TODO: Resize
 
     pub fn set_maximized(&self, conn: &mut ConnectionHandle) {
-        self.0.set_maximized(conn)
+        self.inner.set_maximized(conn)
     }
 
     pub fn unset_maximized(&self, conn: &mut ConnectionHandle) {
-        self.0.unset_maximized(conn)
+        self.inner.unset_maximized(conn)
     }
 
     pub fn set_mimimized(&self, conn: &mut ConnectionHandle) {
-        self.0.set_minmized(conn)
+        self.inner.set_minmized(conn)
     }
 
     pub fn set_fullscreen(
@@ -138,26 +152,26 @@ impl Window {
         conn: &mut ConnectionHandle,
         output: Option<&wl_output::WlOutput>,
     ) {
-        self.0.set_fullscreen(conn, output)
+        self.inner.set_fullscreen(conn, output)
     }
 
     pub fn unset_fullscreen(&self, conn: &mut ConnectionHandle) {
-        self.0.unset_fullscreen(conn)
+        self.inner.unset_fullscreen(conn)
     }
 
     /// Returns the surface wrapped in this window.
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.0.wl_surface
+        &self.inner.wl_surface
     }
 
     /// Returns the xdg surface wrapped in this window.
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        &self.0.xdg_surface
+        &self.inner.xdg_surface
     }
 
     /// Returns the xdg toplevel wrapped in this window.
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
-        &self.0.xdg_toplevel
+        &self.inner.xdg_toplevel
     }
 }
 
@@ -219,9 +233,12 @@ impl XdgShellState {
         let surface_data = wl_surface.data::<SurfaceData>().unwrap();
         surface_data.has_role.store(true, Ordering::SeqCst);
 
-        self.windows.push(Arc::downgrade(&inner));
+        let window =
+            Window { inner, primary: true, death_signal: Arc::new(AtomicBool::new(false)) };
 
-        Ok(Window(inner))
+        self.windows.push(window.impl_clone());
+
+        Ok(window)
     }
 }
 

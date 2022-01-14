@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use wayland_client::{
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle,
 };
@@ -14,6 +16,27 @@ use super::{window::WindowData, XdgShellHandler, XdgShellState};
 
 const MAX_XDG_WM_BASE: u32 = 3;
 const MAX_ZXDG_DECORATION_MANAGER: u32 = 1;
+
+impl XdgShellState {
+    pub(crate) fn cleanup(&mut self, conn: &mut ConnectionHandle) {
+        self.windows.retain(|window| {
+            let alive = !window.death_signal.load(Ordering::SeqCst);
+
+            if !alive {
+                // XDG decoration says we must destroy the decoration object before the toplevel
+                if let Some(decoration) = &*window.inner.zxdg_toplevel_decoration.lock().unwrap() {
+                    decoration.destroy(conn);
+                }
+
+                // XDG Shell protocol dictates we must destroy the role object before the xdg surface.
+                window.xdg_toplevel().destroy(conn);
+                window.xdg_surface().destroy(conn);
+            }
+
+            alive
+        })
+    }
+}
 
 impl<D> RegistryHandler<D> for XdgShellState
 where
@@ -118,7 +141,7 @@ where
     D: Dispatch<xdg_wm_base::XdgWmBase, UserData = Self::UserData> + XdgShellHandler,
 {
     fn event(
-        _: &mut D,
+        data: &mut D,
         xdg_wm_base: &xdg_wm_base::XdgWmBase,
         event: xdg_wm_base::Event,
         _: &(),
@@ -132,6 +155,9 @@ where
 
             _ => unreachable!(),
         }
+
+        // Perform cleanup as necessary
+        data.xdg_shell_state().cleanup(conn);
     }
 }
 
@@ -144,7 +170,7 @@ where
     D: Dispatch<xdg_surface::XdgSurface, UserData = Self::UserData> + XdgShellHandler,
 {
     fn event(
-        state: &mut D,
+        data: &mut D,
         surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
         _: &Self::UserData,
@@ -155,10 +181,13 @@ where
             xdg_surface::Event::Configure { serial } => {
                 // Ack the configure
                 surface.ack_configure(conn, serial);
-                state.configure(conn, qh, surface);
+                data.configure(conn, qh, surface);
             }
 
             _ => unreachable!(),
         }
+
+        // Perform cleanup as necessary
+        data.xdg_shell_state().cleanup(conn);
     }
 }
