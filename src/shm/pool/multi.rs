@@ -96,8 +96,8 @@ impl MultiPool {
             offset += b.size;
         }
 
-        if offset + size as usize > self.inner.len {
-            self.resize(offset + 2 * size as usize, conn);
+        if offset + size as usize > self.inner.len
+        && self.resize(offset + 2 * size as usize, conn).is_err() {
             return None
         }
 
