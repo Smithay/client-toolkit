@@ -73,10 +73,12 @@ impl MultiPool {
         let size = stride * height;
         let mut index = None;
         for (i, buffer) in self.buffer_list.iter_mut().enumerate() {
-            if buffer.surface.eq(surface) && buffer.free.load(Ordering::Relaxed) {
+            if buffer.surface.eq(surface) {
                 found_surface = true;
-                buffer.size = buffer.size.max(size as usize);
-                index = Some(i);
+                if buffer.free.load(Ordering::Relaxed) {
+                    buffer.size = buffer.size.max(size as usize);
+                    index = Some(i);
+                }
             } else if offset > buffer.offset {
                 buffer.offset = offset;
                 if !buffer.free.load(Ordering::Relaxed) {
@@ -95,6 +97,7 @@ impl MultiPool {
         }
 
         if offset + size as usize > self.inner.len {
+            self.resize(offset + 2 * size as usize, conn);
             return None
         }
 
