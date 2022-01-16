@@ -80,8 +80,9 @@ impl MultiPool {
                     index = Some(i);
                 }
             } else if offset > buffer.offset {
-                buffer.offset = offset;
-                if !buffer.free.load(Ordering::Relaxed) {
+                if buffer.free.load(Ordering::Relaxed) {
+                    buffer.offset = offset;
+                } else {
                     index = None;
                 }
             } else if found_surface {
