@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use wayland_client::ConnectionHandle;
 use wayland_client::protocol::{
-    wl_buffer, wl_surface, wl_shm
+    wl_buffer,wl_shm
 };
 use wayland_client::{QueueHandle, Dispatch, DelegateDispatchBase, DelegateDispatch};
 
@@ -15,21 +15,21 @@ use super::raw::RawPool;
 /// This pool manages multiple buffers associated with a surface.
 /// Only one buffer can be attributed to a surface.
 #[derive(Debug)]
-pub struct MultiPool {
-    buffer_list: Vec<Buffer>,
+pub struct MultiPool<I: PartialEq + Clone> {
+    buffer_list: Vec<Buffer<I>>,
     pub(crate) inner: RawPool,
 }
 
 #[derive(Debug)]
-struct Buffer {
+struct Buffer<I: PartialEq + Clone> {
     free: AtomicBool,
     size: usize,
     offset: usize,
     buffer: wl_buffer::WlBuffer,
-    surface: wl_surface::WlSurface,
+    identifier: I,
 }
 
-impl From<RawPool> for MultiPool {
+impl<E: PartialEq + Clone> From<RawPool> for MultiPool<E> {
     fn from(inner: RawPool) -> Self {
         Self {
             buffer_list: Vec::new(),
@@ -38,7 +38,7 @@ impl From<RawPool> for MultiPool {
     }
 }
 
-impl MultiPool {
+impl<I: PartialEq + Clone> MultiPool<I> {
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -58,7 +58,7 @@ impl MultiPool {
         width: i32,
         stride: i32,
         height: i32,
-        surface: &wl_surface::WlSurface,
+        identifier: &I,
         format: wl_shm::Format,
         udata: U,
         conn: &mut ConnectionHandle,
@@ -68,13 +68,13 @@ impl MultiPool {
         D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
         U: Send + Sync + 'static,
     {
-        let mut found_surface = false;
+        let mut found_identifier = false;
         let mut offset = 0;
         let size = stride * height;
         let mut index = None;
         for (i, buffer) in self.buffer_list.iter_mut().enumerate() {
-            if buffer.surface.eq(surface) {
-                found_surface = true;
+            if buffer.identifier.eq(identifier) {
+                found_identifier = true;
                 if buffer.free.load(Ordering::Relaxed) {
                     buffer.size = buffer.size.max(size as usize);
                     index = Some(i);
@@ -85,13 +85,13 @@ impl MultiPool {
                 } else {
                     index = None;
                 }
-            } else if found_surface {
+            } else if found_identifier {
                 break;
             }
             offset += buffer.size;
         }
 
-        if found_surface {
+        if found_identifier {
             offset = self.buffer_list[index?].offset;
         } else if let Some(b) = self.buffer_list.last() {
             offset += b.size;
@@ -111,7 +111,7 @@ impl MultiPool {
             qh
         ).ok()?;
 
-        if found_surface {
+        if found_identifier {
             self.buffer_list[index?].buffer = buffer.clone();
         } else if index.is_none() {
             index = Some(self.buffer_list.len());
@@ -120,7 +120,7 @@ impl MultiPool {
                 free: AtomicBool::new(true),
                 buffer: buffer.clone(),
                 size: size as usize,
-                surface: surface.clone()
+                identifier: identifier.clone()
             };
             self.buffer_list.push(buffer);
         }
@@ -133,14 +133,14 @@ impl MultiPool {
     }
 }
 
-impl DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPool {
+impl<I: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPool<I> {
     type UserData = ();
 }
 
-impl<D> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool
+impl<D, I: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<I>
 where
     D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-    D: AsMut<MultiPool>
+    D: AsMut<MultiPool<I>>
 {
     fn event(
         data: &mut D,
