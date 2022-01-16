@@ -63,7 +63,7 @@ impl MultiPool {
         udata: U,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-    ) -> Option<(wl_buffer::WlBuffer, &mut [u8])>
+    ) -> Option<(usize, wl_buffer::WlBuffer, &mut [u8])>
     where
         D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
         U: Send + Sync + 'static,
@@ -128,7 +128,7 @@ impl MultiPool {
 
         self.buffer_list[index?].free.swap(false, Ordering::Relaxed);
 
-        Some((buffer, slice))
+        Some((offset, buffer, slice))
     }
 }
 
