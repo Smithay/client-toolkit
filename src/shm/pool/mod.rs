@@ -28,3 +28,15 @@ impl From<Errno> for CreatePoolError {
         Into::<io::Error>::into(errno).into()
     }
 }
+
+pub trait AsPool<P> {
+    fn pool_handle(&self) -> PoolHandle<P>;
+}
+
+#[derive(Debug)]
+/// A handle to the underlying mempool
+pub enum PoolHandle<'m, P> {
+    Ref(&'m P),
+    Slice(&'m [P]),
+    RefSlice(&'m [&'m P])
+}

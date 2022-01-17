@@ -11,6 +11,7 @@ use wayland_client::protocol::{
 use wayland_client::{QueueHandle, Dispatch, DelegateDispatchBase, DelegateDispatch};
 
 use super::raw::RawPool;
+use crate::shm::pool::{AsPool, PoolHandle};
 
 /// This pool manages multiple buffers associated with a surface.
 /// Only one buffer can be attributed to a surface.
@@ -18,12 +19,6 @@ use super::raw::RawPool;
 pub struct MultiPool<I: PartialEq + Clone> {
     buffer_list: Vec<Buffer<I>>,
     pub(crate) inner: RawPool,
-}
-
-#[derive(Debug)]
-pub enum MultiHandle<'m, P> {
-    Ref(&'m mut P),
-    Slice(&'m mut [P])
 }
 
 #[derive(Debug)]
@@ -164,7 +159,7 @@ impl<I: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPo
 impl<D, I: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<I>
 where
     D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-    D: for<'m> AsMut<MultiHandle<'m, MultiPool<I>>>
+    D: for<'m> AsPool<MultiPool<I>>
 {
     fn event(
         data: &mut D,
@@ -176,12 +171,17 @@ where
     ) {
         if let wl_buffer::Event::Release = event {
             buffer.destroy(conn);
-            match data.as_mut() {
-                MultiHandle::Ref(pool) => {
+            match data.pool_handle() {
+                PoolHandle::Ref(pool) => {
                     pool.free(buffer);
                 }
-                MultiHandle::Slice(pools) => {
-                    for pool in pools.iter_mut() {
+                PoolHandle::Slice(pools) => {
+                    for pool in pools.iter() {
+                        pool.free(buffer);
+                    }
+                }
+                PoolHandle::RefSlice(pools) => {
+                    for pool in pools.iter() {
                         pool.free(buffer);
                     }
                 }
