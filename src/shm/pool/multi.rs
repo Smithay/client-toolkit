@@ -21,6 +21,12 @@ pub struct MultiPool<I: PartialEq + Clone> {
 }
 
 #[derive(Debug)]
+pub enum MultiHandle<'m, P> {
+    Ref(&'m mut P),
+    Slice(&'m mut [P])
+}
+
+#[derive(Debug)]
 struct Buffer<I: PartialEq + Clone> {
     free: AtomicBool,
     size: usize,
@@ -115,7 +121,7 @@ impl<I: PartialEq + Clone> MultiPool<I> {
             offset += b.size;
         }
 
-        if offset + size as usize > self.inner.len
+        if offset + size as usize > self.inner.len()
         && self.resize(offset + 2 * size as usize, conn).is_err() {
             return None
         }
@@ -158,7 +164,7 @@ impl<I: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPo
 impl<D, I: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<I>
 where
     D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-    D: AsMut<MultiPool<I>>
+    D: for<'m> AsMut<MultiHandle<'m, MultiPool<I>>>
 {
     fn event(
         data: &mut D,
@@ -170,7 +176,16 @@ where
     ) {
         if let wl_buffer::Event::Release = event {
             buffer.destroy(conn);
-            data.as_mut().free(buffer);
+            match data.as_mut() {
+                MultiHandle::Ref(pool) => {
+                    pool.free(buffer);
+                }
+                MultiHandle::Slice(pools) => {
+                    for pool in pools.iter_mut() {
+                        pool.free(buffer);
+                    }
+                }
+            }
         }
     }
 }
