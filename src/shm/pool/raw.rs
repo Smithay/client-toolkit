@@ -33,7 +33,7 @@ use super::CreatePoolError;
 #[derive(Debug)]
 pub struct RawPool {
     pool: wl_shm_pool::WlShmPool,
-    pub(crate) len: usize,
+    len: usize,
     mem_file: File,
     mmap: MmapMut,
 }
@@ -57,6 +57,11 @@ impl RawPool {
     /// Returns a reference to the underlying shared memory file using the memmap2 crate.
     pub fn mmap(&mut self) -> &mut MmapMut {
         &mut self.mmap
+    }
+
+    /// Returns the size of the mempool
+    pub fn len(&self) -> usize {
+        self.len
     }
 
     /// Create a new buffer to this pool.
