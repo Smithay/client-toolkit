@@ -51,8 +51,26 @@ impl<I: PartialEq + Clone> MultiPool<I> {
             buffer.free.swap(true, Ordering::Relaxed);
         }
     }
-    /// Returns the buffer associated with the given surface.
-    /// If the buffer isn't free, it returns None.
+    /// Removes the buffer with the given identifier from the pool and rearranges the others
+    pub fn remove(&mut self, identifier: &I) {
+        if let Some((i, buffer)) =
+            self.buffer_list
+            .iter()
+            .enumerate()
+            .find(|b| b.1.identifier.eq(identifier)) {
+            let mut offset = buffer.offset;
+            self.buffer_list.remove(i);
+            for buffer in &mut self.buffer_list {
+                if buffer.offset > offset {
+                    let l_offset = buffer.offset;
+                    buffer.offset = offset;
+                    offset = l_offset;
+                }
+            }
+        }
+    }
+    /// Returns the buffer associated with the given identifier.
+    /// If it's not possible to use the buffer associated with the identifier, None is returned.
     pub fn create_buffer<D, U>(
         &mut self,
         width: i32,
