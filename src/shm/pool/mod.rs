@@ -38,5 +38,5 @@ pub trait AsPool<P> {
 pub enum PoolHandle<'m, P> {
     Ref(&'m P),
     Slice(&'m [P]),
-    RefSlice(&'m [&'m P])
+    Vec(Vec<&'m P>)
 }
