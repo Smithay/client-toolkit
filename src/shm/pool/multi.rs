@@ -180,7 +180,7 @@ where
                         pool.free(buffer);
                     }
                 }
-                PoolHandle::RefSlice(pools) => {
+                PoolHandle::Vec(pools) => {
                     for pool in pools.iter() {
                         pool.free(buffer);
                     }
