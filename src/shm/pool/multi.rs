@@ -16,18 +16,18 @@ use crate::shm::pool::{AsPool, PoolHandle};
 /// This pool manages multiple buffers associated with a surface.
 /// Only one buffer can be attributed to a surface.
 #[derive(Debug)]
-pub struct MultiPool<I: PartialEq + Clone> {
-    buffer_list: Vec<Buffer<I>>,
+pub struct MultiPool<K: PartialEq + Clone> {
+    buffer_list: Vec<Buffer<K>>,
     pub(crate) inner: RawPool,
 }
 
 #[derive(Debug)]
-struct Buffer<I: PartialEq + Clone> {
+struct Buffer<K: PartialEq + Clone> {
     free: AtomicBool,
     size: usize,
     offset: usize,
     buffer: wl_buffer::WlBuffer,
-    identifier: I,
+    key: K,
 }
 
 impl<E: PartialEq + Clone> From<RawPool> for MultiPool<E> {
@@ -39,7 +39,7 @@ impl<E: PartialEq + Clone> From<RawPool> for MultiPool<E> {
     }
 }
 
-impl<I: PartialEq + Clone> MultiPool<I> {
+impl<K: PartialEq + Clone> MultiPool<K> {
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -52,32 +52,34 @@ impl<I: PartialEq + Clone> MultiPool<I> {
             buffer.free.swap(true, Ordering::Relaxed);
         }
     }
-    /// Removes the buffer with the given identifier from the pool and rearranges the others
-    pub fn remove(&mut self, identifier: &I) {
+    /// Removes the buffer with the given key from the pool and rearranges the others
+    pub fn remove(&mut self, key: &K) {
         if let Some((i, buffer)) =
             self.buffer_list
             .iter()
             .enumerate()
-            .find(|b| b.1.identifier.eq(identifier)) {
+            .find(|b| b.1.key.eq(key)) {
             let mut offset = buffer.offset;
             self.buffer_list.remove(i);
             for buffer in &mut self.buffer_list {
-                if buffer.offset > offset {
+                if buffer.offset > offset && buffer.free.load(Ordering::Relaxed) {
                     let l_offset = buffer.offset;
                     buffer.offset = offset;
                     offset = l_offset;
+                } else {
+                    break;
                 }
             }
         }
     }
-    /// Returns the buffer associated with the given identifier.
-    /// If it's not possible to use the buffer associated with the identifier, None is returned.
+    /// Returns the buffer associated with the given key.
+    /// If it's not possible to use the buffer associated with the key, None is returned.
     pub fn create_buffer<D, U>(
         &mut self,
         width: i32,
         stride: i32,
         height: i32,
-        identifier: &I,
+        key: &K,
         format: wl_shm::Format,
         udata: U,
         conn: &mut ConnectionHandle,
@@ -87,37 +89,46 @@ impl<I: PartialEq + Clone> MultiPool<I> {
         D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
         U: Send + Sync + 'static,
     {
-        let mut found_identifier = false;
+        let mut found_key = false;
         let mut offset = 0;
-        let size = stride * height;
+        let size = (stride * height) as usize;
         let mut index = None;
+
+        // This loop serves to found the buffer associated to the key.
         for (i, buffer) in self.buffer_list.iter_mut().enumerate() {
-            if buffer.identifier.eq(identifier) {
-                found_identifier = true;
+            if buffer.key.eq(key) {
+                found_key = true;
                 if buffer.free.load(Ordering::Relaxed) {
-                    buffer.size = buffer.size.max(size as usize);
+                    // Increases the size of the Buffer if it's too small and add 5% padding
+                    buffer.size = buffer.size.max(size + size / 20);
                     index = Some(i);
                 }
+            // If a buffer is resized, it is likely that the followings might overlap
             } else if offset > buffer.offset {
+                // When the buffer is free, it's safe to shift it because we know the compositor won't try to read it.
                 if buffer.free.load(Ordering::Relaxed) {
                     buffer.offset = offset;
                 } else {
+                    // If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
                     index = None;
                 }
-            } else if found_identifier {
+            } else if found_key {
                 break;
             }
             offset += buffer.size;
         }
 
-        if found_identifier {
+        if found_key {
+            // Sets the offset to the one of our chosen buffer
             offset = self.buffer_list[index?].offset;
         } else if let Some(b) = self.buffer_list.last() {
-            offset += b.size;
+            // Adds 5% padding between the last and new buffer
+            offset += b.size / 20;
         }
 
-        if offset + size as usize > self.inner.len()
-        && self.resize(offset + 2 * size as usize, conn).is_err() {
+		// Resize the pool if it isn't large enough to fit all our buffers
+        if offset + size >= self.inner.len()
+        && self.resize(offset + size + size / 20, conn).is_err() {
             return None
         }
 
@@ -130,7 +141,7 @@ impl<I: PartialEq + Clone> MultiPool<I> {
             qh
         ).ok()?;
 
-        if found_identifier {
+        if found_key {
             self.buffer_list[index?].buffer = buffer.clone();
         } else if index.is_none() {
             index = Some(self.buffer_list.len());
@@ -138,13 +149,13 @@ impl<I: PartialEq + Clone> MultiPool<I> {
                 offset,
                 free: AtomicBool::new(true),
                 buffer: buffer.clone(),
-                size: size as usize,
-                identifier: identifier.clone()
+                size,
+                key: key.clone()
             };
             self.buffer_list.push(buffer);
         }
 
-        let slice = &mut self.inner.mmap()[offset..][..size as usize];
+        let slice = &mut self.inner.mmap()[offset..][..size];
 
         self.buffer_list[index?].free.swap(false, Ordering::Relaxed);
 
@@ -152,14 +163,14 @@ impl<I: PartialEq + Clone> MultiPool<I> {
     }
 }
 
-impl<I: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPool<I> {
+impl<K: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPool<K> {
     type UserData = ();
 }
 
-impl<D, I: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<I>
+impl<D, K: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<K>
 where
     D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-    D: for<'m> AsPool<MultiPool<I>>
+    D: for<'m> AsPool<MultiPool<K>>
 {
     fn event(
         data: &mut D,
