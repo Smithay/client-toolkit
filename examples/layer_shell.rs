@@ -89,8 +89,10 @@ impl Surface {
         match self.next_render_event.take() {
             Some(RenderEvent::Closed) => true,
             Some(RenderEvent::Configure { width, height }) => {
-                self.dimensions = (width, height);
-                self.draw();
+                if self.dimensions != (width, height) {
+                    self.dimensions = (width, height);
+                    self.draw();
+                }
                 false
             }
             None => false,
