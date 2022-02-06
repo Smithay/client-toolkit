@@ -1,4 +1,64 @@
 //! A pool implementation which automatically frees buffers when released.
+//!
+//!	This pool is built on the [`RawPool`].
+//!
+//! # Example
+//!
+//! ```rust
+//! struct WlFoo {
+//! 	// The surface we'll draw on and the index of buffer associated to it
+//! 	surface: (WlSurface, usize),
+//! 	pool: MultiPool<(WlSurface, usize)>
+//! }
+//!
+//!	impl AsPool<MultiPool<(WlSurface, usize)>> for WlFoo {
+//!	    fn pool_handle(&self) -> PoolHandle<MultiPool<(wl_surface::WlSurface, usize)>> {
+//!	        PoolHandle::Ref(&self.pool)
+//!	    }
+//!	}
+//!
+//! impl WlFoo {
+//! 	fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<WlFoo>) {
+//! 		let surface = &surface.1;
+//! 		// We'll increment "i" until the pool can create a new buffer
+//! 		// if there's no buffer associated with our surface and "i" or if
+//! 		// a buffer with the obuffer associated with our surface and "i" is free for use.
+//! 		//
+//! 		// There's no limit to the amount of buffers we can allocate to our surface but since
+//! 		// shm buffers are released fairly fast, it's unlikely we'll need more than double buffering.
+//! 		for i in 0..2 {
+//! 			match self.pool.create_buffer(
+//! 				100,
+//! 				100,
+//! 				&self.surface,
+//! 				Format::Argb8888,
+//! 				(),
+//! 				conn,
+//! 				qh
+//! 			) {
+//! 				Some((offset, buffer, slice)) => {
+//! 					draw(slice);
+//! 					surface.attach(conn, Some(&wl_buffer), 0, 0);
+//! 					surface.commit(conn)
+//! 					// We exit the function after the draw.
+//! 					return;
+//! 				}
+//! 				None => self.surface.1 = i,
+//! 			}
+//! 		}
+//! 		// If there's no buffer available we'll request a frame callback
+//! 		// were this function will be called again.
+//! 		surface.frame(conn, qh);
+//! 		surface.commit(conn);
+//! 	}
+//! }
+//!
+//! fn draw(slice: &mut [u8]) {
+//! 	todo!()
+//! }
+//!
+//! ```
+//!
 
 use std::io;
 
@@ -13,8 +73,8 @@ use wayland_client::{QueueHandle, Dispatch, DelegateDispatchBase, DelegateDispat
 use super::raw::RawPool;
 use crate::shm::pool::{AsPool, PoolHandle};
 
-/// This pool manages multiple buffers associated with a surface.
-/// Only one buffer can be attributed to a surface.
+/// This pool manages buffers associated with keys.
+/// Only one buffer can be attributed to a given key.
 #[derive(Debug)]
 pub struct MultiPool<K: PartialEq + Clone> {
     buffer_list: Vec<Buffer<K>>,
@@ -99,7 +159,9 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             if buffer.key.eq(key) {
                 found_key = true;
                 if buffer.free.load(Ordering::Relaxed) {
-                    // Increases the size of the Buffer if it's too small and add 5% padding
+                    // Increases the size of the Buffer if it's too small and add 5% padding.
+                    // It is possible this buffer overlaps the following but the else if
+                    // statement prevents this buffer from being returned if that's the case.
                     buffer.size = buffer.size.max(size + size / 20);
                     index = Some(i);
                 }
