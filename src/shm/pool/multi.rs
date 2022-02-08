@@ -1,10 +1,22 @@
-//! A pool implementation which automatically frees buffers when released.
+//! A pool implementation which automatically manage buffers.
 //!
 //!	This pool is built on the [`RawPool`].
+//!
+//!	The [`MultiPool`] takes a key which is used to identify buffers and tries to return the buffer associated to the key
+//!	if possible. If no buffer in the pool is associated to the key, it will create a new one.
 //!
 //! # Example
 //!
 //! ```rust
+//! use smithay_client_toolkit::reexports::client::{
+//!     ConnectionHandle,
+//!     QueueHandle,
+//!     protocol::wl_surface::WlSurface,
+//!     protocol::wl_shm::Format,
+//! };
+//! use smithay_client_toolkit::shm::pool::multi::MultiPool;
+//! use smithay_client_toolkit::shm::pool::{AsPool, PoolHandle};
+//!
 //! struct WlFoo {
 //! 	// The surface we'll draw on and the index of buffer associated to it
 //! 	surface: (WlSurface, usize),
@@ -12,7 +24,7 @@
 //! }
 //!
 //!	impl AsPool<MultiPool<(WlSurface, usize)>> for WlFoo {
-//!	    fn pool_handle(&self) -> PoolHandle<MultiPool<(wl_surface::WlSurface, usize)>> {
+//!	    fn pool_handle(&self) -> PoolHandle<MultiPool<(WlSurface, usize)>> {
 //!	        PoolHandle::Ref(&self.pool)
 //!	    }
 //!	}
@@ -39,7 +51,7 @@
 //! 				Some((offset, buffer, slice)) => {
 //! 					draw(slice);
 //! 					surface.attach(conn, Some(&wl_buffer), 0, 0);
-//! 					surface.commit(conn)
+//! 					surface.commit(conn);
 //! 					// We exit the function after the draw.
 //! 					return;
 //! 				}
