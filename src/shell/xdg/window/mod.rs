@@ -70,6 +70,11 @@ pub struct Window {
     pub(crate) inner: Arc<WindowInner>,
 
     /// Whether this is the primary handle to the window.
+    ///
+    /// This is only true for [`Window`] given the user from [`XdgShellState::create_window`]. Since we pass
+    /// a reference to a [`Window`] in some traits the user implements, we need to make sure the window isn't
+    /// actually destroyed while the user still holds the window. If this field is true, the drop implementation
+    /// will mark the window as dead and will clean up when possible.
     pub(crate) primary: bool,
 
     /// Indicates whether the primary handle to the window has been destroyed.
