@@ -144,8 +144,12 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             }
         }
     }
-    /// Returns the buffer associated with the given key.
-    /// If it's not possible to use the buffer associated with the key, None is returned.
+    /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
+    ///
+    /// The offset can be used to determine whether or not a buffer was moved in the mempool
+    /// and by consequence if it should be damaged partially or fully.
+    ///
+    /// When it's not possible to use the buffer associated with the key, None is returned.
     pub fn create_buffer<D, U>(
         &mut self,
         width: i32,
