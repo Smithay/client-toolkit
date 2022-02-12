@@ -89,6 +89,17 @@ pub trait PointerHandler: SeatHandler + Sized {
     );
 }
 
+#[macro_export]
+macro_rules! delegate_pointer {
+    ($ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_pointer::WlPointer
+            ] => $crate::seat::SeatState
+        );
+    };
+}
+
 /// Accumulation of multiple pointer events ended by a wl_pointer::frame event.
 #[derive(Debug)]
 pub(crate) struct PointerFrame {
