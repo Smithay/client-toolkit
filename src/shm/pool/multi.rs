@@ -15,7 +15,7 @@
 //!     protocol::wl_shm::Format,
 //! };
 //! use smithay_client_toolkit::shm::pool::multi::MultiPool;
-//! use smithay_client_toolkit::shm::pool::{AsPool, PoolHandle};
+//! use smithay_client_toolkit::shm::pool::PoolHandle;
 //!
 //! struct WlFoo {
 //! 	// The surface we'll draw on and the index of buffer associated to it
@@ -83,7 +83,7 @@ use wayland_client::protocol::{
 use wayland_client::{QueueHandle, Dispatch, DelegateDispatchBase, DelegateDispatch};
 
 use super::raw::RawPool;
-use crate::shm::pool::{AsPool, PoolHandle};
+use crate::shm::pool::PoolHandle;
 
 /// This pool manages buffers associated with keys.
 /// Only one buffer can be attributed to a given key.
@@ -248,7 +248,7 @@ impl<K: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPo
 impl<D, K: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<K>
 where
     D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-    D: for<'m> AsPool<MultiPool<K>>
+    for<'p> &'p mut D: Into<PoolHandle<'p, MultiPool<K>>>
 {
     fn event(
         data: &mut D,
@@ -260,7 +260,7 @@ where
     ) {
         if let wl_buffer::Event::Release = event {
             buffer.destroy(conn);
-            match data.pool_handle() {
+            match data.into() {
                 PoolHandle::Ref(pool) => {
                     pool.free(buffer);
                 }
