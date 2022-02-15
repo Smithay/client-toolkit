@@ -29,10 +29,6 @@ impl From<Errno> for CreatePoolError {
     }
 }
 
-pub trait AsPool<P> {
-    fn pool_handle(&self) -> PoolHandle<P>;
-}
-
 #[derive(Debug)]
 /// A handle to the underlying mempool
 pub enum PoolHandle<'m, P> {
