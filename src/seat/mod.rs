@@ -384,7 +384,12 @@ where
 
             let data = seat.data::<SeatData>().unwrap().clone();
 
-            state.seat_state().seats.push(SeatInner { global_name: name, seat, data });
+            state.seat_state().seats.push(SeatInner {
+                global_name: name,
+                seat: seat.clone(),
+                data,
+            });
+            state.new_seat(conn, qh, seat);
         }
     }
 
