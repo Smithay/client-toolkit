@@ -1,9 +1,11 @@
+use std::sync::Mutex;
+
 use wayland_client::{
     protocol::{wl_pointer, wl_surface},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use super::{SeatData, SeatHandler, SeatState};
+use super::{SeatHandler, SeatState};
 
 /// Describes a kind of pointer axis event.
 #[derive(Debug, Clone, Copy)]
@@ -15,7 +17,43 @@ pub enum AxisKind {
     Discrete(i32),
 
     /// The axis scrolling was stopped.
+    ///
+    /// Generally this variant is encountered when hardware indicates the end of some continuous scrolling.
     Stop,
+}
+
+/// A type representing a scroll event.
+///
+/// A scroll event may consist of a vertical and horizontal component.
+#[derive(Debug)]
+pub struct PointerScroll {
+    horizontal: Option<AxisKind>,
+    vertical: Option<AxisKind>,
+    source: Option<wl_pointer::AxisSource>,
+}
+
+impl PointerScroll {
+    pub fn axis(&self, axis: wl_pointer::Axis) -> Option<AxisKind> {
+        match axis {
+            wl_pointer::Axis::VerticalScroll => self.vertical,
+            wl_pointer::Axis::HorizontalScroll => self.horizontal,
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn source(&self) -> Option<wl_pointer::AxisSource> {
+        self.source
+    }
+
+    pub fn has_axis(&self, axis: wl_pointer::Axis) -> bool {
+        match axis {
+            wl_pointer::Axis::VerticalScroll => self.vertical.is_some(),
+            wl_pointer::Axis::HorizontalScroll => self.horizontal.is_some(),
+
+            _ => unreachable!(),
+        }
+    }
 }
 
 pub trait PointerHandler: SeatHandler + Sized {
@@ -23,6 +61,8 @@ pub trait PointerHandler: SeatHandler + Sized {
     ///
     /// The `entered` parameter are the surface local coordinates from the top left corner where the cursor
     /// has entered.
+    ///
+    /// The pos
     fn pointer_focus(
         &mut self,
         conn: &mut ConnectionHandle,
@@ -74,19 +114,19 @@ pub trait PointerHandler: SeatHandler + Sized {
     );
 
     /// A pointer's axis has scrolled.
-    ///
-    /// Note that one event is sent per axis.
-    #[allow(clippy::too_many_arguments)]
     fn pointer_axis(
         &mut self,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         time: u32,
-        source: Option<wl_pointer::AxisSource>,
-        axis: wl_pointer::Axis,
-        kind: AxisKind,
+        scroll: PointerScroll,
     );
+}
+
+#[derive(Debug, Default)]
+pub struct PointerData {
+    inner: Mutex<PointerDataInner>,
 }
 
 #[macro_export]
@@ -100,79 +140,40 @@ macro_rules! delegate_pointer {
     };
 }
 
-/// Accumulation of multiple pointer events ended by a wl_pointer::frame event.
+#[derive(Debug, Default)]
+pub(crate) struct PointerDataInner {
+    /// Pending axis event.
+    axis: Option<Axis>,
+    /// Pending motion event.
+    motion: Option<Motion>,
+    /// Pending button event.
+    button: Option<Button>,
+}
+
 #[derive(Debug)]
-pub(crate) struct PointerFrame {
-    /// Whether this pointer frame has had a single event logical group.
-    ///
-    /// wl_pointer::motion and wl_pointer::button are examples of single event logical groups.
-    pub(crate) is_single_event_logical_group: bool,
-
-    pub(crate) horizontal_axe: Option<AxisFrame>,
-
-    pub(crate) vertical_axe: Option<AxisFrame>,
-
-    /// The source of axis scrolling.
-    ///
-    /// This may only be set once during a frame. We ignore subsequent attempts to set the value.
-    pub(crate) axis_source: Option<wl_pointer::AxisSource>,
-}
-
-impl PointerFrame {
-    pub fn take(&mut self) -> PointerFrame {
-        let is_single_event_logical_group = self.is_single_event_logical_group;
-
-        PointerFrame {
-            is_single_event_logical_group,
-            horizontal_axe: self.horizontal_axe.take(),
-            vertical_axe: self.vertical_axe.take(),
-            axis_source: self.axis_source.take(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct AxisFrame {
-    /// The time which an axis frame occurs at.
-    ///
-    /// This is an Option since some earlier frame events may not immediately provide the time but is must be
-    /// [`Some`] when wl_pointer::frame is handled.
+pub(crate) struct Axis {
+    horizontal: Option<AxisKind>,
+    vertical: Option<AxisKind>,
+    source: Option<wl_pointer::AxisSource>,
     time: Option<u32>,
-
-    /// The axis scrolling was stopped.
-    stop: bool,
-
-    /// The number of pixels scrolled.
-    ///
-    /// Either this or discrete will be some.
-    absolute: Option<f64>,
-
-    /// The discrete scroll amount.
-    ///
-    /// This is generally defined in some unit, such as lines or columns depending on the application.
-    ///
-    /// Either this or discrete will be some.
-    discrete: Option<i32>,
 }
 
-impl AxisFrame {
-    pub fn kind(self) -> Option<AxisKind> {
-        self.time?;
+#[derive(Debug)]
+pub(crate) struct Motion {
+    x: f64,
+    y: f64,
+    time: u32,
+}
 
-        if self.stop {
-            Some(AxisKind::Stop)
-        } else if let Some(discrete) = self.discrete {
-            Some(AxisKind::Discrete(discrete))
-        } else if let Some(absolute) = self.absolute {
-            Some(AxisKind::Absolute(absolute))
-        } else {
-            unreachable!()
-        }
-    }
+#[derive(Debug)]
+pub(crate) struct Button {
+    time: u32,
+    state: wl_pointer::ButtonState,
+    button: u32,
 }
 
 impl DelegateDispatchBase<wl_pointer::WlPointer> for SeatState {
-    type UserData = SeatData;
+    type UserData = PointerData;
 }
 
 impl<D> DelegateDispatch<wl_pointer::WlPointer, D> for SeatState
@@ -180,307 +181,272 @@ where
     D: Dispatch<wl_pointer::WlPointer, UserData = Self::UserData> + PointerHandler,
 {
     fn event(
-        state: &mut D,
+        data: &mut D,
         pointer: &wl_pointer::WlPointer,
         event: wl_pointer::Event,
-        data: &Self::UserData,
+        udata: &Self::UserData,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
         match event {
             wl_pointer::Event::Enter { surface, surface_x, surface_y, .. } => {
-                state.pointer_focus(conn, qh, pointer, &surface, (surface_x, surface_y));
+                data.pointer_focus(conn, qh, pointer, &surface, (surface_x, surface_y));
             }
 
             wl_pointer::Event::Leave { surface, .. } => {
-                state.pointer_release_focus(conn, qh, pointer, &surface);
+                data.pointer_release_focus(conn, qh, pointer, &surface);
             }
 
+            /*
+            Pointer events
+
+            The wl_pointer protocol starting in version 5 requires the following of clients:
+            > A client is expected to accumulate the data in all events within the frame before proceeding.
+
+            If the protocol version is 5 or greater, each of these events will accumulate state until a frame
+            event.
+            */
             wl_pointer::Event::Motion { time, surface_x, surface_y } => {
-                /*
-                The protocol says the following regarding a frame:
-
-                > A wl_pointer.frame event is sent for every logical event group, even if the group only
-                > contains a single wl_pointer event.
-
-                This means that wl_pointer::motion (this event) should be followed by a wl_pointer::frame event.
-                However since this is the only event of the logical group for pointer motion, we can
-                immediately invoke the handler trait to indicate pointer motion has occurred and simply
-                swallow the incoming wl_pointer::frame event.
-                */
-
-                // Warn if we have an invalid frame
-                let mut frame = data.pointer_frame.lock().unwrap();
-
-                if frame.is_single_event_logical_group
-                    || frame.horizontal_axe.is_some()
-                    || frame.vertical_axe.is_some()
-                    || frame.axis_source.is_some()
-                {
-                    log::warn!(target: "sctk", "wl_pointer::motion sent during a different frame. emitting anyways.");
+                if pointer.version() < 5 {
+                    data.pointer_motion(conn, qh, pointer, time, (surface_x, surface_y));
+                } else {
+                    let mut guard = udata.inner.lock().unwrap();
+                    guard.motion = Some(Motion { x: surface_x, y: surface_y, time });
                 }
-
-                frame.is_single_event_logical_group = true;
-
-                state.pointer_motion(conn, qh, pointer, time, (surface_x, surface_y));
             }
 
-            wl_pointer::Event::Button { time, button, state: button_state, .. } => {
-                match button_state {
-                    /*
-                    The protocol says the following regarding a frame:
-
-                    > A wl_pointer.frame event is sent for every logical event group, even if the group only
-                    > contains a single wl_pointer event.
-
-                    This means that wl_pointer::button (this event) should be followed by a wl_pointer::frame event.
-                    However since this is the only event of the logical group for button press/release, we can
-                    immediately invoke the handler trait to indicate pointer motion has occurred and simply
-                    swallow the incoming wl_pointer::frame event.
-                    */
-                    WEnum::Value(button_state) => {
-                        // Warn if we have an invalid frame
-                        let mut frame = data.pointer_frame.lock().unwrap();
-
-                        if frame.is_single_event_logical_group
-                            || frame.horizontal_axe.is_some()
-                            || frame.vertical_axe.is_some()
-                            || frame.axis_source.is_some()
-                        {
-                            log::warn!(target: "sctk", "wl_pointer::button sent during a different frame. emitting anyways.");
-                        }
-
-                        frame.is_single_event_logical_group = true;
-
-                        match button_state {
+            wl_pointer::Event::Button { time, button, state, .. } => match state {
+                WEnum::Value(state) => {
+                    if pointer.version() < 5 {
+                        match state {
                             wl_pointer::ButtonState::Released => {
-                                state.pointer_press_button(conn, qh, pointer, time, button)
+                                data.pointer_release_button(conn, qh, pointer, time, button)
                             }
-
                             wl_pointer::ButtonState::Pressed => {
-                                state.pointer_release_button(conn, qh, pointer, time, button)
+                                data.pointer_press_button(conn, qh, pointer, time, button)
                             }
 
                             _ => unreachable!(),
                         }
-                    }
-
-                    WEnum::Unknown(unknown) => {
-                        log::warn!(target: "sctk", "{}: compositor sends invalid button state: {:x}", pointer.id(), unknown);
-                    }
-                }
-            }
-
-            /*
-            Axis logical events.
-
-            Since there are multiple events in the logical event group for axis events, we need to queue up
-            all data regarding the events and emit all the data at once during the wl_pointer::frame event.
-            */
-            wl_pointer::Event::Axis { time, axis, value } => match axis {
-                WEnum::Value(axis) => {
-                    let mut frame = data.pointer_frame.lock().unwrap();
-
-                    // Check if the compositor has sent an invalid frame.
-                    if frame.is_single_event_logical_group {
-                        log::warn!(target: "sctk", "wl_pointer::axis sent during a non-axis frame. emitting anyways.");
-                    }
-
-                    if let wl_pointer::Axis::HorizontalScroll = axis {
-                        match frame.horizontal_axe {
-                            Some(ref mut axis_frame) => {
-                                // wl_pointer::axis_discrete may not provide a time, take it from here
-                                axis_frame.time = Some(time);
-                                axis_frame.absolute = Some(value);
-                            }
-
-                            None => {
-                                frame.horizontal_axe = Some(AxisFrame {
-                                    time: Some(time),
-                                    stop: false,
-                                    absolute: Some(value),
-                                    discrete: None,
-                                })
-                            }
-                        }
-                    }
-
-                    if let wl_pointer::Axis::VerticalScroll = axis {
-                        match frame.vertical_axe {
-                            Some(ref mut axis_frame) => {
-                                // wl_pointer::axis_discrete may not provide a time, take it from here
-                                axis_frame.time = Some(time);
-                                axis_frame.absolute = Some(value);
-                            }
-
-                            None => {
-                                frame.vertical_axe = Some(AxisFrame {
-                                    time: Some(time),
-                                    stop: false,
-                                    absolute: Some(value),
-                                    discrete: None,
-                                })
-                            }
-                        }
+                    } else {
+                        let mut guard = udata.inner.lock().unwrap();
+                        guard.button = Some(Button { time, state, button });
                     }
                 }
 
                 WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: compositor sends invalid axis: {:x}", pointer.id(), unknown);
+                    log::warn!(target: "sctk", "{}: invalid pointer button state: {:x}", pointer.id(), unknown)
                 }
             },
 
-            wl_pointer::Event::AxisSource { axis_source } => match axis_source {
-                WEnum::Value(axis_source) => {
-                    let mut frame = data.pointer_frame.lock().unwrap();
-
-                    if frame.is_single_event_logical_group {
-                        log::warn!(target: "sctk", "wl_pointer::axis_source sent during a non-axis frame. emitting anyways.");
-                    }
-
-                    frame.axis_source = Some(axis_source);
-                }
-
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "unknown axis source: {:x}", unknown);
-                }
-            },
-
-            wl_pointer::Event::AxisStop { time, axis } => match axis {
-                WEnum::Value(axis) => {
-                    let mut frame = data.pointer_frame.lock().unwrap();
-
-                    if let wl_pointer::Axis::HorizontalScroll = axis {
-                        match frame.horizontal_axe {
-                            Some(ref mut axis_frame) => {
-                                // wl_pointer::axis_discrete may not provide a time, take it from here
-                                axis_frame.time = Some(time);
-                                axis_frame.stop = true;
-                            }
-
-                            None => {
-                                frame.horizontal_axe = Some(AxisFrame {
-                                    time: Some(time),
-                                    stop: true,
-                                    absolute: None,
-                                    discrete: None,
-                                })
-                            }
-                        }
-                    }
-
-                    if let wl_pointer::Axis::VerticalScroll = axis {
-                        match frame.vertical_axe {
-                            Some(ref mut axis_frame) => {
-                                // wl_pointer::axis_discrete may not provide a time, take it from here
-                                axis_frame.time = Some(time);
-                                axis_frame.stop = true;
-                            }
-
-                            None => {
-                                frame.vertical_axe = Some(AxisFrame {
-                                    time: Some(time),
-                                    stop: true,
-                                    absolute: None,
-                                    discrete: None,
-                                })
-                            }
-                        }
-                    }
-                }
-
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: compositor sends invalid axis: {:x}", pointer.id(), unknown);
-                }
-            },
-
-            wl_pointer::Event::AxisDiscrete { axis, discrete } => {
+            // Axis logical events.
+            wl_pointer::Event::Axis { time, axis, value } => {
                 match axis {
                     WEnum::Value(axis) => {
-                        // axis_discrete will always be the first event of some axe in the frame, so initializing the
-                        // axis frame should never fail assuming a complaint server.
-                        let mut frame = data.pointer_frame.lock().unwrap();
-                        // We don't have the time, let a future event fill it in.
-
-                        if let wl_pointer::Axis::HorizontalScroll = axis {
-                            match frame.horizontal_axe {
-                                Some(ref mut axis_frame) => {
-                                    // wl_pointer::axis_discrete does not provide a time, but the protocol
-                                    // says we will get the time later.
-                                    axis_frame.discrete = Some(discrete);
-                                }
-
-                                None => {
-                                    frame.horizontal_axe = Some(AxisFrame {
-                                        time: None,
-                                        stop: true,
-                                        absolute: None,
-                                        discrete: Some(discrete),
-                                    })
-                                }
+                        let (horizontal, vertical) = match axis {
+                            wl_pointer::Axis::VerticalScroll => {
+                                (None, Some(AxisKind::Absolute(value)))
                             }
-                        }
+                            wl_pointer::Axis::HorizontalScroll => {
+                                (Some(AxisKind::Absolute(value)), None)
+                            }
 
-                        if let wl_pointer::Axis::VerticalScroll = axis {
-                            match frame.vertical_axe {
-                                Some(ref mut axis_frame) => {
-                                    // wl_pointer::axis_discrete does not provide a time, but the protocol
-                                    // says we will get the time later.
-                                    axis_frame.discrete = Some(discrete);
-                                }
+                            _ => unreachable!(),
+                        };
 
-                                None => {
-                                    frame.vertical_axe = Some(AxisFrame {
-                                        time: None,
-                                        stop: true,
-                                        absolute: None,
-                                        discrete: Some(discrete),
-                                    })
-                                }
+                        // Old seats must emit two events, one for each axis.
+                        if pointer.version() < 5 {
+                            let scroll = PointerScroll {
+                                horizontal,
+                                vertical,
+                                // A source cannot exist below version 5.
+                                source: None,
+                            };
+
+                            data.pointer_axis(conn, qh, pointer, time, scroll);
+                        } else {
+                            // Starting in version 5, we must wait for a `frame` event before invoking the
+                            // handler trait functions.
+
+                            let mut guard = udata.inner.lock().unwrap();
+
+                            if let Some(pending_axis) = guard.axis.as_mut() {
+                                // Set time if it is not set yet.
+                                // The time is `None` beforehand if some other axis event started the frame.
+                                pending_axis.time.get_or_insert(time);
+                            }
+
+                            // Add absolute axis events to the pending frame.
+                            let axis = guard.axis.get_or_insert(Axis {
+                                horizontal,
+                                vertical,
+                                source: None,
+                                time: Some(time),
+                            });
+
+                            if let Some(horizontal) = horizontal {
+                                axis.horizontal.get_or_insert(horizontal);
+                            }
+
+                            if let Some(vertical) = vertical {
+                                axis.vertical.get_or_insert(vertical);
                             }
                         }
                     }
 
                     WEnum::Unknown(unknown) => {
-                        log::warn!(target: "sctk", "{}: compositor sends invalid axis: {:x}", pointer.id(), unknown);
+                        log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown)
                     }
                 }
             }
 
-            wl_pointer::Event::Frame => {
-                let mut guard = data.pointer_frame.lock().unwrap();
-                let frame = guard.take();
-                drop(guard);
+            // Introduced in version 5
+            wl_pointer::Event::AxisSource { axis_source } => match axis_source {
+                WEnum::Value(source) => {
+                    let mut guard = udata.inner.lock().unwrap();
 
-                if let Some(horizontal) = frame.horizontal_axe {
-                    if let Some(kind) = horizontal.kind() {
-                        state.pointer_axis(
-                            conn,
-                            qh,
-                            pointer,
-                            horizontal.time.unwrap(),
-                            frame.axis_source,
-                            wl_pointer::Axis::HorizontalScroll,
-                            kind,
-                        );
-                    } else {
-                        todo!("No time provided because of incomplete frame")
+                    let axis = guard.axis.get_or_insert(Axis {
+                        horizontal: None,
+                        vertical: None,
+                        source: Some(source),
+                        time: None,
+                    });
+
+                    axis.source.get_or_insert(source);
+                }
+
+                WEnum::Unknown(unknown) => {
+                    log::warn!(target: "sctk", "unknown pointer axis source: {:x}", unknown);
+                }
+            },
+
+            // Introduced in version 5
+            wl_pointer::Event::AxisStop { time, axis } => match axis {
+                WEnum::Value(axis) => {
+                    let mut guard = udata.inner.lock().unwrap();
+
+                    if let Some(pending_axis) = guard.axis.as_mut() {
+                        // Set time if it is not set yet.
+                        // The time is `None` beforehand if some other axis event started the frame.
+                        pending_axis.time.get_or_insert(time);
+                    }
+
+                    let (horizontal, vertical) = match axis {
+                        wl_pointer::Axis::VerticalScroll => (None, Some(AxisKind::Stop)),
+
+                        wl_pointer::Axis::HorizontalScroll => (Some(AxisKind::Stop), None),
+
+                        _ => unreachable!(),
+                    };
+
+                    let axis = guard.axis.get_or_insert(Axis {
+                        horizontal,
+                        vertical,
+                        source: None,
+                        time: Some(time),
+                    });
+
+                    if let Some(horizontal) = horizontal {
+                        axis.horizontal.get_or_insert(horizontal);
+                    }
+
+                    if let Some(vertical) = vertical {
+                        axis.vertical.get_or_insert(vertical);
                     }
                 }
 
-                if let Some(vertical) = frame.vertical_axe {
-                    if let Some(kind) = vertical.kind() {
-                        state.pointer_axis(
-                            conn,
-                            qh,
-                            pointer,
-                            vertical.time.unwrap(),
-                            frame.axis_source,
-                            wl_pointer::Axis::VerticalScroll,
-                            kind,
-                        );
-                    } else {
-                        todo!("No time provided because of incomplete frame")
+                WEnum::Unknown(unknown) => {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                }
+            },
+
+            // Introduced in version 5
+            wl_pointer::Event::AxisDiscrete { axis, discrete } => match axis {
+                WEnum::Value(axis) => {
+                    let mut guard = udata.inner.lock().unwrap();
+
+                    let (horizontal, vertical) = match axis {
+                        wl_pointer::Axis::VerticalScroll => {
+                            (None, Some(AxisKind::Discrete(discrete)))
+                        }
+
+                        wl_pointer::Axis::HorizontalScroll => {
+                            (Some(AxisKind::Discrete(discrete)), None)
+                        }
+
+                        _ => unreachable!(),
+                    };
+
+                    let axis = guard.axis.get_or_insert(Axis {
+                        horizontal,
+                        vertical,
+                        source: None,
+                        time: None,
+                    });
+
+                    if let Some(horizontal) = horizontal {
+                        axis.horizontal.get_or_insert(horizontal);
+                    }
+
+                    if let Some(vertical) = vertical {
+                        axis.vertical.get_or_insert(vertical);
+                    }
+                }
+
+                WEnum::Unknown(unknown) => {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                }
+            },
+
+            wl_pointer::Event::Frame => {
+                // `frame` is essentially an atomic signal that all events have been received.
+                let mut guard = udata.inner.lock().unwrap();
+                // The protocol says only one of each "logical event group" will correspond to a frame.
+                // However, compositor implementations are not all that consistent so let's be flexible.
+                let axis = guard.axis.take();
+                let motion = guard.motion.take();
+                let button = guard.button.take();
+
+                drop(guard);
+
+                if let Some(axis) = axis {
+                    let scroll = PointerScroll {
+                        horizontal: axis.horizontal,
+                        vertical: axis.vertical,
+                        source: axis.source,
+                    };
+
+                    // If time isn't set for some reason, just pass 0.
+                    data.pointer_axis(conn, qh, pointer, axis.time.unwrap_or(0), scroll);
+                }
+
+                if let Some(motion) = motion {
+                    data.pointer_motion(conn, qh, pointer, motion.time, (motion.x, motion.y));
+                }
+
+                if let Some(button) = button {
+                    match button.state {
+                        wl_pointer::ButtonState::Released => {
+                            data.pointer_release_button(
+                                conn,
+                                qh,
+                                pointer,
+                                button.time,
+                                button.button,
+                            );
+                        }
+
+                        wl_pointer::ButtonState::Pressed => {
+                            data.pointer_press_button(
+                                conn,
+                                qh,
+                                pointer,
+                                button.time,
+                                button.button,
+                            );
+                        }
+
+                        _ => unreachable!(),
                     }
                 }
             }

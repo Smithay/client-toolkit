@@ -19,7 +19,7 @@ use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
     keyboard::KeyboardHandler,
-    pointer::{PointerFrame, PointerHandler},
+    pointer::{PointerData, PointerHandler},
 };
 
 #[non_exhaustive]
@@ -101,6 +101,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_keyboard::WlKeyboard, SeatError>
     where
+        // FIXME: Keyboard does not need SeatData. It will have it's own type of data.
         D: Dispatch<wl_keyboard::WlKeyboard, UserData = SeatData> + KeyboardHandler + 'static,
     {
         let inner =
@@ -126,7 +127,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, UserData = SeatData> + PointerHandler + 'static,
+        D: Dispatch<wl_pointer::WlPointer, UserData = PointerData> + PointerHandler + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -135,7 +136,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        let pointer = seat.get_pointer(conn, qh, inner.data.clone())?;
+        let pointer = seat.get_pointer(conn, qh, PointerData::default())?;
         Ok(pointer)
     }
 }
@@ -246,8 +247,6 @@ pub struct SeatData {
     has_pointer: Arc<AtomicBool>,
     has_touch: Arc<AtomicBool>,
     name: Arc<Mutex<Option<String>>>,
-    /// Accumulated state of a pointer before the frame event is called.
-    pointer_frame: Arc<Mutex<PointerFrame>>,
 }
 
 #[macro_export]
@@ -371,12 +370,6 @@ where
                             has_pointer: Arc::new(AtomicBool::new(false)),
                             has_touch: Arc::new(AtomicBool::new(false)),
                             name: Arc::new(Mutex::new(None)),
-                            pointer_frame: Arc::new(Mutex::new(PointerFrame {
-                                is_single_event_logical_group: false,
-                                horizontal_axe: None,
-                                vertical_axe: None,
-                                axis_source: None,
-                            })),
                         },
                     )
                 })

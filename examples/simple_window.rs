@@ -2,12 +2,14 @@ use std::convert::TryInto;
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_keyboard, delegate_output, delegate_registry, delegate_seat,
-    delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
+    delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     seat::{
-        keyboard::KeyboardHandler, pointer::PointerHandler, Capability, SeatHandler, SeatState,
+        keyboard::KeyboardHandler,
+        pointer::{PointerHandler, PointerScroll},
+        Capability, SeatHandler, SeatState,
     },
     shell::xdg::{
         window::{Window, WindowHandler},
@@ -50,6 +52,8 @@ fn main() {
         window: None,
         keyboard: None,
         keyboard_focus: false,
+        pointer: None,
+        pointer_focus: false,
     };
 
     event_queue.blocking_dispatch(&mut simple_window).unwrap();
@@ -112,6 +116,8 @@ struct SimpleWindow {
     window: Option<Window>,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
+    pointer: Option<wl_pointer::WlPointer>,
+    pointer_focus: bool,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -237,17 +243,30 @@ impl SeatHandler for SimpleWindow {
                 self.seat_state.get_keyboard(conn, qh, &seat).expect("Failed to create keyboard");
             self.keyboard = Some(keyboard);
         }
+
+        if capability == Capability::Pointer && self.pointer.is_none() {
+            println!("Set pointer capability");
+            let pointer =
+                self.seat_state.get_pointer(conn, qh, &seat).expect("Failed to create pointer");
+            self.pointer = Some(pointer);
+        }
     }
 
     fn remove_capability(
         &mut self,
-        _: &mut ConnectionHandle,
+        conn: &mut ConnectionHandle,
         _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         capability: Capability,
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_some() {
             println!("Unset keyboard capability");
+            self.keyboard.take().unwrap().release(conn);
+        }
+
+        if capability == Capability::Pointer && self.pointer.is_some() {
+            println!("Unset pointer capability");
+            self.pointer.take().unwrap().release(conn);
         }
     }
 
@@ -263,7 +282,7 @@ impl KeyboardHandler for SimpleWindow {
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
     ) {
-        if Some(surface) == self.window.as_ref().map(Window::wl_surface) {
+        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
             println!("Keyboard focus on window");
             self.keyboard_focus = true;
         }
@@ -276,7 +295,7 @@ impl KeyboardHandler for SimpleWindow {
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
     ) {
-        if Some(surface) == self.window.as_ref().map(Window::wl_surface) {
+        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
             println!("Release keyboard focus on window");
             self.keyboard_focus = false;
         }
@@ -330,10 +349,13 @@ impl PointerHandler for SimpleWindow {
         _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
-        _surface: &wl_surface::WlSurface,
-        _entered: (f64, f64),
+        surface: &wl_surface::WlSurface,
+        entered: (f64, f64),
     ) {
-        todo!()
+        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
+            println!("Pointer focus on window, entering at {:?}", entered);
+            self.pointer_focus = true;
+        }
     }
 
     fn pointer_release_focus(
@@ -341,9 +363,12 @@ impl PointerHandler for SimpleWindow {
         _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
-        _surface: &wl_surface::WlSurface,
+        surface: &wl_surface::WlSurface,
     ) {
-        todo!()
+        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
+            println!("Release pointer focus on window");
+            self.pointer_focus = false;
+        }
     }
 
     fn pointer_motion(
@@ -351,10 +376,12 @@ impl PointerHandler for SimpleWindow {
         _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
-        _time: u32,
-        _position: (f64, f64),
+        time: u32,
+        position: (f64, f64),
     ) {
-        todo!()
+        if self.pointer_focus {
+            println!("Pointer motion: {:?} @ {}", position, time);
+        }
     }
 
     fn pointer_press_button(
@@ -362,10 +389,12 @@ impl PointerHandler for SimpleWindow {
         _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
-        _time: u32,
-        _button: u32,
+        time: u32,
+        button: u32,
     ) {
-        todo!()
+        if self.pointer_focus {
+            println!("Pointer press button: {:?} @ {}", button, time);
+        }
     }
 
     fn pointer_release_button(
@@ -373,23 +402,33 @@ impl PointerHandler for SimpleWindow {
         _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
-        _time: u32,
-        _button: u32,
+        time: u32,
+        button: u32,
     ) {
-        todo!()
+        if self.pointer_focus {
+            println!("Pointer release button: {:?} @ {}", button, time);
+        }
     }
 
     fn pointer_axis(
         &mut self,
-        _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
-        _time: u32,
-        _source: Option<wl_pointer::AxisSource>,
-        _axis: wl_pointer::Axis,
-        _kind: smithay_client_toolkit::seat::pointer::AxisKind,
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<Self>,
+        _: &wl_pointer::WlPointer,
+        time: u32,
+        scroll: PointerScroll,
     ) {
-        todo!()
+        if self.pointer_focus {
+            println!("Pointer scroll: @ {}", time);
+
+            if let Some(vertical) = scroll.axis(wl_pointer::Axis::VerticalScroll) {
+                println!("\nV: {:?}", vertical);
+            }
+
+            if let Some(horizontal) = scroll.axis(wl_pointer::Axis::HorizontalScroll) {
+                println!("\nH: {:?}", horizontal);
+            }
+        }
     }
 }
 
@@ -478,6 +517,7 @@ delegate_shm!(SimpleWindow);
 
 delegate_seat!(SimpleWindow);
 delegate_keyboard!(SimpleWindow);
+delegate_pointer!(SimpleWindow);
 
 delegate_xdg_shell!(SimpleWindow);
 delegate_xdg_window!(SimpleWindow);
