@@ -125,7 +125,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         }
     }
     /// Removes the buffer with the given key from the pool and rearranges the others
-    pub fn remove(&mut self, key: &K) {
+    pub fn remove(&mut self, key: &K, conn: &mut ConnectionHandle) {
         if let Some((i, buffer)) =
             self.buffer_list
             .iter()
@@ -135,6 +135,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             self.buffer_list.remove(i);
             for buffer in &mut self.buffer_list {
                 if buffer.offset > offset && buffer.free.load(Ordering::Relaxed) {
+                    buffer.buffer.destroy(conn);
                     let l_offset = buffer.offset;
                     buffer.offset = offset;
                     offset = l_offset;
@@ -178,13 +179,19 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     // Increases the size of the Buffer if it's too small and add 5% padding.
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
-                    buffer.size = buffer.size.max(size + size / 20);
+                    if size + size / 20 > buffer.size {
+                        buffer.buffer.destroy(conn);
+                        buffer.size = size + size / 20;
+                    }
                     index = Some(i);
                 }
             // If a buffer is resized, it is likely that the followings might overlap
             } else if offset > buffer.offset {
                 // When the buffer is free, it's safe to shift it because we know the compositor won't try to read it.
                 if buffer.free.load(Ordering::Relaxed) {
+                    if offset != buffer.offset {
+                        buffer.buffer.destroy(conn);
+                    }
                     buffer.offset = offset;
                 } else {
                     // If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
@@ -255,11 +262,10 @@ where
         buffer: &wl_buffer::WlBuffer,
         event: wl_buffer::Event,
         _: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        _: &mut ConnectionHandle,
         _: &QueueHandle<D>
     ) {
         if let wl_buffer::Event::Release = event {
-            buffer.destroy(conn);
             match data.into() {
                 PoolHandle::Ref(pool) => {
                     pool.free(buffer);
