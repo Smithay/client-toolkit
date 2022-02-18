@@ -2,7 +2,7 @@ pub mod raw;
 pub mod multi;
 pub mod simple;
 
-use std::io;
+use std::{io, slice::Iter};
 
 use nix::errno::Errno;
 use wayland_client::backend::InvalidId;
@@ -34,5 +34,6 @@ impl From<Errno> for CreatePoolError {
 pub enum PoolHandle<'m, P> {
     Ref(&'m P),
     Slice(&'m [P]),
-    Vec(Vec<&'m P>)
+    Vec(Vec<&'m P>),
+    Iter(Iter<'m, P>)
 }

@@ -89,16 +89,17 @@ use crate::shm::pool::PoolHandle;
 /// Only one buffer can be attributed to a given key.
 #[derive(Debug)]
 pub struct MultiPool<K: PartialEq + Clone> {
-    buffer_list: Vec<Buffer<K>>,
+    buffer_list: Vec<BufferHandle<K>>,
     pub(crate) inner: RawPool,
 }
 
 #[derive(Debug)]
-struct Buffer<K: PartialEq + Clone> {
+struct BufferHandle<K: PartialEq + Clone> {
     free: AtomicBool,
     size: usize,
+    used: usize,
     offset: usize,
-    buffer: wl_buffer::WlBuffer,
+    buffer: Option<wl_buffer::WlBuffer>,
     key: K,
 }
 
@@ -120,7 +121,10 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         self.inner.resize(size, conn)
     }
     fn free(&self, buffer: &wl_buffer::WlBuffer) {
-        if let Some(buffer) = self.buffer_list.iter().find(|b| b.buffer.eq(buffer)) {
+        if let Some(buffer) = self
+        	.buffer_list
+        	.iter()
+        	.find(|b| b.buffer.as_ref() == Some(buffer)) {
             buffer.free.swap(true, Ordering::Relaxed);
         }
     }
@@ -133,11 +137,13 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             .find(|b| b.1.key.eq(key)) {
             let mut offset = buffer.offset;
             self.buffer_list.remove(i);
-            for buffer in &mut self.buffer_list {
-                if buffer.offset > offset && buffer.free.load(Ordering::Relaxed) {
-                    buffer.buffer.destroy(conn);
-                    let l_offset = buffer.offset;
-                    buffer.offset = offset;
+            for buffer_handle in &mut self.buffer_list {
+                if buffer_handle.offset > offset && buffer_handle.free.load(Ordering::Relaxed) {
+                    if let Some(buffer) = buffer_handle.buffer.take() {
+                        buffer.destroy(conn);
+                    }
+                    let l_offset = buffer_handle.offset;
+                    buffer_handle.offset = offset;
                     offset = l_offset;
                 } else {
                     break;
@@ -172,27 +178,31 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         let mut index = None;
 
         // This loop serves to found the buffer associated to the key.
-        for (i, buffer) in self.buffer_list.iter_mut().enumerate() {
-            if buffer.key.eq(key) {
+        for (i, buffer_handle) in self.buffer_list.iter_mut().enumerate() {
+            if buffer_handle.key.eq(key) {
                 found_key = true;
-                if buffer.free.load(Ordering::Relaxed) {
+                if buffer_handle.free.load(Ordering::Relaxed) {
+                    // Destroys the buffer if it's resized
+                    if size != buffer_handle.used {
+                        buffer_handle.buffer.take().unwrap().destroy(conn);
+                    }
                     // Increases the size of the Buffer if it's too small and add 5% padding.
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
-                    if size + size / 20 > buffer.size {
-                        buffer.buffer.destroy(conn);
-                        buffer.size = size + size / 20;
-                    }
+                    buffer_handle.size = buffer_handle.size.max(size + size / 20);
+                    buffer_handle.used = size;
                     index = Some(i);
                 }
             // If a buffer is resized, it is likely that the followings might overlap
-            } else if offset > buffer.offset {
+            } else if offset > buffer_handle.offset {
                 // When the buffer is free, it's safe to shift it because we know the compositor won't try to read it.
-                if buffer.free.load(Ordering::Relaxed) {
-                    if offset != buffer.offset {
-                        buffer.buffer.destroy(conn);
+                if buffer_handle.free.load(Ordering::Relaxed) {
+                    if offset != buffer_handle.offset {
+                        if let Some(buffer) = buffer_handle.buffer.take() {
+                            buffer.destroy(conn);
+                        }
                     }
-                    buffer.offset = offset;
+                    buffer_handle.offset = offset;
                 } else {
                     // If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
                     index = None;
@@ -200,7 +210,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             } else if found_key {
                 break;
             }
-            offset += buffer.size;
+            offset += buffer_handle.size;
         }
 
         if found_key {
@@ -217,27 +227,48 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             return None
         }
 
-        let buffer = self.inner.create_buffer(
-            offset as i32,
-            width,
-            height,
-            stride,
-            format, udata, conn,
-            qh
-        ).ok()?;
+		let buffer;
 
         if found_key {
-            self.buffer_list[index?].buffer = buffer.clone();
+            match self.buffer_list[index?].buffer.as_ref() {
+                Some(t_buffer) => {
+                    buffer = t_buffer.clone();
+                }
+                None => {
+                    self.buffer_list[index?].buffer = Some(
+                        self.inner.create_buffer(
+                            offset as i32,
+                            width,
+                            height,
+                            stride,
+                            format, udata, conn,
+                            qh
+                        ).ok()?);
+                    buffer = self.buffer_list[index?].buffer.as_ref().unwrap().clone();
+                }
+            }
+            // self.buffer_list[index?].buffer = buffer.clone();
         } else if index.is_none() {
             index = Some(self.buffer_list.len());
-            let buffer = Buffer {
+            let t_buffer = self.inner.create_buffer(
+                offset as i32,
+                width,
+                height,
+                stride,
+                format, udata, conn,
+                qh
+            ).ok()?;
+            self.buffer_list.push(BufferHandle {
                 offset,
+                used: 0,
                 free: AtomicBool::new(true),
-                buffer: buffer.clone(),
+                buffer: Some(t_buffer),
                 size,
                 key: key.clone()
-            };
-            self.buffer_list.push(buffer);
+            });
+            buffer = self.buffer_list[index?].buffer.as_ref().unwrap().clone();
+        } else {
+            return None;
         }
 
         let slice = &mut self.inner.mmap()[offset..][..size];
@@ -272,6 +303,11 @@ where
                 }
                 PoolHandle::Slice(pools) => {
                     for pool in pools.iter() {
+                        pool.free(buffer);
+                    }
+                }
+                PoolHandle::Iter(pools) => {
+                    for pool in pools {
                         pool.free(buffer);
                     }
                 }
