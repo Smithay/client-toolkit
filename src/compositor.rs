@@ -1,5 +1,5 @@
 use std::sync::{
-    atomic::{AtomicBool, AtomicI32, Ordering},
+    atomic::{AtomicI32, Ordering},
     Mutex,
 };
 
@@ -75,11 +75,7 @@ impl CompositorState {
         let surface = compositor.create_surface(
             conn,
             qh,
-            SurfaceData {
-                scale_factor: AtomicI32::new(1),
-                outputs: Mutex::new(vec![]),
-                has_role: AtomicBool::new(false),
-            },
+            SurfaceData { scale_factor: AtomicI32::new(1), outputs: Mutex::new(vec![]) },
         )?;
 
         Ok(surface)
@@ -94,9 +90,6 @@ pub struct SurfaceData {
 
     /// The outputs the surface is currently inside.
     pub(crate) outputs: Mutex<Vec<wl_output::WlOutput>>,
-
-    /// Whether the surface has a role object.
-    pub(crate) has_role: AtomicBool,
 }
 
 #[macro_export]

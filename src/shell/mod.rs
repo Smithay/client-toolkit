@@ -1,7 +1,7 @@
 //! # Shell abstractions
 //!
-//! A shell describes a set of wayland protocol extensions which define the capabilities of a surface and how the
-//! surface is displayed.
+//! A shell describes a set of wayland protocol extensions which define the capabilities of a surface and how
+//! the surface is displayed.
 //!
 //! ## Cross desktop group (XDG) shell
 //!
@@ -25,3 +25,4 @@
 //! [`Window`]: self::xdg::window::Window
 
 pub mod xdg;
+// TODO: Would be nice to support the layer shell.
