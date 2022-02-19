@@ -12,7 +12,7 @@ use smithay_client_toolkit::{
         Capability, SeatHandler, SeatState,
     },
     shell::xdg::{
-        window::{Window, WindowHandler},
+        window::{Window, WindowHandler, XdgWindowState},
         XdgShellHandler, XdgShellState,
     },
     shm::{pool::raw::RawPool, ShmHandler, ShmState},
@@ -42,6 +42,7 @@ fn main() {
         compositor_state: CompositorState::new(),
         shm_state: ShmState::new(),
         xdg_shell_state: XdgShellState::new(),
+        xdg_window_state: XdgWindowState::new(),
 
         exit: false,
         first_configure: true,
@@ -73,7 +74,7 @@ fn main() {
     let surface = simple_window.compositor_state.create_surface(&mut conn.handle(), &qh).unwrap();
 
     let window = simple_window
-        .xdg_shell_state
+        .xdg_window_state
         .create_window(&mut conn.handle(), &qh, surface)
         .expect("window");
 
@@ -106,6 +107,7 @@ struct SimpleWindow {
     compositor_state: CompositorState,
     shm_state: ShmState,
     xdg_shell_state: XdgShellState,
+    xdg_window_state: XdgWindowState,
 
     exit: bool,
     first_configure: bool,
@@ -213,6 +215,10 @@ impl XdgShellHandler for SimpleWindow {
 }
 
 impl WindowHandler for SimpleWindow {
+    fn xdg_window_state(&mut self) -> &mut XdgWindowState {
+        &mut self.xdg_window_state
+    }
+
     fn request_close_window(
         &mut self,
         _: &mut ConnectionHandle,
@@ -528,6 +534,7 @@ delegate_registry!(SimpleWindow: [
     ShmState,
     SeatState,
     XdgShellState,
+    XdgWindowState,
 ]);
 
 impl ProvidesRegistryState for SimpleWindow {
