@@ -64,10 +64,10 @@ impl SeatState {
         let (user_specified_rmlvo, xkb_state) = if let Some(rmlvo) = rmlvo {
             let keymap = xkb::Keymap::new_from_names(
                 &xkb_context,
-                &rmlvo.rules.unwrap_or_else(String::new),
-                &rmlvo.model.unwrap_or_else(String::new),
-                &rmlvo.layout.unwrap_or_else(String::new),
-                &rmlvo.variant.unwrap_or_else(String::new),
+                &rmlvo.rules.unwrap_or_default(),
+                &rmlvo.model.unwrap_or_default(),
+                &rmlvo.layout.unwrap_or_default(),
+                &rmlvo.variant.unwrap_or_default(),
                 rmlvo.options,
                 xkb::COMPILE_NO_FLAGS,
             );

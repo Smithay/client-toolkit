@@ -1,4 +1,4 @@
-#[cfg(feature = "xkbcommon_keyboard")]
+#[cfg(feature = "xkbcommon")]
 pub mod keyboard;
 pub mod pointer;
 pub mod touch;
