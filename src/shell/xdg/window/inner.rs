@@ -19,12 +19,16 @@ use wayland_protocols::{
     xdg_shell::client::{
         xdg_surface,
         xdg_toplevel::{self, State},
+        xdg_wm_base,
     },
 };
 
-use crate::shell::xdg::XdgShellState;
+use crate::{
+    registry::{ProvidesRegistryState, RegistryHandler},
+    shell::xdg::inner::MAX_XDG_WM_BASE,
+};
 
-use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler};
+use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, XdgWindowState};
 
 impl Window {
     /// Clone is an implementation detail of Window.
@@ -201,7 +205,7 @@ pub struct WindowDataInner {
 
 impl WindowDataInner {}
 
-impl XdgShellState {
+impl XdgWindowState {
     pub(crate) fn init_decorations<D>(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)
     where
         D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
@@ -214,13 +218,123 @@ impl XdgShellState {
             }
         }
     }
+
+    pub(crate) fn cleanup(&mut self, conn: &mut ConnectionHandle) {
+        self.windows.retain(|window| {
+            let alive = !window.death_signal.load(Ordering::SeqCst);
+
+            if !alive {
+                // XDG decoration says we must destroy the decoration object before the toplevel
+                if let Some(decoration) = &*window.inner.zxdg_toplevel_decoration.lock().unwrap() {
+                    decoration.destroy(conn);
+                }
+
+                // XDG Shell protocol dictates we must destroy the role object before the xdg surface.
+                window.xdg_toplevel().destroy(conn);
+                window.xdg_surface().destroy(conn);
+                window.wl_surface().destroy(conn);
+            }
+
+            alive
+        })
+    }
 }
 
-impl DelegateDispatchBase<xdg_toplevel::XdgToplevel> for XdgShellState {
+const MAX_ZXDG_DECORATION_MANAGER: u32 = 1;
+
+impl<D> RegistryHandler<D> for XdgWindowState
+where
+    D: Dispatch<xdg_wm_base::XdgWmBase, UserData = ()>
+        + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, UserData = ()>
+        // Lateinit for decorations
+        + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
+        + WindowHandler
+        + ProvidesRegistryState
+        + 'static,
+{
+    fn new_global(
+        data: &mut D,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        name: u32,
+        interface: &str,
+        version: u32,
+    ) {
+        match interface {
+            "xdg_wm_base" => {
+                if data.xdg_window_state().xdg_wm_base.is_some() {
+                    log::warn!(target: "sctk", "compositor advertises xdg_wm_base but one is already bound");
+                    return;
+                }
+
+                let xdg_wm_base = data
+                    .registry()
+                    .bind_cached::<xdg_wm_base::XdgWmBase, _, _, _>(conn, qh, name, || {
+                        (u32::min(version, MAX_XDG_WM_BASE), ())
+                    })
+                    .expect("failed to bind global");
+
+                data.xdg_window_state().xdg_wm_base = Some((name, xdg_wm_base));
+            }
+
+            "zxdg_decoration_manager_v1" => {
+                if data.xdg_window_state().zxdg_decoration_manager_v1.is_some() {
+                    log::warn!(target: "sctk", "compositor advertises zxdg_decoration_manager_v1 but one is already bound");
+                    return;
+                }
+
+                let zxdg_decoration_manager_v1 = data
+                    .registry()
+                    .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
+                        conn,
+                        qh,
+                        name,
+                        MAX_ZXDG_DECORATION_MANAGER,
+                        (),
+                    )
+                    .expect("failed to bind global");
+
+                data.xdg_window_state().zxdg_decoration_manager_v1 =
+                    Some((name, zxdg_decoration_manager_v1));
+
+                // Since the order in which globals are advertised is undefined, we need to ensure we enable
+                // server side decorations if the decoration manager is advertised after any surfaces are
+                // created.
+                data.xdg_window_state().init_decorations(conn, qh);
+            }
+
+            _ => (),
+        }
+    }
+
+    fn remove_global(data: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, name: u32) {
+        if data
+            .xdg_window_state()
+            .xdg_wm_base
+            .as_ref()
+            .filter(|(global_name, _)| global_name == &name)
+            .is_some()
+        {
+            todo!("XDG shell global destruction")
+        }
+
+        if data
+            .xdg_window_state()
+            .zxdg_decoration_manager_v1
+            .as_ref()
+            .filter(|(global_name, _)| global_name == &name)
+            .is_some()
+        {
+            todo!("ZXDG decoration global destruction")
+        }
+    }
+}
+
+impl DelegateDispatchBase<xdg_toplevel::XdgToplevel> for XdgWindowState {
     type UserData = WindowData;
 }
 
-impl<D> DelegateDispatch<xdg_toplevel::XdgToplevel, D> for XdgShellState
+impl<D> DelegateDispatch<xdg_toplevel::XdgToplevel, D> for XdgWindowState
 where
     D: Dispatch<xdg_toplevel::XdgToplevel, UserData = Self::UserData> + WindowHandler,
 {
@@ -263,7 +377,7 @@ where
             }
 
             xdg_toplevel::Event::Close => {
-                if let Some(window) = data.xdg_shell_state().window_by_toplevel(toplevel) {
+                if let Some(window) = data.xdg_window_state().window_by_toplevel(toplevel) {
                     let window = window.impl_clone();
 
                     data.request_close_window(conn, qh, &window);
@@ -276,17 +390,17 @@ where
         }
 
         // Perform cleanup as necessary
-        data.xdg_shell_state().cleanup(conn);
+        data.xdg_window_state().cleanup(conn);
     }
 }
 
 // XDG decoration
 
-impl DelegateDispatchBase<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1> for XdgShellState {
+impl DelegateDispatchBase<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1> for XdgWindowState {
     type UserData = ();
 }
 
-impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, D> for XdgShellState
+impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, D> for XdgWindowState
 where
     D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, UserData = Self::UserData>
         + WindowHandler,
@@ -303,11 +417,14 @@ where
     }
 }
 
-impl DelegateDispatchBase<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1> for XdgShellState {
+impl DelegateDispatchBase<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>
+    for XdgWindowState
+{
     type UserData = WindowData;
 }
 
-impl<D> DelegateDispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for XdgShellState
+impl<D> DelegateDispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D>
+    for XdgWindowState
 where
     D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = Self::UserData>
         + WindowHandler,
