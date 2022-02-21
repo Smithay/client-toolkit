@@ -2,7 +2,7 @@ pub mod raw;
 pub mod multi;
 pub mod simple;
 
-use std::{io, slice::Iter};
+use std::io;
 
 use nix::errno::Errno;
 use wayland_client::backend::InvalidId;
@@ -27,13 +27,4 @@ impl From<Errno> for CreatePoolError {
     fn from(errno: Errno) -> Self {
         Into::<io::Error>::into(errno).into()
     }
-}
-
-#[derive(Debug)]
-/// A handle to the underlying mempool
-pub enum PoolHandle<'m, P> {
-    Ref(&'m P),
-    Slice(&'m [P]),
-    Vec(Vec<&'m P>),
-    Iter(Iter<'m, P>)
 }
