@@ -176,10 +176,12 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     // Increases the size of the Buffer if it's too small and add 5% padding.
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
-                    buffer_handle.size = buffer_handle.size.max(size + size / 20);
-                    // If the offset isn't a multiple of 4
-                    // the client might be unable to use the buffer
-                    buffer_handle.size += 4 - buffer_handle.size % 4;
+                    buffer_handle.size = buffer_handle.size.max({
+                        let size = size + size / 20;
+                        // If the offset isn't a multiple of 4
+                        // the client might be unable to use the buffer
+                        size + 4 - size % 4
+                    });
                     buffer_handle.used = size;
                     index = Some(i);
                 }
