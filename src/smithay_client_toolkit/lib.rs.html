@@ -620,7 +620,7 @@
 
         <span class="comment">// Data device utility</span>
         <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::data_device::DataDeviceHandling</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env_name</span> {
-            <span class="kw">fn</span> <span class="ident">set_callback</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">callback</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::MissingGlobal</span><span class="op">&gt;</span>
+            <span class="kw">fn</span> <span class="ident">set_callback</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">callback</span>: <span class="ident">F</span>) -&gt; <span class="ident">::std::result::Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::MissingGlobal</span><span class="op">&gt;</span>
             <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnMut</span>(
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_seat::WlSeat</span>,
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::data_device::DndEvent</span>,
@@ -634,7 +634,7 @@
                 <span class="kw-2">&amp;</span><span class="self">self</span>,
                 <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_seat::WlSeat</span>,
                 <span class="ident">f</span>: <span class="ident">F</span>
-            ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::MissingGlobal</span><span class="op">&gt;</span> {
+            ) -&gt; <span class="ident">::std::result::Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::MissingGlobal</span><span class="op">&gt;</span> {
                 <span class="self">self</span>.<span class="ident">sctk_data_device_manager</span>.<span class="ident">with_device</span>(<span class="ident">seat</span>, <span class="ident">f</span>)
             }
         }
@@ -645,7 +645,7 @@
                 <span class="kw-2">&amp;</span><span class="self">self</span>,
                 <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_seat::WlSeat</span>,
                 <span class="ident">f</span>: <span class="ident">F</span>,
-            ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::MissingGlobal</span><span class="op">&gt;</span>
+            ) -&gt; <span class="ident">::std::result::Result</span><span class="op">&lt;</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::MissingGlobal</span><span class="op">&gt;</span>
             <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::primary_selection::PrimarySelectionDevice</span>)
             {
                 <span class="self">self</span>.<span class="ident">sctk_primary_selection_manager</span>.<span class="ident">with_primary_selection</span>(<span class="ident">seat</span>, <span class="ident">f</span>)
