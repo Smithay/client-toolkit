@@ -23,12 +23,6 @@
 //! 	pool: MultiPool<(WlSurface, usize)>
 //! }
 //!
-//!	impl AsPool<MultiPool<(WlSurface, usize)>> for WlFoo {
-//!	    fn pool_handle(&self) -> PoolHandle<MultiPool<(WlSurface, usize)>> {
-//!	        PoolHandle::Ref(&self.pool)
-//!	    }
-//!	}
-//!
 //! impl WlFoo {
 //! 	fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<WlFoo>) {
 //! 		let surface = &surface.1;
@@ -41,10 +35,10 @@
 //! 		for i in 0..2 {
 //! 			match self.pool.create_buffer(
 //! 				100,
+//! 				100 * 4,
 //! 				100,
 //! 				&self.surface,
 //! 				Format::Argb8888,
-//! 				(),
 //! 				conn,
 //! 				qh
 //! 			) {
@@ -74,6 +68,7 @@
 
 use std::io;
 
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use wayland_client::ConnectionHandle;
@@ -83,7 +78,6 @@ use wayland_client::protocol::{
 use wayland_client::{QueueHandle, Dispatch, DelegateDispatchBase, DelegateDispatch};
 
 use super::raw::RawPool;
-use crate::shm::pool::PoolHandle;
 
 /// This pool manages buffers associated with keys.
 /// Only one buffer can be attributed to a given key.
@@ -95,7 +89,7 @@ pub struct MultiPool<K: PartialEq + Clone> {
 
 #[derive(Debug)]
 struct BufferHandle<K: PartialEq + Clone> {
-    free: AtomicBool,
+    free: Arc<AtomicBool>,
     size: usize,
     used: usize,
     offset: usize,
@@ -119,14 +113,6 @@ impl<K: PartialEq + Clone> MultiPool<K> {
     /// current size of the pool, this function will do nothing.
     pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
         self.inner.resize(size, conn)
-    }
-    fn free(&self, buffer: &wl_buffer::WlBuffer) {
-        if let Some(buffer) = self
-        	.buffer_list
-        	.iter()
-        	.find(|b| b.buffer.as_ref() == Some(buffer)) {
-            buffer.free.swap(true, Ordering::Relaxed);
-        }
     }
     /// Removes the buffer with the given key from the pool and rearranges the others
     pub fn remove(&mut self, key: &K, conn: &mut ConnectionHandle) {
@@ -157,20 +143,19 @@ impl<K: PartialEq + Clone> MultiPool<K> {
     /// and by consequence if it should be damaged partially or fully.
     ///
     /// When it's not possible to use the buffer associated with the key, None is returned.
-    pub fn create_buffer<D, U>(
+    pub fn create_buffer<D>(
         &mut self,
         width: i32,
         stride: i32,
         height: i32,
         key: &K,
         format: wl_shm::Format,
-        udata: U,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) -> Option<(usize, wl_buffer::WlBuffer, &mut [u8])>
     where
-        D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
-        U: Send + Sync + 'static,
+        K: std::fmt::Debug,
+        D: Dispatch<wl_buffer::WlBuffer, UserData = Arc<AtomicBool>> + 'static,
     {
         let mut found_key = false;
         let mut offset = 0;
@@ -184,12 +169,17 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                 if buffer_handle.free.load(Ordering::Relaxed) {
                     // Destroys the buffer if it's resized
                     if size != buffer_handle.used {
-                        buffer_handle.buffer.take().unwrap().destroy(conn);
+                        if let Some(buffer) = buffer_handle.buffer.take() {
+                            buffer.destroy(conn);
+                        }
                     }
                     // Increases the size of the Buffer if it's too small and add 5% padding.
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
                     buffer_handle.size = buffer_handle.size.max(size + size / 20);
+                    // If the offset isn't a multiple of 4
+                    // the client might be unable to use the buffer
+                    buffer_handle.size += 4 - buffer_handle.size % 4;
                     buffer_handle.used = size;
                     index = Some(i);
                 }
@@ -219,6 +209,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         } else if let Some(b) = self.buffer_list.last() {
             // Adds 5% padding between the last and new buffer
             offset += b.size / 20;
+            offset += 4 - offset % 4;
         }
 
 		// Resize the pool if it isn't large enough to fit all our buffers
@@ -230,43 +221,47 @@ impl<K: PartialEq + Clone> MultiPool<K> {
 		let buffer;
 
         if found_key {
-            match self.buffer_list[index?].buffer.as_ref() {
+            let buffer_handle = self.buffer_list.get_mut(index?)?;
+            match &buffer_handle.buffer {
                 Some(t_buffer) => {
                     buffer = t_buffer.clone();
                 }
                 None => {
-                    self.buffer_list[index?].buffer = Some(
+                    buffer_handle.buffer = Some(
                         self.inner.create_buffer(
                             offset as i32,
                             width,
                             height,
                             stride,
-                            format, udata, conn,
+                            format,
+                            buffer_handle.free.clone(),
+                            conn,
                             qh
                         ).ok()?);
-                    buffer = self.buffer_list[index?].buffer.as_ref().unwrap().clone();
+                    buffer = buffer_handle.buffer.as_ref()?.clone();
                 }
             }
-            // self.buffer_list[index?].buffer = buffer.clone();
         } else if index.is_none() {
             index = Some(self.buffer_list.len());
-            let t_buffer = self.inner.create_buffer(
+            let free = Arc::new(AtomicBool::new(true));
+            buffer = self.inner.create_buffer(
                 offset as i32,
                 width,
                 height,
                 stride,
-                format, udata, conn,
+                format,
+                free.clone(),
+                conn,
                 qh
             ).ok()?;
             self.buffer_list.push(BufferHandle {
                 offset,
                 used: 0,
-                free: AtomicBool::new(true),
-                buffer: Some(t_buffer),
+                free,
+                buffer: Some(buffer.clone()),
                 size,
                 key: key.clone()
             });
-            buffer = self.buffer_list[index?].buffer.as_ref().unwrap().clone();
         } else {
             return None;
         }
@@ -280,43 +275,23 @@ impl<K: PartialEq + Clone> MultiPool<K> {
 }
 
 impl<K: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPool<K> {
-    type UserData = ();
+    type UserData = Arc<AtomicBool>;
 }
 
 impl<D, K: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<K>
 where
     D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-    for<'p> &'p mut D: Into<PoolHandle<'p, MultiPool<K>>>
 {
     fn event(
-        data: &mut D,
-        buffer: &wl_buffer::WlBuffer,
+        _: &mut D,
+        _: &wl_buffer::WlBuffer,
         event: wl_buffer::Event,
-        _: &Self::UserData,
+        free: &Self::UserData,
         _: &mut ConnectionHandle,
         _: &QueueHandle<D>
     ) {
         if let wl_buffer::Event::Release = event {
-            match data.into() {
-                PoolHandle::Ref(pool) => {
-                    pool.free(buffer);
-                }
-                PoolHandle::Slice(pools) => {
-                    for pool in pools.iter() {
-                        pool.free(buffer);
-                    }
-                }
-                PoolHandle::Iter(pools) => {
-                    for pool in pools {
-                        pool.free(buffer);
-                    }
-                }
-                PoolHandle::Vec(pools) => {
-                    for pool in pools.iter() {
-                        pool.free(buffer);
-                    }
-                }
-            }
+            free.swap(true, Ordering::Relaxed);
         }
     }
 }
