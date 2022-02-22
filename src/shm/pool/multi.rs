@@ -32,7 +32,8 @@
 //!         // There's no limit to the amount of buffers we can allocate to our surface but since
 //!         // shm buffers are released fairly fast, it's unlikely we'll need more than double buffering.
 //!         for i in 0..2 {
-//!             match self.pool.create_buffer(
+//!             self.surface.1 = i;
+//!             if let Some((offset, buffer, slice)) = self.pool.create_buffer(
 //!                 100,
 //!                 100 * 4,
 //!                 100,
@@ -40,21 +41,20 @@
 //!                 Format::Argb8888,
 //!                 conn,
 //!             ) {
-//!                 Some((offset, buffer, slice)) => {
-//!                     draw(slice);
-//!                     surface.attach(conn, Some(&buffer), 0, 0);
-//!                     surface.commit(conn);
-//!                     // We exit the function after the draw.
-//!                     return;
-//!                 }
-//!                 None => self.surface.1 = i,
+//!                 /*
+//!                     insert drawing code here
+//!                 */
+//!                 surface.attach(conn, Some(&buffer), 0, 0);
+//!                 surface.commit(conn);
+//!                 // We exit the function after the draw.
+//!                 return;
 //!             }
 //!         }
-//!         // If there's no buffer available we'll request a frame callback
-//!         // were this function will be called again.
-//!         // TODO:
-//!         // surface.frame(conn, qh);
-//!         surface.commit(conn);
+//!         /*
+//!             If there's no buffer available we can for example request a frame callback
+//!             and trigger a redraw when it fires.
+//!             (not shown in this example)
+//!         */
 //!     }
 //! }
 //!
