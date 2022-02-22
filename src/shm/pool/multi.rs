@@ -68,14 +68,14 @@
 
 use std::io;
 
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
-use wayland_client::ConnectionHandle;
-use wayland_client::protocol::{
-    wl_buffer,wl_shm
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
 };
-use wayland_client::{QueueHandle, Dispatch, DelegateDispatchBase, DelegateDispatch};
+use wayland_client::{
+    protocol::{wl_buffer, wl_shm, wl_shm_pool},
+    ConnectionHandle, Proxy, WEnum,
+};
 
 use super::raw::RawPool;
 
@@ -99,10 +99,7 @@ struct BufferHandle<K: PartialEq + Clone> {
 
 impl<E: PartialEq + Clone> From<RawPool> for MultiPool<E> {
     fn from(inner: RawPool) -> Self {
-        Self {
-            buffer_list: Vec::new(),
-            inner
-        }
+        Self { buffer_list: Vec::new(), inner }
     }
 }
 
@@ -116,11 +113,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
     }
     /// Removes the buffer with the given key from the pool and rearranges the others
     pub fn remove(&mut self, key: &K, conn: &mut ConnectionHandle) {
-        if let Some((i, buffer)) =
-            self.buffer_list
-            .iter()
-            .enumerate()
-            .find(|b| b.1.key.eq(key)) {
+        if let Some((i, buffer)) = self.buffer_list.iter().enumerate().find(|b| b.1.key.eq(key)) {
             let mut offset = buffer.offset;
             self.buffer_list.remove(i);
             for buffer_handle in &mut self.buffer_list {
@@ -143,7 +136,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
     /// and by consequence if it should be damaged partially or fully.
     ///
     /// When it's not possible to use the buffer associated with the key, None is returned.
-    pub fn create_buffer<D>(
+    pub fn create_buffer(
         &mut self,
         width: i32,
         stride: i32,
@@ -151,11 +144,9 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         key: &K,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
     ) -> Option<(usize, wl_buffer::WlBuffer, &mut [u8])>
     where
         K: std::fmt::Debug,
-        D: Dispatch<wl_buffer::WlBuffer, UserData = Arc<AtomicBool>> + 'static,
     {
         let mut found_key = false;
         let mut offset = 0;
@@ -214,13 +205,14 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             offset += 4 - offset % 4;
         }
 
-		// Resize the pool if it isn't large enough to fit all our buffers
+        // Resize the pool if it isn't large enough to fit all our buffers
         if offset + size >= self.inner.len()
-        && self.resize(offset + size + size / 20, conn).is_err() {
-            return None
+            && self.resize(offset + size + size / 20, conn).is_err()
+        {
+            return None;
         }
 
-		let buffer;
+        let buffer;
 
         if found_key {
             let buffer_handle = self.buffer_list.get_mut(index?)?;
@@ -229,40 +221,47 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     buffer = t_buffer.clone();
                 }
                 None => {
-                    buffer_handle.buffer = Some(
-                        self.inner.create_buffer(
-                            offset as i32,
-                            width,
-                            height,
-                            stride,
-                            format,
-                            buffer_handle.free.clone(),
-                            conn,
-                            qh
-                        ).ok()?);
+                    let buffer_id = conn
+                        .send_request(
+                            self.inner.pool(),
+                            wl_shm_pool::Request::CreateBuffer {
+                                offset: offset as i32,
+                                width,
+                                height,
+                                stride,
+                                format: WEnum::Value(format),
+                            },
+                            Some(Arc::new(BufferObjectData { free: buffer_handle.free.clone() })),
+                        )
+                        .ok()?;
+                    buffer_handle.buffer = Some(Proxy::from_id(conn, buffer_id).ok()?);
                     buffer = buffer_handle.buffer.as_ref()?.clone();
                 }
             }
         } else if index.is_none() {
             index = Some(self.buffer_list.len());
             let free = Arc::new(AtomicBool::new(true));
-            buffer = self.inner.create_buffer(
-                offset as i32,
-                width,
-                height,
-                stride,
-                format,
-                free.clone(),
-                conn,
-                qh
-            ).ok()?;
+            let buffer_id = conn
+                .send_request(
+                    self.inner.pool(),
+                    wl_shm_pool::Request::CreateBuffer {
+                        offset: offset as i32,
+                        width,
+                        height,
+                        stride,
+                        format: WEnum::Value(format),
+                    },
+                    Some(Arc::new(BufferObjectData { free: free.clone() })),
+                )
+                .ok()?;
+            buffer = Proxy::from_id(conn, buffer_id).ok()?;
             self.buffer_list.push(BufferHandle {
                 offset,
                 used: 0,
                 free,
                 buffer: Some(buffer.clone()),
                 size,
-                key: key.clone()
+                key: key.clone(),
             });
         } else {
             return None;
@@ -275,26 +274,25 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         Some((offset, buffer, slice))
     }
 }
-
-impl<K: PartialEq + Clone> DelegateDispatchBase<wl_buffer::WlBuffer> for MultiPool<K> {
-    type UserData = Arc<AtomicBool>;
+struct BufferObjectData {
+    free: Arc<AtomicBool>,
 }
 
-impl<D, K: PartialEq + Clone> DelegateDispatch<wl_buffer::WlBuffer, D> for MultiPool<K>
-where
-    D: Dispatch<wl_buffer::WlBuffer, UserData = Self::UserData>,
-{
+impl wayland_client::backend::ObjectData for BufferObjectData {
     fn event(
-        _: &mut D,
-        _: &wl_buffer::WlBuffer,
-        event: wl_buffer::Event,
-        free: &Self::UserData,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<D>
-    ) {
-        if let wl_buffer::Event::Release = event {
-            free.swap(true, Ordering::Relaxed);
-        }
+        self: Arc<Self>,
+        _: &mut wayland_backend::client::Handle,
+        msg: wayland_backend::protocol::Message<wayland_backend::client::ObjectId>,
+    ) -> Option<Arc<dyn wayland_backend::client::ObjectData>> {
+        debug_assert!(wayland_client::backend::protocol::same_interface(
+            msg.sender_id.interface(),
+            wl_buffer::WlBuffer::interface()
+        ));
+        debug_assert!(msg.opcode == 0);
+        // wl_buffer only has a single event: wl_buffer.release
+        self.free.store(true, Ordering::Relaxed);
+        None
     }
-}
 
+    fn destroyed(&self, _: wayland_backend::client::ObjectId) {}
+}
