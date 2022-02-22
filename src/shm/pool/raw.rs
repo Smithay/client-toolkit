@@ -60,6 +60,7 @@ impl RawPool {
     }
 
     /// Returns the size of the mempool
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.len
     }

@@ -1,9 +1,9 @@
 //! A pool implementation which automatically manage buffers.
 //!
-//!	This pool is built on the [`RawPool`].
+//! This pool is built on the [`RawPool`].
 //!
-//!	The [`MultiPool`] takes a key which is used to identify buffers and tries to return the buffer associated to the key
-//!	if possible. If no buffer in the pool is associated to the key, it will create a new one.
+//! The [`MultiPool`] takes a key which is used to identify buffers and tries to return the buffer associated to the key
+//! if possible. If no buffer in the pool is associated to the key, it will create a new one.
 //!
 //! # Example
 //!
@@ -15,52 +15,51 @@
 //!     protocol::wl_shm::Format,
 //! };
 //! use smithay_client_toolkit::shm::pool::multi::MultiPool;
-//! use smithay_client_toolkit::shm::pool::PoolHandle;
 //!
 //! struct WlFoo {
-//! 	// The surface we'll draw on and the index of buffer associated to it
-//! 	surface: (WlSurface, usize),
-//! 	pool: MultiPool<(WlSurface, usize)>
+//!     // The surface we'll draw on and the index of buffer associated to it
+//!     surface: (WlSurface, usize),
+//!     pool: MultiPool<(WlSurface, usize)>
 //! }
 //!
 //! impl WlFoo {
-//! 	fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<WlFoo>) {
-//! 		let surface = &surface.1;
-//! 		// We'll increment "i" until the pool can create a new buffer
-//! 		// if there's no buffer associated with our surface and "i" or if
-//! 		// a buffer with the obuffer associated with our surface and "i" is free for use.
-//! 		//
-//! 		// There's no limit to the amount of buffers we can allocate to our surface but since
-//! 		// shm buffers are released fairly fast, it's unlikely we'll need more than double buffering.
-//! 		for i in 0..2 {
-//! 			match self.pool.create_buffer(
-//! 				100,
-//! 				100 * 4,
-//! 				100,
-//! 				&self.surface,
-//! 				Format::Argb8888,
-//! 				conn,
-//! 				qh
-//! 			) {
-//! 				Some((offset, buffer, slice)) => {
-//! 					draw(slice);
-//! 					surface.attach(conn, Some(&wl_buffer), 0, 0);
-//! 					surface.commit(conn);
-//! 					// We exit the function after the draw.
-//! 					return;
-//! 				}
-//! 				None => self.surface.1 = i,
-//! 			}
-//! 		}
-//! 		// If there's no buffer available we'll request a frame callback
-//! 		// were this function will be called again.
-//! 		surface.frame(conn, qh);
-//! 		surface.commit(conn);
-//! 	}
+//!     fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<WlFoo>) {
+//!         let surface = &self.surface.0;
+//!         // We'll increment "i" until the pool can create a new buffer
+//!         // if there's no buffer associated with our surface and "i" or if
+//!         // a buffer with the obuffer associated with our surface and "i" is free for use.
+//!         //
+//!         // There's no limit to the amount of buffers we can allocate to our surface but since
+//!         // shm buffers are released fairly fast, it's unlikely we'll need more than double buffering.
+//!         for i in 0..2 {
+//!             match self.pool.create_buffer(
+//!                 100,
+//!                 100 * 4,
+//!                 100,
+//!                 &self.surface,
+//!                 Format::Argb8888,
+//!                 conn,
+//!             ) {
+//!                 Some((offset, buffer, slice)) => {
+//!                     draw(slice);
+//!                     surface.attach(conn, Some(&buffer), 0, 0);
+//!                     surface.commit(conn);
+//!                     // We exit the function after the draw.
+//!                     return;
+//!                 }
+//!                 None => self.surface.1 = i,
+//!             }
+//!         }
+//!         // If there's no buffer available we'll request a frame callback
+//!         // were this function will be called again.
+//!         // TODO:
+//!         // surface.frame(conn, qh);
+//!         surface.commit(conn);
+//!     }
 //! }
 //!
 //! fn draw(slice: &mut [u8]) {
-//! 	todo!()
+//!     todo!()
 //! }
 //!
 //! ```
@@ -121,9 +120,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     if let Some(buffer) = buffer_handle.buffer.take() {
                         buffer.destroy(conn);
                     }
-                    let l_offset = buffer_handle.offset;
-                    buffer_handle.offset = offset;
-                    offset = l_offset;
+                    std::mem::swap(&mut buffer_handle.offset, &mut offset);
                 } else {
                     break;
                 }
