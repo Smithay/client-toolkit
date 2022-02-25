@@ -1,5 +1,5 @@
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -348,12 +348,13 @@ where
     ) {
         match event {
             xdg_toplevel::Event::Configure { width, height, states } => {
+                // The states are encoded as a bunch of u32 of native endianness, but are encoding in an array
+                // which is just an array of bytes.
                 let states = states
-                    .iter()
-                    .cloned()
-                    .map(|entry| entry as u32)
-                    .map(State::try_from)
-                    .filter_map(Result::ok)
+                    .chunks_exact(4)
+                    .flat_map(TryInto::<[u8; 4]>::try_into)
+                    .map(u32::from_ne_bytes)
+                    .flat_map(State::try_from)
                     .collect::<Vec<_>>();
 
                 let new_size = if width == 0 && height == 0 {
