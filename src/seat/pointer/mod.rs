@@ -1,3 +1,6 @@
+#[cfg(feature = "pointer")]
+pub mod theme;
+
 use std::{mem, sync::Mutex};
 use wayland_backend::smallvec::SmallVec;
 
