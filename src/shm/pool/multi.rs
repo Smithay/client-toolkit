@@ -104,6 +104,9 @@ struct BufferSlot<K: Clone + PartialEq> {
 }
 
 impl<K: Clone + PartialEq> MultiPool<K> {
+    pub fn new(inner: RawPool) -> Self {
+        Self { inner, buffer_list: Vec::new() }
+    }
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
