@@ -187,8 +187,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         key: &K,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Option<usize>
-    {
+    ) -> Option<usize> {
         let mut offset = 0;
         let mut index = None;
         let mut found_key = false;
@@ -231,8 +230,9 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         }
 
         if !found_key && index.is_none() {
-            return self.dyn_resize(offset, width, stride, height, key.clone(), format, conn)
-            	.map(|_| self.buffer_list.len() - 1)
+            return self
+                .dyn_resize(offset, width, stride, height, key.clone(), format, conn)
+                .map(|_| self.buffer_list.len() - 1);
         }
 
         index
@@ -245,22 +245,22 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         height: i32,
         key: &Q,
         format: wl_shm::Format,
-        conn: &mut ConnectionHandle
+        conn: &mut ConnectionHandle,
     ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])>
     where
         Q: Eq,
-        K: std::borrow::Borrow<Q>
+        K: std::borrow::Borrow<Q>,
     {
         let len = self.inner.len();
         let size = (stride * height) as usize;
         let inner = &mut self.inner;
         self.buffer_list
-        	.iter_mut()
-        	.find(|buf_slot| buf_slot.key.borrow().eq(key))
-        	.map(move |buf_slot| {
+            .iter_mut()
+            .find(|buf_slot| buf_slot.key.borrow().eq(key))
+            .map(move |buf_slot| {
                 buf_slot.used = size;
                 let offset = buf_slot.offset;
-            	if buf_slot.buffer.is_none() {
+                if buf_slot.buffer.is_none() {
                     if offset + size > len {
                         inner.resize(offset + size + size / 20, conn).ok()?;
                     }
@@ -280,12 +280,12 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                         .unwrap();
                     buf_slot.free = free;
                     buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
-        		}
+                }
                 let buf = buf_slot.buffer.as_ref().unwrap();
                 buf_slot.free.store(false, Ordering::Relaxed);
-            	Some((offset, buf, &mut inner.mmap[offset..][..size]))
-        	})
-        	.flatten()
+                Some((offset, buf, &mut inner.mmap[offset..][..size]))
+            })
+            .flatten()
     }
     /// Retreives the buffer the given index.
     fn get_at(
@@ -295,17 +295,17 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         stride: i32,
         height: i32,
         format: wl_shm::Format,
-        conn: &mut ConnectionHandle
-    ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])>
-    {
+        conn: &mut ConnectionHandle,
+    ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])> {
         let len = self.inner.len();
         let size = (stride * height) as usize;
         let inner = &mut self.inner;
-        self.buffer_list.get_mut(index)
-        	.map(move |buf_slot| {
+        self.buffer_list
+            .get_mut(index)
+            .map(move |buf_slot| {
                 buf_slot.used = size;
                 let offset = buf_slot.offset;
-            	if buf_slot.buffer.is_none() {
+                if buf_slot.buffer.is_none() {
                     if offset + size > len {
                         inner.resize(offset + size + size / 20, conn).ok()?;
                     }
@@ -325,12 +325,12 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                         .unwrap();
                     buf_slot.free = free;
                     buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
-        		}
+                }
                 buf_slot.free.store(false, Ordering::Relaxed);
                 let buf = buf_slot.buffer.as_ref().unwrap();
-            	Some((offset, buf, &mut inner.mmap[offset..][..size]))
-        	})
-        	.flatten()
+                Some((offset, buf, &mut inner.mmap[offset..][..size]))
+            })
+            .flatten()
     }
     /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
     ///
@@ -351,10 +351,8 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         K: std::fmt::Debug,
     {
         self.insert(width, stride, height, key, format, conn)
-        	.map(move |index| {
-            	self.get_at(index, width, stride, height, format, conn)
-        	})
-        	.flatten()
+            .map(move |index| self.get_at(index, width, stride, height, format, conn))
+            .flatten()
     }
 }
 struct BufferObjectData {
