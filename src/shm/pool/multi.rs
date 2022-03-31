@@ -118,7 +118,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
     pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
         self.inner.resize(size, conn)
     }
-    /// Removes the buffer with the given key from the pool and rearranges the others
+    /// Removes the buffer with the given key from the pool and rearranges the others.
     pub fn remove<Q>(&mut self, key: &Q, conn: &mut ConnectionHandle)
     where
         Q: Eq,
@@ -192,12 +192,10 @@ impl<K: Clone + PartialEq> MultiPool<K> {
             size,
             key,
         });
-        None
+        Some(())
     }
-    /// Insert a buffer inside the pool.
-    ///
-    /// If the buffer associated to the key already exists, it returns it index.
-    fn insert(
+    /// Insert a buffer into the pool.
+    pub fn insert(
         &mut self,
         width: i32,
         stride: i32,
@@ -310,7 +308,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
             })
             .flatten()
     }
-    /// Retreives the buffer the given index.
+    /// Retreives the buffer at the given index.
     fn get_at(
         &mut self,
         index: usize,
@@ -359,8 +357,6 @@ impl<K: Clone + PartialEq> MultiPool<K> {
     ///
     /// The offset can be used to determine whether or not a buffer was moved in the mempool
     /// and by consequence if it should be damaged partially or fully.
-    ///
-    /// When it's not possible to use the buffer associated with the key, None is returned.
     pub fn create_buffer(
         &mut self,
         width: i32,
@@ -370,13 +366,13 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
     ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError>
-    where
-        K: std::fmt::Debug,
     {
         let index = self.insert(width, stride, height, key, format, conn)?;
         self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
     }
 }
+
+
 struct BufferObjectData {
     free: Arc<AtomicBool>,
 }
