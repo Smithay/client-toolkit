@@ -114,13 +114,15 @@ impl<K: PartialEq + Clone> MultiPool<K> {
     pub fn remove(&mut self, key: &K, conn: &mut ConnectionHandle) {
         if let Some((i, buffer)) = self.buffer_list.iter().enumerate().find(|b| b.1.key.eq(key)) {
             let mut offset = buffer.offset;
-            self.buffer_list.remove(i);
-            for buffer_slot in &mut self.buffer_list {
-                if buffer_slot.offset > offset && buffer_slot.free.load(Ordering::Relaxed) {
-                    if let Some(buffer) = buffer_slot.buffer.take() {
+            if let Some(buf) = self.buffer_list.remove(i).buffer {
+                buf.destroy(conn);
+            }
+            for buf_slot in &mut self.buffer_list {
+                if buf_slot.offset > offset && buf_slot.free.load(Ordering::Relaxed) {
+                    if let Some(buffer) = buf_slot.buffer.take() {
                         buffer.destroy(conn);
                     }
-                    std::mem::swap(&mut buffer_slot.offset, &mut offset);
+                    std::mem::swap(&mut buf_slot.offset, &mut offset);
                 } else {
                     break;
                 }
@@ -193,32 +195,32 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         let mut found_key = false;
         let size = (stride * height) as usize;
 
-        for (i, buffer_slot) in self.buffer_list.iter_mut().enumerate() {
-            if buffer_slot.key.eq(key) {
+        for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
+            if buf_slot.key.eq(key) {
                 found_key = true;
-                if buffer_slot.free.load(Ordering::Relaxed) {
+                if buf_slot.free.load(Ordering::Relaxed) {
                     // Destroys the buffer if it's resized
-                    if size != buffer_slot.used {
-                        if let Some(buffer) = buffer_slot.buffer.take() {
+                    if size != buf_slot.used {
+                        if let Some(buffer) = buf_slot.buffer.take() {
                             buffer.destroy(conn);
                         }
                     }
                     // Increases the size of the Buffer if it's too small and add 5% padding.
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
-                    buffer_slot.size = buffer_slot.size.max(size + size / 20);
+                    buf_slot.size = buf_slot.size.max(size + size / 20);
                     index = Some(i);
                 }
             // If a buffer is resized, it is likely that the followings might overlap
-            } else if offset > buffer_slot.offset {
+            } else if offset > buf_slot.offset {
                 // When the buffer is free, it's safe to shift it because we know the compositor won't try to read it.
-                if buffer_slot.free.load(Ordering::Relaxed) {
-                    if offset != buffer_slot.offset {
-                        if let Some(buffer) = buffer_slot.buffer.take() {
+                if buf_slot.free.load(Ordering::Relaxed) {
+                    if offset != buf_slot.offset {
+                        if let Some(buffer) = buf_slot.buffer.take() {
                             buffer.destroy(conn);
                         }
                     }
-                    buffer_slot.offset = offset;
+                    buf_slot.offset = offset;
                 } else {
                     // If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
                     index = None;
@@ -226,7 +228,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             } else if found_key {
                 break;
             }
-            offset += buffer_slot.size;
+            offset += buf_slot.size;
         }
 
         if !found_key && index.is_none() {
