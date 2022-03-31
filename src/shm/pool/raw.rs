@@ -32,10 +32,10 @@ use super::CreatePoolError;
 /// This pool does not release buffers. If you need this, use one of the higher level pools.
 #[derive(Debug)]
 pub struct RawPool {
-    pub(crate) pool: wl_shm_pool::WlShmPool,
+    pool: wl_shm_pool::WlShmPool,
     len: usize,
     mem_file: File,
-    pub(crate) mmap: MmapMut,
+    mmap: MmapMut,
 }
 
 impl RawPool {
