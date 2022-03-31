@@ -38,6 +38,8 @@ pub trait TouchHandler: SeatHandler + Sized {
     ///
     /// The associated touch ID ceases to be valid after the touch up event with the associated ID
     /// and may be reused for other touch points after that.
+    ///
+    /// Coordinates are surface-local.
     #[allow(clippy::too_many_arguments)]
     fn down(
         &mut self,
@@ -48,8 +50,7 @@ pub trait TouchHandler: SeatHandler + Sized {
         time: u32,
         surface: WlSurface,
         id: i32,
-        x: f64,
-        y: f64,
+        position: (f64, f64),
     );
 
     /// End of touch sequence.
@@ -64,7 +65,8 @@ pub trait TouchHandler: SeatHandler + Sized {
     );
 
     /// Touch point motion.
-    #[allow(clippy::too_many_arguments)]
+    ///
+    /// Coordinates are surface-local.
     fn motion(
         &mut self,
         conn: &mut ConnectionHandle,
@@ -72,8 +74,7 @@ pub trait TouchHandler: SeatHandler + Sized {
         touch: &WlTouch,
         time: u32,
         id: i32,
-        x: f64,
-        y: f64,
+        position: (f64, f64),
     );
 
     /// Touch point shape change.
@@ -146,7 +147,12 @@ where
                     process_framed_event(data, touch, conn, qh, event);
                 }
             }
-            TouchEvent::Cancel => data.cancel(conn, qh, touch),
+            TouchEvent::Cancel => {
+                let mut guard = udata.inner.lock().unwrap();
+                guard.events.clear();
+
+                data.cancel(conn, qh, touch);
+            }
             _ => unreachable!(),
         }
     }
@@ -164,13 +170,13 @@ fn process_framed_event<D>(
 {
     match event {
         TouchEvent::Down { serial, time, surface, id, x, y } => {
-            data.down(conn, qh, touch, serial, time, surface, id, x, y);
+            data.down(conn, qh, touch, serial, time, surface, id, (x, y));
         }
         TouchEvent::Up { serial, time, id } => {
             data.up(conn, qh, touch, serial, time, id);
         }
         TouchEvent::Motion { time, id, x, y } => {
-            data.motion(conn, qh, touch, time, id, x, y);
+            data.motion(conn, qh, touch, time, id, (x, y));
         }
         TouchEvent::Shape { id, major, minor } => {
             data.shape(conn, qh, touch, id, major, minor);
