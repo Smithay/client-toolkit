@@ -78,16 +78,23 @@ use wayland_client::{
 
 use super::raw::RawPool;
 
+#[derive(Debug)]
+pub enum PoolError {
+    BufferInUse,
+    Overlap,
+    NotFound,
+}
+
 /// This pool manages buffers associated with keys.
 /// Only one buffer can be attributed to a given key.
 #[derive(Debug)]
-pub struct MultiPool<K: PartialEq + Clone> {
+pub struct MultiPool<K: Clone> {
     buffer_list: Vec<BufferSlot<K>>,
     pub(crate) inner: RawPool,
 }
 
 #[derive(Debug)]
-struct BufferSlot<K: PartialEq + Clone> {
+struct BufferSlot<K: Clone> {
     free: Arc<AtomicBool>,
     size: usize,
     used: usize,
@@ -96,13 +103,14 @@ struct BufferSlot<K: PartialEq + Clone> {
     key: K,
 }
 
-impl<E: PartialEq + Clone> From<RawPool> for MultiPool<E> {
+// To potentially yeet.
+impl<K: PartialEq + Clone> From<RawPool> for MultiPool<K> {
     fn from(inner: RawPool) -> Self {
         Self { buffer_list: Vec::new(), inner }
     }
 }
 
-impl<K: PartialEq + Clone> MultiPool<K> {
+impl<K: Clone + PartialEq> MultiPool<K> {
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -111,9 +119,15 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         self.inner.resize(size, conn)
     }
     /// Removes the buffer with the given key from the pool and rearranges the others
-    pub fn remove(&mut self, key: &K, conn: &mut ConnectionHandle) {
-        if let Some((i, buffer)) = self.buffer_list.iter().enumerate().find(|b| b.1.key.eq(key)) {
-            let mut offset = buffer.offset;
+    pub fn remove<Q>(&mut self, key: &Q, conn: &mut ConnectionHandle)
+    where
+        Q: Eq,
+        K: std::borrow::Borrow<Q>,
+    {
+        if let Some((i, buf)) =
+            self.buffer_list.iter().enumerate().find(|(_, slot)| slot.key.borrow().eq(key))
+        {
+            let mut offset = buf.offset;
             if let Some(buf) = self.buffer_list.remove(i).buffer {
                 buf.destroy(conn);
             }
@@ -134,11 +148,13 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         // bytes per pixel
         let bpp = (stride as f32 / width as f32).ceil() as i32;
         let size = stride * height;
+        // 5% padding.
         offset += offset / 20;
         offset += offset % bpp;
         offset -= offset % bpp;
         (offset as usize, size as usize)
     }
+    /// Resizes the pool and appends a new buffer.
     fn dyn_resize(
         &mut self,
         offset: usize,
@@ -189,11 +205,11 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         key: &K,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Option<usize> {
+    ) -> Result<usize, PoolError> {
         let mut offset = 0;
-        let mut index = None;
         let mut found_key = false;
         let size = (stride * height) as usize;
+        let mut index = Err(PoolError::NotFound);
 
         for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
             if buf_slot.key.eq(key) {
@@ -209,7 +225,9 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
                     buf_slot.size = buf_slot.size.max(size + size / 20);
-                    index = Some(i);
+                    index = Ok(i);
+                } else {
+                    index = Err(PoolError::BufferInUse);
                 }
             // If a buffer is resized, it is likely that the followings might overlap
             } else if offset > buf_slot.offset {
@@ -223,7 +241,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     buf_slot.offset = offset;
                 } else {
                     // If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
-                    index = None;
+                    index = Err(PoolError::BufferInUse);
                 }
             } else if found_key {
                 break;
@@ -231,10 +249,13 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             offset += buf_slot.size;
         }
 
-        if !found_key && index.is_none() {
-            return self
-                .dyn_resize(offset, width, stride, height, key.clone(), format, conn)
-                .map(|_| self.buffer_list.len() - 1);
+        if !found_key {
+            if let Err(err) = index {
+                return self
+                    .dyn_resize(offset, width, stride, height, key.clone(), format, conn)
+                    .map(|_| self.buffer_list.len() - 1)
+                    .ok_or(err);
+            }
         }
 
         index
@@ -250,7 +271,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         conn: &mut ConnectionHandle,
     ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])>
     where
-        Q: Eq,
+        Q: PartialEq,
         K: std::borrow::Borrow<Q>,
     {
         let len = self.inner.len();
@@ -279,7 +300,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                             },
                             Some(Arc::new(BufferObjectData { free: free.clone() })),
                         )
-                        .unwrap();
+                        .ok()?;
                     buf_slot.free = free;
                     buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
                 }
@@ -324,7 +345,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                             },
                             Some(Arc::new(BufferObjectData { free: free.clone() })),
                         )
-                        .unwrap();
+                        .ok()?;
                     buf_slot.free = free;
                     buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
                 }
@@ -348,13 +369,12 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         key: &K,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])>
+    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError>
     where
         K: std::fmt::Debug,
     {
-        self.insert(width, stride, height, key, format, conn)
-            .map(move |index| self.get_at(index, width, stride, height, format, conn))
-            .flatten()
+        let index = self.insert(width, stride, height, key, format, conn)?;
+        self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
     }
 }
 struct BufferObjectData {
