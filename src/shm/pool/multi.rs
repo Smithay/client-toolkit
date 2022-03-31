@@ -127,6 +127,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             }
         }
     }
+    /// Calcule the offet and size of a buffer based on its stride.
     fn offset(&self, mut offset: i32, width: i32, stride: i32, height: i32) -> (usize, usize) {
         // bytes per pixel
         let bpp = (stride as f32 / width as f32).ceil() as i32;
@@ -175,6 +176,9 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         });
         None
     }
+    /// Insert a buffer inside the pool.
+    ///
+    /// If the buffer associated to the key already exists, it returns it index.
     fn insert(
         &mut self,
         width: i32,
@@ -192,8 +196,8 @@ impl<K: PartialEq + Clone> MultiPool<K> {
 
         for (i, buffer_slot) in self.buffer_list.iter_mut().enumerate() {
             if buffer_slot.key.eq(key) {
+                found_key = true;
                 if buffer_slot.free.load(Ordering::Relaxed) {
-                    found_key = true;
                     // Destroys the buffer if it's resized
                     if size != buffer_slot.used {
                         if let Some(buffer) = buffer_slot.buffer.take() {
@@ -226,13 +230,14 @@ impl<K: PartialEq + Clone> MultiPool<K> {
             offset += buffer_slot.size;
         }
 
-        if !found_key {
+        if !found_key && index.is_none() {
             return self.dyn_resize(offset, width, stride, height, key.clone(), format, conn)
             	.map(|_| self.buffer_list.len() - 1)
         }
 
         index
     }
+    /// Retreives the buffer associated with the given key.
     pub fn get<Q>(
         &mut self,
         width: i32,
@@ -277,10 +282,12 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
         		}
                 let buf = buf_slot.buffer.as_ref().unwrap();
+                buf_slot.free.store(false, Ordering::Relaxed);
             	Some((offset, buf, &mut inner.mmap[offset..][..size]))
         	})
         	.flatten()
     }
+    /// Retreives the buffer the given index.
     fn get_at(
         &mut self,
         index: usize,
@@ -319,6 +326,7 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     buf_slot.free = free;
                     buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
         		}
+                buf_slot.free.store(false, Ordering::Relaxed);
                 let buf = buf_slot.buffer.as_ref().unwrap();
             	Some((offset, buf, &mut inner.mmap[offset..][..size]))
         	})
