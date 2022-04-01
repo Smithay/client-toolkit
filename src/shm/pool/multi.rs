@@ -104,7 +104,7 @@ struct BufferSlot<K: Clone + PartialEq> {
 }
 
 impl<K: Clone + PartialEq> MultiPool<K> {
-    pub fn new(inner: RawPool) -> Self {
+    pub(crate) fn new(inner: RawPool) -> Self {
         Self { inner, buffer_list: Vec::new() }
     }
     /// Resizes the memory pool, notifying the server the pool has changed in size.
@@ -138,57 +138,6 @@ impl<K: Clone + PartialEq> MultiPool<K> {
                 }
             }
         }
-    }
-    /// Calcule the offet and size of a buffer based on its stride.
-    fn offset(&self, mut offset: i32, width: i32, stride: i32, height: i32) -> (usize, usize) {
-        // bytes per pixel
-        let bpp = (stride as f32 / width as f32).ceil() as i32;
-        let size = stride * height;
-        // 5% padding.
-        offset += offset / 20;
-        offset += offset % bpp;
-        offset -= offset % bpp;
-        (offset as usize, size as usize)
-    }
-    /// Resizes the pool and appends a new buffer.
-    fn dyn_resize(
-        &mut self,
-        offset: usize,
-        width: i32,
-        stride: i32,
-        height: i32,
-        key: K,
-        format: wl_shm::Format,
-        conn: &mut ConnectionHandle,
-    ) -> Option<()> {
-        let (offset, size) = self.offset(offset as i32, width, stride, height);
-        if self.inner.len() < offset + size {
-            self.resize(offset + size + size / 20, conn).ok()?;
-        }
-        let free = Arc::new(AtomicBool::new(true));
-        let buffer_id = conn
-            .send_request(
-                self.inner.pool(),
-                wl_shm_pool::Request::CreateBuffer {
-                    offset: offset as i32,
-                    width,
-                    height,
-                    stride,
-                    format: WEnum::Value(format),
-                },
-                Some(Arc::new(BufferObjectData { free: free.clone() })),
-            )
-            .ok()?;
-        let buffer = Proxy::from_id(conn, buffer_id).ok()?;
-        self.buffer_list.push(BufferSlot {
-            offset,
-            used: 0,
-            free,
-            buffer: Some(buffer),
-            size,
-            key,
-        });
-        Some(())
     }
     /// Insert a buffer into the pool.
     pub fn insert(
@@ -303,6 +252,22 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         buf_slot.free.store(false, Ordering::Relaxed);
         Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
     }
+    /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
+    ///
+    /// The offset can be used to determine whether or not a buffer was moved in the mempool
+    /// and by consequence if it should be damaged partially or fully.
+    pub fn create_buffer(
+        &mut self,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: &K,
+        format: wl_shm::Format,
+        conn: &mut ConnectionHandle,
+    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError> {
+        let index = self.insert(width, stride, height, key, format, conn)?;
+        self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
+    }
     /// Retreives the buffer at the given index.
     fn get_at(
         &mut self,
@@ -343,21 +308,56 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         let buf = buf_slot.buffer.as_ref().unwrap();
         Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
     }
-    /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
-    ///
-    /// The offset can be used to determine whether or not a buffer was moved in the mempool
-    /// and by consequence if it should be damaged partially or fully.
-    pub fn create_buffer(
+    /// Calcule the offet and size of a buffer based on its stride.
+    fn offset(&self, mut offset: i32, width: i32, stride: i32, height: i32) -> (usize, usize) {
+        // bytes per pixel
+        let bpp = (stride as f32 / width as f32).ceil() as i32;
+        let size = stride * height;
+        // 5% padding.
+        offset += offset / 20;
+        offset += offset % bpp;
+        offset -= offset % bpp;
+        (offset as usize, size as usize)
+    }
+    /// Resizes the pool and appends a new buffer.
+    fn dyn_resize(
         &mut self,
+        offset: usize,
         width: i32,
         stride: i32,
         height: i32,
-        key: &K,
+        key: K,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError> {
-        let index = self.insert(width, stride, height, key, format, conn)?;
-        self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
+    ) -> Option<()> {
+        let (offset, size) = self.offset(offset as i32, width, stride, height);
+        if self.inner.len() < offset + size {
+            self.resize(offset + size + size / 20, conn).ok()?;
+        }
+        let free = Arc::new(AtomicBool::new(true));
+        let buffer_id = conn
+            .send_request(
+                self.inner.pool(),
+                wl_shm_pool::Request::CreateBuffer {
+                    offset: offset as i32,
+                    width,
+                    height,
+                    stride,
+                    format: WEnum::Value(format),
+                },
+                Some(Arc::new(BufferObjectData { free: free.clone() })),
+            )
+            .ok()?;
+        let buffer = Proxy::from_id(conn, buffer_id).ok()?;
+        self.buffer_list.push(BufferSlot {
+            offset,
+            used: 0,
+            free,
+            buffer: Some(buffer),
+            size,
+            key,
+        });
+        Some(())
     }
 }
 
