@@ -12,7 +12,7 @@ use smithay_client_toolkit::{
         Capability, SeatHandler, SeatState,
     },
     shell::xdg::{
-        window::{Window, WindowHandler, XdgWindowState},
+        window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
         XdgShellHandler, XdgShellState,
     },
     shm::{pool::raw::RawPool, ShmHandler, ShmState},
@@ -21,7 +21,6 @@ use wayland_client::{
     protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, ConnectionHandle, Dispatch, QueueHandle,
 };
-use wayland_protocols::xdg_shell::client::xdg_surface;
 
 fn main() {
     env_logger::init();
@@ -73,22 +72,23 @@ fn main() {
 
     let surface = simple_window.compositor_state.create_surface(&mut conn.handle(), &qh).unwrap();
 
-    let window = simple_window
-        .xdg_window_state
-        .create_window(&mut conn.handle(), &qh, surface)
-        .expect("window");
-
-    window.set_title(&mut conn.handle(), "A wayland window");
-    // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-    window.set_app_id(&mut conn.handle(), "io.github.smithay.client-toolkit.SimpleWindow");
-    window.set_min_size(&mut conn.handle(), Some((256, 256)));
-
-    // Map the window so we receive the initial configure and can render.
-    window.map(&mut conn.handle(), &qh);
+    let window = Window::builder()
+        .title("A wayland window")
+        // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
+        .app_id("io.github.smithay.client-toolkit.SimpleWindow")
+        .min_size((256, 256))
+        .map(
+            &mut conn.handle(),
+            &qh,
+            &simple_window.xdg_shell_state,
+            &mut simple_window.xdg_window_state,
+            surface,
+        )
+        .expect("window creation");
 
     simple_window.window = Some(window);
 
-    // We don't draw immediately, the configure will indicate to us when to first draw.
+    // We don't draw immediately, the configure will notify us when to first draw.
 
     loop {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
@@ -106,7 +106,7 @@ struct SimpleWindow {
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: ShmState,
-    xdg_shell_state: XdgShellState,
+    xdg_shell_state: XdgShellState<Self>,
     xdg_window_state: XdgWindowState,
 
     exit: bool,
@@ -179,22 +179,28 @@ impl OutputHandler for SimpleWindow {
 }
 
 impl XdgShellHandler for SimpleWindow {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
+    fn xdg_shell_state(&mut self) -> &mut XdgShellState<Self> {
         &mut self.xdg_shell_state
+    }
+}
+
+impl WindowHandler for SimpleWindow {
+    fn xdg_window_state(&mut self) -> &mut XdgWindowState {
+        &mut self.xdg_window_state
+    }
+
+    fn request_close(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: &Window) {
+        self.exit = true;
     }
 
     fn configure(
         &mut self,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<Self>,
-        // The only surface we can ever have in this example is our one window, so configure the window.
-        //
-        // If you have more than one surface, you'll need to use this to lookup the surface you need.
-        _: &xdg_surface::XdgSurface,
+        _window: &Window,
+        configure: WindowConfigure,
+        _serial: u32,
     ) {
-        let window = self.window.as_mut().unwrap();
-        let configure = window.configure().unwrap();
-
         match configure.new_size {
             Some(size) => {
                 self.width = size.0;
@@ -211,21 +217,6 @@ impl XdgShellHandler for SimpleWindow {
             self.first_configure = false;
             self.draw(conn, qh);
         }
-    }
-}
-
-impl WindowHandler for SimpleWindow {
-    fn xdg_window_state(&mut self) -> &mut XdgWindowState {
-        &mut self.xdg_window_state
-    }
-
-    fn request_close_window(
-        &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<Self>,
-        _: &Window,
-    ) {
-        self.exit = true;
     }
 }
 
@@ -309,8 +300,8 @@ impl KeyboardHandler for SimpleWindow {
 
     fn keyboard_press_key(
         &mut self,
-        _: &mut ConnectionHandle,
-        _: &QueueHandle<Self>,
+        _conn: &mut ConnectionHandle,
+        _qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         time: u32,
         key: u32,
@@ -533,7 +524,7 @@ delegate_registry!(SimpleWindow: [
     OutputState,
     ShmState,
     SeatState,
-    XdgShellState,
+    XdgShellState<Self>,
     XdgWindowState,
 ]);
 
