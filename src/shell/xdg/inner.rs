@@ -5,11 +5,9 @@ use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_wm_base};
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
-use super::{XdgShellHandler, XdgShellState};
+use super::{XdgShellHandler, XdgShellState, XdgSurfaceData};
 
-pub(crate) const MAX_XDG_WM_BASE: u32 = 3;
-
-impl<D> RegistryHandler<D> for XdgShellState
+impl<D> RegistryHandler<D> for XdgShellState<D>
 where
     D: Dispatch<xdg_wm_base::XdgWmBase, UserData = ()>
         + XdgShellHandler
@@ -22,45 +20,34 @@ where
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
-        version: u32,
+        _version: u32,
     ) {
         if interface == "xdg_wm_base" {
             if data.xdg_shell_state().xdg_wm_base.is_some() {
-                log::warn!(target: "sctk", "compositor advertises xdg_wm_base but one is already bound");
                 return;
             }
 
             let xdg_wm_base = data
                 .registry()
-                .bind_cached::<xdg_wm_base::XdgWmBase, _, _, _>(conn, qh, name, || {
-                    (u32::min(version, MAX_XDG_WM_BASE), ())
-                })
+                .bind_once::<xdg_wm_base::XdgWmBase, _, _>(conn, qh, name, 3, ())
                 .expect("failed to bind global");
 
             data.xdg_shell_state().xdg_wm_base = Some((name, xdg_wm_base));
         }
     }
 
-    fn remove_global(state: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, name: u32) {
-        if state
-            .xdg_shell_state()
-            .xdg_wm_base
-            .as_ref()
-            .filter(|(global_name, _)| global_name == &name)
-            .is_some()
-        {
-            todo!("XDG shell global destruction")
-        }
+    fn remove_global(_: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, _: u32) {
+        // Unlikely to ever occur and the surfaces become inert if this happens.
     }
 }
 
 /* Delegate trait impls */
 
-impl DelegateDispatchBase<xdg_wm_base::XdgWmBase> for XdgShellState {
+impl<D> DelegateDispatchBase<xdg_wm_base::XdgWmBase> for XdgShellState<D> {
     type UserData = ();
 }
 
-impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, D> for XdgShellState
+impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, D> for XdgShellState<D>
 where
     D: Dispatch<xdg_wm_base::XdgWmBase, UserData = Self::UserData> + XdgShellHandler,
 {
@@ -82,19 +69,19 @@ where
     }
 }
 
-impl DelegateDispatchBase<xdg_surface::XdgSurface> for XdgShellState {
-    type UserData = ();
+impl<D: 'static> DelegateDispatchBase<xdg_surface::XdgSurface> for XdgShellState<D> {
+    type UserData = XdgSurfaceData<D>;
 }
 
-impl<D> DelegateDispatch<xdg_surface::XdgSurface, D> for XdgShellState
+impl<D> DelegateDispatch<xdg_surface::XdgSurface, D> for XdgShellState<D>
 where
-    D: Dispatch<xdg_surface::XdgSurface, UserData = Self::UserData> + XdgShellHandler,
+    D: Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData<D>> + XdgShellHandler + 'static,
 {
     fn event(
         data: &mut D,
         surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
-        _: &Self::UserData,
+        udata: &Self::UserData,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) {
@@ -102,7 +89,7 @@ where
             xdg_surface::Event::Configure { serial } => {
                 // Ack the configure
                 surface.ack_configure(conn, serial);
-                data.configure(conn, qh, surface);
+                udata.configure_handler.configure(data, conn, qh, surface, serial);
             }
 
             _ => unreachable!(),
