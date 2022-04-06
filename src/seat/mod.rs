@@ -1,5 +1,6 @@
 pub mod keyboard;
 pub mod pointer;
+pub mod touch;
 
 use std::{
     fmt::{self, Display, Formatter},
@@ -11,7 +12,7 @@ use std::{
 
 use wayland_backend::client::InvalidId;
 use wayland_client::{
-    protocol::{wl_keyboard, wl_pointer, wl_seat},
+    protocol::{wl_keyboard, wl_pointer, wl_seat, wl_touch},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
@@ -20,6 +21,7 @@ use crate::registry::{ProvidesRegistryState, RegistryHandler};
 use self::{
     keyboard::KeyboardHandler,
     pointer::{PointerData, PointerHandler},
+    touch::{TouchData, TouchHandler},
 };
 
 #[non_exhaustive]
@@ -138,6 +140,31 @@ impl SeatState {
 
         let pointer = seat.get_pointer(conn, qh, PointerData::default())?;
         Ok(pointer)
+    }
+
+    /// Creates a touch handle from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.
+    pub fn get_touch<D>(
+        &mut self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+    ) -> Result<wl_touch::WlTouch, SeatError>
+    where
+        D: Dispatch<wl_touch::WlTouch, UserData = TouchData> + TouchHandler + 'static,
+    {
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_touch.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Touch));
+        }
+
+        let touch = seat.get_touch(conn, qh, TouchData::default())?;
+        Ok(touch)
     }
 }
 
