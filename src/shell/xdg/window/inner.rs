@@ -1,14 +1,10 @@
 use std::{
     convert::{TryFrom, TryInto},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
+    sync::{atomic::Ordering, Mutex},
 };
 
-use wayland_backend::client::InvalidId;
 use wayland_client::{
-    protocol::{wl_output, wl_surface},
+    protocol::{wl_output, wl_seat},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::{
@@ -17,7 +13,6 @@ use wayland_protocols::{
         zxdg_toplevel_decoration_v1::{self, Mode},
     },
     xdg_shell::client::{
-        xdg_surface,
         xdg_toplevel::{self, State},
         xdg_wm_base,
     },
@@ -25,7 +20,7 @@ use wayland_protocols::{
 
 use crate::{
     registry::{ProvidesRegistryState, RegistryHandler},
-    shell::xdg::inner::MAX_XDG_WM_BASE,
+    shell::xdg::XdgShellSurface,
 };
 
 use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, XdgWindowState};
@@ -54,65 +49,12 @@ impl Drop for Window {
 
 #[derive(Debug)]
 pub struct WindowInner {
-    pub(crate) wl_surface: wl_surface::WlSurface,
-    pub(crate) xdg_surface: xdg_surface::XdgSurface,
+    pub(crate) xdg_surface: XdgShellSurface,
     pub(crate) xdg_toplevel: xdg_toplevel::XdgToplevel,
-    pub(crate) zxdg_decoration_manager: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
-    pub(crate) zxdg_toplevel_decoration:
-        Mutex<Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>>,
-
-    pub(crate) data: Arc<WindowDataInner>,
+    pub(crate) toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
 }
 
 impl WindowInner {
-    pub fn new<D>(
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        wl_surface: &wl_surface::WlSurface,
-        xdg_surface: &xdg_surface::XdgSurface,
-        zxdg_decoration_manager: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
-    ) -> Result<Arc<WindowInner>, InvalidId>
-    where
-        D: Dispatch<xdg_toplevel::XdgToplevel, UserData = WindowData> + 'static,
-    {
-        let inner = WindowDataInner {
-            pending_configure: Mutex::new(None),
-            prefered_decoration_mode: Mutex::new(None),
-            current_decoration_mode: Mutex::new(Mode::ClientSide),
-            first_configure: AtomicBool::new(true),
-        };
-
-        let data = Arc::new(inner);
-        let window_data = WindowData(data.clone());
-
-        let xdg_toplevel = xdg_surface.get_toplevel(conn, qh, window_data)?;
-
-        let inner = Arc::new(WindowInner {
-            wl_surface: wl_surface.clone(),
-            xdg_surface: xdg_surface.clone(),
-            xdg_toplevel,
-            zxdg_decoration_manager,
-            zxdg_toplevel_decoration: Mutex::new(None),
-            data,
-        });
-
-        Ok(inner)
-    }
-
-    pub fn map<D>(&self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)
-    where
-        D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
-            + 'static,
-    {
-        self.maybe_create_decoration(conn, qh);
-        self.wl_surface.commit(conn);
-    }
-
-    #[must_use]
-    pub fn configure(&self) -> Option<WindowConfigure> {
-        self.data.pending_configure.lock().unwrap().take()
-    }
-
     pub fn set_title(&self, conn: &mut ConnectionHandle, title: String) {
         self.xdg_toplevel.set_title(conn, title);
         // TODO: Store name for client side frame.
@@ -134,6 +76,17 @@ impl WindowInner {
 
     pub fn set_parent(&self, conn: &mut ConnectionHandle, parent: Option<&Window>) {
         self.xdg_toplevel.set_parent(conn, parent.map(Window::xdg_toplevel))
+    }
+
+    pub fn show_window_menu(
+        &self,
+        conn: &mut ConnectionHandle,
+        seat: &wl_seat::WlSeat,
+        serial: u32,
+        x: u32,
+        y: u32,
+    ) {
+        self.xdg_toplevel.show_window_menu(conn, seat, serial, x as i32, y as i32)
     }
 
     pub fn set_maximized(&self, conn: &mut ConnectionHandle) {
@@ -160,36 +113,20 @@ impl WindowInner {
         self.xdg_toplevel.unset_fullscreen(conn)
     }
 
-    fn maybe_create_decoration<D>(&self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)
-    where
-        D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
-            + 'static,
-    {
-        if let Some(decoration_manager) = self.zxdg_decoration_manager.as_ref() {
-            let guard = self.data.prefered_decoration_mode.lock().unwrap();
-            // By default we assume the server should be preferred.
-            let preferred = guard.unwrap_or(DecorationMode::PreferServer);
-            drop(guard);
-
-            match preferred {
-                // Do not create the toplevel decoration.
-                DecorationMode::ClientOnly | DecorationMode::None => (),
-
-                _ => {
-                    // Create the toplevel decoration.
-                    let data = self.xdg_toplevel.data::<WindowData>().unwrap().clone();
-
-                    let zxdg_toplevel_decoration = decoration_manager
-                        .get_toplevel_decoration(conn, &self.xdg_toplevel, qh, data)
-                        .expect("failed to create toplevel decoration");
-
-                    // Specifically request server side if requested.
-                    if preferred == DecorationMode::ServerOnly {
-                        zxdg_toplevel_decoration.set_mode(conn, Mode::ServerSide);
-                    }
-
-                    *self.zxdg_toplevel_decoration.lock().unwrap() = Some(zxdg_toplevel_decoration);
+    pub fn request_decoration_mode(
+        &self,
+        conn: &mut ConnectionHandle,
+        mode: Option<DecorationMode>,
+    ) {
+        if let Some(toplevel_decoration) = &self.toplevel_decoration {
+            match mode {
+                Some(DecorationMode::Client) => {
+                    toplevel_decoration.set_mode(conn, Mode::ClientSide)
                 }
+                Some(DecorationMode::Server) => {
+                    toplevel_decoration.set_mode(conn, Mode::ServerSide)
+                }
+                None => toplevel_decoration.unset_mode(conn),
             }
         }
     }
@@ -197,36 +134,18 @@ impl WindowInner {
 
 #[derive(Debug)]
 pub struct WindowDataInner {
-    pub(crate) pending_configure: Mutex<Option<WindowConfigure>>,
-    pub(crate) prefered_decoration_mode: Mutex<Option<DecorationMode>>,
-    pub(crate) current_decoration_mode: Mutex<Mode>,
-    pub(crate) first_configure: AtomicBool,
+    pub(crate) pending_configure: Mutex<WindowConfigure>,
 }
 
-impl WindowDataInner {}
-
 impl XdgWindowState {
-    pub(crate) fn init_decorations<D>(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<D>)
-    where
-        D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
-            + 'static,
-    {
-        for window in self.windows.iter() {
-            // Only create decorations if the window is live.
-            if !window.inner.data.first_configure.load(Ordering::SeqCst) {
-                window.inner.maybe_create_decoration(conn, qh);
-            }
-        }
-    }
-
     pub(crate) fn cleanup(&mut self, conn: &mut ConnectionHandle) {
         self.windows.retain(|window| {
             let alive = !window.death_signal.load(Ordering::SeqCst);
 
             if !alive {
                 // XDG decoration says we must destroy the decoration object before the toplevel
-                if let Some(decoration) = &*window.inner.zxdg_toplevel_decoration.lock().unwrap() {
-                    decoration.destroy(conn);
+                if let Some(toplevel_decoration) = window.inner.toplevel_decoration.as_ref() {
+                    toplevel_decoration.destroy(conn);
                 }
 
                 // XDG Shell protocol dictates we must destroy the role object before the xdg surface.
@@ -240,7 +159,7 @@ impl XdgWindowState {
     }
 }
 
-const MAX_ZXDG_DECORATION_MANAGER: u32 = 1;
+const DECORATION_MANAGER_VERSION: u32 = 1;
 
 impl<D> RegistryHandler<D> for XdgWindowState
 where
@@ -258,75 +177,30 @@ where
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
-        version: u32,
+        _version: u32,
     ) {
-        match interface {
-            "xdg_wm_base" => {
-                if data.xdg_window_state().xdg_wm_base.is_some() {
-                    log::warn!(target: "sctk", "compositor advertises xdg_wm_base but one is already bound");
-                    return;
-                }
-
-                let xdg_wm_base = data
-                    .registry()
-                    .bind_cached::<xdg_wm_base::XdgWmBase, _, _, _>(conn, qh, name, || {
-                        (u32::min(version, MAX_XDG_WM_BASE), ())
-                    })
-                    .expect("failed to bind global");
-
-                data.xdg_window_state().xdg_wm_base = Some((name, xdg_wm_base));
+        if "zxdg_decoration_manager_v1" == interface {
+            if data.xdg_window_state().xdg_decoration_manager.is_some() {
+                return;
             }
 
-            "zxdg_decoration_manager_v1" => {
-                if data.xdg_window_state().zxdg_decoration_manager_v1.is_some() {
-                    log::warn!(target: "sctk", "compositor advertises zxdg_decoration_manager_v1 but one is already bound");
-                    return;
-                }
+            let xdg_decoration_manager = data
+                .registry()
+                .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
+                    conn,
+                    qh,
+                    name,
+                    DECORATION_MANAGER_VERSION,
+                    (),
+                )
+                .expect("failed to bind global");
 
-                let zxdg_decoration_manager_v1 = data
-                    .registry()
-                    .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
-                        conn,
-                        qh,
-                        name,
-                        MAX_ZXDG_DECORATION_MANAGER,
-                        (),
-                    )
-                    .expect("failed to bind global");
-
-                data.xdg_window_state().zxdg_decoration_manager_v1 =
-                    Some((name, zxdg_decoration_manager_v1));
-
-                // Since the order in which globals are advertised is undefined, we need to ensure we enable
-                // server side decorations if the decoration manager is advertised after any surfaces are
-                // created.
-                data.xdg_window_state().init_decorations(conn, qh);
-            }
-
-            _ => (),
+            data.xdg_window_state().xdg_decoration_manager = Some((name, xdg_decoration_manager));
         }
     }
 
-    fn remove_global(data: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, name: u32) {
-        if data
-            .xdg_window_state()
-            .xdg_wm_base
-            .as_ref()
-            .filter(|(global_name, _)| global_name == &name)
-            .is_some()
-        {
-            todo!("XDG shell global destruction")
-        }
-
-        if data
-            .xdg_window_state()
-            .zxdg_decoration_manager_v1
-            .as_ref()
-            .filter(|(global_name, _)| global_name == &name)
-            .is_some()
-        {
-            todo!("ZXDG decoration global destruction")
-        }
+    fn remove_global(_: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, _: u32) {
+        // Unlikely to ever occur.
     }
 }
 
@@ -348,8 +222,8 @@ where
     ) {
         match event {
             xdg_toplevel::Event::Configure { width, height, states } => {
-                // The states are encoded as a bunch of u32 of native endianness, but are encoding in an array
-                // which is just an array of bytes.
+                // The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
+                // bytes.
                 let states = states
                     .chunks_exact(4)
                     .flat_map(TryInto::<[u8; 4]>::try_into)
@@ -364,24 +238,15 @@ where
                 };
 
                 let pending_configure = &mut *udata.0.pending_configure.lock().unwrap();
-
-                match pending_configure {
-                    Some(pending_configure) => {
-                        pending_configure.new_size = new_size;
-                        pending_configure.states = states;
-                    }
-
-                    None => {
-                        *pending_configure = Some(WindowConfigure { new_size, states });
-                    }
-                }
+                pending_configure.new_size = new_size;
+                pending_configure.states = states;
             }
 
             xdg_toplevel::Event::Close => {
                 if let Some(window) = data.xdg_window_state().window_by_toplevel(toplevel) {
                     let window = window.impl_clone();
 
-                    data.request_close_window(conn, qh, &window);
+                    data.request_close(conn, qh, &window);
                 } else {
                     log::warn!(target: "sctk", "closed event received for dead window: {}", toplevel.id());
                 }
@@ -390,7 +255,7 @@ where
             _ => unreachable!(),
         }
 
-        // Perform cleanup as necessary
+        // Perform cleanup
         data.xdg_window_state().cleanup(conn);
     }
 }
@@ -441,10 +306,19 @@ where
         match event {
             zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
                 wayland_client::WEnum::Value(mode) => {
-                    *data.0.current_decoration_mode.lock().unwrap() = mode;
+                    let mode = match mode {
+                        Mode::ClientSide => DecorationMode::Client,
+                        Mode::ServerSide => DecorationMode::Server,
+
+                        _ => unreachable!(),
+                    };
+
+                    data.0.pending_configure.lock().unwrap().decoration_mode = mode;
                 }
 
-                wayland_client::WEnum::Unknown(_) => unreachable!(),
+                wayland_client::WEnum::Unknown(unknown) => {
+                    log::error!(target: "sctk", "unknown decoration mode 0x{:x}", unknown);
+                }
             },
 
             _ => unreachable!(),
