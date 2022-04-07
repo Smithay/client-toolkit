@@ -1,7 +1,9 @@
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(
 //    missing_docs, // Commented out for now so the project isn't all yellow.
     missing_debug_implementations
 )]
+#![forbid(unsafe_op_in_unsafe_fn, rust_2021_compatibility)]
 #![allow(clippy::new_without_default)]
 
 /// Re-exports of some crates, for convenience.

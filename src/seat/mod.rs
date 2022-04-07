@@ -1,3 +1,4 @@
+#[cfg(feature = "xkbcommon")]
 pub mod keyboard;
 pub mod pointer;
 pub mod touch;
@@ -12,14 +13,13 @@ use std::{
 
 use wayland_backend::client::InvalidId;
 use wayland_client::{
-    protocol::{wl_keyboard, wl_pointer, wl_seat, wl_touch},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    protocol::{wl_pointer, wl_seat, wl_touch},
+    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    keyboard::KeyboardHandler,
     pointer::{PointerData, PointerHandler},
     touch::{TouchData, TouchHandler},
 };
@@ -89,32 +89,6 @@ impl SeatState {
                 has_touch: inner.data.has_touch.load(Ordering::SeqCst),
             }
         })
-    }
-
-    /// Creates a keyboard from a seat.
-    ///
-    /// ## Errors
-    ///
-    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    pub fn get_keyboard<D>(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        seat: &wl_seat::WlSeat,
-    ) -> Result<wl_keyboard::WlKeyboard, SeatError>
-    where
-        // FIXME: Keyboard does not need SeatData. It will have it's own type of data.
-        D: Dispatch<wl_keyboard::WlKeyboard, UserData = SeatData> + KeyboardHandler + 'static,
-    {
-        let inner =
-            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
-
-        if !inner.data.has_keyboard.load(Ordering::SeqCst) {
-            return Err(SeatError::UnsupportedCapability(Capability::Keyboard));
-        }
-
-        let keyboard = seat.get_keyboard(conn, qh, inner.data.clone())?;
-        Ok(keyboard)
     }
 
     /// Creates a pointer from a seat.
@@ -312,15 +286,7 @@ where
     ) {
         match event {
             wl_seat::Event::Capabilities { capabilities } => {
-                let capabilities = match capabilities {
-                    WEnum::Value(capabilities) => capabilities,
-
-                    WEnum::Unknown(value) => {
-                        log::warn!(target: "sctk", "{} sent some unknown capabilities: {}", seat.id(), value);
-                        // In a best effort, drop any capabilities we don't understand.
-                        wl_seat::Capability::from_bits_truncate(value)
-                    }
-                };
+                let capabilities = wl_seat::Capability::from_bits_truncate(capabilities.into());
 
                 let keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
                 let has_keyboard = data.has_keyboard.load(Ordering::SeqCst);

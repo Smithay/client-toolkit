@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     seat::{
-        keyboard::KeyboardHandler,
+        keyboard::{KeyEvent, KeyboardHandler, Modifiers},
         pointer::{PointerHandler, PointerScroll},
         Capability, SeatHandler, SeatState,
     },
@@ -236,8 +236,10 @@ impl SeatHandler for SimpleWindow {
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             println!("Set keyboard capability");
-            let keyboard =
-                self.seat_state.get_keyboard(conn, qh, &seat).expect("Failed to create keyboard");
+            let keyboard = self
+                .seat_state
+                .get_keyboard(conn, qh, &seat, None)
+                .expect("Failed to create keyboard");
             self.keyboard = Some(keyboard);
         }
 
@@ -272,25 +274,29 @@ impl SeatHandler for SimpleWindow {
 }
 
 impl KeyboardHandler for SimpleWindow {
-    fn keyboard_focus(
+    fn enter(
         &mut self,
         _: &mut ConnectionHandle,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
+        _: u32,
+        _: &[u32],
+        keysyms: &[u32],
     ) {
         if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
-            println!("Keyboard focus on window");
+            println!("Keyboard focus on window with pressed syms: {:?}", keysyms);
             self.keyboard_focus = true;
         }
     }
 
-    fn keyboard_release_focus(
+    fn leave(
         &mut self,
         _: &mut ConnectionHandle,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
+        _: u32,
     ) {
         if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
             println!("Release keyboard focus on window");
@@ -298,45 +304,37 @@ impl KeyboardHandler for SimpleWindow {
         }
     }
 
-    fn keyboard_press_key(
+    fn press_key(
         &mut self,
         _conn: &mut ConnectionHandle,
         _qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
-        time: u32,
-        key: u32,
+        _: u32,
+        event: KeyEvent,
     ) {
-        println!("Key press: {} @ {}", key, time);
+        println!("Key press: {:?}", event);
     }
 
-    fn keyboard_release_key(
+    fn release_key(
         &mut self,
         _: &mut ConnectionHandle,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
-        time: u32,
-        key: u32,
+        _: u32,
+        event: KeyEvent,
     ) {
-        println!("Key release: {} @ {}", key, time);
+        println!("Key release: {:?}", event);
     }
 
-    fn keyboard_update_modifiers(
+    fn update_modifiers(
         &mut self,
         _: &mut ConnectionHandle,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
-        // TODO: Other params
+        _serial: u32,
+        modifiers: Modifiers,
     ) {
-    }
-
-    fn keyboard_update_repeat_info(
-        &mut self,
-        _conn: &mut ConnectionHandle,
-        _qh: &QueueHandle<Self>,
-        _keyboard: &wl_keyboard::WlKeyboard,
-        _rate: u32,
-        _delay: u32,
-    ) {
+        println!("Update modifiers: {:?}", modifiers);
     }
 }
 
