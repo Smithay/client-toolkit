@@ -33,7 +33,7 @@
 //!         // shm buffers are released fairly fast, it's unlikely we'll need more than double buffering.
 //!         for i in 0..2 {
 //!             self.surface.1 = i;
-//!             if let Some((offset, buffer, slice)) = self.pool.create_buffer(
+//!             if let Ok((offset, buffer, slice)) = self.pool.create_buffer(
 //!                 100,
 //!                 100 * 4,
 //!                 100,
@@ -44,7 +44,7 @@
 //!                 /*
 //!                     insert drawing code here
 //!                 */
-//!                 surface.attach(conn, Some(&buffer), 0, 0);
+//!                 surface.attach(conn, Some(buffer), 0, 0);
 //!                 surface.commit(conn);
 //!                 // We exit the function after the draw.
 //!                 return;

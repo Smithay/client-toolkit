@@ -19,10 +19,10 @@ lazy_static = "1.0"
 memmap2 = "0.5"
 log = "0.4"
 thiserror = "1.0.30"
-wayland-backend = "0.1.0-alpha3"
-wayland-client = "0.30.0-alpha3"
-wayland-protocols = { version = "0.30.0-alpha3", features = ["client", "unstable_protocols"] }
-wayland-cursor = "0.30.0-alpha3"
+wayland-backend = "0.1.0-alpha9"
+wayland-client = "0.30.0-alpha9"
+wayland-protocols = { version = "0.30.0-alpha9", features = ["client", "unstable_protocols"] }
+wayland-cursor = "0.30.0-alpha9"
 calloop = { version = "0.9", optional = true }
 
 [features]
