@@ -492,6 +492,12 @@ impl Window {
     }
 }
 
+impl PartialEq for Window {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct WindowData(pub(crate) Arc<WindowDataInner>);
 
