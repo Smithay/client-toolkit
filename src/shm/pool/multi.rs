@@ -319,6 +319,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         offset -= offset % bpp;
         (offset as usize, size as usize)
     }
+    #[allow(clippy::too_many_arguments)]
     /// Resizes the pool and appends a new buffer.
     fn dyn_resize(
         &mut self,
