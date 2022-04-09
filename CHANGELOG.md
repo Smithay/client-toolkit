@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Bugfixes
+
+- `Window`'s `wl_pointer` not being relased on `Drop`.
+
 ## 0.15.3 - 2021-12-27
 
 #### Bugfixes
