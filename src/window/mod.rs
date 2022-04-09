@@ -708,6 +708,11 @@ impl<F: Frame + 'static> Window<F> {
 impl<F: Frame> Drop for Window<F> {
     fn drop(&mut self) {
         self.inner.borrow_mut().take();
+
+        // Destroy decorations manager, so the inner frame could be dropped.
+        if let Some(decoration) = self.decoration.take() {
+            decoration.destroy();
+        }
     }
 }
 
