@@ -78,7 +78,7 @@ use wayland_client::{
 
 use super::raw::RawPool;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum PoolError {
     InUse,
     Overlap,
