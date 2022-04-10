@@ -85,6 +85,16 @@ pub enum PoolError {
     NotFound,
 }
 
+impl std::fmt::Display for PoolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InUse => f.write_str("InUse"),
+            Self::Overlap => f.write_str("Overlap"),
+            Self::NotFound => f.write_str("NotFound"),
+        }
+    }
+}
+
 /// This pool manages buffers associated with keys.
 /// Only one buffer can be attributed to a given key.
 #[derive(Debug)]
