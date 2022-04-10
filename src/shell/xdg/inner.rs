@@ -20,7 +20,7 @@ where
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
-        _version: u32,
+        version: u32,
     ) {
         if interface == "xdg_wm_base" {
             if data.xdg_shell_state().xdg_wm_base.is_some() {
@@ -29,7 +29,7 @@ where
 
             let xdg_wm_base = data
                 .registry()
-                .bind_once::<xdg_wm_base::XdgWmBase, _, _>(conn, qh, name, 3, ())
+                .bind_once::<xdg_wm_base::XdgWmBase, _, _>(conn, qh, name, u32::min(version, 3), ())
                 .expect("failed to bind global");
 
             data.xdg_shell_state().xdg_wm_base = Some((name, xdg_wm_base));
