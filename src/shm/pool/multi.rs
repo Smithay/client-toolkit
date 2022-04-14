@@ -80,19 +80,12 @@ use super::raw::RawPool;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PoolError {
+    #[error("buffer is currently used")]
     InUse,
+    #[error("buffer is overlapping another")]
     Overlap,
+    #[error("buffer could not be found")]
     NotFound,
-}
-
-impl std::fmt::Display for PoolError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InUse => f.write_str("InUse"),
-            Self::Overlap => f.write_str("Overlap"),
-            Self::NotFound => f.write_str("NotFound"),
-        }
-    }
 }
 
 /// This pool manages buffers associated with keys.
@@ -117,6 +110,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
     pub(crate) fn new(inner: RawPool) -> Self {
         Self { inner, buffer_list: Vec::new() }
     }
+
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -124,6 +118,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
     pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
         self.inner.resize(size, conn)
     }
+
     /// Removes the buffer with the given key from the pool and rearranges the others.
     pub fn remove<Q>(&mut self, key: &Q, conn: &mut ConnectionHandle)
     where
@@ -149,6 +144,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
             }
         }
     }
+
     /// Insert a buffer into the pool.
     pub fn insert(
         &mut self,
@@ -217,6 +213,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
 
         index
     }
+
     /// Retreives the buffer associated with the given key.
     pub fn get<Q>(
         &mut self,
@@ -262,6 +259,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         buf_slot.free.store(false, Ordering::Relaxed);
         Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
     }
+
     /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
     ///
     /// The offset can be used to determine whether or not a buffer was moved in the mempool
@@ -278,6 +276,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         let index = self.insert(width, stride, height, key, format, conn)?;
         self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
     }
+
     /// Retreives the buffer at the given index.
     fn get_at(
         &mut self,
@@ -318,6 +317,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         let buf = buf_slot.buffer.as_ref().unwrap();
         Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
     }
+
     /// Calcule the offet and size of a buffer based on its stride.
     fn offset(&self, mut offset: i32, width: i32, stride: i32, height: i32) -> (usize, usize) {
         // bytes per pixel
@@ -329,6 +329,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         offset -= offset % bpp;
         (offset as usize, size as usize)
     }
+
     #[allow(clippy::too_many_arguments)]
     /// Resizes the pool and appends a new buffer.
     fn dyn_resize(
