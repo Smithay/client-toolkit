@@ -117,7 +117,7 @@ impl DataOffer {
     /// At least make sure you flush your events to the server before
     /// doing so.
     ///
-    pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: i32) -> std::io::Result<()> {
+    pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: i32) {
         use nix::unistd::close;
 
         self.offer.receive(mime_type, writefd);
@@ -125,8 +125,6 @@ impl DataOffer {
         if let Err(err) = close(writefd) {
             log::warn!("Failed to close write pipe: {}", err);
         }
-
-        Ok(())
     }
 
     /// Notify the send and compositor of the dnd actions you accept
