@@ -210,7 +210,7 @@ impl DataDevice {
         f(inner.selection.as_ref())
     }
 
-    /// Access the `DataOffer` currently associated with current DnD 
+    /// Access the `DataOffer` currently associated with current DnD
     pub fn with_dnd<F, T>(&self, f: F) -> T
     where
         F: FnOnce(Option<&DataOffer>) -> T,
