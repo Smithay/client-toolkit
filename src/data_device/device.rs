@@ -209,6 +209,15 @@ impl DataDevice {
         let inner = self.inner.lock().unwrap();
         f(inner.selection.as_ref())
     }
+
+    /// Access the `DataOffer` currently associated with current DnD 
+    pub fn with_dnd<F, T>(&self, f: F) -> T
+    where
+        F: FnOnce(Option<&DataOffer>) -> T,
+    {
+        let inner = self.inner.lock().unwrap();
+        f(inner.current_dnd.as_ref())
+    }
 }
 
 impl Drop for DataDevice {
