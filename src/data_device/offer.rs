@@ -106,6 +106,27 @@ impl DataOffer {
         Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
     }
 
+    /// Receive data to the write end of a raw file descriptor. If you have the read end, you can read from it.
+    ///
+    /// You can do this several times, as a reaction to motion of
+    /// the dnd cursor, or to inspect the data in order to choose your
+    /// response.
+    ///
+    /// Note that you should *not* read the contents right away in a
+    /// blocking way, as you may deadlock your application doing so.
+    /// At least make sure you flush your events to the server before
+    /// doing so.
+    ///
+    pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: i32) {
+        use nix::unistd::close;
+
+        self.offer.receive(mime_type, writefd);
+
+        if let Err(err) = close(writefd) {
+            log::warn!("Failed to close write pipe: {}", err);
+        }
+    }
+
     /// Notify the send and compositor of the dnd actions you accept
     ///
     /// You need to provide the set of supported actions, as well as
