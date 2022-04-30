@@ -70,6 +70,7 @@ pub trait PointerHandler: SeatHandler + Sized {
         pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
         entered: (f64, f64),
+        serial: u32,
     );
 
     /// The pointer focus is released from the surface.
@@ -79,6 +80,7 @@ pub trait PointerHandler: SeatHandler + Sized {
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
+        serial: u32,
     );
 
     /// The pointer has moved.
@@ -101,6 +103,7 @@ pub trait PointerHandler: SeatHandler + Sized {
         pointer: &wl_pointer::WlPointer,
         time: u32,
         button: u32,
+        serial: u32,
     );
 
     /// A pointer button is released.
@@ -111,6 +114,7 @@ pub trait PointerHandler: SeatHandler + Sized {
         pointer: &wl_pointer::WlPointer,
         time: u32,
         button: u32,
+        serial: u32,
     );
 
     /// A pointer's axis has scrolled.
@@ -170,6 +174,7 @@ pub(crate) struct Button {
     time: u32,
     state: wl_pointer::ButtonState,
     button: u32,
+    serial: u32,
 }
 
 impl DelegateDispatchBase<wl_pointer::WlPointer> for SeatState {
@@ -189,12 +194,12 @@ where
         qh: &QueueHandle<D>,
     ) {
         match event {
-            wl_pointer::Event::Enter { surface, surface_x, surface_y, .. } => {
-                data.pointer_focus(conn, qh, pointer, &surface, (surface_x, surface_y));
+            wl_pointer::Event::Enter { surface, surface_x, surface_y, serial } => {
+                data.pointer_focus(conn, qh, pointer, &surface, (surface_x, surface_y), serial);
             }
 
-            wl_pointer::Event::Leave { surface, .. } => {
-                data.pointer_release_focus(conn, qh, pointer, &surface);
+            wl_pointer::Event::Leave { surface, serial } => {
+                data.pointer_release_focus(conn, qh, pointer, &surface, serial);
             }
 
             /*
@@ -215,22 +220,22 @@ where
                 }
             }
 
-            wl_pointer::Event::Button { time, button, state, .. } => match state {
+            wl_pointer::Event::Button { time, button, state, serial } => match state {
                 WEnum::Value(state) => {
                     if pointer.version() < 5 {
                         match state {
                             wl_pointer::ButtonState::Released => {
-                                data.pointer_release_button(conn, qh, pointer, time, button)
+                                data.pointer_release_button(conn, qh, pointer, time, button, serial)
                             }
                             wl_pointer::ButtonState::Pressed => {
-                                data.pointer_press_button(conn, qh, pointer, time, button)
+                                data.pointer_press_button(conn, qh, pointer, time, button, serial)
                             }
 
                             _ => unreachable!(),
                         }
                     } else {
                         let mut guard = udata.inner.lock().unwrap();
-                        guard.button = Some(Button { time, state, button });
+                        guard.button = Some(Button { time, state, button, serial });
                     }
                 }
 
@@ -433,6 +438,7 @@ where
                                 pointer,
                                 button.time,
                                 button.button,
+                                button.serial,
                             );
                         }
 
@@ -443,6 +449,7 @@ where
                                 pointer,
                                 button.time,
                                 button.button,
+                                button.serial,
                             );
                         }
 
