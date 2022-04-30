@@ -346,6 +346,7 @@ impl PointerHandler for SimpleWindow {
         _pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
         entered: (f64, f64),
+        _serial: u32,
     ) {
         if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
             println!("Pointer focus on window, entering at {:?}", entered);
@@ -359,6 +360,7 @@ impl PointerHandler for SimpleWindow {
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
+        _serial: u32,
     ) {
         if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
             println!("Release pointer focus on window");
@@ -386,6 +388,7 @@ impl PointerHandler for SimpleWindow {
         _pointer: &wl_pointer::WlPointer,
         time: u32,
         button: u32,
+        _serial: u32,
     ) {
         if self.pointer_focus {
             println!("Pointer press button: {:?} @ {}", button, time);
@@ -399,6 +402,7 @@ impl PointerHandler for SimpleWindow {
         _pointer: &wl_pointer::WlPointer,
         time: u32,
         button: u32,
+        _serial: u32,
     ) {
         if self.pointer_focus {
             println!("Pointer release button: {:?} @ {}", button, time);
