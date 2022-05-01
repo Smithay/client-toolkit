@@ -73,6 +73,10 @@ impl CompositorState {
         CompositorState { wl_compositor: None }
     }
 
+    pub fn wl_compositor(&self) -> Option<&wl_compositor::WlCompositor> {
+        self.wl_compositor.as_ref().map(|g| &g.1)
+    }
+
     pub fn create_surface<D>(
         &self,
         conn: &mut ConnectionHandle,

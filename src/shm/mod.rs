@@ -24,6 +24,10 @@ impl ShmState {
         ShmState { wl_shm: None, formats: vec![] }
     }
 
+    pub fn wl_shm(&self) -> Option<&wl_shm::WlShm> {
+        self.wl_shm.as_ref().map(|(_, shm)| shm)
+    }
+
     pub fn new_simple_pool<D, U>(
         &self,
         len: usize,
