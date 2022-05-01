@@ -5,7 +5,7 @@ use std::sync::{
 
 use wayland_backend::client::InvalidId;
 use wayland_client::{
-    protocol::{wl_callback, wl_compositor, wl_output, wl_surface},
+    protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
@@ -17,6 +17,18 @@ use crate::{
 /// An error caused by creating a surface.
 #[derive(Debug, thiserror::Error)]
 pub enum SurfaceError {
+    /// The compositor global is not available.
+    #[error("the compositor global is not available")]
+    MissingCompositorGlobal,
+
+    /// Protocol error.
+    #[error(transparent)]
+    Protocol(#[from] InvalidId),
+}
+
+/// An error caused by creating a region.
+#[derive(Debug, thiserror::Error)]
+pub enum RegionError {
     /// The compositor global is not available.
     #[error("the compositor global is not available")]
     MissingCompositorGlobal,
@@ -80,6 +92,20 @@ impl CompositorState {
 
         Ok(surface)
     }
+
+    pub fn create_region<D>(
+        &self,
+        conn: &mut ConnectionHandle,
+        qh: &QueueHandle<D>,
+    ) -> Result<wl_region::WlRegion, RegionError>
+    where
+        D: Dispatch<wl_region::WlRegion, UserData = ()> + 'static,
+    {
+        let (_, compositor) =
+            self.wl_compositor.as_ref().ok_or(RegionError::MissingCompositorGlobal)?;
+
+        compositor.create_region(conn, qh, ()).map_err(Into::into)
+    }
 }
 
 /// Data associated with a [`WlSurface`](wl_surface::WlSurface).
@@ -97,12 +123,14 @@ macro_rules! delegate_compositor {
     ($ty: ty) => {
         type __WlCompositor = $crate::reexports::client::protocol::wl_compositor::WlCompositor;
         type __WlSurface = $crate::reexports::client::protocol::wl_surface::WlSurface;
+        type __WlRegion = $crate::reexports::client::protocol::wl_region::WlRegion;
         type __WlCallback = $crate::reexports::client::protocol::wl_callback::WlCallback;
 
         $crate::reexports::client::delegate_dispatch!($ty:
             [
                 __WlCompositor,
                 __WlSurface,
+                __WlRegion,
                 __WlCallback
             ] => $crate::compositor::CompositorState
         );
@@ -160,6 +188,26 @@ where
                 state.scale_factor_changed(conn, qh, surface, factor);
             }
         }
+    }
+}
+
+impl DelegateDispatchBase<wl_region::WlRegion> for CompositorState {
+    type UserData = ();
+}
+
+impl<D> DelegateDispatch<wl_region::WlRegion, D> for CompositorState
+where
+    D: Dispatch<wl_region::WlRegion, UserData = Self::UserData> + CompositorHandler,
+{
+    fn event(
+        _: &mut D,
+        _: &wl_region::WlRegion,
+        _: wl_region::Event,
+        _: &(),
+        _: &mut ConnectionHandle,
+        _: &QueueHandle<D>,
+    ) {
+        unreachable!("wl_region has no events")
     }
 }
 
