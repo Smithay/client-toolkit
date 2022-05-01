@@ -10,7 +10,7 @@ use crate::{
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
-use self::pool::{raw::RawPool, CreatePoolError};
+use self::pool::{raw::RawPool, slot::SlotPool, CreatePoolError};
 
 pub trait ShmHandler {
     fn shm_state(&mut self) -> &mut ShmState;
@@ -29,6 +29,19 @@ impl ShmState {
 
     pub fn wl_shm(&self) -> Option<&wl_shm::WlShm> {
         self.wl_shm.as_ref().map(|(_, shm)| shm)
+    }
+
+    pub fn new_slot_pool<D, U>(
+        &self,
+        len: usize,
+        qh: &QueueHandle<D>,
+        udata: U,
+    ) -> Result<SlotPool, CreatePoolError>
+    where
+        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
+        U: Send + Sync + 'static,
+    {
+        Ok(SlotPool::new(self.new_raw_pool(len, qh, udata)?))
     }
 
     /// Creates a new raw pool.

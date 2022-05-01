@@ -7,6 +7,7 @@ use std::{
     fs::File,
     io,
     os::unix::prelude::{FromRawFd, RawFd},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -18,9 +19,9 @@ use nix::{
     unistd,
 };
 use wayland_client::{
-    backend::InvalidId,
+    backend::{InvalidId, ObjectData},
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
-    Dispatch, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use crate::error::GlobalError;
@@ -61,6 +62,12 @@ impl RawPool {
         &mut self.mmap
     }
 
+    /// Returns the size of the mempool
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
     /// Create a new buffer to this pool.
     ///
     /// ## Parameters
@@ -92,6 +99,32 @@ impl RawPool {
         let buffer = self.pool.create_buffer(offset, width, height, stride, format, qh, udata)?;
 
         Ok(buffer)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn create_buffer_raw(
+        &mut self,
+        offset: i32,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: wl_shm::Format,
+        data: Arc<dyn ObjectData + 'static>,
+    ) -> Result<wl_buffer::WlBuffer, InvalidId> {
+        let backend = self.pool().backend().upgrade().ok_or(InvalidId)?;
+        let conn = Connection::from_backend(backend);
+        let buffer_id = conn.send_request(
+            self.pool(),
+            wl_shm_pool::Request::CreateBuffer {
+                offset,
+                width,
+                height,
+                stride,
+                format: WEnum::Value(format),
+            },
+            Some(data))?;
+
+        Proxy::from_id(&conn, buffer_id)
     }
 
     /// Returns the pool object used to communicate with the server.
