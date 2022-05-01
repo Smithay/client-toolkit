@@ -336,6 +336,7 @@ impl PointerHandler for SimpleLayer {
         _pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
         entered: (f64, f64),
+        _serial: u32,
     ) {
         if self.layer.as_ref().map(LayerSurface::wl_surface) == Some(surface) {
             println!("Pointer focus on layer, entering at {:?}", entered);
@@ -349,6 +350,7 @@ impl PointerHandler for SimpleLayer {
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
+        _serial: u32,
     ) {
         if self.layer.as_ref().map(LayerSurface::wl_surface) == Some(surface) {
             println!("Release pointer focus on layer");
@@ -376,6 +378,7 @@ impl PointerHandler for SimpleLayer {
         _pointer: &wl_pointer::WlPointer,
         time: u32,
         button: u32,
+        _serial: u32,
     ) {
         if self.pointer_focus {
             println!("Pointer press button: {:?} @ {}", button, time);
@@ -389,6 +392,7 @@ impl PointerHandler for SimpleLayer {
         _pointer: &wl_pointer::WlPointer,
         time: u32,
         button: u32,
+        _serial: u32,
     ) {
         if self.pointer_focus {
             println!("Pointer release button: {:?} @ {}", button, time);
