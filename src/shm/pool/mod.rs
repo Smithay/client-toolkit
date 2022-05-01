@@ -1,4 +1,5 @@
 pub mod raw;
+pub mod slot;
 
 use std::io;
 
