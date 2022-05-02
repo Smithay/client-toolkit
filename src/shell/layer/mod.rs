@@ -9,7 +9,6 @@ use std::{
 };
 
 use bitflags::bitflags;
-use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_output, wl_surface},
     ConnectionHandle, Dispatch, QueueHandle,
@@ -17,6 +16,8 @@ use wayland_client::{
 use wayland_protocols::wlr::unstable::layer_shell::v1::client::{
     zwlr_layer_shell_v1, zwlr_layer_surface_v1,
 };
+
+use crate::error::GlobalError;
 
 #[derive(Debug)]
 pub struct LayerState {
@@ -65,17 +66,6 @@ pub trait LayerHandler: Sized {
         configure: LayerSurfaceConfigure,
         serial: u32,
     );
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum LayerSurfaceError {
-    /// The layer shell global is not available.
-    #[error("the layer shell global is not available")]
-    MissingRequiredGlobals,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
 }
 
 #[derive(Debug)]
@@ -143,7 +133,7 @@ impl LayerSurfaceBuilder {
         layer_state: &mut LayerState,
         surface: wl_surface::WlSurface,
         layer: Layer,
-    ) -> Result<LayerSurface, LayerSurfaceError>
+    ) -> Result<LayerSurface, GlobalError>
     where
         D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, UserData = LayerSurfaceData>
             + 'static,
@@ -151,8 +141,9 @@ impl LayerSurfaceBuilder {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
         // will stay for ext-layer-shell-v1 support.
 
-        let layer_shell =
-            layer_state.wlr_layer_shell().ok_or(LayerSurfaceError::MissingRequiredGlobals)?;
+        let layer_shell = layer_state
+            .wlr_layer_shell()
+            .ok_or(GlobalError::MissingGlobals(&["zwlr_layer_shell_v1"]))?;
         let layer_surface = layer_shell.get_layer_surface(
             conn,
             &surface,

@@ -5,7 +5,10 @@ use wayland_client::{
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
 };
 
-use crate::registry::{ProvidesRegistryState, RegistryHandler};
+use crate::{
+    error::GlobalError,
+    registry::{ProvidesRegistryState, RegistryHandler},
+};
 
 use self::pool::{raw::RawPool, simple::SimplePool, CreatePoolError};
 
@@ -56,7 +59,7 @@ impl ShmState {
         D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
         U: Send + Sync + 'static,
     {
-        let (_, shm) = self.wl_shm.as_ref().ok_or(CreatePoolError::MissingShmGlobal)?;
+        let (_, shm) = self.wl_shm.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_shm"]))?;
 
         RawPool::new(len, shm, conn, qh, udata)
     }
