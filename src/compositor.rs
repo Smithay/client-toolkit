@@ -3,40 +3,16 @@ use std::sync::{
     Mutex,
 };
 
-use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
     ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
+    error::GlobalError,
     output::OutputData,
     registry::{ProvidesRegistryState, RegistryHandler},
 };
-
-/// An error caused by creating a surface.
-#[derive(Debug, thiserror::Error)]
-pub enum SurfaceError {
-    /// The compositor global is not available.
-    #[error("the compositor global is not available")]
-    MissingCompositorGlobal,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
-}
-
-/// An error caused by creating a region.
-#[derive(Debug, thiserror::Error)]
-pub enum RegionError {
-    /// The compositor global is not available.
-    #[error("the compositor global is not available")]
-    MissingCompositorGlobal,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
-}
 
 pub trait CompositorHandler: Sized {
     fn compositor_state(&mut self) -> &mut CompositorState;
@@ -81,12 +57,12 @@ impl CompositorState {
         &self,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-    ) -> Result<wl_surface::WlSurface, SurfaceError>
+    ) -> Result<wl_surface::WlSurface, GlobalError>
     where
         D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData> + 'static,
     {
         let (_, compositor) =
-            self.wl_compositor.as_ref().ok_or(SurfaceError::MissingCompositorGlobal)?;
+            self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
 
         let surface = compositor.create_surface(
             conn,
@@ -101,12 +77,12 @@ impl CompositorState {
         &self,
         conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
-    ) -> Result<wl_region::WlRegion, RegionError>
+    ) -> Result<wl_region::WlRegion, GlobalError>
     where
         D: Dispatch<wl_region::WlRegion, UserData = ()> + 'static,
     {
         let (_, compositor) =
-            self.wl_compositor.as_ref().ok_or(RegionError::MissingCompositorGlobal)?;
+            self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
 
         compositor.create_region(conn, qh, ()).map_err(Into::into)
     }

@@ -23,6 +23,8 @@ use wayland_client::{
     ConnectionHandle, Dispatch, QueueHandle,
 };
 
+use crate::error::GlobalError;
+
 use super::CreatePoolError;
 
 /// A raw handler for file backed shared memory pools.
@@ -140,7 +142,8 @@ impl RawPool {
         let mem_file = unsafe { File::from_raw_fd(shm_fd) };
         mem_file.set_len(len as u64)?;
 
-        let pool = shm.create_pool(conn, shm_fd, len as i32, qh, udata)?;
+        let pool =
+            shm.create_pool(conn, shm_fd, len as i32, qh, udata).map_err(GlobalError::from)?;
         let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
 
         Ok(RawPool { pool, len, mem_file, mmap })

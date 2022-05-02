@@ -15,9 +15,11 @@ use wayland_protocols::{
     },
 };
 
+use crate::error::GlobalError;
+
 use self::inner::{WindowDataInner, WindowInner};
 
-use super::{ConfigureHandler, XdgShellHandler, XdgShellState, XdgSurfaceData, XdgSurfaceError};
+use super::{ConfigureHandler, XdgShellHandler, XdgShellState, XdgSurfaceData};
 
 pub(super) mod inner;
 
@@ -252,7 +254,7 @@ impl WindowBuilder {
         shell_state: &XdgShellState<D>,
         window_state: &mut XdgWindowState,
         surface: wl_surface::WlSurface,
-    ) -> Result<Window, XdgSurfaceError>
+    ) -> Result<Window, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData<D>>
             + Dispatch<xdg_toplevel::XdgToplevel, UserData = WindowData>

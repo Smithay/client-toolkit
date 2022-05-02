@@ -3,24 +3,14 @@
 
 use std::marker::PhantomData;
 
-use wayland_backend::client::InvalidId;
 use wayland_client::{protocol::wl_surface, ConnectionHandle, Dispatch, QueueHandle};
 use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_wm_base};
+
+use crate::error::GlobalError;
 
 mod inner;
 pub mod popup;
 pub mod window;
-
-#[derive(Debug, thiserror::Error)]
-pub enum XdgSurfaceError {
-    /// The xdg_wm_base global is not available.
-    #[error("the xdg_wm_base global is not available")]
-    MissingRequiredGlobals,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
-}
 
 #[derive(Debug)]
 pub struct XdgShellState<D> {
@@ -64,11 +54,11 @@ impl<D> XdgShellState<D> {
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
         configure_handler: impl ConfigureHandler<D> + Send + Sync + 'static,
-    ) -> Result<XdgShellSurface, XdgSurfaceError>
+    ) -> Result<XdgShellSurface, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData<D>> + 'static,
     {
-        let wm_base = self.xdg_wm_base().ok_or(XdgSurfaceError::MissingRequiredGlobals)?;
+        let wm_base = self.xdg_wm_base().ok_or(GlobalError::MissingGlobals(&["xdg_wm_base"]))?;
         let xdg_surface = wm_base.get_xdg_surface(
             conn,
             &surface,
