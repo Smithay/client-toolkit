@@ -33,7 +33,7 @@
 //!         // shm buffers are released fairly fast, it's unlikely we'll need more than double buffering.
 //!         for i in 0..2 {
 //!             self.surface.1 = i;
-//!             if let Some((offset, buffer, slice)) = self.pool.create_buffer(
+//!             if let Ok((offset, buffer, slice)) = self.pool.create_buffer(
 //!                 100,
 //!                 100 * 4,
 //!                 100,
@@ -44,7 +44,7 @@
 //!                 /*
 //!                     insert drawing code here
 //!                 */
-//!                 surface.attach(conn, Some(&buffer), 0, 0);
+//!                 surface.attach(conn, Some(buffer), 0, 0);
 //!                 surface.commit(conn);
 //!                 // We exit the function after the draw.
 //!                 return;
@@ -78,16 +78,26 @@ use wayland_client::{
 
 use super::raw::RawPool;
 
+#[derive(Debug, thiserror::Error)]
+pub enum PoolError {
+    #[error("buffer is currently used")]
+    InUse,
+    #[error("buffer is overlapping another")]
+    Overlap,
+    #[error("buffer could not be found")]
+    NotFound,
+}
+
 /// This pool manages buffers associated with keys.
 /// Only one buffer can be attributed to a given key.
 #[derive(Debug)]
-pub struct MultiPool<K: PartialEq + Clone> {
-    buffer_list: Vec<BufferHandle<K>>,
+pub struct MultiPool<K: Clone + PartialEq> {
+    buffer_list: Vec<BufferSlot<K>>,
     pub(crate) inner: RawPool,
 }
 
-#[derive(Debug)]
-struct BufferHandle<K: PartialEq + Clone> {
+#[derive(Debug, thiserror::Error)]
+struct BufferSlot<K: Clone + PartialEq> {
     free: Arc<AtomicBool>,
     size: usize,
     used: usize,
@@ -96,13 +106,11 @@ struct BufferHandle<K: PartialEq + Clone> {
     key: K,
 }
 
-impl<E: PartialEq + Clone> From<RawPool> for MultiPool<E> {
-    fn from(inner: RawPool) -> Self {
-        Self { buffer_list: Vec::new(), inner }
+impl<K: Clone + PartialEq> MultiPool<K> {
+    pub(crate) fn new(inner: RawPool) -> Self {
+        Self { inner, buffer_list: Vec::new() }
     }
-}
 
-impl<K: PartialEq + Clone> MultiPool<K> {
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -110,30 +118,35 @@ impl<K: PartialEq + Clone> MultiPool<K> {
     pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
         self.inner.resize(size, conn)
     }
-    /// Removes the buffer with the given key from the pool and rearranges the others
-    pub fn remove(&mut self, key: &K, conn: &mut ConnectionHandle) {
-        if let Some((i, buffer)) = self.buffer_list.iter().enumerate().find(|b| b.1.key.eq(key)) {
-            let mut offset = buffer.offset;
-            self.buffer_list.remove(i);
-            for buffer_handle in &mut self.buffer_list {
-                if buffer_handle.offset > offset && buffer_handle.free.load(Ordering::Relaxed) {
-                    if let Some(buffer) = buffer_handle.buffer.take() {
+
+    /// Removes the buffer with the given key from the pool and rearranges the others.
+    pub fn remove<Q>(&mut self, key: &Q, conn: &mut ConnectionHandle)
+    where
+        Q: Eq,
+        K: std::borrow::Borrow<Q>,
+    {
+        if let Some((i, buf)) =
+            self.buffer_list.iter().enumerate().find(|(_, slot)| slot.key.borrow().eq(key))
+        {
+            let mut offset = buf.offset;
+            if let Some(buf) = self.buffer_list.remove(i).buffer {
+                buf.destroy(conn);
+            }
+            for buf_slot in &mut self.buffer_list {
+                if buf_slot.offset > offset && buf_slot.free.load(Ordering::Relaxed) {
+                    if let Some(buffer) = buf_slot.buffer.take() {
                         buffer.destroy(conn);
                     }
-                    std::mem::swap(&mut buffer_handle.offset, &mut offset);
+                    std::mem::swap(&mut buf_slot.offset, &mut offset);
                 } else {
                     break;
                 }
             }
         }
     }
-    /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
-    ///
-    /// The offset can be used to determine whether or not a buffer was moved in the mempool
-    /// and by consequence if it should be damaged partially or fully.
-    ///
-    /// When it's not possible to use the buffer associated with the key, None is returned.
-    pub fn create_buffer(
+
+    /// Insert a buffer into the pool.
+    pub fn insert(
         &mut self,
         width: i32,
         stride: i32,
@@ -141,102 +154,90 @@ impl<K: PartialEq + Clone> MultiPool<K> {
         key: &K,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Option<(usize, wl_buffer::WlBuffer, &mut [u8])>
-    where
-        K: std::fmt::Debug,
-    {
-        let mut found_key = false;
+    ) -> Result<usize, PoolError> {
         let mut offset = 0;
+        let mut found_key = false;
         let size = (stride * height) as usize;
-        let mut index = None;
+        let mut index = Err(PoolError::NotFound);
+        let bpp = (stride as f32 / width as f32).ceil() as usize;
 
-        // This loop serves to found the buffer associated to the key.
-        for (i, buffer_handle) in self.buffer_list.iter_mut().enumerate() {
-            if buffer_handle.key.eq(key) {
+        for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
+            if buf_slot.key.eq(key) {
                 found_key = true;
-                if buffer_handle.free.load(Ordering::Relaxed) {
+                if buf_slot.free.load(Ordering::Relaxed) {
                     // Destroys the buffer if it's resized
-                    if size != buffer_handle.used {
-                        if let Some(buffer) = buffer_handle.buffer.take() {
+                    if size != buf_slot.used {
+                        if let Some(buffer) = buf_slot.buffer.take() {
                             buffer.destroy(conn);
                         }
                     }
                     // Increases the size of the Buffer if it's too small and add 5% padding.
                     // It is possible this buffer overlaps the following but the else if
                     // statement prevents this buffer from being returned if that's the case.
-                    buffer_handle.size = buffer_handle.size.max({
-                        let size = size + size / 20;
-                        // If the offset isn't a multiple of 4
-                        // the client might be unable to use the buffer
-                        size + 4 - size % 4
-                    });
-                    buffer_handle.used = size;
-                    index = Some(i);
+                    buf_slot.size = buf_slot.size.max(size + size / 20);
+                    index = Ok(i);
+                } else {
+                    index = Err(PoolError::InUse);
                 }
             // If a buffer is resized, it is likely that the followings might overlap
-            } else if offset > buffer_handle.offset {
+            } else if offset > buf_slot.offset {
                 // When the buffer is free, it's safe to shift it because we know the compositor won't try to read it.
-                if buffer_handle.free.load(Ordering::Relaxed) {
-                    if offset != buffer_handle.offset {
-                        if let Some(buffer) = buffer_handle.buffer.take() {
+                if buf_slot.free.load(Ordering::Relaxed) {
+                    if offset != buf_slot.offset {
+                        if let Some(buffer) = buf_slot.buffer.take() {
                             buffer.destroy(conn);
                         }
                     }
-                    buffer_handle.offset = offset;
+                    buf_slot.offset = offset;
                 } else {
                     // If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
-                    index = None;
+                    index = Err(PoolError::InUse);
                 }
             } else if found_key {
                 break;
             }
-            offset += buffer_handle.size;
+            let mut size = buf_slot.size;
+            size += size % bpp;
+            size -= size % bpp;
+            offset += size;
         }
 
-        if found_key {
-            // Sets the offset to the one of our chosen buffer
-            offset = self.buffer_list[index?].offset;
-        } else if let Some(b) = self.buffer_list.last() {
-            // Adds 5% padding between the last and new buffer
-            offset += b.size / 20;
-            offset += 4 - offset % 4;
-        }
-
-        // Resize the pool if it isn't large enough to fit all our buffers
-        if offset + size >= self.inner.len()
-            && self.resize(offset + size + size / 20, conn).is_err()
-        {
-            return None;
-        }
-
-        let buffer;
-
-        if found_key {
-            let buffer_handle = self.buffer_list.get_mut(index?)?;
-            match &buffer_handle.buffer {
-                Some(t_buffer) => {
-                    buffer = t_buffer.clone();
-                }
-                None => {
-                    let buffer_id = conn
-                        .send_request(
-                            self.inner.pool(),
-                            wl_shm_pool::Request::CreateBuffer {
-                                offset: offset as i32,
-                                width,
-                                height,
-                                stride,
-                                format: WEnum::Value(format),
-                            },
-                            Some(Arc::new(BufferObjectData { free: buffer_handle.free.clone() })),
-                        )
-                        .ok()?;
-                    buffer_handle.buffer = Some(Proxy::from_id(conn, buffer_id).ok()?);
-                    buffer = buffer_handle.buffer.as_ref()?.clone();
-                }
+        if !found_key {
+            if let Err(err) = index {
+                return self
+                    .dyn_resize(offset, width, stride, height, key.clone(), format, conn)
+                    .map(|_| self.buffer_list.len() - 1)
+                    .ok_or(err);
             }
-        } else if index.is_none() {
-            index = Some(self.buffer_list.len());
+        }
+
+        index
+    }
+
+    /// Retreives the buffer associated with the given key.
+    pub fn get<Q>(
+        &mut self,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: &Q,
+        format: wl_shm::Format,
+        conn: &mut ConnectionHandle,
+    ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])>
+    where
+        Q: PartialEq,
+        K: std::borrow::Borrow<Q>,
+    {
+        let len = self.inner.len();
+        let size = (stride * height) as usize;
+        let buf_slot =
+            self.buffer_list.iter_mut().find(|buf_slot| buf_slot.key.borrow().eq(key))?;
+        buf_slot.used = size;
+        let offset = buf_slot.offset;
+        if buf_slot.buffer.is_none() {
+            if offset + size > len {
+                self.inner.resize(offset + size + size / 20, conn).ok()?;
+            }
             let free = Arc::new(AtomicBool::new(true));
             let buffer_id = conn
                 .send_request(
@@ -251,26 +252,127 @@ impl<K: PartialEq + Clone> MultiPool<K> {
                     Some(Arc::new(BufferObjectData { free: free.clone() })),
                 )
                 .ok()?;
-            buffer = Proxy::from_id(conn, buffer_id).ok()?;
-            self.buffer_list.push(BufferHandle {
-                offset,
-                used: 0,
-                free,
-                buffer: Some(buffer.clone()),
-                size,
-                key: key.clone(),
-            });
-        } else {
-            return None;
+            buf_slot.free = free;
+            buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
         }
+        let buf = buf_slot.buffer.as_ref().unwrap();
+        buf_slot.free.store(false, Ordering::Relaxed);
+        Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
+    }
 
-        let slice = &mut self.inner.mmap()[offset..][..size];
+    /// Returns the buffer associated with the given key and its offset (usize) in the mempool.
+    ///
+    /// The offset can be used to determine whether or not a buffer was moved in the mempool
+    /// and by consequence if it should be damaged partially or fully.
+    pub fn create_buffer(
+        &mut self,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: &K,
+        format: wl_shm::Format,
+        conn: &mut ConnectionHandle,
+    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError> {
+        let index = self.insert(width, stride, height, key, format, conn)?;
+        self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
+    }
 
-        self.buffer_list[index?].free.swap(false, Ordering::Relaxed);
+    /// Retreives the buffer at the given index.
+    fn get_at(
+        &mut self,
+        index: usize,
+        width: i32,
+        stride: i32,
+        height: i32,
+        format: wl_shm::Format,
+        conn: &mut ConnectionHandle,
+    ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])> {
+        let len = self.inner.len();
+        let size = (stride * height) as usize;
+        let buf_slot = self.buffer_list.get_mut(index)?;
+        buf_slot.used = size;
+        let offset = buf_slot.offset;
+        if buf_slot.buffer.is_none() {
+            if offset + size > len {
+                self.inner.resize(offset + size + size / 20, conn).ok()?;
+            }
+            let free = Arc::new(AtomicBool::new(true));
+            let buffer_id = conn
+                .send_request(
+                    self.inner.pool(),
+                    wl_shm_pool::Request::CreateBuffer {
+                        offset: offset as i32,
+                        width,
+                        height,
+                        stride,
+                        format: WEnum::Value(format),
+                    },
+                    Some(Arc::new(BufferObjectData { free: free.clone() })),
+                )
+                .ok()?;
+            buf_slot.free = free;
+            buf_slot.buffer = Proxy::from_id(conn, buffer_id).ok();
+        }
+        buf_slot.free.store(false, Ordering::Relaxed);
+        let buf = buf_slot.buffer.as_ref().unwrap();
+        Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
+    }
 
-        Some((offset, buffer, slice))
+    /// Calcule the offet and size of a buffer based on its stride.
+    fn offset(&self, mut offset: i32, width: i32, stride: i32, height: i32) -> (usize, usize) {
+        // bytes per pixel
+        let bpp = (stride as f32 / width as f32).ceil() as i32;
+        let size = stride * height;
+        // 5% padding.
+        offset += offset / 20;
+        offset += offset % bpp;
+        offset -= offset % bpp;
+        (offset as usize, size as usize)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    /// Resizes the pool and appends a new buffer.
+    fn dyn_resize(
+        &mut self,
+        offset: usize,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: K,
+        format: wl_shm::Format,
+        conn: &mut ConnectionHandle,
+    ) -> Option<()> {
+        let (offset, size) = self.offset(offset as i32, width, stride, height);
+        if self.inner.len() < offset + size {
+            self.resize(offset + size + size / 20, conn).ok()?;
+        }
+        let free = Arc::new(AtomicBool::new(true));
+        let buffer_id = conn
+            .send_request(
+                self.inner.pool(),
+                wl_shm_pool::Request::CreateBuffer {
+                    offset: offset as i32,
+                    width,
+                    height,
+                    stride,
+                    format: WEnum::Value(format),
+                },
+                Some(Arc::new(BufferObjectData { free: free.clone() })),
+            )
+            .ok()?;
+        let buffer = Proxy::from_id(conn, buffer_id).ok()?;
+        self.buffer_list.push(BufferSlot {
+            offset,
+            used: 0,
+            free,
+            buffer: Some(buffer),
+            size,
+            key,
+        });
+        Some(())
     }
 }
+
 struct BufferObjectData {
     free: Arc<AtomicBool>,
 }
