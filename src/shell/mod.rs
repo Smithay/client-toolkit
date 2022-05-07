@@ -42,5 +42,4 @@
 //! [`Layer`]: self::layer::Layer
 
 pub mod layer;
-// pub mod xdg;
-// TODO: Would be nice to support the layer shell.
+pub mod xdg;

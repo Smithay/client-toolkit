@@ -1,18 +1,18 @@
 use std::{
     convert::{TryFrom, TryInto},
-    sync::{atomic::Ordering, Mutex},
+    sync::Mutex,
 };
 
 use wayland_client::{
     protocol::{wl_output, wl_seat},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::{
-    unstable::xdg_decoration::v1::client::{
+    xdg::decoration::zv1::client::{
         zxdg_decoration_manager_v1,
         zxdg_toplevel_decoration_v1::{self, Mode},
     },
-    xdg_shell::client::{
+    xdg::shell::client::{
         xdg_toplevel::{self, State},
         xdg_wm_base,
     },
@@ -25,25 +25,17 @@ use crate::{
 
 use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, XdgWindowState};
 
-impl Window {
-    /// Clone is an implementation detail of Window.
-    ///
-    /// This function creates another window handle that is not marked as a primary handle.
-    pub(crate) fn impl_clone(&self) -> Window {
-        Window {
-            inner: self.inner.clone(),
-            primary: false,
-            death_signal: self.death_signal.clone(),
-        }
-    }
-}
-
-impl Drop for Window {
+impl Drop for WindowInner {
     fn drop(&mut self) {
-        // If we are the primary handle (an owned value given to the user), mark ourselves for cleanup.
-        if self.primary {
-            self.death_signal.store(true, Ordering::SeqCst);
+        // XDG decoration says we must destroy the decoration object before the toplevel
+        if let Some(toplevel_decoration) = self.toplevel_decoration.as_ref() {
+            toplevel_decoration.destroy();
         }
+
+        // XDG Shell protocol dictates we must destroy the role object before the xdg surface.
+        self.xdg_toplevel.destroy();
+        // XdgShellSurface will do it's own drop
+        // self.xdg_surface.destroy();
     }
 }
 
@@ -55,78 +47,59 @@ pub struct WindowInner {
 }
 
 impl WindowInner {
-    pub fn set_title(&self, conn: &mut ConnectionHandle, title: String) {
-        self.xdg_toplevel.set_title(conn, title);
+    pub fn set_title(&self, title: String) {
+        self.xdg_toplevel.set_title(title);
         // TODO: Store name for client side frame.
     }
 
-    pub fn set_app_id(&self, conn: &mut ConnectionHandle, app_id: String) {
-        self.xdg_toplevel.set_app_id(conn, app_id);
+    pub fn set_app_id(&self, app_id: String) {
+        self.xdg_toplevel.set_app_id(app_id);
     }
 
-    pub fn set_min_size(&self, conn: &mut ConnectionHandle, min_size: Option<(u32, u32)>) {
+    pub fn set_min_size(&self, min_size: Option<(u32, u32)>) {
         let min_size = min_size.unwrap_or((0, 0));
-        self.xdg_toplevel.set_min_size(conn, min_size.0 as i32, min_size.1 as i32)
+        self.xdg_toplevel.set_min_size(min_size.0 as i32, min_size.1 as i32)
     }
 
-    pub fn set_max_size(&self, conn: &mut ConnectionHandle, max_size: Option<(u32, u32)>) {
+    pub fn set_max_size(&self, max_size: Option<(u32, u32)>) {
         let max_size = max_size.unwrap_or((0, 0));
-        self.xdg_toplevel.set_max_size(conn, max_size.0 as i32, max_size.1 as i32)
+        self.xdg_toplevel.set_max_size(max_size.0 as i32, max_size.1 as i32)
     }
 
-    pub fn set_parent(&self, conn: &mut ConnectionHandle, parent: Option<&Window>) {
-        self.xdg_toplevel.set_parent(conn, parent.map(Window::xdg_toplevel))
+    pub fn set_parent(&self, parent: Option<&Window>) {
+        self.xdg_toplevel.set_parent(parent.map(Window::xdg_toplevel))
     }
 
-    pub fn show_window_menu(
-        &self,
-        conn: &mut ConnectionHandle,
-        seat: &wl_seat::WlSeat,
-        serial: u32,
-        x: u32,
-        y: u32,
-    ) {
-        self.xdg_toplevel.show_window_menu(conn, seat, serial, x as i32, y as i32)
+    pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, x: u32, y: u32) {
+        self.xdg_toplevel.show_window_menu(seat, serial, x as i32, y as i32)
     }
 
-    pub fn set_maximized(&self, conn: &mut ConnectionHandle) {
-        self.xdg_toplevel.set_maximized(conn)
+    pub fn set_maximized(&self) {
+        self.xdg_toplevel.set_maximized()
     }
 
-    pub fn unset_maximized(&self, conn: &mut ConnectionHandle) {
-        self.xdg_toplevel.unset_maximized(conn)
+    pub fn unset_maximized(&self) {
+        self.xdg_toplevel.unset_maximized()
     }
 
-    pub fn set_minmized(&self, conn: &mut ConnectionHandle) {
-        self.xdg_toplevel.set_minimized(conn)
+    pub fn set_minmized(&self) {
+        self.xdg_toplevel.set_minimized()
     }
 
-    pub fn set_fullscreen(
-        &self,
-        conn: &mut ConnectionHandle,
-        output: Option<&wl_output::WlOutput>,
-    ) {
-        self.xdg_toplevel.set_fullscreen(conn, output)
+    pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
+        self.xdg_toplevel.set_fullscreen(output)
     }
 
-    pub fn unset_fullscreen(&self, conn: &mut ConnectionHandle) {
-        self.xdg_toplevel.unset_fullscreen(conn)
+    pub fn unset_fullscreen(&self) {
+        self.xdg_toplevel.unset_fullscreen()
     }
 
-    pub fn request_decoration_mode(
-        &self,
-        conn: &mut ConnectionHandle,
-        mode: Option<DecorationMode>,
-    ) {
+    pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
         if let Some(toplevel_decoration) = &self.toplevel_decoration {
             match mode {
-                Some(DecorationMode::Client) => {
-                    toplevel_decoration.set_mode(conn, Mode::ClientSide)
-                }
-                Some(DecorationMode::Server) => {
-                    toplevel_decoration.set_mode(conn, Mode::ServerSide)
-                }
-                None => toplevel_decoration.unset_mode(conn),
+                Some(DecorationMode::Client) => toplevel_decoration.set_mode(Mode::ClientSide),
+                Some(DecorationMode::Server) => toplevel_decoration.set_mode(Mode::ServerSide),
+                None => toplevel_decoration.unset_mode(),
             }
         }
     }
@@ -135,28 +108,6 @@ impl WindowInner {
 #[derive(Debug)]
 pub struct WindowDataInner {
     pub(crate) pending_configure: Mutex<WindowConfigure>,
-}
-
-impl XdgWindowState {
-    pub(crate) fn cleanup(&mut self, conn: &mut ConnectionHandle) {
-        self.windows.retain(|window| {
-            let alive = !window.death_signal.load(Ordering::SeqCst);
-
-            if !alive {
-                // XDG decoration says we must destroy the decoration object before the toplevel
-                if let Some(toplevel_decoration) = window.inner.toplevel_decoration.as_ref() {
-                    toplevel_decoration.destroy(conn);
-                }
-
-                // XDG Shell protocol dictates we must destroy the role object before the xdg surface.
-                window.xdg_toplevel().destroy(conn);
-                window.xdg_surface().destroy(conn);
-                window.wl_surface().destroy(conn);
-            }
-
-            alive
-        })
-    }
 }
 
 const DECORATION_MANAGER_VERSION: u32 = 1;
@@ -173,7 +124,7 @@ where
 {
     fn new_global(
         data: &mut D,
-        conn: &mut ConnectionHandle,
+        _conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -187,7 +138,6 @@ where
             let xdg_decoration_manager = data
                 .registry()
                 .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
-                    conn,
                     qh,
                     name,
                     DECORATION_MANAGER_VERSION,
@@ -199,7 +149,7 @@ where
         }
     }
 
-    fn remove_global(_: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, _: u32) {
+    fn remove_global(_: &mut D, _: &Connection, _: &QueueHandle<D>, _: u32) {
         // Unlikely to ever occur.
     }
 }
@@ -217,7 +167,7 @@ where
         toplevel: &xdg_toplevel::XdgToplevel,
         event: xdg_toplevel::Event,
         udata: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -244,8 +194,6 @@ where
 
             xdg_toplevel::Event::Close => {
                 if let Some(window) = data.xdg_window_state().window_by_toplevel(toplevel) {
-                    let window = window.impl_clone();
-
                     data.request_close(conn, qh, &window);
                 } else {
                     log::warn!(target: "sctk", "closed event received for dead window: {}", toplevel.id());
@@ -254,9 +202,6 @@ where
 
             _ => unreachable!(),
         }
-
-        // Perform cleanup
-        data.xdg_window_state().cleanup(conn);
     }
 }
 
@@ -276,7 +221,7 @@ where
         _: &zxdg_decoration_manager_v1::ZxdgDecorationManagerV1,
         _: zxdg_decoration_manager_v1::Event,
         _: &(),
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("zxdg_decoration_manager_v1 has no events")
@@ -300,7 +245,7 @@ where
         _: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
         event: zxdg_toplevel_decoration_v1::Event,
         data: &Self::UserData,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         match event {

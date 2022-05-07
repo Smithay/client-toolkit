@@ -19,7 +19,7 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, ConnectionHandle, Dispatch, QueueHandle,
+    Connection, Dispatch, QueueHandle,
 };
 
 fn main() {
@@ -27,12 +27,12 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let display = conn.handle().display();
+    let display = conn.display();
 
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&qh, ()).unwrap();
 
     let mut simple_window = SimpleWindow {
         registry_state: RegistryState::new(registry),
@@ -61,29 +61,18 @@ fn main() {
 
     let pool = simple_window
         .shm_state
-        .new_raw_pool(
-            simple_window.width as usize * simple_window.height as usize * 4,
-            &mut conn.handle(),
-            &qh,
-            (),
-        )
+        .new_raw_pool(simple_window.width as usize * simple_window.height as usize * 4, &qh, ())
         .expect("Failed to create pool");
     simple_window.pool = Some(pool);
 
-    let surface = simple_window.compositor_state.create_surface(&mut conn.handle(), &qh).unwrap();
+    let surface = simple_window.compositor_state.create_surface(&qh).unwrap();
 
     let window = Window::builder()
         .title("A wayland window")
         // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
         .app_id("io.github.smithay.client-toolkit.SimpleWindow")
         .min_size((256, 256))
-        .map(
-            &mut conn.handle(),
-            &qh,
-            &simple_window.xdg_shell_state,
-            &mut simple_window.xdg_window_state,
-            surface,
-        )
+        .map(&qh, &simple_window.xdg_shell_state, &mut simple_window.xdg_window_state, surface)
         .expect("window creation");
 
     simple_window.window = Some(window);
@@ -129,7 +118,7 @@ impl CompositorHandler for SimpleWindow {
 
     fn scale_factor_changed(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _surface: &wl_surface::WlSurface,
         _new_factor: i32,
@@ -139,7 +128,7 @@ impl CompositorHandler for SimpleWindow {
 
     fn frame(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         _surface: &wl_surface::WlSurface,
         _time: u32,
@@ -155,7 +144,7 @@ impl OutputHandler for SimpleWindow {
 
     fn new_output(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
@@ -163,7 +152,7 @@ impl OutputHandler for SimpleWindow {
 
     fn update_output(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
@@ -171,7 +160,7 @@ impl OutputHandler for SimpleWindow {
 
     fn output_destroyed(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
@@ -189,13 +178,13 @@ impl WindowHandler for SimpleWindow {
         &mut self.xdg_window_state
     }
 
-    fn request_close(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: &Window) {
+    fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &Window) {
         self.exit = true;
     }
 
     fn configure(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         _window: &Window,
         configure: WindowConfigure,
@@ -225,58 +214,54 @@ impl SeatHandler for SimpleWindow {
         &mut self.seat_state
     }
 
-    fn new_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
+    fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 
     fn new_capability(
         &mut self,
-        conn: &mut ConnectionHandle,
+        _conn: &Connection,
         qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
         capability: Capability,
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             println!("Set keyboard capability");
-            let keyboard = self
-                .seat_state
-                .get_keyboard(conn, qh, &seat, None)
-                .expect("Failed to create keyboard");
+            let keyboard =
+                self.seat_state.get_keyboard(qh, &seat, None).expect("Failed to create keyboard");
             self.keyboard = Some(keyboard);
         }
 
         if capability == Capability::Pointer && self.pointer.is_none() {
             println!("Set pointer capability");
-            let pointer =
-                self.seat_state.get_pointer(conn, qh, &seat).expect("Failed to create pointer");
+            let pointer = self.seat_state.get_pointer(qh, &seat).expect("Failed to create pointer");
             self.pointer = Some(pointer);
         }
     }
 
     fn remove_capability(
         &mut self,
-        conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         capability: Capability,
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_some() {
             println!("Unset keyboard capability");
-            self.keyboard.take().unwrap().release(conn);
+            self.keyboard.take().unwrap().release();
         }
 
         if capability == Capability::Pointer && self.pointer.is_some() {
             println!("Unset pointer capability");
-            self.pointer.take().unwrap().release(conn);
+            self.pointer.take().unwrap().release();
         }
     }
 
-    fn remove_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
-    }
+    fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
 impl KeyboardHandler for SimpleWindow {
     fn enter(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
@@ -292,7 +277,7 @@ impl KeyboardHandler for SimpleWindow {
 
     fn leave(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
@@ -306,7 +291,7 @@ impl KeyboardHandler for SimpleWindow {
 
     fn press_key(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
@@ -317,7 +302,7 @@ impl KeyboardHandler for SimpleWindow {
 
     fn release_key(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
@@ -328,7 +313,7 @@ impl KeyboardHandler for SimpleWindow {
 
     fn update_modifiers(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _serial: u32,
@@ -341,7 +326,7 @@ impl KeyboardHandler for SimpleWindow {
 impl PointerHandler for SimpleWindow {
     fn pointer_focus(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
@@ -356,7 +341,7 @@ impl PointerHandler for SimpleWindow {
 
     fn pointer_release_focus(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
@@ -370,7 +355,7 @@ impl PointerHandler for SimpleWindow {
 
     fn pointer_motion(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -383,7 +368,7 @@ impl PointerHandler for SimpleWindow {
 
     fn pointer_press_button(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -397,7 +382,7 @@ impl PointerHandler for SimpleWindow {
 
     fn pointer_release_button(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -411,7 +396,7 @@ impl PointerHandler for SimpleWindow {
 
     fn pointer_axis(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: &wl_pointer::WlPointer,
         time: u32,
@@ -438,19 +423,19 @@ impl ShmHandler for SimpleWindow {
 }
 
 impl SimpleWindow {
-    pub fn draw(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<Self>) {
+    pub fn draw(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
         if let Some(window) = self.window.as_ref() {
             // Ensure the pool is big enough to hold the new buffer.
             self.pool
                 .as_mut()
                 .unwrap()
-                .resize((self.width * self.height * 4) as usize, conn)
+                .resize((self.width * self.height * 4) as usize)
                 .expect("resize pool");
 
             // Destroy the old buffer.
             // FIXME: Integrate this into the pool logic.
             if let Some(buffer) = self.buffer.take() {
-                buffer.destroy(conn);
+                buffer.destroy();
             }
 
             let offset = 0;
@@ -465,7 +450,6 @@ impl SimpleWindow {
                     stride,
                     wl_shm::Format::Argb8888,
                     (),
-                    conn,
                     qh,
                 )
                 .expect("create buffer");
@@ -497,15 +481,12 @@ impl SimpleWindow {
             self.buffer = Some(wl_buffer);
 
             // Request our next frame
-            window
-                .wl_surface()
-                .frame(conn, qh, window.wl_surface().clone())
-                .expect("create callback");
+            window.wl_surface().frame(qh, window.wl_surface().clone()).expect("create callback");
 
             assert!(self.buffer.is_some(), "No buffer?");
             // Attach and commit to present.
-            window.wl_surface().attach(conn, self.buffer.as_ref(), 0, 0);
-            window.wl_surface().commit(conn);
+            window.wl_surface().attach(self.buffer.as_ref(), 0, 0);
+            window.wl_surface().commit();
         }
     }
 }
@@ -545,7 +526,7 @@ impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {
         _: &wl_buffer::WlBuffer,
         _: wl_buffer::Event,
         _: &Self::UserData,
-        _: &mut wayland_client::ConnectionHandle,
+        _: &Connection,
         _: &wayland_client::QueueHandle<Self>,
     ) {
         // todo
