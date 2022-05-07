@@ -71,7 +71,7 @@ impl CompositorState {
         Ok(surface)
     }
 
-    pub fn create_region<D>(&self,qh: &QueueHandle<D>) -> Result<wl_region::WlRegion, GlobalError>
+    pub fn create_region<D>(&self, qh: &QueueHandle<D>) -> Result<wl_region::WlRegion, GlobalError>
     where
         D: Dispatch<wl_region::WlRegion, UserData = ()> + 'static,
     {

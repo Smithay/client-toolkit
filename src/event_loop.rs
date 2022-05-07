@@ -143,7 +143,7 @@ impl<D> EventSource for WaylandSource<D> {
                 // in case of error, don't prepare a read, if the error is persistent, it'll trigger in other
                 // wayland methods anyway
                 log::error!("Error trying to flush the wayland display: {}", err);
-                return Err(err)?;
+                return Err(err.into());
             }
         }
 
