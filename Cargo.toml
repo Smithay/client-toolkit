@@ -23,13 +23,15 @@ lazy_static = "1.0"
 memmap2 = "0.5"
 log = "0.4"
 thiserror = "1.0.30"
-wayland-backend = "=0.1.0-alpha10"
-wayland-client = "=0.30.0-alpha10"
-wayland-protocols = { version = "=0.30.0-alpha10", features = ["client", "unstable_protocols"] }
-wayland-cursor = "=0.30.0-alpha10"
+wayland-backend = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-client = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-protocols = { git = "https://github.com/Smithay/wayland-rs", features = ["client", "unstable"] }
+wayland-protocols-wlr = { git = "https://github.com/Smithay/wayland-rs", features = ["client"] }
+wayland-cursor = { git = "https://github.com/Smithay/wayland-rs" }
+
 # Explicit dependency until release
 xkbcommon = { version = "=0.5.0-beta.0", optional = true, features = ["wayland"] }
-calloop = { version = "0.9", optional = true }
+calloop = { version = "0.10.0", optional = true }
 
 [features]
 default = ["calloop", "xkbcommon"]

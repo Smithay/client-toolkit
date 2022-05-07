@@ -1,12 +1,11 @@
 //! Utilities for using an [`EventQueue`] from wayland-client with an event loop that performs polling with
 //! [`calloop`](https://crates.io/crates/calloop).
 
-use std::io;
+use std::{io, os::unix::prelude::RawFd};
 
 use calloop::{
-    generic::{Fd, Generic},
-    EventSource, InsertError, Interest, LoopHandle, Mode, Poll, PostAction, Readiness,
-    RegistrationToken, Token, TokenFactory,
+    generic::Generic, EventSource, InsertError, Interest, LoopHandle, Mode, Poll, PostAction,
+    Readiness, RegistrationToken, Token, TokenFactory,
 };
 use nix::errno::Errno;
 use wayland_backend::client::{ReadEventsGuard, WaylandError};
@@ -23,7 +22,7 @@ use wayland_client::{DispatchError, EventQueue};
 #[derive(Debug)]
 pub struct WaylandSource<D> {
     queue: EventQueue<D>,
-    fd: Generic<Fd>,
+    fd: Generic<RawFd>,
     read_guard: Option<ReadEventsGuard>,
 }
 
@@ -31,7 +30,7 @@ impl<D> WaylandSource<D> {
     /// Wrap an [`EventQueue`] as a [`WaylandSource`].
     pub fn new(queue: EventQueue<D>) -> Result<WaylandSource<D>, WaylandError> {
         let guard = queue.prepare_read()?;
-        let fd = Generic::from_fd(guard.connection_fd(), Interest::READ, Mode::Level);
+        let fd = Generic::new(guard.connection_fd(), Interest::READ, Mode::Level);
         drop(guard);
 
         Ok(WaylandSource { queue, fd, read_guard: None })
@@ -64,22 +63,22 @@ impl<D> EventSource for WaylandSource<D> {
     ///
     /// You should call [`EventQueue::dispatch_pending`] inside your callback using this queue.
     type Metadata = EventQueue<D>;
-
     type Ret = Result<usize, DispatchError>;
+    type Error = calloop::Error;
 
     fn process_events<F>(
         &mut self,
         readiness: Readiness,
         token: Token,
         mut callback: F,
-    ) -> io::Result<PostAction>
+    ) -> Result<PostAction, Self::Error>
     where
         F: FnMut(Self::Event, &mut Self::Metadata) -> Self::Ret,
     {
         let queue = &mut self.queue;
         let read_guard = &mut self.read_guard;
 
-        self.fd.process_events(readiness, token, |_, _| {
+        let action = self.fd.process_events(readiness, token, |_, _| {
             // 1. read events from the socket if any are available
             if let Some(guard) = read_guard.take() {
                 // might be None if some other thread read events before us, concurrently
@@ -107,22 +106,24 @@ impl<D> EventSource for WaylandSource<D> {
             }
 
             Ok(PostAction::Continue)
-        })
+        })?;
+
+        Ok(action)
     }
 
-    fn register(&mut self, poll: &mut Poll, token_factory: &mut TokenFactory) -> io::Result<()> {
+    fn register(&mut self, poll: &mut Poll, token_factory: &mut TokenFactory) -> calloop::Result<()> {
         self.fd.register(poll, token_factory)
     }
 
-    fn reregister(&mut self, poll: &mut Poll, token_factory: &mut TokenFactory) -> io::Result<()> {
+    fn reregister(&mut self, poll: &mut Poll, token_factory: &mut TokenFactory) -> calloop::Result<()> {
         self.fd.reregister(poll, token_factory)
     }
 
-    fn unregister(&mut self, poll: &mut Poll) -> io::Result<()> {
+    fn unregister(&mut self, poll: &mut Poll) -> calloop::Result<()> {
         self.fd.unregister(poll)
     }
 
-    fn pre_run<F>(&mut self, mut callback: F) -> io::Result<()>
+    fn pre_run<F>(&mut self, mut callback: F) -> calloop::Result<()>
     where
         F: FnMut((), &mut Self::Metadata) -> Self::Ret,
     {
@@ -134,7 +135,7 @@ impl<D> EventSource for WaylandSource<D> {
                 // in case of error, don't prepare a read, if the error is persistent, it'll trigger in other
                 // wayland methods anyway
                 log::error!("Error trying to flush the wayland display: {}", err);
-                return Err(err);
+                return Err(err)?;
             }
         }
 
@@ -145,7 +146,7 @@ impl<D> EventSource for WaylandSource<D> {
         Ok(())
     }
 
-    fn post_run<F>(&mut self, _: F) -> io::Result<()>
+    fn post_run<F>(&mut self, _: F) -> calloop::Result<()>
     where
         F: FnMut((), &mut Self::Metadata) -> Self::Ret,
     {
