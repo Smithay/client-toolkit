@@ -111,11 +111,19 @@ impl<D> EventSource for WaylandSource<D> {
         Ok(action)
     }
 
-    fn register(&mut self, poll: &mut Poll, token_factory: &mut TokenFactory) -> calloop::Result<()> {
+    fn register(
+        &mut self,
+        poll: &mut Poll,
+        token_factory: &mut TokenFactory,
+    ) -> calloop::Result<()> {
         self.fd.register(poll, token_factory)
     }
 
-    fn reregister(&mut self, poll: &mut Poll, token_factory: &mut TokenFactory) -> calloop::Result<()> {
+    fn reregister(
+        &mut self,
+        poll: &mut Poll,
+        token_factory: &mut TokenFactory,
+    ) -> calloop::Result<()> {
         self.fd.reregister(poll, token_factory)
     }
 

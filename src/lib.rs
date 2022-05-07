@@ -22,4 +22,4 @@ pub mod output;
 pub mod registry;
 // pub mod seat;
 // pub mod shell;
-// pub mod shm;
+pub mod shm;
