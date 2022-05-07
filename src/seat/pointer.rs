@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use wayland_client::{
     protocol::{wl_pointer, wl_surface},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use super::{SeatHandler, SeatState};
@@ -65,7 +65,7 @@ pub trait PointerHandler: SeatHandler + Sized {
     /// The pos
     fn pointer_focus(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
@@ -76,7 +76,7 @@ pub trait PointerHandler: SeatHandler + Sized {
     /// The pointer focus is released from the surface.
     fn pointer_release_focus(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         surface: &wl_surface::WlSurface,
@@ -88,7 +88,7 @@ pub trait PointerHandler: SeatHandler + Sized {
     /// The position is in surface relative coordinates.
     fn pointer_motion(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -98,7 +98,7 @@ pub trait PointerHandler: SeatHandler + Sized {
     /// A pointer button is pressed.
     fn pointer_press_button(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -109,7 +109,7 @@ pub trait PointerHandler: SeatHandler + Sized {
     /// A pointer button is released.
     fn pointer_release_button(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -120,7 +120,7 @@ pub trait PointerHandler: SeatHandler + Sized {
     /// A pointer's axis has scrolled.
     fn pointer_axis(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         pointer: &wl_pointer::WlPointer,
         time: u32,
@@ -190,7 +190,7 @@ where
         pointer: &wl_pointer::WlPointer,
         event: wl_pointer::Event,
         udata: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {

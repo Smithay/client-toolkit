@@ -14,7 +14,7 @@ use std::{
 use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_pointer, wl_seat, wl_touch},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
@@ -98,7 +98,6 @@ impl SeatState {
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
     pub fn get_pointer<D>(
         &mut self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
@@ -112,7 +111,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        let pointer = seat.get_pointer(conn, qh, PointerData::default())?;
+        let pointer = seat.get_pointer(qh, PointerData::default())?;
         Ok(pointer)
     }
 
@@ -123,7 +122,6 @@ impl SeatState {
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.
     pub fn get_touch<D>(
         &mut self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_touch::WlTouch, SeatError>
@@ -137,7 +135,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        let touch = seat.get_touch(conn, qh, TouchData::default())?;
+        let touch = seat.get_touch(qh, TouchData::default())?;
         Ok(touch)
     }
 }
@@ -149,19 +147,14 @@ pub trait SeatHandler: Sized {
     ///
     /// This function only indicates that a seat has been created, you will need to wait for [`new_capability`](SeatHandler::new_capability)
     /// to be called before creating any keyboards,
-    fn new_seat(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<Self>,
-        seat: wl_seat::WlSeat,
-    );
+    fn new_seat(&mut self, conn: &Connection, qh: &QueueHandle<Self>, seat: wl_seat::WlSeat);
 
     /// A new capability is available on the seat.
     ///
     /// This allows you to create the corresponding object related to the capability.
     fn new_capability(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
         capability: Capability,
@@ -172,7 +165,7 @@ pub trait SeatHandler: Sized {
     /// If an object has been created from the capability, it should be destroyed.
     fn remove_capability(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
         capability: Capability,
@@ -181,12 +174,7 @@ pub trait SeatHandler: Sized {
     /// A seat has been removed.
     ///
     /// The seat is destroyed and all capability objects created from it are invalid.
-    fn remove_seat(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<Self>,
-        seat: wl_seat::WlSeat,
-    );
+    fn remove_seat(&mut self, conn: &Connection, qh: &QueueHandle<Self>, seat: wl_seat::WlSeat);
 }
 
 /// Description of a seat.
@@ -281,7 +269,7 @@ where
         seat: &wl_seat::WlSeat,
         event: wl_seat::Event,
         data: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -346,7 +334,7 @@ where
 {
     fn new_global(
         state: &mut D,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -379,7 +367,7 @@ where
         }
     }
 
-    fn remove_global(state: &mut D, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
+    fn remove_global(state: &mut D, conn: &Connection, qh: &QueueHandle<D>, name: u32) {
         if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.global_name == name)
         {
             let seat = seat.seat.clone();

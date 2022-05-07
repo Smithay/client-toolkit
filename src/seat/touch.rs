@@ -2,9 +2,7 @@ use std::sync::Mutex;
 
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
-use wayland_client::{
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle,
-};
+use wayland_client::{Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle};
 
 use crate::seat::{SeatHandler, SeatState};
 
@@ -43,7 +41,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     #[allow(clippy::too_many_arguments)]
     fn down(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         touch: &WlTouch,
         serial: u32,
@@ -56,7 +54,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     /// End of touch sequence.
     fn up(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         touch: &WlTouch,
         serial: u32,
@@ -69,7 +67,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     /// Coordinates are surface-local.
     fn motion(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         touch: &WlTouch,
         time: u32,
@@ -86,7 +84,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     /// other events always report the center of the ellipse.
     fn shape(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         touch: &WlTouch,
         id: i32,
@@ -100,7 +98,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     /// surface y-axis and is normalized to the -180° to +180° range.
     fn orientation(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         touch: &WlTouch,
         id: i32,
@@ -111,7 +109,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     ///
     /// This indicates that the compositor has cancelled the active touch sequence, for example due
     /// to detection of a touch gesture.
-    fn cancel(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<Self>, touch: &WlTouch);
+    fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
 impl DelegateDispatchBase<WlTouch> for SeatState {
@@ -127,7 +125,7 @@ where
         touch: &WlTouch,
         event: TouchEvent,
         udata: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -162,7 +160,7 @@ where
 fn process_framed_event<D>(
     data: &mut D,
     touch: &WlTouch,
-    conn: &mut ConnectionHandle,
+    conn: &Connection,
     qh: &QueueHandle<D>,
     event: TouchEvent,
 ) where

@@ -14,7 +14,7 @@ use std::{
 
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use xkbcommon::xkb;
 
@@ -45,7 +45,6 @@ impl SeatState {
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
     pub fn get_keyboard<D>(
         &mut self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
@@ -93,7 +92,7 @@ impl SeatState {
 
         udata.init_compose();
 
-        Ok(seat.get_keyboard(conn, qh, udata).map_err(Into::<SeatError>::into)?)
+        Ok(seat.get_keyboard(qh, udata).map_err(Into::<SeatError>::into)?)
     }
 }
 
@@ -110,7 +109,7 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     #[allow(clippy::too_many_arguments)]
     fn enter(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         keyboard: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
@@ -126,7 +125,7 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     /// All currently held down keys are released when this event occurs.
     fn leave(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         keyboard: &wl_keyboard::WlKeyboard,
         surface: &wl_surface::WlSurface,
@@ -138,7 +137,7 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     /// The key will repeat if there is no other press event afterwards or the key is released.
     fn press_key(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         keyboard: &wl_keyboard::WlKeyboard,
         serial: u32,
@@ -150,7 +149,7 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     /// This stops the key from being repeated if the key is the last key which was pressed.
     fn release_key(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         keyboard: &wl_keyboard::WlKeyboard,
         serial: u32,
@@ -163,7 +162,7 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     /// released.
     fn update_modifiers(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         keyboard: &wl_keyboard::WlKeyboard,
         serial: u32,
@@ -176,7 +175,7 @@ pub trait KeyboardHandler: SeatHandler + Sized {
     /// used.
     fn update_repeat_info(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _keyboard: &wl_keyboard::WlKeyboard,
         _info: RepeatInfo,
@@ -361,7 +360,7 @@ where
         keyboard: &wl_keyboard::WlKeyboard,
         event: wl_keyboard::Event,
         udata: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         // The compositor has no way to tell clients if the seat is not version 4 or above.
