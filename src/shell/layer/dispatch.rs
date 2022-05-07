@@ -1,15 +1,9 @@
-use wayland_client::{
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle,
-};
-use wayland_protocols::wlr::unstable::layer_shell::v1::client::{
-    zwlr_layer_shell_v1, zwlr_layer_surface_v1,
-};
+use wayland_client::{Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle};
+use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
-use super::{
-    LayerHandler, LayerState, LayerSurface, LayerSurfaceConfigure, LayerSurfaceData, SurfaceKind,
-};
+use super::{LayerHandler, LayerState, LayerSurfaceConfigure, LayerSurfaceData};
 
 impl<D> RegistryHandler<D> for LayerState
 where
@@ -20,7 +14,7 @@ where
 {
     fn new_global(
         data: &mut D,
-        conn: &mut ConnectionHandle,
+        _conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -34,7 +28,6 @@ where
             data.layer_state().wlr_layer_shell = Some(
                 data.registry()
                     .bind_once::<zwlr_layer_shell_v1::ZwlrLayerShellV1, _, _>(
-                        conn,
                         qh,
                         name,
                         u32::min(version, 4),
@@ -45,7 +38,7 @@ where
         }
     }
 
-    fn remove_global(_: &mut D, _: &mut ConnectionHandle, _: &QueueHandle<D>, _: u32) {
+    fn remove_global(_: &mut D, _: &Connection, _: &QueueHandle<D>, _: u32) {
         // Unlikely to ever occur and the surfaces become inert if this happens.
     }
 }
@@ -63,7 +56,7 @@ where
         _: &zwlr_layer_shell_v1::ZwlrLayerShellV1,
         _: zwlr_layer_shell_v1::Event,
         _: &Self::UserData,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("zwlr_layer_shell_v1 has no events")
@@ -85,46 +78,30 @@ where
         surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         event: zwlr_layer_surface_v1::Event,
         _udata: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        // Remove any surfaces that have been dropped
+        data.layer_state().surfaces.retain(|surface| surface.upgrade().is_some());
+
         match event {
             zwlr_layer_surface_v1::Event::Configure { serial, width, height } => {
-                if let Some(layer) = data
-                    .layer_state()
-                    .surfaces
-                    .iter()
-                    .find(|layer| match layer.kind() {
-                        SurfaceKind::Wlr(wlr) => wlr == surface,
-                    })
-                    .map(LayerSurface::impl_clone)
-                {
-                    surface.ack_configure(conn, serial);
+                if let Some(layer_surface) = data.layer_state().get_wlr_surface(surface) {
+                    surface.ack_configure(serial);
 
                     let configure = LayerSurfaceConfigure { new_size: (width, height) };
 
-                    data.configure(conn, qh, &layer, configure, serial);
+                    data.configure(conn, qh, &layer_surface, configure, serial);
                 }
             }
 
             zwlr_layer_surface_v1::Event::Closed => {
-                if let Some(layer) = data
-                    .layer_state()
-                    .surfaces
-                    .iter()
-                    .find(|layer| match layer.kind() {
-                        SurfaceKind::Wlr(wlr) => wlr == surface,
-                    })
-                    .map(LayerSurface::impl_clone)
-                {
-                    data.closed(conn, qh, &layer);
+                if let Some(layer_surface) = data.layer_state().get_wlr_surface(surface) {
+                    data.closed(conn, qh, &layer_surface);
                 }
             }
 
             _ => unreachable!(),
         }
-
-        // Perform cleanup of any dropped layers
-        data.layer_state().cleanup(conn);
     }
 }
