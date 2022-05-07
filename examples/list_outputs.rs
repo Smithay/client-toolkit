@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     output::{OutputHandler, OutputInfo, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
 };
-use wayland_client::{protocol::wl_output, Connection, ConnectionHandle, QueueHandle};
+use wayland_client::{protocol::wl_output, Connection, QueueHandle};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // We initialize the logger for the purpose of debugging.
@@ -22,10 +22,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let qh = event_queue.handle();
 
     // Get the display so we can create a registry.
-    let display = conn.handle().display();
+    let display = conn.display();
 
     // Create the registry using the display.
-    let registry = display.get_registry(&mut conn.handle(), &qh, ())?;
+    let registry = display.get_registry(&qh, ())?;
 
     // Initialize the delegate for registry handling so other parts of Smithay's client toolkit may bind
     // globals.
@@ -88,7 +88,7 @@ impl OutputHandler for ListOutputs {
 
     fn new_output(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
@@ -96,7 +96,7 @@ impl OutputHandler for ListOutputs {
 
     fn update_output(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
@@ -104,7 +104,7 @@ impl OutputHandler for ListOutputs {
 
     fn output_destroyed(
         &mut self,
-        _conn: &mut ConnectionHandle,
+        _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _output: wl_output::WlOutput,
     ) {
