@@ -2,27 +2,22 @@ mod dispatch;
 
 use std::{
     convert::TryFrom,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::{Arc, Weak},
 };
 
 use bitflags::bitflags;
 use wayland_client::{
     protocol::{wl_output, wl_surface},
-    ConnectionHandle, Dispatch, QueueHandle,
+    Connection, Dispatch, QueueHandle,
 };
-use wayland_protocols::wlr::unstable::layer_shell::v1::client::{
-    zwlr_layer_shell_v1, zwlr_layer_surface_v1,
-};
+use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::error::GlobalError;
 
 #[derive(Debug)]
 pub struct LayerState {
     wlr_layer_shell: Option<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
-    surfaces: Vec<LayerSurface>,
+    surfaces: Vec<Weak<LayerSurfaceInner>>,
 }
 
 impl LayerState {
@@ -41,6 +36,19 @@ impl LayerState {
     pub fn wlr_layer_shell(&self) -> Option<&zwlr_layer_shell_v1::ZwlrLayerShellV1> {
         self.wlr_layer_shell.as_ref()
     }
+
+    pub fn get_wlr_surface(
+        &self,
+        surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
+    ) -> Option<LayerSurface> {
+        self.surfaces
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|inner| match inner.kind {
+                SurfaceKind::Wlr(ref wlr) => wlr == surface,
+            })
+            .map(LayerSurface)
+    }
 }
 
 pub trait LayerHandler: Sized {
@@ -52,7 +60,7 @@ pub trait LayerHandler: Sized {
     /// the layer to be removed.
     ///
     /// You should drop the layer you have when this event is received.
-    fn closed(&mut self, conn: &mut ConnectionHandle, qh: &QueueHandle<Self>, layer: &LayerSurface);
+    fn closed(&mut self, conn: &Connection, qh: &QueueHandle<Self>, layer: &LayerSurface);
 
     /// Called when the compositor has sent a configure event to an layer
     ///
@@ -60,7 +68,7 @@ pub trait LayerHandler: Sized {
     /// all been sent.
     fn configure(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         layer: &LayerSurface,
         configure: LayerSurfaceConfigure,
@@ -128,7 +136,6 @@ impl LayerSurfaceBuilder {
     #[must_use = "The layer is destroyed if dropped"]
     pub fn map<D>(
         self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         layer_state: &mut LayerState,
         surface: wl_surface::WlSurface,
@@ -145,7 +152,6 @@ impl LayerSurfaceBuilder {
             .wlr_layer_shell()
             .ok_or(GlobalError::MissingGlobals(&["zwlr_layer_shell_v1"]))?;
         let layer_surface = layer_shell.get_layer_surface(
-            conn,
             &surface,
             self.output.as_ref(),
             layer.into(),
@@ -156,67 +162,47 @@ impl LayerSurfaceBuilder {
 
         // Set data for initial commit
         if let Some(size) = self.size {
-            layer_surface.set_size(conn, size.0, size.1);
+            layer_surface.set_size(size.0, size.1);
         }
 
         if let Some(anchor) = self.anchor {
             // We currently rely on the bitsets matching
             layer_surface
-                .set_anchor(conn, zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()));
+                .set_anchor(zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()));
         }
 
         if let Some(zone) = self.zone {
-            layer_surface.set_exclusive_zone(conn, zone);
+            layer_surface.set_exclusive_zone(zone);
         }
 
         if let Some(margin) = self.margin {
-            layer_surface.set_margin(conn, margin.0, margin.1, margin.2, margin.3);
+            layer_surface.set_margin(margin.0, margin.1, margin.2, margin.3);
         }
 
         if let Some(interactivity) = self.interactivity {
-            layer_surface.set_keyboard_interactivity(conn, interactivity.into())
+            layer_surface.set_keyboard_interactivity(interactivity.into())
         }
 
         // Initial commit
-        surface.commit(conn);
+        surface.commit();
 
-        let layer_surface = LayerSurface {
-            kind: SurfaceKind::Wlr(layer_surface),
+        let layer_surface = LayerSurface(Arc::new(LayerSurfaceInner {
             wl_surface: surface,
-            primary: true,
-            death_signal: Arc::new(AtomicBool::new(false)),
-        };
+            kind: SurfaceKind::Wlr(layer_surface),
+        }));
 
-        layer_state.surfaces.push(layer_surface.impl_clone());
+        layer_state.surfaces.push(Arc::downgrade(&layer_surface.0));
 
         Ok(layer_surface)
     }
 }
 
 #[derive(Debug)]
-pub struct LayerSurface {
-    kind: SurfaceKind,
-
-    wl_surface: wl_surface::WlSurface,
-
-    /// Whether this is the primary handle to the layer.
-    ///
-    /// This is only true for [`Layer`] given the user from [`LayerBuilder::map`]. Since we pass
-    /// a reference to a [`Layer`] in some traits the user implements, we need to make sure the layer isn't
-    /// actually destroyed while the user still holds the layer. If this field is true, the drop implementation
-    /// will mark the layer as dead and will clean up when possible.
-    pub(crate) primary: bool,
-
-    /// Indicates whether the primary handle to the layer has been destroyed.
-    ///
-    /// Since we can't destroy wayland objects without a connection handle, we need to mark the layer for
-    /// cleanup.
-    pub(crate) death_signal: Arc<AtomicBool>,
-}
+pub struct LayerSurface(Arc<LayerSurfaceInner>);
 
 impl PartialEq for LayerSurface {
     fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind
+        Arc::ptr_eq(&self.0, &other.0)
     }
 }
 
@@ -237,61 +223,51 @@ impl LayerSurface {
 
     // Double buffered state
 
-    pub fn set_size(&self, conn: &mut ConnectionHandle, width: u32, height: u32) {
-        match self.kind {
-            SurfaceKind::Wlr(ref wlr) => wlr.set_size(conn, width, height),
+    pub fn set_size(&self, width: u32, height: u32) {
+        match self.0.kind {
+            SurfaceKind::Wlr(ref wlr) => wlr.set_size(width, height),
         }
     }
 
-    pub fn set_anchor(&self, conn: &mut ConnectionHandle, anchor: Anchor) {
-        match self.kind {
+    pub fn set_anchor(&self, anchor: Anchor) {
+        match self.0.kind {
             // We currently rely on the bitsets being the same
-            SurfaceKind::Wlr(ref wlr) => wlr
-                .set_anchor(conn, zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits())),
+            SurfaceKind::Wlr(ref wlr) => {
+                wlr.set_anchor(zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()))
+            }
         }
     }
 
-    pub fn set_exclusive_zone(&self, conn: &mut ConnectionHandle, zone: i32) {
-        match self.kind {
-            SurfaceKind::Wlr(ref wlr) => wlr.set_exclusive_zone(conn, zone),
+    pub fn set_exclusive_zone(&self, zone: i32) {
+        match self.0.kind {
+            SurfaceKind::Wlr(ref wlr) => wlr.set_exclusive_zone(zone),
         }
     }
 
-    pub fn set_margin(
-        &self,
-        conn: &mut ConnectionHandle,
-        top: i32,
-        right: i32,
-        bottom: i32,
-        left: i32,
-    ) {
-        match self.kind {
-            SurfaceKind::Wlr(ref wlr) => wlr.set_margin(conn, top, right, bottom, left),
+    pub fn set_margin(&self, top: i32, right: i32, bottom: i32, left: i32) {
+        match self.0.kind {
+            SurfaceKind::Wlr(ref wlr) => wlr.set_margin(top, right, bottom, left),
         }
     }
 
-    pub fn set_keyboard_interactivity(
-        &self,
-        conn: &mut ConnectionHandle,
-        value: KeyboardInteractivity,
-    ) {
-        match self.kind {
-            SurfaceKind::Wlr(ref wlr) => wlr.set_keyboard_interactivity(conn, value.into()),
+    pub fn set_keyboard_interactivity(&self, value: KeyboardInteractivity) {
+        match self.0.kind {
+            SurfaceKind::Wlr(ref wlr) => wlr.set_keyboard_interactivity(value.into()),
         }
     }
 
-    pub fn set_layer(&self, conn: &mut ConnectionHandle, depth: Layer) {
-        match self.kind {
-            SurfaceKind::Wlr(ref wlr) => wlr.set_layer(conn, depth.into()),
+    pub fn set_layer(&self, layer: Layer) {
+        match self.0.kind {
+            SurfaceKind::Wlr(ref wlr) => wlr.set_layer(layer.into()),
         }
     }
 
     pub fn kind(&self) -> &SurfaceKind {
-        &self.kind
+        &self.0.kind
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.wl_surface
+        &self.0.wl_surface
     }
 }
 
@@ -399,10 +375,16 @@ pub struct LayerSurfaceData {
 macro_rules! delegate_layer {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
-            $crate::reexports::protocols::wlr::unstable::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1,
-            $crate::reexports::protocols::wlr::unstable::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1,
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1
         ] => $crate::shell::layer::LayerState);
     };
+}
+
+#[derive(Debug)]
+struct LayerSurfaceInner {
+    wl_surface: wl_surface::WlSurface,
+    kind: SurfaceKind,
 }
 
 impl TryFrom<zwlr_layer_shell_v1::Layer> for Layer {
@@ -444,44 +426,13 @@ impl From<KeyboardInteractivity> for zwlr_layer_surface_v1::KeyboardInteractivit
     }
 }
 
-impl LayerSurface {
-    /// Clone is an implementation detail of Layer.
-    ///
-    /// This function creates another layer handle that is not marked as a primary handle.
-    pub(crate) fn impl_clone(&self) -> LayerSurface {
-        LayerSurface {
-            kind: self.kind.clone(),
-            wl_surface: self.wl_surface.clone(),
-            primary: false,
-            death_signal: self.death_signal.clone(),
-        }
-    }
-}
-
-impl Drop for LayerSurface {
+impl Drop for LayerSurfaceInner {
     fn drop(&mut self) {
-        // If we are the primary handle (an owned value given to the user), mark ourselves for cleanup.
-        if self.primary {
-            self.death_signal.store(true, Ordering::SeqCst);
+        // Layer shell protocol dictates we must destroy the role object before the surface.
+        match self.kind {
+            SurfaceKind::Wlr(ref wlr) => wlr.destroy(),
         }
-    }
-}
 
-impl LayerState {
-    pub(crate) fn cleanup(&mut self, conn: &mut ConnectionHandle) {
-        self.surfaces.retain(|layer| {
-            let alive = !layer.death_signal.load(Ordering::SeqCst);
-
-            if !alive {
-                // Layer shell protocol dictates we must destroy the role object before the surface.
-                match layer.kind() {
-                    SurfaceKind::Wlr(wlr) => wlr.destroy(conn),
-                }
-
-                layer.wl_surface().destroy(conn);
-            }
-
-            alive
-        })
+        self.wl_surface.destroy();
     }
 }
