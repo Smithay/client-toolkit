@@ -91,7 +91,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use wayland_client::{
     backend::{InvalidId, ObjectId},
     protocol::wl_registry,
-    Dispatch, Proxy, QueueHandle, Connection,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 /// A trait implemented by modular parts of a smithay's client toolkit and protocol delegates that may be used
