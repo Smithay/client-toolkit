@@ -14,12 +14,12 @@ fn main() {
     env_logger::init();
     let conn = Connection::connect_to_env().unwrap();
 
-    let display = conn.handle().display();
+    let display = conn.display();
 
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&qh, ()).unwrap();
     let mut list_formats =
         ListShmFormats { registry_state: RegistryState::new(registry), shm_state: ShmState::new() };
 

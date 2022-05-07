@@ -5,7 +5,7 @@ use std::{
 
 use wayland_client::{
     protocol::wl_output::{self, Subpixel, Transform},
-    DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum, Connection,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
