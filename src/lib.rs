@@ -20,6 +20,6 @@ pub mod error;
 pub mod event_loop;
 pub mod output;
 pub mod registry;
-// pub mod seat;
+pub mod seat;
 // pub mod shell;
 pub mod shm;
