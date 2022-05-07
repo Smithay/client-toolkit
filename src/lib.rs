@@ -14,12 +14,12 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
 }
 
-pub mod compositor;
+// pub mod compositor;
 pub mod error;
 #[cfg(feature = "calloop")]
 pub mod event_loop;
 pub mod output;
 pub mod registry;
-pub mod seat;
-pub mod shell;
-pub mod shm;
+// pub mod seat;
+// pub mod shell;
+// pub mod shm;
