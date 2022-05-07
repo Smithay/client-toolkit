@@ -5,9 +5,9 @@ use std::{
 
 use wayland_client::{
     protocol::wl_output::{self, Subpixel, Transform},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum, Connection,
 };
-use wayland_protocols::unstable::xdg_output::v1::client::{
+use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
     zxdg_output_v1,
 };
@@ -20,7 +20,7 @@ pub trait OutputHandler: Sized {
     /// A new output has been advertised.
     fn new_output(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     );
@@ -28,7 +28,7 @@ pub trait OutputHandler: Sized {
     /// An existing output has changed.
     fn update_output(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     );
@@ -38,7 +38,7 @@ pub trait OutputHandler: Sized {
     /// The info passed to this function was the state of the output before destruction.
     fn output_destroyed(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         output: wl_output::WlOutput,
     );
@@ -213,9 +213,9 @@ macro_rules! delegate_output {
     ($ty: ty) => {
         type __WlOutput = $crate::reexports::client::protocol::wl_output::WlOutput;
         type __ZxdgOutputV1 =
-            $crate::reexports::protocols::unstable::xdg_output::v1::client::zxdg_output_v1::ZxdgOutputV1;
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1;
         type __ZxdgOutputManagerV1 =
-            $crate::reexports::protocols::unstable::xdg_output::v1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1;
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1;
 
         $crate::reexports::client::delegate_dispatch!($ty: [__WlOutput, __ZxdgOutputManagerV1, __ZxdgOutputV1] => $crate::output::OutputState);
     };
@@ -234,7 +234,7 @@ where
         output: &wl_output::WlOutput,
         event: wl_output::Event,
         data: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -414,7 +414,7 @@ where
         _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
         _: zxdg_output_manager_v1::Event,
         _: &Self::UserData,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("zxdg_output_manager_v1 has no events")
@@ -434,7 +434,7 @@ where
         output: &zxdg_output_v1::ZxdgOutputV1,
         event: zxdg_output_v1::Event,
         data: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -517,7 +517,7 @@ where
 {
     fn new_global(
         data: &mut D,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -556,7 +556,7 @@ where
 
                     let data = wl_output.data::<OutputData>().unwrap().clone();
 
-                    let xdg_output = xdg.get_xdg_output(conn, &wl_output, qh, data).unwrap();
+                    let xdg_output = xdg.get_xdg_output(&wl_output, qh, data).unwrap();
                     output_state.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
                 }
             }
@@ -565,7 +565,6 @@ where
                 let global = data
                     .registry()
                     .bind_once::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _, _>(
-                        conn,
                         qh,
                         name,
                         u32::min(version, 3),
@@ -584,7 +583,7 @@ where
                 output_state.outputs.iter_mut().for_each(|output| {
                     let data = output.wl_output.data::<OutputData>().unwrap().clone();
 
-                    let xdg_output = xdg.get_xdg_output(conn, &output.wl_output, qh, data).unwrap();
+                    let xdg_output = xdg.get_xdg_output(&output.wl_output, qh, data).unwrap();
                     output.xdg_output = Some(xdg_output);
                 });
             }
@@ -593,7 +592,7 @@ where
         }
     }
 
-    fn remove_global(data: &mut D, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32) {
+    fn remove_global(data: &mut D, conn: &Connection, qh: &QueueHandle<D>, name: u32) {
         let mut destroyed = vec![];
 
         data.output_state().outputs.retain(|inner| {
@@ -601,10 +600,10 @@ where
 
             if destroy {
                 if let Some(xdg_output) = &inner.xdg_output {
-                    xdg_output.destroy(conn);
+                    xdg_output.destroy();
                 }
 
-                inner.wl_output.release(conn);
+                inner.wl_output.release();
 
                 destroyed.push(inner.wl_output.clone());
             }
