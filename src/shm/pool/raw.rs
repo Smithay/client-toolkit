@@ -20,7 +20,7 @@ use nix::{
 use wayland_client::{
     backend::InvalidId,
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
-    ConnectionHandle, Dispatch, QueueHandle,
+    Dispatch, QueueHandle,
 };
 
 use crate::error::GlobalError;
@@ -45,11 +45,11 @@ impl RawPool {
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
     /// current size of the pool, this function will do nothing.
-    pub fn resize(&mut self, size: usize, conn: &mut ConnectionHandle) -> io::Result<()> {
+    pub fn resize(&mut self, size: usize) -> io::Result<()> {
         if size > self.len {
             self.len = size;
             self.mem_file.set_len(size as u64)?;
-            self.pool.resize(conn, size as i32);
+            self.pool.resize(size as i32);
             self.mmap = unsafe { MmapMut::map_mut(&self.mem_file) }?;
         }
 
@@ -83,15 +83,13 @@ impl RawPool {
         stride: i32,
         format: wl_shm::Format,
         udata: U,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) -> Result<wl_buffer::WlBuffer, InvalidId>
     where
         D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
         U: Send + Sync + 'static,
     {
-        let buffer =
-            self.pool.create_buffer(conn, offset, width, height, stride, format, qh, udata)?;
+        let buffer = self.pool.create_buffer(offset, width, height, stride, format, qh, udata)?;
 
         Ok(buffer)
     }
@@ -99,14 +97,6 @@ impl RawPool {
     /// Returns the pool object used to communicate with the server.
     pub fn pool(&self) -> &wl_shm_pool::WlShmPool {
         &self.pool
-    }
-
-    /// Destroys this pool.
-    ///
-    /// This will not free the memory associated with any created buffers. You will need to destroy any
-    /// existing buffers created from the pool to free the memory.
-    pub fn destroy(self, conn: &mut ConnectionHandle) {
-        self.pool.destroy(conn);
     }
 }
 
@@ -130,7 +120,6 @@ impl RawPool {
     pub(crate) fn new<D, U>(
         len: usize,
         shm: &wl_shm::WlShm,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         udata: U,
     ) -> Result<RawPool, CreatePoolError>
@@ -142,8 +131,7 @@ impl RawPool {
         let mem_file = unsafe { File::from_raw_fd(shm_fd) };
         mem_file.set_len(len as u64)?;
 
-        let pool =
-            shm.create_pool(conn, shm_fd, len as i32, qh, udata).map_err(GlobalError::from)?;
+        let pool = shm.create_pool(shm_fd, len as i32, qh, udata).map_err(GlobalError::from)?;
         let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
 
         Ok(RawPool { pool, len, mem_file, mmap })
@@ -235,5 +223,11 @@ impl RawPool {
                 Err(err) => return Err(err),
             }
         }
+    }
+}
+
+impl Drop for RawPool {
+    fn drop(&mut self) {
+        self.pool.destroy();
     }
 }

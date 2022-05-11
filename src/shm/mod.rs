@@ -2,7 +2,7 @@ pub mod pool;
 
 use wayland_client::{
     protocol::{wl_shm, wl_shm_pool},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
 };
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
-use self::pool::{raw::RawPool, simple::SimplePool, CreatePoolError};
+use self::pool::{raw::RawPool, CreatePoolError};
 
 pub trait ShmHandler {
     fn shm_state(&mut self) -> &mut ShmState;
@@ -31,27 +31,12 @@ impl ShmState {
         self.wl_shm.as_ref().map(|(_, shm)| shm)
     }
 
-    pub fn new_simple_pool<D, U>(
-        &self,
-        len: usize,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-        udata: U,
-    ) -> Result<SimplePool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
-        U: Send + Sync + 'static,
-    {
-        Ok(SimplePool { inner: self.new_raw_pool(len, conn, qh, udata)? })
-    }
-
     /// Creates a new raw pool.
     ///
     /// In most cases this is not what you want. You should use TODO name here or TODO in most cases.
     pub fn new_raw_pool<D, U>(
         &self,
         len: usize,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         udata: U,
     ) -> Result<RawPool, CreatePoolError>
@@ -61,7 +46,7 @@ impl ShmState {
     {
         let (_, shm) = self.wl_shm.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_shm"]))?;
 
-        RawPool::new(len, shm, conn, qh, udata)
+        RawPool::new(len, shm, qh, udata)
     }
 
     /// Returns the formats supported in memory pools.
@@ -118,7 +103,7 @@ where
         _proxy: &wl_shm::WlShm,
         event: wl_shm::Event,
         _: &Self::UserData,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         match event {
@@ -154,7 +139,7 @@ where
         _: &wl_shm_pool::WlShmPool,
         _: wl_shm_pool::Event,
         _: &(),
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("wl_shm_pool has no events")
@@ -167,7 +152,7 @@ where
 {
     fn new_global(
         state: &mut D,
-        conn: &mut ConnectionHandle,
+        _conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -176,19 +161,14 @@ where
         if interface == "wl_shm" {
             let shm = state
                 .registry()
-                .bind_once::<wl_shm::WlShm, _, _>(conn, qh, name, 1, ())
+                .bind_once::<wl_shm::WlShm, _, _>(qh, name, 1, ())
                 .expect("Failed to bind global");
 
             state.shm_state().wl_shm = Some((name, shm));
         }
     }
 
-    fn remove_global(state: &mut D, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
-        if let Some((bound_name, _)) = &state.shm_state().wl_shm {
-            if *bound_name == name {
-                // No destructor, simply toss the contents of the option.
-                state.shm_state().wl_shm.take();
-            }
-        }
+    fn remove_global(_state: &mut D, _conn: &Connection, _qh: &QueueHandle<D>, _name: u32) {
+        // Capability global, removal is unlikely
     }
 }

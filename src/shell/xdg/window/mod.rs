@@ -1,15 +1,15 @@
-use std::sync::{atomic::AtomicBool, Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 
 use wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
-    ConnectionHandle, Dispatch, QueueHandle,
+    Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::{
-    unstable::xdg_decoration::v1::client::{
+    xdg::decoration::zv1::client::{
         zxdg_decoration_manager_v1,
         zxdg_toplevel_decoration_v1::{self, Mode},
     },
-    xdg_shell::client::{
+    xdg::shell::client::{
         xdg_surface,
         xdg_toplevel::{self, State},
     },
@@ -27,7 +27,7 @@ pub(super) mod inner;
 pub struct XdgWindowState {
     // (name, global)
     xdg_decoration_manager: Option<(u32, zxdg_decoration_manager_v1::ZxdgDecorationManagerV1)>,
-    windows: Vec<Window>,
+    windows: Vec<Weak<WindowInner>>,
 }
 
 impl XdgWindowState {
@@ -35,16 +35,28 @@ impl XdgWindowState {
         XdgWindowState { xdg_decoration_manager: None, windows: vec![] }
     }
 
-    pub fn window_by_wl(&self, surface: &wl_surface::WlSurface) -> Option<&Window> {
-        self.windows.iter().find(|window| window.wl_surface() == surface)
+    pub fn window_by_wl(&self, surface: &wl_surface::WlSurface) -> Option<Window> {
+        self.windows
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|window| window.xdg_surface.wl_surface() == surface)
+            .map(Window)
     }
 
-    pub fn window_by_xdg(&self, surface: &xdg_surface::XdgSurface) -> Option<&Window> {
-        self.windows.iter().find(|window| window.xdg_surface() == surface)
+    pub fn window_by_xdg(&self, surface: &xdg_surface::XdgSurface) -> Option<Window> {
+        self.windows
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|window| window.xdg_surface.xdg_surface() == surface)
+            .map(Window)
     }
 
-    pub fn window_by_toplevel(&self, toplevel: &xdg_toplevel::XdgToplevel) -> Option<&Window> {
-        self.windows.iter().find(|window| window.xdg_toplevel() == toplevel)
+    pub fn window_by_toplevel(&self, toplevel: &xdg_toplevel::XdgToplevel) -> Option<Window> {
+        self.windows
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|window| &window.xdg_toplevel == toplevel)
+            .map(Window)
     }
 }
 
@@ -56,12 +68,7 @@ pub trait WindowHandler: XdgShellHandler + Sized {
     /// This request does not destroy the window. You must drop the [`Window`] for the window to be destroyed.
     ///
     /// This may be sent at any time, whether it is the client side window decorations or the compositor.
-    fn request_close(
-        &mut self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<Self>,
-        window: &Window,
-    );
+    fn request_close(&mut self, conn: &Connection, qh: &QueueHandle<Self>, window: &Window);
 
     /// Called when the compositor has sent a configure event to an XdgSurface
     ///
@@ -69,7 +76,7 @@ pub trait WindowHandler: XdgShellHandler + Sized {
     /// all been sent.
     fn configure(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         window: &Window,
         configure: WindowConfigure,
@@ -249,7 +256,6 @@ impl WindowBuilder {
     #[must_use = "The window is destroyed if dropped"]
     pub fn map<D>(
         self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         shell_state: &XdgShellState<D>,
         window_state: &mut XdgWindowState,
@@ -276,14 +282,13 @@ impl WindowBuilder {
         });
 
         let xdg_surface = shell_state.create_xdg_surface(
-            conn,
             qh,
             surface,
             WindowConfigureHandler { data: data.clone() },
         )?;
 
         let window_data = WindowData(data);
-        let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(conn, qh, window_data.clone())?;
+        let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, window_data.clone())?;
 
         // If server side decorations are available, create the toplevel decoration.
         let toplevel_decoration = if let Some(decoration_manager) = decoration_manager {
@@ -294,7 +299,7 @@ impl WindowBuilder {
                 _ => {
                     // Create the toplevel decoration.
                     let toplevel_decoration = decoration_manager
-                        .get_toplevel_decoration(conn, &xdg_toplevel, qh, window_data)
+                        .get_toplevel_decoration(&xdg_toplevel, qh, window_data)
                         .expect("failed to create toplevel decoration");
 
                     // Tell the compositor we would like a specific mode.
@@ -305,7 +310,7 @@ impl WindowBuilder {
                     };
 
                     if let Some(mode) = mode {
-                        toplevel_decoration.set_mode(conn, mode);
+                        toplevel_decoration.set_mode(mode);
                     }
 
                     Some(toplevel_decoration)
@@ -315,67 +320,49 @@ impl WindowBuilder {
             None
         };
 
-        let inner = Arc::new(WindowInner { xdg_surface, xdg_toplevel, toplevel_decoration });
-
         let window =
-            Window { inner, primary: true, death_signal: Arc::new(AtomicBool::new(false)) };
+            Window(Arc::new(WindowInner { xdg_surface, xdg_toplevel, toplevel_decoration }));
 
-        window_state.windows.push(window.impl_clone());
+        window_state.windows.push(Arc::downgrade(&window.0));
 
         // Apply state from builder
         if let Some(title) = self.title {
-            window.set_title(conn, title);
+            window.set_title(title);
         }
 
         if let Some(app_id) = self.app_id {
-            window.set_app_id(conn, app_id);
+            window.set_app_id(app_id);
         }
 
         if let Some(min_size) = self.min_size {
-            window.set_min_size(conn, Some(min_size));
+            window.set_min_size(Some(min_size));
         }
 
         if let Some(max_size) = self.max_size {
-            window.set_max_size(conn, Some(max_size));
+            window.set_max_size(Some(max_size));
         }
 
         if let Some(parent) = self.parent {
-            window.xdg_toplevel().set_parent(conn, Some(&parent));
+            window.xdg_toplevel().set_parent(Some(&parent));
         }
 
         if let Some(output) = self.fullscreen {
-            window.set_fullscreen(conn, Some(&output));
+            window.set_fullscreen(Some(&output));
         }
 
         if self.maximized {
-            window.set_maximized(conn);
+            window.set_maximized();
         }
 
         // Initial commit
-        window.wl_surface().commit(conn);
+        window.wl_surface().commit();
 
         Ok(window)
     }
 }
 
 #[derive(Debug)]
-pub struct Window {
-    pub(crate) inner: Arc<WindowInner>,
-
-    /// Whether this is the primary handle to the window.
-    ///
-    /// This is only true for [`Window`] given the user from [`XdgShellState::create_window`]. Since we pass
-    /// a reference to a [`Window`] in some traits the user implements, we need to make sure the window isn't
-    /// actually destroyed while the user still holds the window. If this field is true, the drop implementation
-    /// will mark the window as dead and will clean up when possible.
-    pub(crate) primary: bool,
-
-    /// Indicates whether the primary handle to the window has been destroyed.
-    ///
-    /// Since we can't destroy wayland objects without a connection handle, we need to mark the window for
-    /// cleanup.
-    pub(crate) death_signal: Arc<AtomicBool>,
-}
+pub struct Window(Arc<WindowInner>);
 
 impl Window {
     pub fn builder() -> WindowBuilder {
@@ -391,50 +378,40 @@ impl Window {
         }
     }
 
-    pub fn show_window_menu(
-        &self,
-        conn: &mut ConnectionHandle,
-        seat: &wl_seat::WlSeat,
-        serial: u32,
-        position: (u32, u32),
-    ) {
-        self.inner.show_window_menu(conn, seat, serial, position.0, position.1)
+    pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, position: (u32, u32)) {
+        self.0.show_window_menu(seat, serial, position.0, position.1)
     }
 
-    pub fn set_title(&self, conn: &mut ConnectionHandle, title: impl Into<String>) {
-        self.inner.set_title(conn, title.into())
+    pub fn set_title(&self, title: impl Into<String>) {
+        self.0.set_title(title.into())
     }
 
-    pub fn set_app_id(&self, conn: &mut ConnectionHandle, app_id: impl Into<String>) {
-        self.inner.set_app_id(conn, app_id.into())
+    pub fn set_app_id(&self, app_id: impl Into<String>) {
+        self.0.set_app_id(app_id.into())
     }
 
-    pub fn set_parent(&self, conn: &mut ConnectionHandle, parent: Option<&Window>) {
-        self.inner.set_parent(conn, parent)
+    pub fn set_parent(&self, parent: Option<&Window>) {
+        self.0.set_parent(parent)
     }
 
-    pub fn set_maximized(&self, conn: &mut ConnectionHandle) {
-        self.inner.set_maximized(conn)
+    pub fn set_maximized(&self) {
+        self.0.set_maximized()
     }
 
-    pub fn unset_maximized(&self, conn: &mut ConnectionHandle) {
-        self.inner.unset_maximized(conn)
+    pub fn unset_maximized(&self) {
+        self.0.unset_maximized()
     }
 
-    pub fn set_mimimized(&self, conn: &mut ConnectionHandle) {
-        self.inner.set_minmized(conn)
+    pub fn set_mimimized(&self) {
+        self.0.set_minmized()
     }
 
-    pub fn set_fullscreen(
-        &self,
-        conn: &mut ConnectionHandle,
-        output: Option<&wl_output::WlOutput>,
-    ) {
-        self.inner.set_fullscreen(conn, output)
+    pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
+        self.0.set_fullscreen(output)
     }
 
-    pub fn unset_fullscreen(&self, conn: &mut ConnectionHandle) {
-        self.inner.unset_fullscreen(conn)
+    pub fn unset_fullscreen(&self) {
+        self.0.unset_fullscreen()
     }
 
     /// Requests the window should use the specified decoration mode.
@@ -447,12 +424,8 @@ impl Window {
     /// # Configure loops
     ///
     /// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.
-    pub fn request_decoration_mode(
-        &self,
-        conn: &mut ConnectionHandle,
-        mode: Option<DecorationMode>,
-    ) {
-        self.inner.request_decoration_mode(conn, mode)
+    pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
+        self.0.request_decoration_mode(mode)
     }
 
     // TODO: Move
@@ -461,15 +434,15 @@ impl Window {
 
     // Double buffered window state
 
-    pub fn set_min_size(&self, conn: &mut ConnectionHandle, min_size: Option<(u32, u32)>) {
-        self.inner.set_min_size(conn, min_size)
+    pub fn set_min_size(&self, min_size: Option<(u32, u32)>) {
+        self.0.set_min_size(min_size)
     }
 
     /// # Protocol errors
     ///
     /// The maximum size of the window may not be smaller than the minimum size.
-    pub fn set_max_size(&self, conn: &mut ConnectionHandle, max_size: Option<(u32, u32)>) {
-        self.inner.set_max_size(conn, max_size)
+    pub fn set_max_size(&self, max_size: Option<(u32, u32)>) {
+        self.0.set_max_size(max_size)
     }
 
     // TODO: Window geometry
@@ -480,23 +453,23 @@ impl Window {
 
     /// Returns the underlying surface wrapped by this window.
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.inner.xdg_surface.wl_surface()
+        self.0.xdg_surface.wl_surface()
     }
 
     /// Returns the underlying xdg surface wrapped by this window.
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.inner.xdg_surface.xdg_surface()
+        self.0.xdg_surface.xdg_surface()
     }
 
     /// Returns the underlying xdg toplevel wrapped by this window.
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
-        &self.inner.xdg_toplevel
+        &self.0.xdg_toplevel
     }
 }
 
 impl PartialEq for Window {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.inner, &other.inner)
+        Arc::ptr_eq(&self.0, &other.0)
     }
 }
 
@@ -507,11 +480,11 @@ pub struct WindowData(pub(crate) Arc<WindowDataInner>);
 macro_rules! delegate_xdg_window {
     ($ty: ty) => {
         // Toplevel
-        type __XdgToplevel = $crate::reexports::protocols::xdg_shell::client::xdg_toplevel::XdgToplevel;
+        type __XdgToplevel = $crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel;
         type __ZxdgDecorationManagerV1 =
-            $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1;
+            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1;
         type __ZxdgToplevelDecorationV1 =
-            $crate::reexports::protocols::unstable::xdg_decoration::v1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
+            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
 
         $crate::reexports::client::delegate_dispatch!($ty: [
             __XdgToplevel,
@@ -532,16 +505,18 @@ where
     fn configure(
         &self,
         data: &mut D,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
         xdg_surface: &xdg_surface::XdgSurface,
         serial: u32,
     ) {
         if let Some(window) = data.xdg_window_state().window_by_xdg(xdg_surface) {
-            let window = window.impl_clone();
             let configure = { self.data.pending_configure.lock().unwrap().clone() };
 
             WindowHandler::configure(data, conn, qh, &window, configure, serial);
         }
+
+        // Destroy dropped weak handles
+        data.xdg_window_state().windows.retain(|window| window.upgrade().is_some());
     }
 }

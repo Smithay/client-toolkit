@@ -3,17 +3,17 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     seat::{Capability, SeatHandler, SeatState},
 };
-use wayland_client::{protocol::wl_seat, Connection, ConnectionHandle, QueueHandle};
+use wayland_client::{protocol::wl_seat, Connection, QueueHandle};
 
 fn main() {
     env_logger::init();
 
     let conn = Connection::connect_to_env().unwrap();
-    let display = conn.handle().display();
+    let display = conn.display();
 
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
-    let registry = display.get_registry(&mut conn.handle(), &qh, ()).unwrap();
+    let registry = display.get_registry(&qh, ()).unwrap();
 
     let mut list_seats =
         ListSeats { registry_state: RegistryState::new(registry), seat_state: SeatState::new() };
@@ -40,13 +40,13 @@ impl SeatHandler for ListSeats {
         &mut self.seat_state
     }
 
-    fn new_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
+    fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
         // Not applicable
     }
 
     fn new_capability(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         _: Capability,
@@ -56,7 +56,7 @@ impl SeatHandler for ListSeats {
 
     fn remove_capability(
         &mut self,
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<Self>,
         _: wl_seat::WlSeat,
         _: Capability,
@@ -64,7 +64,7 @@ impl SeatHandler for ListSeats {
         // Not applicable
     }
 
-    fn remove_seat(&mut self, _: &mut ConnectionHandle, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
+    fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {
         // Not applicable
     }
 }

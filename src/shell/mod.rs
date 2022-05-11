@@ -43,4 +43,3 @@
 
 pub mod layer;
 pub mod xdg;
-// TODO: Would be nice to support the layer shell.

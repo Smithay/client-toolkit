@@ -13,7 +13,7 @@
 //!
 //! ```
 //! use smithay_client_toolkit::reexports::client::{
-//!     ConnectionHandle,
+//!     Connection,
 //!     Dispatch,
 //!     QueueHandle,
 //!     delegate_dispatch,
@@ -44,7 +44,7 @@
 //!     // When a global is advertised, this function is called to let handlers see the new global.
 //!     fn new_global(
 //!         data: &mut D,
-//!         conn: &mut ConnectionHandle,
+//!         conn: &Connection,
 //!         qh: &QueueHandle<D>,
 //!         name: u32,
 //!         interface: &str,
@@ -54,7 +54,6 @@
 //!             // You can bind a global like normal, which will result in an object for each time a global is
 //!             // bound.
 //!             let _compositor = data.registry().bind_once::<wl_compositor::WlCompositor, _, _>(
-//!                 conn,
 //!                 qh,
 //!                 name,
 //!                 1, // we want to bind version 1 of the global.
@@ -79,7 +78,7 @@
 //!     }
 //!
 //!     // When a global is no longer advertised, this function is called to let handlers clean up.
-//!     fn remove_global(_data: &mut D, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, _name: u32) {
+//!     fn remove_global(_data: &mut D, _conn: &Connection, _qh: &QueueHandle<D>, _name: u32) {
 //!         // Do nothing since the compositor is a capability. Peripherals should implement this to avoid
 //!         // keeping around dead objects.
 //!     }
@@ -91,7 +90,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use wayland_client::{
     backend::{InvalidId, ObjectId},
     protocol::wl_registry,
-    ConnectionHandle, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 /// A trait implemented by modular parts of a smithay's client toolkit and protocol delegates that may be used
@@ -111,7 +110,7 @@ where
     /// The provided registry handle may be used to bind the global.
     fn new_global(
         data: &mut D,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -119,7 +118,7 @@ where
     );
 
     /// Called when a global has been destroyed by the compositor.
-    fn remove_global(data: &mut D, conn: &mut ConnectionHandle, qh: &QueueHandle<D>, name: u32);
+    fn remove_global(data: &mut D, conn: &Connection, qh: &QueueHandle<D>, name: u32);
 }
 
 /// Trait which asserts a data type may provide a mutable reference to the registry state.
@@ -173,7 +172,6 @@ impl RegistryState {
     /// A protocol error will be risen if the global has not yet been advertised.
     pub fn bind_once<I, D, U>(
         &mut self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         name: u32,
         version: u32,
@@ -195,7 +193,7 @@ impl RegistryState {
             );
         }
 
-        let global = self.registry.bind::<I, _>(conn, name, version, qh, udata)?;
+        let global = self.registry.bind::<I, _>(name, version, qh, udata)?;
 
         log::debug!(target: "sctk", "Bound new global [{}] {} v{}", name, I::interface().name, version);
 
@@ -213,7 +211,7 @@ impl RegistryState {
     /// A protocol error will be risen if the global has not yet been advertised.
     pub fn bind_cached<I, D, F, U>(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         f: F,
@@ -238,7 +236,7 @@ impl RegistryState {
             // First bind of a global.
             None => {
                 let (version, udata) = f();
-                let global = self.registry.bind::<I, _>(conn, name, version, qh, udata)?;
+                let global = self.registry.bind::<I, _>(name, version, qh, udata)?;
 
                 log::debug!(target: "sctk", "Bound new cached global [{}] {} v{}", name, I::interface().name, version);
 
@@ -316,7 +314,7 @@ macro_rules! delegate_registry {
                 registry: &$crate::reexports::client::protocol::wl_registry::WlRegistry,
                 event: $crate::reexports::client::protocol::wl_registry::Event,
                 _: &(),
-                conn: &mut $crate::reexports::client::ConnectionHandle<'_>,
+                conn: &$crate::reexports::client::Connection,
                 qh: &$crate::reexports::client::QueueHandle<Self>,
             ) {
                 use $crate::registry::{RegistryHandler, ProvidesRegistryState};

@@ -3,8 +3,8 @@
 
 use std::marker::PhantomData;
 
-use wayland_client::{protocol::wl_surface, ConnectionHandle, Dispatch, QueueHandle};
-use wayland_protocols::xdg_shell::client::{xdg_surface, xdg_wm_base};
+use wayland_client::{protocol::wl_surface, Connection, Dispatch, QueueHandle};
+use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
 
 use crate::error::GlobalError;
 
@@ -33,7 +33,7 @@ impl<D> XdgShellState<D> {
     /// This function is generally intended to be called in a higher level abstraction, such as
     /// [`XdgWindowState::create_window`](self::window::XdgWindowState::create_window).
     ///
-    /// The created [`XdgShellSurface`] does not destroy the underlying [`XdgSurface`] or [`WlSurface`] when
+    /// The created [`XdgShellSurface`] will destroy the underlying [`XdgSurface`] or [`WlSurface`] when
     /// dropped. Higher level abstractions are responsible for ensuring the destruction order of protocol
     /// objects is correct. Since this function consumes the [`WlSurface`], it may be accessed using
     /// [`XdgShellSurface::wl_surface`].
@@ -50,7 +50,6 @@ impl<D> XdgShellState<D> {
     /// [`WlSurface`]: wl_surface::WlSurface
     pub fn create_xdg_surface(
         &self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
         configure_handler: impl ConfigureHandler<D> + Send + Sync + 'static,
@@ -60,7 +59,6 @@ impl<D> XdgShellState<D> {
     {
         let wm_base = self.xdg_wm_base().ok_or(GlobalError::MissingGlobals(&["xdg_wm_base"]))?;
         let xdg_surface = wm_base.get_xdg_surface(
-            conn,
             &surface,
             qh,
             XdgSurfaceData { configure_handler: Box::new(configure_handler) },
@@ -105,7 +103,7 @@ pub trait ConfigureHandler<D> {
     fn configure(
         &self,
         data: &mut D,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
         xdg_surface: &xdg_surface::XdgSurface,
         serial: u32,
@@ -121,12 +119,20 @@ pub struct XdgSurfaceData<D> {
 #[macro_export]
 macro_rules! delegate_xdg_shell {
     ($ty: ty) => {
-        type __XdgWmBase = $crate::reexports::protocols::xdg_shell::client::xdg_wm_base::XdgWmBase;
-        type __XdgSurface = $crate::reexports::protocols::xdg_shell::client::xdg_surface::XdgSurface;
+        type __XdgWmBase = $crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase;
+        type __XdgSurface = $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface;
 
         $crate::reexports::client::delegate_dispatch!($ty: [
             __XdgWmBase,
             __XdgSurface
         ] => $crate::shell::xdg::XdgShellState<$ty>);
     };
+}
+
+impl Drop for XdgShellSurface {
+    fn drop(&mut self) {
+        // Surface role must be destroyed before the wl_surface
+        self.xdg_surface.destroy();
+        self.surface.destroy();
+    }
 }

@@ -5,7 +5,7 @@ use std::sync::{
 
 use wayland_client::{
     protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
-    ConnectionHandle, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
@@ -20,7 +20,7 @@ pub trait CompositorHandler: Sized {
     /// The surface has either been moved into or out of an output and the output has a different scale factor.
     fn scale_factor_changed(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         surface: &wl_surface::WlSurface,
         new_factor: i32,
@@ -32,7 +32,7 @@ pub trait CompositorHandler: Sized {
     /// and committing the surface.
     fn frame(
         &mut self,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<Self>,
         surface: &wl_surface::WlSurface,
         time: u32,
@@ -41,7 +41,7 @@ pub trait CompositorHandler: Sized {
 
 #[derive(Debug)]
 pub struct CompositorState {
-    wl_compositor: Option<(u32, wl_compositor::WlCompositor)>,
+    wl_compositor: Option<wl_compositor::WlCompositor>,
 }
 
 impl CompositorState {
@@ -50,22 +50,20 @@ impl CompositorState {
     }
 
     pub fn wl_compositor(&self) -> Option<&wl_compositor::WlCompositor> {
-        self.wl_compositor.as_ref().map(|g| &g.1)
+        self.wl_compositor.as_ref()
     }
 
     pub fn create_surface<D>(
         &self,
-        conn: &mut ConnectionHandle,
         qh: &QueueHandle<D>,
     ) -> Result<wl_surface::WlSurface, GlobalError>
     where
         D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData> + 'static,
     {
-        let (_, compositor) =
+        let compositor =
             self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
 
         let surface = compositor.create_surface(
-            conn,
             qh,
             SurfaceData { scale_factor: AtomicI32::new(1), outputs: Mutex::new(vec![]) },
         )?;
@@ -73,18 +71,14 @@ impl CompositorState {
         Ok(surface)
     }
 
-    pub fn create_region<D>(
-        &self,
-        conn: &mut ConnectionHandle,
-        qh: &QueueHandle<D>,
-    ) -> Result<wl_region::WlRegion, GlobalError>
+    pub fn create_region<D>(&self, qh: &QueueHandle<D>) -> Result<wl_region::WlRegion, GlobalError>
     where
         D: Dispatch<wl_region::WlRegion, UserData = ()> + 'static,
     {
-        let (_, compositor) =
+        let compositor =
             self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
 
-        compositor.create_region(conn, qh, ()).map_err(Into::into)
+        compositor.create_region(qh, ()).map_err(Into::into)
     }
 }
 
@@ -132,7 +126,7 @@ where
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
         data: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         let mut outputs = data.outputs.lock().unwrap();
@@ -184,7 +178,7 @@ where
         _: &wl_region::WlRegion,
         _: wl_region::Event,
         _: &(),
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("wl_region has no events")
@@ -204,7 +198,7 @@ where
         _: &wl_compositor::WlCompositor,
         _: wl_compositor::Event,
         _: &(),
-        _: &mut ConnectionHandle,
+        _: &Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("wl_compositor has no events")
@@ -224,7 +218,7 @@ where
         _: &wl_callback::WlCallback,
         event: wl_callback::Event,
         surface: &Self::UserData,
-        conn: &mut ConnectionHandle,
+        conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
@@ -246,7 +240,7 @@ where
 {
     fn new_global(
         state: &mut D,
-        conn: &mut ConnectionHandle,
+        _conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
@@ -255,28 +249,14 @@ where
         if interface == "wl_compositor" {
             let compositor = state
                 .registry()
-                .bind_once::<wl_compositor::WlCompositor, _, _>(
-                    conn,
-                    qh,
-                    name,
-                    u32::min(version, 4),
-                    (),
-                )
+                .bind_once::<wl_compositor::WlCompositor, _, _>(qh, name, u32::min(version, 4), ())
                 .expect("Failed to bind global");
 
-            state.compositor_state().wl_compositor = Some((name, compositor));
+            state.compositor_state().wl_compositor = Some(compositor);
         }
     }
 
-    fn remove_global(state: &mut D, _conn: &mut ConnectionHandle, _qh: &QueueHandle<D>, name: u32) {
-        if state
-            .compositor_state()
-            .wl_compositor
-            .as_ref()
-            .map(|(compositor_name, _)| *compositor_name == name)
-            .unwrap_or(false)
-        {
-            state.compositor_state().wl_compositor.take();
-        }
+    fn remove_global(_state: &mut D, _conn: &Connection, _qh: &QueueHandle<D>, _name: u32) {
+        // Capability global, removal is unlikely
     }
 }
