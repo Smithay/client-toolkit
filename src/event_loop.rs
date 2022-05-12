@@ -1,7 +1,10 @@
-use std::io;
+use std::{
+    io,
+    os::unix::io::RawFd
+};
 
 use calloop::{
-    generic::{Fd, Generic},
+    generic::{Generic},
     EventSource, InsertError, Interest, LoopHandle, Mode, PostAction, RegistrationToken,
     TokenFactory,
 };
@@ -21,7 +24,7 @@ use wayland_client::{EventQueue, ReadEventsGuard};
 #[derive(Debug)]
 pub struct WaylandSource {
     queue: EventQueue,
-    fd: Generic<Fd>,
+    fd: Generic<RawFd>,
     read_guard: Option<ReadEventsGuard>,
 }
 
@@ -31,7 +34,7 @@ impl WaylandSource {
         let fd = queue.display().get_connection_fd();
         WaylandSource {
             queue,
-            fd: Generic::from_fd(fd, Interest::READ, Mode::Level),
+            fd: Generic::new(fd, Interest::READ, Mode::Level),
             read_guard: None,
         }
     }
@@ -72,7 +75,8 @@ impl WaylandSource {
 impl EventSource for WaylandSource {
     type Event = ();
     type Metadata = EventQueue;
-    type Ret = std::io::Result<u32>;
+    type Ret = io::Result<u32>;
+    type Error = io::Error;
 
     fn process_events<F>(
         &mut self,
@@ -125,7 +129,7 @@ impl EventSource for WaylandSource {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), calloop::Error> {
         self.fd.register(poll, token_factory)
     }
 
@@ -133,15 +137,15 @@ impl EventSource for WaylandSource {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), calloop::Error> {
         self.fd.reregister(poll, token_factory)
     }
 
-    fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
+    fn unregister(&mut self, poll: &mut calloop::Poll) -> Result<(), calloop::Error> {
         self.fd.unregister(poll)
     }
 
-    fn pre_run<F>(&mut self, mut callback: F) -> std::io::Result<()>
+    fn pre_run<F>(&mut self, mut callback: F) -> Result<(), calloop::Error>
     where
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {
@@ -152,7 +156,7 @@ impl EventSource for WaylandSource {
                 // in case of error, don't prepare a read, if the error is persitent,
                 // it'll trigger in other wayland methods anyway
                 log::error!("Error trying to flush the wayland display: {}", e);
-                return Err(e);
+                return Err(calloop::Error::IoError(e));
             }
         }
 
@@ -171,7 +175,7 @@ impl EventSource for WaylandSource {
         Ok(())
     }
 
-    fn post_run<F>(&mut self, _: F) -> std::io::Result<()>
+    fn post_run<F>(&mut self, _: F) -> Result<(), calloop::Error>
     where
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {

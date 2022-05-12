@@ -251,7 +251,7 @@ impl calloop::EventSource for ReadPipe {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut calloop::TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), calloop::Error> {
         self.file.register(poll, token_factory)
     }
 
@@ -259,11 +259,13 @@ impl calloop::EventSource for ReadPipe {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut calloop::TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), calloop::Error> {
         self.file.reregister(poll, token_factory)
     }
 
-    fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
+    fn unregister(&mut self, poll: &mut calloop::Poll) -> Result<(), calloop::Error> {
         self.file.unregister(poll)
     }
+
+    type Error = io::Error;
 }
