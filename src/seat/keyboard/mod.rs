@@ -553,6 +553,7 @@ impl calloop::EventSource for RepeatSource {
     type Event = Event<'static>;
     type Metadata = wl_keyboard::WlKeyboard;
     type Ret = ();
+    type Error = io::Error;
 
     fn process_events<F>(
         &mut self,
@@ -612,6 +613,4 @@ impl calloop::EventSource for RepeatSource {
     fn unregister(&mut self, poll: &mut calloop::Poll) -> Result<(), calloop::Error> {
         self.timer.unregister(poll)
     }
-
-    type Error = io::Error;
 }
