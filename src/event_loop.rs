@@ -121,7 +121,7 @@ impl EventSource for WaylandSource {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut TokenFactory,
-    ) -> Result<(), calloop::Error> {
+    ) -> calloop::Result<()> {
         self.fd.register(poll, token_factory)
     }
 
@@ -129,15 +129,15 @@ impl EventSource for WaylandSource {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut TokenFactory,
-    ) -> Result<(), calloop::Error> {
+    ) -> calloop::Result<()> {
         self.fd.reregister(poll, token_factory)
     }
 
-    fn unregister(&mut self, poll: &mut calloop::Poll) -> Result<(), calloop::Error> {
+    fn unregister(&mut self, poll: &mut calloop::Poll) -> calloop::Result<()> {
         self.fd.unregister(poll)
     }
 
-    fn pre_run<F>(&mut self, mut callback: F) -> Result<(), calloop::Error>
+    fn pre_run<F>(&mut self, mut callback: F) -> calloop::Result<()>
     where
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {
@@ -167,7 +167,7 @@ impl EventSource for WaylandSource {
         Ok(())
     }
 
-    fn post_run<F>(&mut self, _: F) -> Result<(), calloop::Error>
+    fn post_run<F>(&mut self, _: F) -> calloop::Result<()>
     where
         F: FnMut((), &mut EventQueue) -> std::io::Result<u32>,
     {
