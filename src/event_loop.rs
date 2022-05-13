@@ -1,12 +1,8 @@
-use std::{
-    io,
-    os::unix::io::RawFd
-};
+use std::{io, os::unix::io::RawFd};
 
 use calloop::{
-    generic::{Generic},
-    EventSource, InsertError, Interest, LoopHandle, Mode, PostAction, RegistrationToken,
-    TokenFactory,
+    generic::Generic, EventSource, InsertError, Interest, LoopHandle, Mode, PostAction,
+    RegistrationToken, TokenFactory,
 };
 
 use wayland_client::{EventQueue, ReadEventsGuard};
@@ -32,11 +28,7 @@ impl WaylandSource {
     /// Wrap an `EventQueue` as a `WaylandSource`.
     pub fn new(queue: EventQueue) -> WaylandSource {
         let fd = queue.display().get_connection_fd();
-        WaylandSource {
-            queue,
-            fd: Generic::new(fd, Interest::READ, Mode::Level),
-            read_guard: None,
-        }
+        WaylandSource { queue, fd: Generic::new(fd, Interest::READ, Mode::Level), read_guard: None }
     }
 
     /// Insert this source into given event loop with an adapter that panics on orphan events

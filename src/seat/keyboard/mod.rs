@@ -20,8 +20,9 @@ use std::{
     cell::RefCell,
     convert::TryInto,
     fs::File,
+    io,
     os::unix::io::{FromRawFd, RawFd},
-    rc::Rc, io,
+    rc::Rc,
 };
 
 use calloop::timer::TimeoutAction;
@@ -219,7 +220,9 @@ where
         let current_repeat = Rc::new(RefCell::new(None));
 
         let source = RepeatSource {
-            timer: calloop::timer::Timer::from_duration(Duration::from_micros(repeat.delay as u64 * 1000)),
+            timer: calloop::timer::Timer::from_duration(Duration::from_micros(
+                repeat.delay as u64 * 1000,
+            )),
             state: state.clone(),
             current_repeat: current_repeat.clone(),
         };
@@ -587,8 +590,7 @@ impl calloop::EventSource for RepeatSource {
                 data.time = new_time;
                 // Schedule the next timeout.
                 TimeoutAction::ToDuration(Duration::from_micros(data.gap))
-            }
-            else {
+            } else {
                 TimeoutAction::Drop
             }
         })
