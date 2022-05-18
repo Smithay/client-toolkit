@@ -150,21 +150,17 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
-    pub(crate) fn new<D, U>(
-        len: usize,
-        shm: &wl_shm::WlShm,
-        qh: &QueueHandle<D>,
-        udata: U,
-    ) -> Result<RawPool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
-        U: Send + Sync + 'static,
-    {
+    pub(crate) fn new(len: usize, shm: &wl_shm::WlShm) -> Result<RawPool, CreatePoolError> {
         let shm_fd = RawPool::create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(shm_fd) };
         mem_file.set_len(len as u64)?;
 
-        let pool = shm.create_pool(shm_fd, len as i32, qh, udata).map_err(GlobalError::from)?;
+        let pool = shm
+            .send_constructor(
+                wl_shm::Request::CreatePool { fd: shm_fd, size: len as i32 },
+                Arc::new(ShmPoolData),
+            )
+            .map_err(GlobalError::from)?;
         let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
 
         Ok(RawPool { pool, len, mem_file, mmap })
@@ -263,4 +259,19 @@ impl Drop for RawPool {
     fn drop(&mut self) {
         self.pool.destroy();
     }
+}
+
+#[derive(Debug)]
+struct ShmPoolData;
+
+impl ObjectData for ShmPoolData {
+    fn event(
+        self: Arc<Self>,
+        _: &wayland_client::backend::Backend,
+        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId>,
+    ) -> Option<Arc<(dyn ObjectData + 'static)>> {
+        unreachable!("wl_shm_pool has no events")
+    }
+
+    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
