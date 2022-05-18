@@ -15,11 +15,14 @@ use smithay_client_toolkit::{
         window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
         XdgShellHandler, XdgShellState,
     },
-    shm::{pool::raw::RawPool, ShmHandler, ShmState},
+    shm::{
+        pool::slot::{Buffer, SlotPool},
+        ShmHandler, ShmState,
+    },
 };
 use wayland_client::{
-    protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, QueueHandle,
 };
 
 fn main() {
@@ -61,7 +64,7 @@ fn main() {
 
     let pool = simple_window
         .shm_state
-        .new_raw_pool(simple_window.width as usize * simple_window.height as usize * 4, &qh, ())
+        .new_slot_pool(simple_window.width as usize * simple_window.height as usize * 4, &qh, ())
         .expect("Failed to create pool");
     simple_window.pool = Some(pool);
 
@@ -100,10 +103,10 @@ struct SimpleWindow {
 
     exit: bool,
     first_configure: bool,
-    pool: Option<RawPool>,
+    pool: Option<SlotPool>,
     width: u32,
     height: u32,
-    buffer: Option<wl_buffer::WlBuffer>,
+    buffer: Option<Buffer>,
     window: Option<Window>,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
@@ -194,10 +197,12 @@ impl WindowHandler for SimpleWindow {
             Some(size) => {
                 self.width = size.0;
                 self.height = size.1;
+                self.buffer = None;
             }
             None => {
                 self.width = 256;
                 self.height = 256;
+                self.buffer = None;
             }
         }
 
@@ -425,45 +430,38 @@ impl ShmHandler for SimpleWindow {
 impl SimpleWindow {
     pub fn draw(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
         if let Some(window) = self.window.as_ref() {
-            // Ensure the pool is big enough to hold the new buffer.
-            self.pool
-                .as_mut()
-                .unwrap()
-                .resize((self.width * self.height * 4) as usize)
-                .expect("resize pool");
-
-            // Destroy the old buffer.
-            // FIXME: Integrate this into the pool logic.
-            if let Some(buffer) = self.buffer.take() {
-                buffer.destroy();
-            }
-
-            let offset = 0;
+            let width = self.width;
+            let height = self.height;
             let stride = self.width as i32 * 4;
             let pool = self.pool.as_mut().unwrap();
 
-            let wl_buffer = pool
-                .create_buffer(
-                    offset,
-                    self.width as i32,
-                    self.height as i32,
-                    stride,
-                    wl_shm::Format::Argb8888,
-                    (),
-                    qh,
-                )
-                .expect("create buffer");
+            let buffer = self.buffer.get_or_insert_with(|| {
+                pool.create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
+                    .expect("create buffer")
+                    .0
+            });
 
-            // TODO: Upgrade to a better pool type
-            let len = self.height as usize * stride as usize; // length of a row
-            let buffer = &mut pool.mmap()[offset as usize..][..len];
+            let canvas = match pool.canvas(buffer) {
+                Some(canvas) => canvas,
+                None => {
+                    // This should be rare, but if the compositor has not released the previous
+                    // buffer, we need double-buffering.
+                    let (second_buffer, canvas) = pool
+                        .create_buffer(
+                            self.width as i32,
+                            self.height as i32,
+                            stride,
+                            wl_shm::Format::Argb8888,
+                        )
+                        .expect("create buffer");
+                    *buffer = second_buffer;
+                    canvas
+                }
+            };
 
             // Draw to the window:
             {
-                let width = self.width;
-                let height = self.height;
-
-                buffer.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
+                canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
                     let x = (index % width as usize) as u32;
                     let y = (index / width as usize) as u32;
 
@@ -478,14 +476,14 @@ impl SimpleWindow {
                 });
             }
 
-            self.buffer = Some(wl_buffer);
+            // Damage the entire window
+            window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
 
             // Request our next frame
             window.wl_surface().frame(qh, window.wl_surface().clone()).expect("create callback");
 
-            assert!(self.buffer.is_some(), "No buffer?");
             // Attach and commit to present.
-            window.wl_surface().attach(self.buffer.as_ref(), 0, 0);
+            buffer.attach_to(window.wl_surface()).expect("buffer attach");
             window.wl_surface().commit();
         }
     }
@@ -514,21 +512,5 @@ delegate_registry!(SimpleWindow: [
 impl ProvidesRegistryState for SimpleWindow {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
-    }
-}
-
-// TODO
-impl Dispatch<wl_buffer::WlBuffer> for SimpleWindow {
-    type UserData = ();
-
-    fn event(
-        &mut self,
-        _: &wl_buffer::WlBuffer,
-        _: wl_buffer::Event,
-        _: &Self::UserData,
-        _: &Connection,
-        _: &wayland_client::QueueHandle<Self>,
-    ) {
-        // todo
     }
 }
