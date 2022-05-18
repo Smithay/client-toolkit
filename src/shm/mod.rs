@@ -1,8 +1,8 @@
 pub mod pool;
 
 use wayland_client::{
-    protocol::{wl_shm, wl_shm_pool},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle, WEnum,
+    protocol::wl_shm, Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle,
+    WEnum,
 };
 
 use crate::{
@@ -31,35 +31,17 @@ impl ShmState {
         self.wl_shm.as_ref().map(|(_, shm)| shm)
     }
 
-    pub fn new_slot_pool<D, U>(
-        &self,
-        len: usize,
-        qh: &QueueHandle<D>,
-        udata: U,
-    ) -> Result<SlotPool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
-        U: Send + Sync + 'static,
-    {
-        Ok(SlotPool::new(self.new_raw_pool(len, qh, udata)?))
+    pub fn new_slot_pool(&self, len: usize) -> Result<SlotPool, CreatePoolError> {
+        Ok(SlotPool::new(self.new_raw_pool(len)?))
     }
 
     /// Creates a new raw pool.
     ///
     /// In most cases this is not what you want. You should use TODO name here or TODO in most cases.
-    pub fn new_raw_pool<D, U>(
-        &self,
-        len: usize,
-        qh: &QueueHandle<D>,
-        udata: U,
-    ) -> Result<RawPool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
-        U: Send + Sync + 'static,
-    {
+    pub fn new_raw_pool(&self, len: usize) -> Result<RawPool, CreatePoolError> {
         let (_, shm) = self.wl_shm.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_shm"]))?;
 
-        RawPool::new(len, shm, qh, udata)
+        RawPool::new(len, shm)
     }
 
     /// Returns the formats supported in memory pools.
@@ -68,7 +50,7 @@ impl ShmState {
     }
 }
 
-/// Delegates the handling of [`wl_shm`] and [`wl_shm_pool`] to some [`ShmState`].
+/// Delegates the handling of [`wl_shm`] to some [`ShmState`].
 ///
 /// This macro requires two things, the type that will delegate to [`ShmState`] and a closure specifying how
 /// to obtain the state object.
@@ -82,7 +64,7 @@ impl ShmState {
 ///     shm: ShmState,
 /// }
 ///
-/// // Use the macro to delegate wl_shm and wl_shm_pool to ShmState.
+/// // Use the macro to delegate wl_shm to ShmState.
 /// delegate_shm!(ExampleApp);
 ///
 /// // You must implement the ShmHandler trait to provide a way to access the ShmState from your data type.
@@ -96,8 +78,7 @@ macro_rules! delegate_shm {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_shm::WlShm,
-                $crate::reexports::client::protocol::wl_shm_pool::WlShmPool
+                $crate::reexports::client::protocol::wl_shm::WlShm
             ] => $crate::shm::ShmState
         );
     };
@@ -136,26 +117,6 @@ where
 
             _ => unreachable!(),
         }
-    }
-}
-
-impl DelegateDispatchBase<wl_shm_pool::WlShmPool> for ShmState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<wl_shm_pool::WlShmPool, D> for ShmState
-where
-    D: Dispatch<wl_shm_pool::WlShmPool, UserData = Self::UserData> + ShmHandler,
-{
-    fn event(
-        _: &mut D,
-        _: &wl_shm_pool::WlShmPool,
-        _: wl_shm_pool::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<D>,
-    ) {
-        unreachable!("wl_shm_pool has no events")
     }
 }
 

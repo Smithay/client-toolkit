@@ -61,7 +61,7 @@ fn main() {
 
     let pool = simple_layer
         .shm_state
-        .new_slot_pool(simple_layer.width as usize * simple_layer.height as usize * 4, &qh, ())
+        .new_slot_pool(simple_layer.width as usize * simple_layer.height as usize * 4)
         .expect("Failed to create pool");
     simple_layer.pool = Some(pool);
 
