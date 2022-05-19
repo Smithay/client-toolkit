@@ -176,18 +176,9 @@ fn main() {
     WaylandSource::new(queue).quick_insert(event_loop.handle()).unwrap();
 
     loop {
-        // This is ugly, let's hope that some version of drain_filter() gets stabilized soon
-        // https://github.com/rust-lang/rust/issues/43244
         {
-            let mut surfaces = surfaces.borrow_mut();
-            let mut i = 0;
-            while i != surfaces.len() {
-                if surfaces[i].1.handle_events() {
-                    surfaces.remove(i);
-                } else {
-                    i += 1;
-                }
-            }
+            // Using a new scope so that `surfaces` reference gets dropped
+            surfaces.borrow_mut().retain_mut(|surface| !surface.1.handle_events());
         }
 
         display.flush().unwrap();
