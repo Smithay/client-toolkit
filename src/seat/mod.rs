@@ -20,7 +20,7 @@ use wayland_client::{
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    pointer::{PointerData, PointerHandler},
+    pointer::{PointerData, PointerDataExt, PointerHandler},
     touch::{TouchData, TouchHandler},
 };
 
@@ -104,6 +104,24 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
+        self.get_pointer_with_data(qh, seat, PointerData::default())
+    }
+
+    /// Creates a pointer from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    pub fn get_pointer_with_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        pointer_data: U,
+    ) -> Result<wl_pointer::WlPointer, SeatError>
+    where
+        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
+        U: PointerDataExt + 'static,
+    {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
@@ -111,7 +129,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        let pointer = seat.get_pointer(qh, PointerData::default())?;
+        let pointer = seat.get_pointer(qh, pointer_data)?;
         Ok(pointer)
     }
 
