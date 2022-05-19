@@ -51,6 +51,7 @@ fn main() {
         pool: None,
         width: 256,
         height: 256,
+        shift: None,
         buffer: None,
         window: None,
         keyboard: None,
@@ -106,6 +107,7 @@ struct SimpleWindow {
     pool: Option<SlotPool>,
     width: u32,
     height: u32,
+    shift: Option<u32>,
     buffer: Option<Buffer>,
     window: Option<Window>,
     keyboard: Option<wl_keyboard::WlKeyboard>,
@@ -382,6 +384,7 @@ impl PointerHandler for SimpleWindow {
     ) {
         if self.pointer_focus {
             println!("Pointer press button: {:?} @ {}", button, time);
+            self.shift = self.shift.xor(Some(0));
         }
     }
 
@@ -461,8 +464,9 @@ impl SimpleWindow {
 
             // Draw to the window:
             {
+                let shift = self.shift.unwrap_or(0);
                 canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
-                    let x = (index % width as usize) as u32;
+                    let x = ((index + shift as usize) % width as usize) as u32;
                     let y = (index / width as usize) as u32;
 
                     let a = 0xFF;
@@ -474,6 +478,10 @@ impl SimpleWindow {
                     let array: &mut [u8; 4] = chunk.try_into().unwrap();
                     *array = color.to_le_bytes();
                 });
+
+                if let Some(shift) = &mut self.shift {
+                    *shift = (*shift + 1) % width;
+                }
             }
 
             // Damage the entire window
