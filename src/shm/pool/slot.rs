@@ -60,7 +60,7 @@ struct FreelistEntry {
 ///
 /// Retaining this object is only required if you wish to resize or change the buffer's format
 /// without changing the contents of the backing memory.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Slot {
     inner: Arc<SlotInner>,
 }
@@ -71,6 +71,11 @@ struct SlotInner {
     offset: usize,
     len: usize,
     active_buffers: AtomicUsize,
+    /// Count of all "real" references to this slot.  This includes all Slot objects and any
+    /// BufferData object that is not in the DEAD state.  When this reaches zero, the memory for
+    /// this slot will return to the free_list.  It is not possible for it to reach zero and have a
+    /// Slot or Buffer referring to it.
+    all_refs: AtomicUsize,
 }
 
 /// A [`wl_buffer::WlBuffer`] allocated from a [SlotPool].
@@ -82,6 +87,7 @@ pub struct Buffer {
     buffer: wl_buffer::WlBuffer,
     height: i32,
     stride: i32,
+    slot: Slot,
 }
 
 /// ObjectData for the WlBuffer
@@ -110,6 +116,11 @@ impl BufferData {
 
     /// Value that is ORed on buffer destroy to transition to the next state
     const DESTROY_SET: u8 = 2;
+
+    /// Call after successfully transitioning the state to DEAD
+    fn record_death(&self) {
+        drop(Slot { inner: self.inner.clone() })
+    }
 }
 
 impl SlotPool {
@@ -254,6 +265,7 @@ impl SlotPool {
                 offset,
                 len,
                 active_buffers: AtomicUsize::new(0),
+                all_refs: AtomicUsize::new(1),
             }),
         })
     }
@@ -300,20 +312,39 @@ impl SlotPool {
             return Err(CreateBufferError::PoolMismatch);
         }
 
+        let slot = slot.clone();
+        // take a ref for the BufferData, which will be destroyed by BufferData::record_death
+        slot.inner.all_refs.fetch_add(1, Ordering::Relaxed);
         let data = Arc::new(BufferData {
             inner: slot.inner.clone(),
             state: AtomicU8::new(BufferData::INACTIVE),
         });
         let buffer = self.inner.create_buffer_raw(offset, width, height, stride, format, data)?;
-        Ok(Buffer { buffer, height, stride })
+        Ok(Buffer { buffer, height, stride, slot })
+    }
+}
+
+impl Clone for Slot {
+    fn clone(&self) -> Self {
+        let inner = self.inner.clone();
+        inner.all_refs.fetch_add(1, Ordering::Relaxed);
+        Slot { inner }
+    }
+}
+
+impl Drop for Slot {
+    fn drop(&mut self) {
+        if self.inner.all_refs.fetch_sub(1, Ordering::Relaxed) == 1 {
+            if let Some(free_list) = self.inner.free_list.upgrade() {
+                SlotPool::free(&free_list, self.inner.offset, self.inner.len);
+            }
+        }
     }
 }
 
 impl Drop for SlotInner {
     fn drop(&mut self) {
-        if let Some(free_list) = self.free_list.upgrade() {
-            SlotPool::free(&free_list, self.offset, self.len);
-        }
+        debug_assert_eq!(*self.all_refs.get_mut(), 0);
     }
 }
 
@@ -394,12 +425,11 @@ impl Buffer {
     /// This may be smaller than the canvas associated with the slot.
     pub fn canvas<'pool>(&self, pool: &'pool mut SlotPool) -> Option<&'pool mut [u8]> {
         let len = (self.height as usize) * (self.stride as usize);
-        let data = self.data()?;
-        if data.inner.active_buffers.load(Ordering::Relaxed) != 0 {
+        if self.slot.inner.active_buffers.load(Ordering::Relaxed) != 0 {
             return None;
         }
-        if data.inner.free_list.as_ptr() == Arc::as_ptr(&pool.free_list) {
-            Some(&mut pool.inner.mmap()[data.inner.offset..][..len])
+        if self.slot.inner.free_list.as_ptr() == Arc::as_ptr(&pool.free_list) {
+            Some(&mut pool.inner.mmap()[self.slot.inner.offset..][..len])
         } else {
             None
         }
@@ -407,8 +437,7 @@ impl Buffer {
 
     /// Get the slot corresponding to this buffer.
     pub fn slot(&self) -> Slot {
-        let inner = self.data().expect("Missing or invalid ObjectData").inner.clone();
-        Slot { inner }
+        self.slot.clone()
     }
 
     /// Manually mark a buffer as active.
@@ -465,6 +494,7 @@ impl Drop for Buffer {
                     // server is using the buffer, let ObjectData handle the destroy
                 }
                 BufferData::INACTIVE => {
+                    data.record_death();
                     self.buffer.destroy();
                 }
                 _ => unreachable!("Invalid state in BufferData"),
@@ -494,6 +524,7 @@ impl wayland_client::backend::ObjectData for BufferData {
                 log::debug!("Unexpected WlBuffer::Release on an inactive buffer");
             }
             BufferData::DESTROY_ON_RELEASE => {
+                self.record_death();
                 self.inner.active_buffers.fetch_sub(1, Ordering::Relaxed);
 
                 // The Destroy message is identical to Release message (no args, same ID), so just reply
@@ -509,4 +540,20 @@ impl wayland_client::backend::ObjectData for BufferData {
     }
 
     fn destroyed(&self, _: wayland_backend::client::ObjectId) {}
+}
+
+impl Drop for BufferData {
+    fn drop(&mut self) {
+        let state = *self.state.get_mut();
+        if state == BufferData::ACTIVE || state == BufferData::DESTROY_ON_RELEASE {
+            // Release the active-buffer count
+            self.inner.active_buffers.fetch_sub(1, Ordering::Relaxed);
+        }
+
+        if state != BufferData::DEAD {
+            // nobody has ever transitioned state to DEAD, so we are responsible for freeing the
+            // extra reference
+            self.record_death();
+        }
+    }
 }
