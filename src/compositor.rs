@@ -39,6 +39,16 @@ pub trait CompositorHandler: Sized {
     );
 }
 
+pub trait SurfaceDataExt: Send + Sync {
+    fn surface_data(&self) -> &SurfaceData;
+}
+
+impl SurfaceDataExt for SurfaceData {
+    fn surface_data(&self) -> &SurfaceData {
+        self
+    }
+}
+
 #[derive(Debug)]
 pub struct CompositorState {
     wl_compositor: GlobalProxy<wl_compositor::WlCompositor>,
@@ -60,12 +70,21 @@ impl CompositorState {
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
     {
+        self.create_surface_with_data(qh, Default::default())
+    }
+
+    pub fn create_surface_with_data<D, U>(
+        &self,
+        qh: &QueueHandle<D>,
+        data: U,
+    ) -> Result<wl_surface::WlSurface, GlobalError>
+    where
+        D: Dispatch<wl_surface::WlSurface, U> + 'static,
+        U: SurfaceDataExt + 'static,
+    {
         let compositor = self.wl_compositor.get()?;
 
-        let surface = compositor.create_surface(
-            qh,
-            SurfaceData { scale_factor: AtomicI32::new(1), outputs: Mutex::new(vec![]) },
-        )?;
+        let surface = compositor.create_surface(qh, data)?;
 
         Ok(surface)
     }
@@ -120,22 +139,36 @@ macro_rules! delegate_compositor {
             ] => $crate::compositor::CompositorState
         );
     };
+    ($ty: ty, surface: [$($surface: ty),*$(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
+                $(
+                    $crate::reexports::client::protocol::wl_surface::WlSurface: $surface,
+                )*
+                $crate::reexports::client::protocol::wl_region::WlRegion: (),
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
+            ] => $crate::compositor::CompositorState
+        );
+    };
 }
 
-impl<D> DelegateDispatch<wl_surface::WlSurface, SurfaceData, D> for CompositorState
+impl<D, U> DelegateDispatch<wl_surface::WlSurface, U, D> for CompositorState
 where
-    D: Dispatch<wl_surface::WlSurface, SurfaceData>
+    D: Dispatch<wl_surface::WlSurface, U>
         + Dispatch<wl_output::WlOutput, OutputData>
         + CompositorHandler,
+    U: SurfaceDataExt,
 {
     fn event(
         state: &mut D,
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
-        data: &SurfaceData,
+        data: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let data = data.surface_data();
         let mut outputs = data.outputs.lock().unwrap();
 
         match event {
