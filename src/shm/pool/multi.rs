@@ -130,7 +130,9 @@ impl<K> MultiPool<K> {
             self.buffer_list.iter().enumerate().find(|(_, slot)| slot.key.borrow().eq(key))
         {
             let mut offset = buf.offset;
-            self.buffer_list.remove(i);
+            if let Some(buf) = self.buffer_list.remove(i).buffer {
+                buf.destroy(conn);
+            }
             for buf_slot in &mut self.buffer_list {
                 if buf_slot.offset > offset && buf_slot.free.load(Ordering::Relaxed) {
                     if let Some(buffer) = buf_slot.buffer.take() {
