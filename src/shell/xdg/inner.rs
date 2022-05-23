@@ -1,11 +1,11 @@
 use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
-use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
+use wayland_protocols::xdg::shell::client::xdg_wm_base;
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
-use super::{XdgShellHandler, XdgShellState, XdgSurfaceData};
+use super::{XdgShellHandler, XdgShellState};
 
-impl<D> RegistryHandler<D> for XdgShellState<D>
+impl<D> RegistryHandler<D> for XdgShellState
 where
     D: Dispatch<xdg_wm_base::XdgWmBase, ()> + XdgShellHandler + ProvidesRegistryState + 'static,
 {
@@ -38,7 +38,7 @@ where
 
 /* Delegate trait impls */
 
-impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, (), D> for XdgShellState<D>
+impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, (), D> for XdgShellState
 where
     D: Dispatch<xdg_wm_base::XdgWmBase, ()> + XdgShellHandler,
 {
@@ -53,30 +53,6 @@ where
         match event {
             xdg_wm_base::Event::Ping { serial } => {
                 xdg_wm_base.pong(serial);
-            }
-
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<D> DelegateDispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>, D> for XdgShellState<D>
-where
-    D: Dispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>> + XdgShellHandler + 'static,
-{
-    fn event(
-        data: &mut D,
-        surface: &xdg_surface::XdgSurface,
-        event: xdg_surface::Event,
-        udata: &XdgSurfaceData<D>,
-        conn: &Connection,
-        qh: &QueueHandle<D>,
-    ) {
-        match event {
-            xdg_surface::Event::Configure { serial } => {
-                // Ack the configure
-                surface.ack_configure(serial);
-                udata.configure_handler.configure(data, conn, qh, surface, serial);
             }
 
             _ => unreachable!(),

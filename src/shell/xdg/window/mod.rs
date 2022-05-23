@@ -19,7 +19,7 @@ use crate::error::GlobalError;
 
 use self::inner::{WindowDataInner, WindowInner};
 
-use super::{ConfigureHandler, XdgShellHandler, XdgShellState, XdgSurfaceData};
+use super::{XdgShellHandler, XdgShellState};
 
 pub(super) mod inner;
 
@@ -257,12 +257,12 @@ impl WindowBuilder {
     pub fn map<D>(
         self,
         qh: &QueueHandle<D>,
-        shell_state: &XdgShellState<D>,
+        shell_state: &XdgShellState,
         window_state: &mut XdgWindowState,
         surface: wl_surface::WlSurface,
     ) -> Result<Window, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>>
+        D: Dispatch<xdg_surface::XdgSurface, WindowData>
             + Dispatch<xdg_toplevel::XdgToplevel, WindowData>
             + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData>
             + WindowHandler
@@ -280,14 +280,10 @@ impl WindowBuilder {
                 states: Vec::new(),
             }),
         });
-
-        let xdg_surface = shell_state.create_xdg_surface(
-            qh,
-            surface,
-            WindowConfigureHandler { data: data.clone() },
-        )?;
-
         let window_data = WindowData(data);
+
+        let xdg_surface = shell_state.create_xdg_surface(qh, surface, window_data.clone())?;
+
         let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, window_data.clone())?;
 
         // If server side decorations are available, create the toplevel decoration.
@@ -480,6 +476,7 @@ pub struct WindowData(pub(crate) Arc<WindowDataInner>);
 macro_rules! delegate_xdg_window {
     ($ty: ty) => {
         // Toplevel
+        type __XdgSurface = $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface;
         type __XdgToplevel = $crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel;
         type __ZxdgDecorationManagerV1 =
             $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1;
@@ -487,36 +484,10 @@ macro_rules! delegate_xdg_window {
             $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
 
         $crate::reexports::client::delegate_dispatch!($ty: [
+            __XdgSurface: $crate::shell::xdg::window::WindowData,
             __XdgToplevel: $crate::shell::xdg::window::WindowData,
             __ZxdgDecorationManagerV1: (),
             __ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData,
         ] => $crate::shell::xdg::window::XdgWindowState);
     };
-}
-
-struct WindowConfigureHandler {
-    data: Arc<WindowDataInner>,
-}
-
-impl<D> ConfigureHandler<D> for WindowConfigureHandler
-where
-    D: WindowHandler,
-{
-    fn configure(
-        &self,
-        data: &mut D,
-        conn: &Connection,
-        qh: &QueueHandle<D>,
-        xdg_surface: &xdg_surface::XdgSurface,
-        serial: u32,
-    ) {
-        if let Some(window) = data.xdg_window_state().window_by_xdg(xdg_surface) {
-            let configure = { self.data.pending_configure.lock().unwrap().clone() };
-
-            WindowHandler::configure(data, conn, qh, &window, configure, serial);
-        }
-
-        // Destroy dropped weak handles
-        data.xdg_window_state().windows.retain(|window| window.upgrade().is_some());
-    }
 }
