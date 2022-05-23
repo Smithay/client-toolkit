@@ -262,9 +262,9 @@ impl WindowBuilder {
         surface: wl_surface::WlSurface,
     ) -> Result<Window, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData<D>>
-            + Dispatch<xdg_toplevel::XdgToplevel, UserData = WindowData>
-            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
+        D: Dispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>>
+            + Dispatch<xdg_toplevel::XdgToplevel, WindowData>
+            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData>
             + WindowHandler
             + 'static,
     {
@@ -487,9 +487,9 @@ macro_rules! delegate_xdg_window {
             $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
 
         $crate::reexports::client::delegate_dispatch!($ty: [
-            __XdgToplevel,
-            __ZxdgDecorationManagerV1,
-            __ZxdgToplevelDecorationV1
+            __XdgToplevel: $crate::shell::xdg::window::WindowData,
+            __ZxdgDecorationManagerV1: (),
+            __ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData,
         ] => $crate::shell::xdg::window::XdgWindowState);
     };
 }

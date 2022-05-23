@@ -1,4 +1,4 @@
-use wayland_client::{Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle};
+use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
 use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
@@ -7,10 +7,7 @@ use super::{XdgShellHandler, XdgShellState, XdgSurfaceData};
 
 impl<D> RegistryHandler<D> for XdgShellState<D>
 where
-    D: Dispatch<xdg_wm_base::XdgWmBase, UserData = ()>
-        + XdgShellHandler
-        + ProvidesRegistryState
-        + 'static,
+    D: Dispatch<xdg_wm_base::XdgWmBase, ()> + XdgShellHandler + ProvidesRegistryState + 'static,
 {
     fn new_global(
         data: &mut D,
@@ -41,13 +38,9 @@ where
 
 /* Delegate trait impls */
 
-impl<D> DelegateDispatchBase<xdg_wm_base::XdgWmBase> for XdgShellState<D> {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, D> for XdgShellState<D>
+impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, (), D> for XdgShellState<D>
 where
-    D: Dispatch<xdg_wm_base::XdgWmBase, UserData = Self::UserData> + XdgShellHandler,
+    D: Dispatch<xdg_wm_base::XdgWmBase, ()> + XdgShellHandler,
 {
     fn event(
         _: &mut D,
@@ -67,19 +60,15 @@ where
     }
 }
 
-impl<D: 'static> DelegateDispatchBase<xdg_surface::XdgSurface> for XdgShellState<D> {
-    type UserData = XdgSurfaceData<D>;
-}
-
-impl<D> DelegateDispatch<xdg_surface::XdgSurface, D> for XdgShellState<D>
+impl<D> DelegateDispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>, D> for XdgShellState<D>
 where
-    D: Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData<D>> + XdgShellHandler + 'static,
+    D: Dispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>> + XdgShellHandler + 'static,
 {
     fn event(
         data: &mut D,
         surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
-        udata: &Self::UserData,
+        udata: &XdgSurfaceData<D>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {

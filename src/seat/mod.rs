@@ -14,7 +14,7 @@ use std::{
 use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_pointer, wl_seat, wl_touch},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
@@ -102,7 +102,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, UserData = PointerData> + PointerHandler + 'static,
+        D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -126,7 +126,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, UserData = TouchData> + TouchHandler + 'static,
+        D: Dispatch<wl_touch::WlTouch, TouchData> + TouchHandler + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -243,7 +243,7 @@ macro_rules! delegate_seat {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_seat::WlSeat
+                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData,
             ] => $crate::seat::SeatState
         );
     };
@@ -256,19 +256,15 @@ struct SeatInner {
     data: SeatData,
 }
 
-impl DelegateDispatchBase<wl_seat::WlSeat> for SeatState {
-    type UserData = SeatData;
-}
-
-impl<D> DelegateDispatch<wl_seat::WlSeat, D> for SeatState
+impl<D> DelegateDispatch<wl_seat::WlSeat, SeatData, D> for SeatState
 where
-    D: Dispatch<wl_seat::WlSeat, UserData = Self::UserData> + SeatHandler,
+    D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler,
 {
     fn event(
         state: &mut D,
         seat: &wl_seat::WlSeat,
         event: wl_seat::Event,
-        data: &Self::UserData,
+        data: &SeatData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -327,10 +323,7 @@ where
 
 impl<D> RegistryHandler<D> for SeatState
 where
-    D: Dispatch<wl_seat::WlSeat, UserData = SeatData>
-        + SeatHandler
-        + ProvidesRegistryState
-        + 'static,
+    D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler + ProvidesRegistryState + 'static,
 {
     fn new_global(
         state: &mut D,

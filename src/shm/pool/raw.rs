@@ -93,7 +93,7 @@ impl RawPool {
         qh: &QueueHandle<D>,
     ) -> Result<wl_buffer::WlBuffer, InvalidId>
     where
-        D: Dispatch<wl_buffer::WlBuffer, UserData = U> + 'static,
+        D: Dispatch<wl_buffer::WlBuffer, U> + 'static,
         U: Send + Sync + 'static,
     {
         let buffer = self.pool.create_buffer(offset, width, height, stride, format, qh, udata)?;
