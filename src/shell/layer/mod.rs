@@ -142,7 +142,7 @@ impl LayerSurfaceBuilder {
         layer: Layer,
     ) -> Result<LayerSurface, GlobalError>
     where
-        D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, UserData = LayerSurfaceData>
+        D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData>
             + 'static,
     {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param

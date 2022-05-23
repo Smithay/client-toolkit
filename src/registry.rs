@@ -36,7 +36,7 @@
 //! impl<D> RegistryHandler<D> for Delegate
 //! where
 //!     // In order to bind a global, you must statically assert the global may be handled with the data type.
-//!     D: Dispatch<wl_compositor::WlCompositor, UserData = ()>
+//!     D: Dispatch<wl_compositor::WlCompositor, ()>
 //!         // ProvidesRegistryState provides a function to access the RegistryState within the impl.
 //!         + ProvidesRegistryState
 //!         + 'static,
@@ -178,7 +178,7 @@ impl RegistryState {
         udata: U,
     ) -> Result<I, BindError>
     where
-        D: Dispatch<I, UserData = U> + 'static,
+        D: Dispatch<I, U> + 'static,
         I: Proxy + 'static,
         U: Send + Sync + 'static,
     {
@@ -193,7 +193,7 @@ impl RegistryState {
             );
         }
 
-        let global = self.registry.bind::<I, _>(name, version, qh, udata)?;
+        let global = self.registry.bind::<I, _, _>(name, version, qh, udata)?;
 
         log::debug!(target: "sctk", "Bound new global [{}] {} v{}", name, I::interface().name, version);
 
@@ -217,7 +217,7 @@ impl RegistryState {
         f: F,
     ) -> Result<I, BindError>
     where
-        D: Dispatch<I, UserData = U> + 'static,
+        D: Dispatch<I, U> + 'static,
         I: Proxy + 'static,
         U: Send + Sync + 'static,
         F: FnOnce() -> (u32, U),
@@ -236,7 +236,7 @@ impl RegistryState {
             // First bind of a global.
             None => {
                 let (version, udata) = f();
-                let global = self.registry.bind::<I, _>(name, version, qh, udata)?;
+                let global = self.registry.bind::<I, _, _>(name, version, qh, udata)?;
 
                 log::debug!(target: "sctk", "Bound new cached global [{}] {} v{}", name, I::interface().name, version);
 
@@ -305,10 +305,9 @@ macro_rules! delegate_registry {
         impl
             $crate::reexports::client::Dispatch<
                 $crate::reexports::client::protocol::wl_registry::WlRegistry,
+                (),
             > for $ty
         {
-            type UserData = ();
-
             fn event(
                 &mut self,
                 registry: &$crate::reexports::client::protocol::wl_registry::WlRegistry,

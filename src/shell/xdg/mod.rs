@@ -55,7 +55,7 @@ impl<D> XdgShellState<D> {
         configure_handler: impl ConfigureHandler<D> + Send + Sync + 'static,
     ) -> Result<XdgShellSurface, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, UserData = XdgSurfaceData<D>> + 'static,
+        D: Dispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>> + 'static,
     {
         let wm_base = self.xdg_wm_base().ok_or(GlobalError::MissingGlobals(&["xdg_wm_base"]))?;
         let xdg_surface = wm_base.get_xdg_surface(
@@ -123,8 +123,8 @@ macro_rules! delegate_xdg_shell {
         type __XdgSurface = $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface;
 
         $crate::reexports::client::delegate_dispatch!($ty: [
-            __XdgWmBase,
-            __XdgSurface
+            __XdgWmBase: (),
+            __XdgSurface: $crate::shell::xdg::XdgSurfaceData<$ty>
         ] => $crate::shell::xdg::XdgShellState<$ty>);
     };
 }

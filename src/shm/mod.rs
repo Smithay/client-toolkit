@@ -1,8 +1,7 @@
 pub mod pool;
 
 use wayland_client::{
-    protocol::wl_shm, Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle,
-    WEnum,
+    protocol::wl_shm, Connection, DelegateDispatch, Dispatch, QueueHandle, WEnum,
 };
 
 use crate::{
@@ -78,25 +77,21 @@ macro_rules! delegate_shm {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_shm::WlShm
+                $crate::reexports::client::protocol::wl_shm::WlShm: ()
             ] => $crate::shm::ShmState
         );
     };
 }
 
-impl DelegateDispatchBase<wl_shm::WlShm> for ShmState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<wl_shm::WlShm, D> for ShmState
+impl<D> DelegateDispatch<wl_shm::WlShm, (), D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, UserData = Self::UserData> + ShmHandler,
+    D: Dispatch<wl_shm::WlShm, ()> + ShmHandler,
 {
     fn event(
         state: &mut D,
         _proxy: &wl_shm::WlShm,
         event: wl_shm::Event,
-        _: &Self::UserData,
+        _: &(),
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -122,7 +117,7 @@ where
 
 impl<D> RegistryHandler<D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, UserData = ()> + ShmHandler + ProvidesRegistryState + 'static,
+    D: Dispatch<wl_shm::WlShm, ()> + ShmHandler + ProvidesRegistryState + 'static,
 {
     fn new_global(
         state: &mut D,

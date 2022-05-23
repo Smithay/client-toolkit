@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
-use wayland_client::{Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle};
+use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
 
 use crate::seat::{SeatHandler, SeatState};
 
@@ -112,19 +112,15 @@ pub trait TouchHandler: SeatHandler + Sized {
     fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
-impl DelegateDispatchBase<WlTouch> for SeatState {
-    type UserData = TouchData;
-}
-
-impl<D> DelegateDispatch<WlTouch, D> for SeatState
+impl<D> DelegateDispatch<WlTouch, TouchData, D> for SeatState
 where
-    D: Dispatch<WlTouch, UserData = Self::UserData> + TouchHandler,
+    D: Dispatch<WlTouch, TouchData> + TouchHandler,
 {
     fn event(
         data: &mut D,
         touch: &WlTouch,
         event: TouchEvent,
-        udata: &Self::UserData,
+        udata: &TouchData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -164,7 +160,7 @@ fn process_framed_event<D>(
     qh: &QueueHandle<D>,
     event: TouchEvent,
 ) where
-    D: Dispatch<WlTouch, UserData = TouchData> + TouchHandler,
+    D: Dispatch<WlTouch, TouchData> + TouchHandler,
 {
     match event {
         TouchEvent::Down { serial, time, surface, id, x, y } => {

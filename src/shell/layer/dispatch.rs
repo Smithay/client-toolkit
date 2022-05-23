@@ -1,4 +1,4 @@
-use wayland_client::{Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, QueueHandle};
+use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
@@ -7,7 +7,7 @@ use super::{LayerHandler, LayerState, LayerSurfaceConfigure, LayerSurfaceData};
 
 impl<D> RegistryHandler<D> for LayerState
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, UserData = ()>
+    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()>
         + LayerHandler
         + ProvidesRegistryState
         + 'static,
@@ -43,19 +43,15 @@ where
     }
 }
 
-impl DelegateDispatchBase<zwlr_layer_shell_v1::ZwlrLayerShellV1> for LayerState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, D> for LayerState
+impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, (), D> for LayerState
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, UserData = ()> + LayerHandler + 'static,
+    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()> + LayerHandler + 'static,
 {
     fn event(
         _: &mut D,
         _: &zwlr_layer_shell_v1::ZwlrLayerShellV1,
         _: zwlr_layer_shell_v1::Event,
-        _: &Self::UserData,
+        _: &(),
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -63,13 +59,9 @@ where
     }
 }
 
-impl DelegateDispatchBase<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1> for LayerState {
-    type UserData = LayerSurfaceData;
-}
-
-impl<D> DelegateDispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, D> for LayerState
+impl<D> DelegateDispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData, D> for LayerState
 where
-    D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, UserData = Self::UserData>
+    D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData>
         + LayerHandler
         + 'static,
 {
@@ -77,7 +69,7 @@ where
         data: &mut D,
         surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         event: zwlr_layer_surface_v1::Event,
-        _udata: &Self::UserData,
+        _udata: &LayerSurfaceData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
