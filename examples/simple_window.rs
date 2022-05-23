@@ -99,7 +99,7 @@ struct SimpleWindow {
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: ShmState,
-    xdg_shell_state: XdgShellState<Self>,
+    xdg_shell_state: XdgShellState,
     xdg_window_state: XdgWindowState,
 
     exit: bool,
@@ -173,7 +173,7 @@ impl OutputHandler for SimpleWindow {
 }
 
 impl XdgShellHandler for SimpleWindow {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState<Self> {
+    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
         &mut self.xdg_shell_state
     }
 }
@@ -513,7 +513,7 @@ delegate_registry!(SimpleWindow: [
     OutputState,
     ShmState,
     SeatState,
-    XdgShellState<Self>,
+    XdgShellState,
     XdgWindowState,
 ]);
 

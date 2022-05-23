@@ -13,6 +13,7 @@ use wayland_protocols::{
         zxdg_toplevel_decoration_v1::{self, Mode},
     },
     xdg::shell::client::{
+        xdg_surface,
         xdg_toplevel::{self, State},
         xdg_wm_base,
     },
@@ -151,6 +152,38 @@ where
 
     fn remove_global(_: &mut D, _: &Connection, _: &QueueHandle<D>, _: u32) {
         // Unlikely to ever occur.
+    }
+}
+
+impl<D> DelegateDispatch<xdg_surface::XdgSurface, WindowData, D> for XdgWindowState
+where
+    D: Dispatch<xdg_surface::XdgSurface, WindowData> + WindowHandler,
+{
+    fn event(
+        data: &mut D,
+        xdg_surface: &xdg_surface::XdgSurface,
+        event: xdg_surface::Event,
+        udata: &WindowData,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        match event {
+            xdg_surface::Event::Configure { serial } => {
+                // Acknowledge the configure per protocol requirements.
+                xdg_surface.ack_configure(serial);
+
+                if let Some(window) = data.xdg_window_state().window_by_xdg(xdg_surface) {
+                    let configure = { udata.0.pending_configure.lock().unwrap().clone() };
+
+                    WindowHandler::configure(data, conn, qh, &window, configure, serial);
+                }
+            }
+
+            _ => unreachable!(),
+        }
+
+        // Destroy dropped weak handles
+        data.xdg_window_state().windows.retain(|window| window.upgrade().is_some());
     }
 }
 
