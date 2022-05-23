@@ -21,7 +21,7 @@ macro_rules! delegate_touch {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_touch::WlTouch
+                $crate::reexports::client::protocol::wl_touch::WlTouch: $crate::seat::touch::TouchData,
             ] => $crate::seat::SeatState
         );
     };
