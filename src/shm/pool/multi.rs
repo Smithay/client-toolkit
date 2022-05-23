@@ -65,8 +65,8 @@
 //! ```
 //!
 
-use std::io;
 use std::borrow::Borrow;
+use std::io;
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -376,7 +376,7 @@ impl<K> MultiPool<K> {
             free,
             buffer: Some(buffer),
             size,
-            key
+            key,
         });
         Some(())
     }
