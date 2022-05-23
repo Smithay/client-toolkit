@@ -65,6 +65,7 @@
 //! ```
 //!
 
+use std::borrow::Borrow;
 use std::io;
 
 use std::sync::{
@@ -91,13 +92,13 @@ pub enum PoolError {
 /// This pool manages buffers associated with keys.
 /// Only one buffer can be attributed to a given key.
 #[derive(Debug)]
-pub struct MultiPool<K: Clone + PartialEq> {
+pub struct MultiPool<K> {
     buffer_list: Vec<BufferSlot<K>>,
     pub(crate) inner: RawPool,
 }
 
 #[derive(Debug, thiserror::Error)]
-struct BufferSlot<K: Clone + PartialEq> {
+struct BufferSlot<K> {
     free: Arc<AtomicBool>,
     size: usize,
     used: usize,
@@ -106,7 +107,7 @@ struct BufferSlot<K: Clone + PartialEq> {
     key: K,
 }
 
-impl<K: Clone + PartialEq> MultiPool<K> {
+impl<K> MultiPool<K> {
     pub(crate) fn new(inner: RawPool) -> Self {
         Self { inner, buffer_list: Vec::new() }
     }
@@ -146,15 +147,19 @@ impl<K: Clone + PartialEq> MultiPool<K> {
     }
 
     /// Insert a buffer into the pool.
-    pub fn insert(
+    pub fn insert<Q>(
         &mut self,
         width: i32,
         stride: i32,
         height: i32,
-        key: &K,
+        key: &Q,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Result<usize, PoolError> {
+    ) -> Result<usize, PoolError>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + ToOwned<Owned = K>,
+    {
         let mut offset = 0;
         let mut found_key = false;
         let size = (stride * height) as usize;
@@ -162,7 +167,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         let bpp = (stride as f32 / width as f32).ceil() as usize;
 
         for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
-            if buf_slot.key.eq(key) {
+            if buf_slot.key.borrow().eq(key) {
                 found_key = true;
                 if buf_slot.free.load(Ordering::Relaxed) {
                     // Destroys the buffer if it's resized
@@ -205,7 +210,7 @@ impl<K: Clone + PartialEq> MultiPool<K> {
         if !found_key {
             if let Err(err) = index {
                 return self
-                    .dyn_resize(offset, width, stride, height, key.clone(), format, conn)
+                    .dyn_resize(offset, width, stride, height, key.to_owned(), format, conn)
                     .map(|_| self.buffer_list.len() - 1)
                     .ok_or(err);
             }
@@ -264,15 +269,19 @@ impl<K: Clone + PartialEq> MultiPool<K> {
     ///
     /// The offset can be used to determine whether or not a buffer was moved in the mempool
     /// and by consequence if it should be damaged partially or fully.
-    pub fn create_buffer(
+    pub fn create_buffer<Q>(
         &mut self,
         width: i32,
         stride: i32,
         height: i32,
-        key: &K,
+        key: &Q,
         format: wl_shm::Format,
         conn: &mut ConnectionHandle,
-    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError> {
+    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + ToOwned<Owned = K>,
+    {
         let index = self.insert(width, stride, height, key, format, conn)?;
         self.get_at(index, width, stride, height, format, conn).ok_or(PoolError::NotFound)
     }
