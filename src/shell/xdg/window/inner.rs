@@ -5,7 +5,7 @@ use std::{
 
 use wayland_client::{
     protocol::{wl_output, wl_seat},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
@@ -114,10 +114,10 @@ const DECORATION_MANAGER_VERSION: u32 = 1;
 
 impl<D> RegistryHandler<D> for XdgWindowState
 where
-    D: Dispatch<xdg_wm_base::XdgWmBase, UserData = ()>
-        + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, UserData = ()>
+    D: Dispatch<xdg_wm_base::XdgWmBase, ()>
+        + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, ()>
         // Lateinit for decorations
-        + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = WindowData>
+        + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData>
         + WindowHandler
         + ProvidesRegistryState
         + 'static,
@@ -154,19 +154,15 @@ where
     }
 }
 
-impl DelegateDispatchBase<xdg_toplevel::XdgToplevel> for XdgWindowState {
-    type UserData = WindowData;
-}
-
-impl<D> DelegateDispatch<xdg_toplevel::XdgToplevel, D> for XdgWindowState
+impl<D> DelegateDispatch<xdg_toplevel::XdgToplevel, WindowData, D> for XdgWindowState
 where
-    D: Dispatch<xdg_toplevel::XdgToplevel, UserData = Self::UserData> + WindowHandler,
+    D: Dispatch<xdg_toplevel::XdgToplevel, WindowData> + WindowHandler,
 {
     fn event(
         data: &mut D,
         toplevel: &xdg_toplevel::XdgToplevel,
         event: xdg_toplevel::Event,
-        udata: &Self::UserData,
+        udata: &WindowData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -207,14 +203,10 @@ where
 
 // XDG decoration
 
-impl DelegateDispatchBase<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1> for XdgWindowState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, D> for XdgWindowState
+impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, (), D>
+    for XdgWindowState
 where
-    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, UserData = Self::UserData>
-        + WindowHandler,
+    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, ()> + WindowHandler,
 {
     fn event(
         _: &mut D,
@@ -228,23 +220,16 @@ where
     }
 }
 
-impl DelegateDispatchBase<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>
-    for XdgWindowState
-{
-    type UserData = WindowData;
-}
-
-impl<D> DelegateDispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D>
+impl<D> DelegateDispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D>
     for XdgWindowState
 where
-    D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, UserData = Self::UserData>
-        + WindowHandler,
+    D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData> + WindowHandler,
 {
     fn event(
         _: &mut D,
         _: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
         event: zxdg_toplevel_decoration_v1::Event,
-        data: &Self::UserData,
+        data: &WindowData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

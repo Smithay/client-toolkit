@@ -14,7 +14,7 @@ use std::{
 
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use xkbcommon::xkb;
 
@@ -50,7 +50,7 @@ impl SeatState {
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, UserData = KeyboardData> + KeyboardHandler + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -295,7 +295,7 @@ macro_rules! delegate_keyboard {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard
+                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData
             ] => $crate::seat::SeatState
         );
     };
@@ -347,19 +347,15 @@ impl KeyboardData {
     }
 }
 
-impl DelegateDispatchBase<wl_keyboard::WlKeyboard> for SeatState {
-    type UserData = KeyboardData;
-}
-
-impl<D> DelegateDispatch<wl_keyboard::WlKeyboard, D> for SeatState
+impl<D> DelegateDispatch<wl_keyboard::WlKeyboard, KeyboardData, D> for SeatState
 where
-    D: Dispatch<wl_keyboard::WlKeyboard, UserData = Self::UserData> + KeyboardHandler,
+    D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler,
 {
     fn event(
         data: &mut D,
         keyboard: &wl_keyboard::WlKeyboard,
         event: wl_keyboard::Event,
-        udata: &Self::UserData,
+        udata: &KeyboardData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {

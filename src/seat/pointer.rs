@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use wayland_client::{
     protocol::{wl_pointer, wl_surface},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use super::{SeatHandler, SeatState};
@@ -138,7 +138,7 @@ macro_rules! delegate_pointer {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_pointer::WlPointer
+                $crate::reexports::client::protocol::wl_pointer::WlPointer: $crate::seat::pointer::PointerData
             ] => $crate::seat::SeatState
         );
     };
@@ -177,19 +177,15 @@ pub(crate) struct Button {
     serial: u32,
 }
 
-impl DelegateDispatchBase<wl_pointer::WlPointer> for SeatState {
-    type UserData = PointerData;
-}
-
-impl<D> DelegateDispatch<wl_pointer::WlPointer, D> for SeatState
+impl<D> DelegateDispatch<wl_pointer::WlPointer, PointerData, D> for SeatState
 where
-    D: Dispatch<wl_pointer::WlPointer, UserData = Self::UserData> + PointerHandler,
+    D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler,
 {
     fn event(
         data: &mut D,
         pointer: &wl_pointer::WlPointer,
         event: wl_pointer::Event,
-        udata: &Self::UserData,
+        udata: &PointerData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {

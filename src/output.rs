@@ -5,7 +5,7 @@ use std::{
 
 use wayland_client::{
     protocol::wl_output::{self, Subpixel, Transform},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
@@ -217,23 +217,23 @@ macro_rules! delegate_output {
         type __ZxdgOutputManagerV1 =
             $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1;
 
-        $crate::reexports::client::delegate_dispatch!($ty: [__WlOutput, __ZxdgOutputManagerV1, __ZxdgOutputV1] => $crate::output::OutputState);
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            __WlOutput: $crate::output::OutputData,
+            __ZxdgOutputManagerV1: (),
+            __ZxdgOutputV1: $crate::output::OutputData,
+        ] => $crate::output::OutputState);
     };
 }
 
-impl DelegateDispatchBase<wl_output::WlOutput> for OutputState {
-    type UserData = OutputData;
-}
-
-impl<D> DelegateDispatch<wl_output::WlOutput, D> for OutputState
+impl<D> DelegateDispatch<wl_output::WlOutput, OutputData, D> for OutputState
 where
-    D: Dispatch<wl_output::WlOutput, UserData = Self::UserData> + OutputHandler,
+    D: Dispatch<wl_output::WlOutput, OutputData> + OutputHandler,
 {
     fn event(
         state: &mut D,
         output: &wl_output::WlOutput,
         event: wl_output::Event,
-        data: &Self::UserData,
+        data: &OutputData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -400,20 +400,15 @@ where
     }
 }
 
-impl DelegateDispatchBase<zxdg_output_manager_v1::ZxdgOutputManagerV1> for OutputState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, D> for OutputState
+impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, (), D> for OutputState
 where
-    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = Self::UserData>
-        + OutputHandler,
+    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()> + OutputHandler,
 {
     fn event(
         _: &mut D,
         _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
         _: zxdg_output_manager_v1::Event,
-        _: &Self::UserData,
+        _: &(),
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -421,19 +416,15 @@ where
     }
 }
 
-impl DelegateDispatchBase<zxdg_output_v1::ZxdgOutputV1> for OutputState {
-    type UserData = OutputData;
-}
-
-impl<D> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputState
+impl<D> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, OutputData, D> for OutputState
 where
-    D: Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = Self::UserData> + OutputHandler,
+    D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + OutputHandler,
 {
     fn event(
         state: &mut D,
         output: &zxdg_output_v1::ZxdgOutputV1,
         event: zxdg_output_v1::Event,
-        data: &Self::UserData,
+        data: &OutputData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -508,9 +499,9 @@ where
 
 impl<D> RegistryHandler<D> for OutputState
 where
-    D: Dispatch<wl_output::WlOutput, UserData = OutputData>
-        + Dispatch<zxdg_output_v1::ZxdgOutputV1, UserData = OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, UserData = ()>
+    D: Dispatch<wl_output::WlOutput, OutputData>
+        + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
+        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()>
         + OutputHandler
         + ProvidesRegistryState
         + 'static,

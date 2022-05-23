@@ -5,7 +5,7 @@ use std::sync::{
 
 use wayland_client::{
     protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
-    Connection, DelegateDispatch, DelegateDispatchBase, Dispatch, Proxy, QueueHandle,
+    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
@@ -58,7 +58,7 @@ impl CompositorState {
         qh: &QueueHandle<D>,
     ) -> Result<wl_surface::WlSurface, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, UserData = SurfaceData> + 'static,
+        D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
     {
         let compositor =
             self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
@@ -73,7 +73,7 @@ impl CompositorState {
 
     pub fn create_region<D>(&self, qh: &QueueHandle<D>) -> Result<wl_region::WlRegion, GlobalError>
     where
-        D: Dispatch<wl_region::WlRegion, UserData = ()> + 'static,
+        D: Dispatch<wl_region::WlRegion, ()> + 'static,
     {
         let compositor =
             self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
@@ -102,30 +102,26 @@ macro_rules! delegate_compositor {
 
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                __WlCompositor,
-                __WlSurface,
-                __WlRegion,
-                __WlCallback
+                __WlCompositor: (),
+                __WlSurface: $crate::compositor::SurfaceData,
+                __WlRegion: (),
+                __WlCallback: __WlSurface,
             ] => $crate::compositor::CompositorState
         );
     };
 }
 
-impl DelegateDispatchBase<wl_surface::WlSurface> for CompositorState {
-    type UserData = SurfaceData;
-}
-
-impl<D> DelegateDispatch<wl_surface::WlSurface, D> for CompositorState
+impl<D> DelegateDispatch<wl_surface::WlSurface, SurfaceData, D> for CompositorState
 where
-    D: Dispatch<wl_surface::WlSurface, UserData = Self::UserData>
-        + Dispatch<wl_output::WlOutput, UserData = OutputData>
+    D: Dispatch<wl_surface::WlSurface, SurfaceData>
+        + Dispatch<wl_output::WlOutput, OutputData>
         + CompositorHandler,
 {
     fn event(
         state: &mut D,
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
-        data: &Self::UserData,
+        data: &SurfaceData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -165,13 +161,9 @@ where
     }
 }
 
-impl DelegateDispatchBase<wl_region::WlRegion> for CompositorState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<wl_region::WlRegion, D> for CompositorState
+impl<D> DelegateDispatch<wl_region::WlRegion, (), D> for CompositorState
 where
-    D: Dispatch<wl_region::WlRegion, UserData = Self::UserData> + CompositorHandler,
+    D: Dispatch<wl_region::WlRegion, ()> + CompositorHandler,
 {
     fn event(
         _: &mut D,
@@ -185,13 +177,9 @@ where
     }
 }
 
-impl DelegateDispatchBase<wl_compositor::WlCompositor> for CompositorState {
-    type UserData = ();
-}
-
-impl<D> DelegateDispatch<wl_compositor::WlCompositor, D> for CompositorState
+impl<D> DelegateDispatch<wl_compositor::WlCompositor, (), D> for CompositorState
 where
-    D: Dispatch<wl_compositor::WlCompositor, UserData = Self::UserData> + CompositorHandler,
+    D: Dispatch<wl_compositor::WlCompositor, ()> + CompositorHandler,
 {
     fn event(
         _: &mut D,
@@ -205,19 +193,15 @@ where
     }
 }
 
-impl DelegateDispatchBase<wl_callback::WlCallback> for CompositorState {
-    type UserData = wl_surface::WlSurface;
-}
-
-impl<D> DelegateDispatch<wl_callback::WlCallback, D> for CompositorState
+impl<D> DelegateDispatch<wl_callback::WlCallback, wl_surface::WlSurface, D> for CompositorState
 where
-    D: Dispatch<wl_callback::WlCallback, UserData = Self::UserData> + CompositorHandler,
+    D: Dispatch<wl_callback::WlCallback, wl_surface::WlSurface> + CompositorHandler,
 {
     fn event(
         state: &mut D,
         _: &wl_callback::WlCallback,
         event: wl_callback::Event,
-        surface: &Self::UserData,
+        surface: &wl_surface::WlSurface,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -233,7 +217,7 @@ where
 
 impl<D> RegistryHandler<D> for CompositorState
 where
-    D: Dispatch<wl_compositor::WlCompositor, UserData = ()>
+    D: Dispatch<wl_compositor::WlCompositor, ()>
         + CompositorHandler
         + ProvidesRegistryState
         + 'static,
