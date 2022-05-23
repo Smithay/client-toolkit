@@ -77,7 +77,7 @@ macro_rules! delegate_shm {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_shm::WlShm: ()
+                $crate::reexports::client::protocol::wl_shm::WlShm: (),
             ] => $crate::shm::ShmState
         );
     };

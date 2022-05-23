@@ -95,17 +95,13 @@ pub struct SurfaceData {
 #[macro_export]
 macro_rules! delegate_compositor {
     ($ty: ty) => {
-        type __WlCompositor = $crate::reexports::client::protocol::wl_compositor::WlCompositor;
-        type __WlSurface = $crate::reexports::client::protocol::wl_surface::WlSurface;
-        type __WlRegion = $crate::reexports::client::protocol::wl_region::WlRegion;
-        type __WlCallback = $crate::reexports::client::protocol::wl_callback::WlCallback;
 
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                __WlCompositor: (),
-                __WlSurface: $crate::compositor::SurfaceData,
-                __WlRegion: (),
-                __WlCallback: __WlSurface,
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
+                $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData,
+                $crate::reexports::client::protocol::wl_region::WlRegion: (),
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
             ] => $crate::compositor::CompositorState
         );
     };

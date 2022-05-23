@@ -475,19 +475,11 @@ pub struct WindowData(pub(crate) Arc<WindowDataInner>);
 #[macro_export]
 macro_rules! delegate_xdg_window {
     ($ty: ty) => {
-        // Toplevel
-        type __XdgSurface = $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface;
-        type __XdgToplevel = $crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel;
-        type __ZxdgDecorationManagerV1 =
-            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1;
-        type __ZxdgToplevelDecorationV1 =
-            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1;
-
         $crate::reexports::client::delegate_dispatch!($ty: [
-            __XdgSurface: $crate::shell::xdg::window::WindowData,
-            __XdgToplevel: $crate::shell::xdg::window::WindowData,
-            __ZxdgDecorationManagerV1: (),
-            __ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData,
+            $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::window::WindowData,
+            $crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel: $crate::shell::xdg::window::WindowData,
+            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1: (),
+            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData,
         ] => $crate::shell::xdg::window::XdgWindowState);
     };
 }

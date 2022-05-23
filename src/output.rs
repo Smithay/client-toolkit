@@ -211,16 +211,10 @@ pub struct OutputInfo {
 #[macro_export]
 macro_rules! delegate_output {
     ($ty: ty) => {
-        type __WlOutput = $crate::reexports::client::protocol::wl_output::WlOutput;
-        type __ZxdgOutputV1 =
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1;
-        type __ZxdgOutputManagerV1 =
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1;
-
         $crate::reexports::client::delegate_dispatch!($ty: [
-            __WlOutput: $crate::output::OutputData,
-            __ZxdgOutputManagerV1: (),
-            __ZxdgOutputV1: $crate::output::OutputData,
+            $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData,
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: (),
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData,
         ] => $crate::output::OutputState);
     };
 }

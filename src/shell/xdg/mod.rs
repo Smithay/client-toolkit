@@ -107,10 +107,8 @@ pub trait ConfigureHandler<D> {
 #[macro_export]
 macro_rules! delegate_xdg_shell {
     ($ty: ty) => {
-        type __XdgWmBase = $crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase;
-
         $crate::reexports::client::delegate_dispatch!($ty: [
-            __XdgWmBase: (),
+            $crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase: (),
         ] => $crate::shell::xdg::XdgShellState);
     };
 }
