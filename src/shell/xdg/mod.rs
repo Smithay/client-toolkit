@@ -1,8 +1,6 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
-use std::marker::PhantomData;
-
 use wayland_client::{protocol::wl_surface, Connection, Dispatch, QueueHandle};
 use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
 
@@ -13,15 +11,14 @@ pub mod popup;
 pub mod window;
 
 #[derive(Debug)]
-pub struct XdgShellState<D> {
+pub struct XdgShellState {
     // (name, global)
     xdg_wm_base: Option<(u32, xdg_wm_base::XdgWmBase)>,
-    _marker: PhantomData<D>,
 }
 
-impl<D> XdgShellState<D> {
+impl XdgShellState {
     pub fn new() -> Self {
-        Self { xdg_wm_base: None, _marker: PhantomData }
+        Self { xdg_wm_base: None }
     }
 
     pub fn xdg_wm_base(&self) -> Option<&xdg_wm_base::XdgWmBase> {
@@ -48,21 +45,18 @@ impl<D> XdgShellState<D> {
     ///
     /// [`XdgSurface`]: xdg_surface::XdgSurface
     /// [`WlSurface`]: wl_surface::WlSurface
-    pub fn create_xdg_surface(
+    pub fn create_xdg_surface<U, D>(
         &self,
         qh: &QueueHandle<D>,
         surface: wl_surface::WlSurface,
-        configure_handler: impl ConfigureHandler<D> + Send + Sync + 'static,
+        udata: U,
     ) -> Result<XdgShellSurface, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, XdgSurfaceData<D>> + 'static,
+        D: Dispatch<xdg_surface::XdgSurface, U> + 'static,
+        U: Send + Sync + 'static,
     {
         let wm_base = self.xdg_wm_base().ok_or(GlobalError::MissingGlobals(&["xdg_wm_base"]))?;
-        let xdg_surface = wm_base.get_xdg_surface(
-            &surface,
-            qh,
-            XdgSurfaceData { configure_handler: Box::new(configure_handler) },
-        )?;
+        let xdg_surface = wm_base.get_xdg_surface(&surface, qh, udata)?;
 
         Ok(XdgShellSurface { xdg_surface, surface })
     }
@@ -85,7 +79,7 @@ impl XdgShellSurface {
 }
 
 pub trait XdgShellHandler: Sized {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState<Self>;
+    fn xdg_shell_state(&mut self) -> &mut XdgShellState;
 }
 
 /// Trait that should be implemented by data used to create [`XdgSurfaceData`].
@@ -110,22 +104,14 @@ pub trait ConfigureHandler<D> {
     );
 }
 
-/// Data associated with an [`XdgSurface`](xdg_surface::XdgSurface) protocol object.
-#[allow(missing_debug_implementations)]
-pub struct XdgSurfaceData<D> {
-    configure_handler: Box<(dyn ConfigureHandler<D> + Send + Sync + 'static)>,
-}
-
 #[macro_export]
 macro_rules! delegate_xdg_shell {
     ($ty: ty) => {
         type __XdgWmBase = $crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase;
-        type __XdgSurface = $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface;
 
         $crate::reexports::client::delegate_dispatch!($ty: [
             __XdgWmBase: (),
-            __XdgSurface: $crate::shell::xdg::XdgSurfaceData<$ty>
-        ] => $crate::shell::xdg::XdgShellState<$ty>);
+        ] => $crate::shell::xdg::XdgShellState);
     };
 }
 

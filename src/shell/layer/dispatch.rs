@@ -59,7 +59,8 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData, D> for LayerState
+impl<D> DelegateDispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData, D>
+    for LayerState
 where
     D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData>
         + LayerHandler
