@@ -41,5 +41,5 @@
 //!
 //! [`Layer`]: self::layer::Layer
 
-// pub mod layer;
+pub mod layer;
 pub mod xdg;

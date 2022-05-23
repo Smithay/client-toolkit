@@ -26,7 +26,7 @@ thiserror = "1.0.30"
 wayland-backend = "=0.1.0-beta.1"
 wayland-client = "=0.30.0-beta.1"
 wayland-protocols = { version = "=0.30.0-beta.1", features = ["client", "unstable"] }
-wayland-protocols-wlr = { git = "https://github.com/Smithay/wayland-rs", features = ["client"] }
+wayland-protocols-wlr = { version = "=0.1.0-beta.1", features = ["client"] }
 wayland-cursor = "=0.30.0-beta.1"
 
 # Explicit dependency until release
