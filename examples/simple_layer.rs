@@ -17,11 +17,11 @@ use smithay_client_toolkit::{
         Anchor, KeyboardInteractivity, Layer, LayerHandler, LayerState, LayerSurface,
         LayerSurfaceConfigure,
     },
-    shm::{pool::raw::RawPool, ShmHandler, ShmState},
+    shm::{pool::slot::SlotPool, ShmHandler, ShmState},
 };
 use wayland_client::{
-    protocol::{wl_buffer, wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, QueueHandle,
 };
 
 fn main() {
@@ -49,7 +49,7 @@ fn main() {
         pool: None,
         width: 256,
         height: 256,
-        buffer: None,
+        shift: None,
         layer: None,
         keyboard: None,
         keyboard_focus: false,
@@ -62,7 +62,7 @@ fn main() {
 
     let pool = simple_layer
         .shm_state
-        .new_raw_pool(simple_layer.width as usize * simple_layer.height as usize * 4, &qh, ())
+        .new_slot_pool(simple_layer.width as usize * simple_layer.height as usize * 4)
         .expect("Failed to create pool");
     simple_layer.pool = Some(pool);
 
@@ -100,10 +100,10 @@ struct SimpleLayer {
 
     exit: bool,
     first_configure: bool,
-    pool: Option<RawPool>,
+    pool: Option<SlotPool>,
     width: u32,
     height: u32,
-    buffer: Option<wl_buffer::WlBuffer>,
+    shift: Option<u32>,
     layer: Option<LayerSurface>,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
@@ -368,6 +368,7 @@ impl PointerHandler for SimpleLayer {
     ) {
         if self.pointer_focus {
             println!("Pointer press button: {:?} @ {}", button, time);
+            self.shift = self.shift.xor(Some(0));
         }
     }
 
@@ -416,46 +417,20 @@ impl ShmHandler for SimpleLayer {
 impl SimpleLayer {
     pub fn draw(&mut self, qh: &QueueHandle<Self>) {
         if let Some(window) = self.layer.as_ref() {
-            // Ensure the pool is big enough to hold the new buffer.
-            self.pool
-                .as_mut()
-                .unwrap()
-                .resize((self.width * self.height * 4) as usize)
-                .expect("resize pool");
-
-            // Destroy the old buffer.
-            // FIXME: Integrate this into the pool logic.
-            if let Some(buffer) = self.buffer.take() {
-                buffer.destroy();
-            }
-
-            let offset = 0;
+            let width = self.width;
+            let height = self.height;
             let stride = self.width as i32 * 4;
             let pool = self.pool.as_mut().unwrap();
 
-            let wl_buffer = pool
-                .create_buffer(
-                    offset,
-                    self.width as i32,
-                    self.height as i32,
-                    stride,
-                    wl_shm::Format::Argb8888,
-                    (),
-                    qh,
-                )
+            let (buffer, canvas) = pool
+                .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
                 .expect("create buffer");
-
-            // TODO: Upgrade to a better pool type
-            let len = self.height as usize * stride as usize; // length of a row
-            let buffer = &mut pool.mmap()[offset as usize..][..len];
 
             // Draw to the window:
             {
-                let width = self.width;
-                let height = self.height;
-
-                buffer.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
-                    let x = (index % width as usize) as u32;
+                let shift = self.shift.unwrap_or(0);
+                canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
+                    let x = ((index + shift as usize) % width as usize) as u32;
                     let y = (index / width as usize) as u32;
 
                     let a = 0xFF;
@@ -467,17 +442,25 @@ impl SimpleLayer {
                     let array: &mut [u8; 4] = chunk.try_into().unwrap();
                     *array = color.to_le_bytes();
                 });
+
+                if let Some(shift) = &mut self.shift {
+                    *shift = (*shift + 1) % width;
+                }
             }
 
-            self.buffer = Some(wl_buffer);
+            // Damage the entire window
+            window.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
 
             // Request our next frame
             window.wl_surface().frame(qh, window.wl_surface().clone()).expect("create callback");
 
-            assert!(self.buffer.is_some(), "No buffer?");
             // Attach and commit to present.
-            window.wl_surface().attach(self.buffer.as_ref(), 0, 0);
+            buffer.attach_to(window.wl_surface()).expect("buffer attach");
             window.wl_surface().commit();
+
+            // TODO save and reuse buffer when the window size is unchanged.  This is especially
+            // useful if you do damage tracking, since you don't need to redraw the undamaged parts
+            // of the canvas.
         }
     }
 }
@@ -503,21 +486,5 @@ delegate_registry!(SimpleLayer: [
 impl ProvidesRegistryState for SimpleLayer {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
-    }
-}
-
-// TODO
-impl Dispatch<wl_buffer::WlBuffer> for SimpleLayer {
-    type UserData = ();
-
-    fn event(
-        &mut self,
-        _: &wl_buffer::WlBuffer,
-        _: wl_buffer::Event,
-        _: &Self::UserData,
-        _: &Connection,
-        _: &wayland_client::QueueHandle<Self>,
-    ) {
-        // todo
     }
 }

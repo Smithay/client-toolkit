@@ -7,6 +7,7 @@ use std::{
     fs::File,
     io,
     os::unix::prelude::{FromRawFd, RawFd},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -18,9 +19,9 @@ use nix::{
     unistd,
 };
 use wayland_client::{
-    backend::InvalidId,
+    backend::{InvalidId, ObjectData},
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
-    Dispatch, QueueHandle,
+    Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use crate::error::GlobalError;
@@ -61,6 +62,12 @@ impl RawPool {
         &mut self.mmap
     }
 
+    /// Returns the size of the mempool
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
     /// Create a new buffer to this pool.
     ///
     /// ## Parameters
@@ -94,6 +101,32 @@ impl RawPool {
         Ok(buffer)
     }
 
+    /// Create a new buffer to this pool.
+    ///
+    /// This is identical to [Self::create_buffer], but allows using a custom [ObjectData]
+    /// implementation instead of relying on the [Dispatch] interface.
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_buffer_raw(
+        &mut self,
+        offset: i32,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: wl_shm::Format,
+        data: Arc<dyn ObjectData + 'static>,
+    ) -> Result<wl_buffer::WlBuffer, InvalidId> {
+        self.pool.send_constructor(
+            wl_shm_pool::Request::CreateBuffer {
+                offset,
+                width,
+                height,
+                stride,
+                format: WEnum::Value(format),
+            },
+            data,
+        )
+    }
+
     /// Returns the pool object used to communicate with the server.
     pub fn pool(&self) -> &wl_shm_pool::WlShmPool {
         &self.pool
@@ -117,21 +150,17 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
-    pub(crate) fn new<D, U>(
-        len: usize,
-        shm: &wl_shm::WlShm,
-        qh: &QueueHandle<D>,
-        udata: U,
-    ) -> Result<RawPool, CreatePoolError>
-    where
-        D: Dispatch<wl_shm_pool::WlShmPool, UserData = U> + 'static,
-        U: Send + Sync + 'static,
-    {
+    pub(crate) fn new(len: usize, shm: &wl_shm::WlShm) -> Result<RawPool, CreatePoolError> {
         let shm_fd = RawPool::create_shm_fd()?;
         let mem_file = unsafe { File::from_raw_fd(shm_fd) };
         mem_file.set_len(len as u64)?;
 
-        let pool = shm.create_pool(shm_fd, len as i32, qh, udata).map_err(GlobalError::from)?;
+        let pool = shm
+            .send_constructor(
+                wl_shm::Request::CreatePool { fd: shm_fd, size: len as i32 },
+                Arc::new(ShmPoolData),
+            )
+            .map_err(GlobalError::from)?;
         let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
 
         Ok(RawPool { pool, len, mem_file, mmap })
@@ -230,4 +259,19 @@ impl Drop for RawPool {
     fn drop(&mut self) {
         self.pool.destroy();
     }
+}
+
+#[derive(Debug)]
+struct ShmPoolData;
+
+impl ObjectData for ShmPoolData {
+    fn event(
+        self: Arc<Self>,
+        _: &wayland_client::backend::Backend,
+        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId>,
+    ) -> Option<Arc<(dyn ObjectData + 'static)>> {
+        unreachable!("wl_shm_pool has no events")
+    }
+
+    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
