@@ -142,8 +142,7 @@ impl LayerSurfaceBuilder {
         layer: Layer,
     ) -> Result<LayerSurface, GlobalError>
     where
-        D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData>
-            + 'static,
+        D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData> + 'static,
     {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
         // will stay for ext-layer-shell-v1 support.
@@ -375,8 +374,8 @@ pub struct LayerSurfaceData {
 macro_rules! delegate_layer {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1,
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: (),
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData,
         ] => $crate::shell::layer::LayerState);
     };
 }
