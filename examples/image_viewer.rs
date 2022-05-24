@@ -8,6 +8,7 @@ use smithay_client_toolkit::{
     delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
+    registry_handlers,
     shell::xdg::{
         window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
         XdgShellHandler, XdgShellState,
@@ -27,15 +28,11 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let display = conn.display();
-
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&qh, ()).unwrap();
-
     let mut state = State {
-        registry_state: RegistryState::new(registry),
+        registry_state: RegistryState::new(&conn, &qh),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
         shm_state: ShmState::new(),
@@ -46,8 +43,9 @@ fn main() {
         windows: Vec::new(),
     };
 
-    event_queue.blocking_dispatch(&mut state).unwrap();
-    event_queue.blocking_dispatch(&mut state).unwrap();
+    while !state.registry_state.ready() {
+        event_queue.blocking_dispatch(&mut state).unwrap();
+    }
 
     let mut pool_size = 0;
 
@@ -309,16 +307,12 @@ delegate_shm!(State);
 delegate_xdg_shell!(State);
 delegate_xdg_window!(State);
 
-delegate_registry!(State: [
-    CompositorState,
-    OutputState,
-    ShmState,
-    XdgShellState,
-    XdgWindowState,
-]);
+delegate_registry!(State);
 
 impl ProvidesRegistryState for State {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
+
+    registry_handlers!(CompositorState, OutputState, ShmState, XdgShellState, XdgWindowState,);
 }

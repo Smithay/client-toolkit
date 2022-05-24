@@ -13,16 +13,17 @@ use wayland_client::{
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::error::GlobalError;
+use crate::registry::GlobalProxy;
 
 #[derive(Debug)]
 pub struct LayerState {
-    wlr_layer_shell: Option<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
+    wlr_layer_shell: GlobalProxy<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
     surfaces: Vec<Weak<LayerSurfaceInner>>,
 }
 
 impl LayerState {
     pub fn new() -> LayerState {
-        LayerState { wlr_layer_shell: None, surfaces: Vec::new() }
+        LayerState { wlr_layer_shell: GlobalProxy::NotReady, surfaces: Vec::new() }
     }
 
     /// Returns whether the layer shell is available.
@@ -30,11 +31,11 @@ impl LayerState {
     /// The layer shell is not supported by all compositors and this function may be used to determine if
     /// compositor support is available.
     pub fn is_available(&self) -> bool {
-        self.wlr_layer_shell.is_some()
+        self.wlr_layer_shell.get().is_ok()
     }
 
-    pub fn wlr_layer_shell(&self) -> Option<&zwlr_layer_shell_v1::ZwlrLayerShellV1> {
-        self.wlr_layer_shell.as_ref()
+    pub fn wlr_layer_shell(&self) -> Result<&zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get()
     }
 
     pub fn get_wlr_surface(
@@ -147,9 +148,7 @@ impl LayerSurfaceBuilder {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
         // will stay for ext-layer-shell-v1 support.
 
-        let layer_shell = layer_state
-            .wlr_layer_shell()
-            .ok_or(GlobalError::MissingGlobals(&["zwlr_layer_shell_v1"]))?;
+        let layer_shell = layer_state.wlr_layer_shell()?;
         let layer_surface = layer_shell.get_layer_surface(
             &surface,
             self.output.as_ref(),

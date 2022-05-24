@@ -5,6 +5,7 @@ use wayland_client::{protocol::wl_surface, Connection, Dispatch, QueueHandle};
 use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
 
 use crate::error::GlobalError;
+use crate::registry::GlobalProxy;
 
 mod inner;
 pub mod popup;
@@ -12,17 +13,16 @@ pub mod window;
 
 #[derive(Debug)]
 pub struct XdgShellState {
-    // (name, global)
-    xdg_wm_base: Option<(u32, xdg_wm_base::XdgWmBase)>,
+    xdg_wm_base: GlobalProxy<xdg_wm_base::XdgWmBase>,
 }
 
 impl XdgShellState {
     pub fn new() -> Self {
-        Self { xdg_wm_base: None }
+        Self { xdg_wm_base: GlobalProxy::NotReady }
     }
 
-    pub fn xdg_wm_base(&self) -> Option<&xdg_wm_base::XdgWmBase> {
-        self.xdg_wm_base.as_ref().map(|(_, global)| global)
+    pub fn xdg_wm_base(&self) -> Result<&xdg_wm_base::XdgWmBase, GlobalError> {
+        self.xdg_wm_base.get()
     }
 
     /// Creates an [`XdgShellSurface`].
@@ -55,7 +55,7 @@ impl XdgShellState {
         D: Dispatch<xdg_surface::XdgSurface, U> + 'static,
         U: Send + Sync + 'static,
     {
-        let wm_base = self.xdg_wm_base().ok_or(GlobalError::MissingGlobals(&["xdg_wm_base"]))?;
+        let wm_base = self.xdg_wm_base()?;
         let xdg_surface = wm_base.get_xdg_surface(&surface, qh, udata)?;
 
         Ok(XdgShellSurface { xdg_surface, surface })

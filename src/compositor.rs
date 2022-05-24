@@ -11,7 +11,7 @@ use wayland_client::{
 use crate::{
     error::GlobalError,
     output::OutputData,
-    registry::{ProvidesRegistryState, RegistryHandler},
+    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
 pub trait CompositorHandler: Sized {
@@ -41,16 +41,16 @@ pub trait CompositorHandler: Sized {
 
 #[derive(Debug)]
 pub struct CompositorState {
-    wl_compositor: Option<wl_compositor::WlCompositor>,
+    wl_compositor: GlobalProxy<wl_compositor::WlCompositor>,
 }
 
 impl CompositorState {
     pub fn new() -> CompositorState {
-        CompositorState { wl_compositor: None }
+        CompositorState { wl_compositor: GlobalProxy::new() }
     }
 
-    pub fn wl_compositor(&self) -> Option<&wl_compositor::WlCompositor> {
-        self.wl_compositor.as_ref()
+    pub fn wl_compositor(&self) -> Result<&wl_compositor::WlCompositor, GlobalError> {
+        self.wl_compositor.get()
     }
 
     pub fn create_surface<D>(
@@ -60,8 +60,7 @@ impl CompositorState {
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
     {
-        let compositor =
-            self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
+        let compositor = self.wl_compositor.get()?;
 
         let surface = compositor.create_surface(
             qh,
@@ -75,8 +74,7 @@ impl CompositorState {
     where
         D: Dispatch<wl_region::WlRegion, ()> + 'static,
     {
-        let compositor =
-            self.wl_compositor.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_compositor"]))?;
+        let compositor = self.wl_compositor.get()?;
 
         compositor.create_region(qh, ()).map_err(Into::into)
     }
@@ -218,25 +216,9 @@ where
         + ProvidesRegistryState
         + 'static,
 {
-    fn new_global(
-        state: &mut D,
-        _conn: &Connection,
-        qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        version: u32,
-    ) {
-        if interface == "wl_compositor" {
-            let compositor = state
-                .registry()
-                .bind_once::<wl_compositor::WlCompositor, _, _>(qh, name, u32::min(version, 4), ())
-                .expect("Failed to bind global");
+    fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
+        let compositor = state.registry().bind_one(qh, 1..=4, ());
 
-            state.compositor_state().wl_compositor = Some(compositor);
-        }
-    }
-
-    fn remove_global(_state: &mut D, _conn: &Connection, _qh: &QueueHandle<D>, _name: u32) {
-        // Capability global, removal is unlikely
+        state.compositor_state().wl_compositor = compositor.into();
     }
 }

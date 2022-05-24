@@ -9,30 +9,8 @@ impl<D> RegistryHandler<D> for XdgShellState
 where
     D: Dispatch<xdg_wm_base::XdgWmBase, ()> + XdgShellHandler + ProvidesRegistryState + 'static,
 {
-    fn new_global(
-        data: &mut D,
-        _conn: &Connection,
-        qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        version: u32,
-    ) {
-        if interface == "xdg_wm_base" {
-            if data.xdg_shell_state().xdg_wm_base.is_some() {
-                return;
-            }
-
-            let xdg_wm_base = data
-                .registry()
-                .bind_once::<xdg_wm_base::XdgWmBase, _, _>(qh, name, u32::min(version, 3), ())
-                .expect("failed to bind global");
-
-            data.xdg_shell_state().xdg_wm_base = Some((name, xdg_wm_base));
-        }
-    }
-
-    fn remove_global(_: &mut D, _: &Connection, _: &QueueHandle<D>, _: u32) {
-        // Unlikely to ever occur and the surfaces become inert if this happens.
+    fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
+        data.xdg_shell_state().xdg_wm_base = data.registry().bind_one(qh, 1..=3, ()).into();
     }
 }
 
