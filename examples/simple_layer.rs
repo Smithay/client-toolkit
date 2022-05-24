@@ -8,6 +8,7 @@ use smithay_client_toolkit::{
     delegate_registry, delegate_seat, delegate_shm,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
+    registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers},
         pointer::{PointerHandler, PointerScroll},
@@ -29,15 +30,11 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let display = conn.display();
-
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&qh, ()).unwrap();
-
     let mut simple_layer = SimpleLayer {
-        registry_state: RegistryState::new(registry),
+        registry_state: RegistryState::new(&conn, &qh),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
@@ -57,8 +54,9 @@ fn main() {
         pointer_focus: false,
     };
 
-    event_queue.blocking_dispatch(&mut simple_layer).unwrap();
-    // event_queue.blocking_dispatch(&mut simple_layer).unwrap();
+    while !simple_layer.registry_state.ready() {
+        event_queue.blocking_dispatch(&mut simple_layer).unwrap();
+    }
 
     let pool = simple_layer
         .shm_state
@@ -475,16 +473,11 @@ delegate_pointer!(SimpleLayer);
 
 delegate_layer!(SimpleLayer);
 
-delegate_registry!(SimpleLayer: [
-    CompositorState,
-    OutputState,
-    ShmState,
-    SeatState,
-    LayerState,
-]);
+delegate_registry!(SimpleLayer);
 
 impl ProvidesRegistryState for SimpleLayer {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
+    registry_handlers![CompositorState, OutputState, ShmState, SeatState, LayerState,];
 }

@@ -236,6 +236,7 @@ pub struct SeatData {
     has_pointer: Arc<AtomicBool>,
     has_touch: Arc<AtomicBool>,
     name: Arc<Mutex<Option<String>>>,
+    id: u32,
 }
 
 #[macro_export]
@@ -251,7 +252,6 @@ macro_rules! delegate_seat {
 
 #[derive(Debug)]
 struct SeatInner {
-    global_name: u32,
     seat: wl_seat::WlSeat,
     data: SeatData,
 }
@@ -325,48 +325,73 @@ impl<D> RegistryHandler<D> for SeatState
 where
     D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler + ProvidesRegistryState + 'static,
 {
+    fn ready(state: &mut D, conn: &Connection, qh: &QueueHandle<D>) {
+        let seats = state
+            .registry()
+            .bind_all(qh, 1..=7, |id| SeatData {
+                has_keyboard: Arc::new(AtomicBool::new(false)),
+                has_pointer: Arc::new(AtomicBool::new(false)),
+                has_touch: Arc::new(AtomicBool::new(false)),
+                name: Arc::new(Mutex::new(None)),
+                id,
+            })
+            .expect("failed to bind global");
+
+        for seat in seats {
+            let data = seat.data::<SeatData>().unwrap().clone();
+
+            state.seat_state().seats.push(SeatInner { seat: seat.clone(), data });
+            state.new_seat(conn, qh, seat);
+        }
+    }
+
     fn new_global(
         state: &mut D,
         conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
-        version: u32,
+        _: u32,
     ) {
         if interface == "wl_seat" {
             let seat = state
                 .registry()
-                .bind_cached(conn, qh, name, || {
-                    (
-                        u32::min(version, 7),
-                        SeatData {
-                            has_keyboard: Arc::new(AtomicBool::new(false)),
-                            has_pointer: Arc::new(AtomicBool::new(false)),
-                            has_touch: Arc::new(AtomicBool::new(false)),
-                            name: Arc::new(Mutex::new(None)),
-                        },
-                    )
-                })
+                .bind_specific(
+                    qh,
+                    name,
+                    1..=7,
+                    SeatData {
+                        has_keyboard: Arc::new(AtomicBool::new(false)),
+                        has_pointer: Arc::new(AtomicBool::new(false)),
+                        has_touch: Arc::new(AtomicBool::new(false)),
+                        name: Arc::new(Mutex::new(None)),
+                        id: name,
+                    },
+                )
                 .expect("failed to bind global");
 
             let data = seat.data::<SeatData>().unwrap().clone();
 
-            state.seat_state().seats.push(SeatInner {
-                global_name: name,
-                seat: seat.clone(),
-                data,
-            });
+            state.seat_state().seats.push(SeatInner { seat: seat.clone(), data });
             state.new_seat(conn, qh, seat);
         }
     }
 
-    fn remove_global(state: &mut D, conn: &Connection, qh: &QueueHandle<D>, name: u32) {
-        if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.global_name == name)
-        {
-            let seat = seat.seat.clone();
+    fn remove_global(
+        state: &mut D,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+        name: u32,
+        interface: &str,
+    ) {
+        if interface == "wl_seat" {
+            if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.data.id == name)
+            {
+                let seat = seat.seat.clone();
 
-            state.remove_seat(conn, qh, seat);
-            state.seat_state().seats.retain(|inner| inner.global_name != name);
+                state.remove_seat(conn, qh, seat);
+                state.seat_state().seats.retain(|inner| inner.data.id != name);
+            }
         }
     }
 }

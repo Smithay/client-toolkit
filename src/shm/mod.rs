@@ -6,7 +6,7 @@ use wayland_client::{
 
 use crate::{
     error::GlobalError,
-    registry::{ProvidesRegistryState, RegistryHandler},
+    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
 use self::pool::{raw::RawPool, slot::SlotPool, CreatePoolError};
@@ -17,17 +17,17 @@ pub trait ShmHandler {
 
 #[derive(Debug)]
 pub struct ShmState {
-    wl_shm: Option<(u32, wl_shm::WlShm)>, // (name, global)
+    wl_shm: GlobalProxy<wl_shm::WlShm>,
     formats: Vec<wl_shm::Format>,
 }
 
 impl ShmState {
     pub fn new() -> ShmState {
-        ShmState { wl_shm: None, formats: vec![] }
+        ShmState { wl_shm: GlobalProxy::NotReady, formats: vec![] }
     }
 
-    pub fn wl_shm(&self) -> Option<&wl_shm::WlShm> {
-        self.wl_shm.as_ref().map(|(_, shm)| shm)
+    pub fn wl_shm(&self) -> Result<&wl_shm::WlShm, GlobalError> {
+        self.wl_shm.get()
     }
 
     pub fn new_slot_pool(&self, len: usize) -> Result<SlotPool, CreatePoolError> {
@@ -38,7 +38,7 @@ impl ShmState {
     ///
     /// In most cases this is not what you want. You should use TODO name here or TODO in most cases.
     pub fn new_raw_pool(&self, len: usize) -> Result<RawPool, CreatePoolError> {
-        let (_, shm) = self.wl_shm.as_ref().ok_or(GlobalError::MissingGlobals(&["wl_shm"]))?;
+        let shm = self.wl_shm()?;
 
         RawPool::new(len, shm)
     }
@@ -119,25 +119,7 @@ impl<D> RegistryHandler<D> for ShmState
 where
     D: Dispatch<wl_shm::WlShm, ()> + ShmHandler + ProvidesRegistryState + 'static,
 {
-    fn new_global(
-        state: &mut D,
-        _conn: &Connection,
-        qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _: u32,
-    ) {
-        if interface == "wl_shm" {
-            let shm = state
-                .registry()
-                .bind_once::<wl_shm::WlShm, _, _>(qh, name, 1, ())
-                .expect("Failed to bind global");
-
-            state.shm_state().wl_shm = Some((name, shm));
-        }
-    }
-
-    fn remove_global(_state: &mut D, _conn: &Connection, _qh: &QueueHandle<D>, _name: u32) {
-        // Capability global, removal is unlikely
+    fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
+        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, ()).into();
     }
 }

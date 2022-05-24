@@ -6,6 +6,7 @@ use smithay_client_toolkit::{
     delegate_output, delegate_registry,
     output::{OutputHandler, OutputInfo, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
+    registry_handlers,
 };
 use wayland_client::{protocol::wl_output, Connection, QueueHandle};
 
@@ -21,15 +22,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    // Get the display so we can create a registry.
-    let display = conn.display();
-
-    // Create the registry using the display.
-    let registry = display.get_registry(&qh, ())?;
-
-    // Initialize the delegate for registry handling so other parts of Smithay's client toolkit may bind
+    // Initialize the registry handling so other parts of Smithay's client toolkit may bind
     // globals.
-    let registry_state = RegistryState::new(registry);
+    let registry_state = RegistryState::new(&conn, &qh);
 
     // Initialize the delegate we will use for outputs.
     let output_delegate = OutputState::new();
@@ -41,13 +36,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut list_outputs = ListOutputs { registry_state, output_state: output_delegate };
 
     // Send requests to the server and block until we receive events from the server.
-    event_queue.blocking_dispatch(&mut list_outputs)?;
+    while !list_outputs.registry_state.ready() {
+        event_queue.blocking_dispatch(&mut list_outputs)?;
+    }
 
     // We do this again here because the first time we let the delegates bind their globals.
     //
     // After the delegates have bound their globals and created the necessary objects, we need to dispatch
     // again so that events may be sent to the newly created objects.
-    event_queue.blocking_dispatch(&mut list_outputs)?;
+    event_queue.sync_roundtrip(&mut list_outputs)?;
 
     // Now our outputs have been initialized with data, we may access what outputs exist and information about
     // said outputs using the output delegate.
@@ -115,25 +112,25 @@ impl OutputHandler for ListOutputs {
 // type to the requisite delegate.
 delegate_output!(ListOutputs);
 
-// In order for our delegate to know of the existence of globals, we need to do two things that this macro
-// provides.
-//
-// First we need to implement registry handling for the program. This trait will forward events to the
-// RegistryHandler trait implementations.
-//
-// Next we need to indicate which delegates will get told about globals being created. We specify the types
-// of the delegates inside the array.
-delegate_registry!(ListOutputs: [
-    // Here we specify that OutputState needs to receive events regarding the creation and destruction of
-    // globals.
-    OutputState,
-]);
+// In order for our delegate to know of the existence of globals, we need to implement registry
+// handling for the program. This trait will forward events to the RegistryHandler trait
+// implementations.
+delegate_registry!(ListOutputs);
 
 // In order for delegate_registry to work, our application data type needs to provide a way for the
 // implementation to access the registry state.
+//
+// We also need to indicate which delegates will get told about globals being created. We specify
+// the types of the delegates inside the array.
 impl ProvidesRegistryState for ListOutputs {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
+    }
+
+    registry_handlers! {
+        // Here we specify that OutputState needs to receive events regarding the creation and destruction of
+        // globals.
+        OutputState,
     }
 }
 
