@@ -8,6 +8,21 @@ use wayland_client::{
 
 use super::{SeatHandler, SeatState};
 
+/* From linux/input-event-codes.h - the buttons usually used by mice */
+pub const BTN_LEFT: u32 = 0x110;
+pub const BTN_RIGHT: u32 = 0x111;
+pub const BTN_MIDDLE: u32 = 0x112;
+/// The fourth non-scroll button, which is often used as "back" in web browsers.
+pub const BTN_SIDE: u32 = 0x113;
+/// The fifth non-scroll button, which is often used as "forward" in web browsers.
+pub const BTN_EXTRA: u32 = 0x114;
+
+/// See also [`BTN_EXTRA`].
+pub const BTN_FORWARD: u32 = 0x115;
+/// See also [`BTN_SIDE`].
+pub const BTN_BACK: u32 = 0x116;
+pub const BTN_TASK: u32 = 0x117;
+
 /// Describes a scroll along one axis
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct AxisScroll {
