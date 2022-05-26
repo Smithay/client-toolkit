@@ -191,8 +191,8 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
         version: u32,
         _: DispatchData,
     ) {
-        // We currently support wl_output up to version 3
-        let version = std::cmp::min(version, 3);
+        // We currently support wl_output up to version 4
+        let version = std::cmp::min(version, 4);
         let output = registry.bind::<WlOutput>(version, id);
         let has_xdg;
         if let Some(xdg) = self.xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
@@ -383,6 +383,12 @@ fn merge_event(info: &mut OutputInfo, event: Event) {
                     is_current: flags.contains(wl_output::Mode::Current),
                 })
             }
+        }
+        Event::Name { name } => {
+            info.name = name;
+        }
+        Event::Description { description } => {
+            info.description = description;
         }
         // ignore all other events
         _ => (),
