@@ -1,10 +1,12 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
-use wayland_client::{protocol::wl_surface, Dispatch, QueueHandle};
-use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
+use std::sync::Arc;
+use wayland_client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
+use wayland_protocols::xdg::shell::client::{xdg_positioner, xdg_surface, xdg_wm_base};
 
 use crate::error::GlobalError;
+use crate::globals::ProvidesBoundGlobal;
 use crate::registry::GlobalProxy;
 
 mod inner;
@@ -60,6 +62,52 @@ impl XdgShellState {
 
         Ok(XdgShellSurface { xdg_surface, surface })
     }
+}
+
+/// A trivial wrapper for an [`xdg_positioner::XdgPositioner`].
+///
+/// This wrapper calls [`destroy`][xdg_positioner::XdgPositioner::destroy] on the contained
+/// positioner when it is dropped.
+#[derive(Debug)]
+pub struct XdgPositioner(xdg_positioner::XdgPositioner);
+
+impl XdgPositioner {
+    pub fn new(
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
+    ) -> Result<Self, GlobalError> {
+        wm_base
+            .bound_global()?
+            .send_constructor(xdg_wm_base::Request::CreatePositioner {}, Arc::new(PositionerData))
+            .map(XdgPositioner)
+            .map_err(From::from)
+    }
+}
+
+impl std::ops::Deref for XdgPositioner {
+    type Target = xdg_positioner::XdgPositioner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Drop for XdgPositioner {
+    fn drop(&mut self) {
+        self.0.destroy()
+    }
+}
+
+struct PositionerData;
+
+impl wayland_client::backend::ObjectData for PositionerData {
+    fn event(
+        self: Arc<Self>,
+        _: &wayland_client::backend::Backend,
+        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId>,
+    ) -> Option<Arc<(dyn wayland_client::backend::ObjectData + 'static)>> {
+        unreachable!("xdg_positioner has no events");
+    }
+    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
 #[derive(Debug)]
