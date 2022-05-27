@@ -38,6 +38,7 @@
 //!
 //! [XDG shell module documentation]: self::xdg
 //! [`Window`]: self::xdg::window::Window
+//! [`Popup`]: self::xdg::popup::Popup
 //!
 //! [`Layer`]: self::layer::Layer
 
