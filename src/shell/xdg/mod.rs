@@ -1,7 +1,7 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
-use wayland_client::{protocol::wl_surface, Connection, Dispatch, QueueHandle};
+use wayland_client::{protocol::wl_surface, Dispatch, QueueHandle};
 use wayland_protocols::xdg::shell::client::{xdg_surface, xdg_wm_base};
 
 use crate::error::GlobalError;
@@ -80,28 +80,6 @@ impl XdgShellSurface {
 
 pub trait XdgShellHandler: Sized {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState;
-}
-
-/// Trait that should be implemented by data used to create [`XdgSurfaceData`].
-///
-/// This trait exists to allow specialized configure functions to be implemented in a specific handler trait
-/// of any XDG shell managed surfaces such as [`WindowHandler::configure`](self::window::WindowHandler::configure).
-pub trait ConfigureHandler<D> {
-    /// The surface has received a configure.
-    ///
-    /// A configure atomically indicates that a sequence of events describing how a surface has changed have
-    /// all been sent.
-    ///
-    /// Implementations of this function should invoke a `configure` function on the specific handler trait
-    /// such as [`WindowHandler`](self::window::WindowHandler).
-    fn configure(
-        &self,
-        data: &mut D,
-        conn: &Connection,
-        qh: &QueueHandle<D>,
-        xdg_surface: &xdg_surface::XdgSurface,
-        serial: u32,
-    );
 }
 
 #[macro_export]
