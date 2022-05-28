@@ -195,7 +195,7 @@ impl LayerSurfaceBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LayerSurface(Arc<LayerSurfaceInner>);
 
 impl PartialEq for LayerSurface {

@@ -357,7 +357,7 @@ impl WindowBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Window(Arc<WindowInner>);
 
 impl Window {
