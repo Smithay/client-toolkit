@@ -16,6 +16,7 @@ use wayland_protocols::{
 };
 
 use crate::error::GlobalError;
+use crate::registry::GlobalProxy;
 
 use self::inner::{WindowDataInner, WindowInner};
 
@@ -26,13 +27,13 @@ pub(super) mod inner;
 #[derive(Debug)]
 pub struct XdgWindowState {
     // (name, global)
-    xdg_decoration_manager: Option<(u32, zxdg_decoration_manager_v1::ZxdgDecorationManagerV1)>,
+    xdg_decoration_manager: GlobalProxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
     windows: Vec<Weak<WindowInner>>,
 }
 
 impl XdgWindowState {
     pub fn new() -> XdgWindowState {
-        XdgWindowState { xdg_decoration_manager: None, windows: vec![] }
+        XdgWindowState { xdg_decoration_manager: GlobalProxy::NotReady, windows: vec![] }
     }
 
     pub fn window_by_wl(&self, surface: &wl_surface::WlSurface) -> Option<Window> {
@@ -268,8 +269,7 @@ impl WindowBuilder {
             + WindowHandler
             + 'static,
     {
-        let decoration_manager =
-            window_state.xdg_decoration_manager.as_ref().map(|(_, global)| global);
+        let decoration_manager = window_state.xdg_decoration_manager.get().ok();
 
         let data = Arc::new(WindowDataInner {
             pending_configure: Mutex::new(WindowConfigure {

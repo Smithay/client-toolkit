@@ -12,34 +12,8 @@ where
         + ProvidesRegistryState
         + 'static,
 {
-    fn new_global(
-        data: &mut D,
-        _conn: &Connection,
-        qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        version: u32,
-    ) {
-        if interface == "zwlr_layer_shell_v1" {
-            if data.layer_state().wlr_layer_shell.is_some() {
-                return;
-            }
-
-            data.layer_state().wlr_layer_shell = Some(
-                data.registry()
-                    .bind_once::<zwlr_layer_shell_v1::ZwlrLayerShellV1, _, _>(
-                        qh,
-                        name,
-                        u32::min(version, 4),
-                        (),
-                    )
-                    .expect("failed to bind wlr layer shell"),
-            );
-        }
-    }
-
-    fn remove_global(_: &mut D, _: &Connection, _: &QueueHandle<D>, _: u32) {
-        // Unlikely to ever occur and the surfaces become inert if this happens.
+    fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
+        data.layer_state().wlr_layer_shell = data.registry().bind_one(qh, 1..=4, ()).into();
     }
 }
 

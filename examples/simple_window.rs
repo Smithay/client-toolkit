@@ -6,6 +6,7 @@ use smithay_client_toolkit::{
     delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
+    registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers},
         pointer::{PointerHandler, PointerScroll},
@@ -30,15 +31,11 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let display = conn.display();
-
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
-    let registry = display.get_registry(&qh, ()).unwrap();
-
     let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(registry),
+        registry_state: RegistryState::new(&conn, &qh),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
@@ -60,8 +57,9 @@ fn main() {
         pointer_focus: false,
     };
 
-    event_queue.blocking_dispatch(&mut simple_window).unwrap();
-    event_queue.blocking_dispatch(&mut simple_window).unwrap();
+    while !simple_window.registry_state.ready() {
+        event_queue.blocking_dispatch(&mut simple_window).unwrap();
+    }
 
     let pool = simple_window
         .shm_state
@@ -508,17 +506,18 @@ delegate_pointer!(SimpleWindow);
 delegate_xdg_shell!(SimpleWindow);
 delegate_xdg_window!(SimpleWindow);
 
-delegate_registry!(SimpleWindow: [
-    CompositorState,
-    OutputState,
-    ShmState,
-    SeatState,
-    XdgShellState,
-    XdgWindowState,
-]);
+delegate_registry!(SimpleWindow);
 
 impl ProvidesRegistryState for SimpleWindow {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
+    registry_handlers![
+        CompositorState,
+        OutputState,
+        ShmState,
+        SeatState,
+        XdgShellState,
+        XdgWindowState,
+    ];
 }

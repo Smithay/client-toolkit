@@ -123,35 +123,9 @@ where
         + ProvidesRegistryState
         + 'static,
 {
-    fn new_global(
-        data: &mut D,
-        _conn: &Connection,
-        qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _version: u32,
-    ) {
-        if "zxdg_decoration_manager_v1" == interface {
-            if data.xdg_window_state().xdg_decoration_manager.is_some() {
-                return;
-            }
-
-            let xdg_decoration_manager = data
-                .registry()
-                .bind_once::<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, _, _>(
-                    qh,
-                    name,
-                    DECORATION_MANAGER_VERSION,
-                    (),
-                )
-                .expect("failed to bind global");
-
-            data.xdg_window_state().xdg_decoration_manager = Some((name, xdg_decoration_manager));
-        }
-    }
-
-    fn remove_global(_: &mut D, _: &Connection, _: &QueueHandle<D>, _: u32) {
-        // Unlikely to ever occur.
+    fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
+        data.xdg_window_state().xdg_decoration_manager =
+            data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, ()).into();
     }
 }
 

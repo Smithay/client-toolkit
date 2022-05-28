@@ -1,6 +1,7 @@
 use smithay_client_toolkit::{
     delegate_registry, delegate_seat,
     registry::{ProvidesRegistryState, RegistryState},
+    registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
 };
 use wayland_client::{protocol::wl_seat, Connection, QueueHandle};
@@ -9,14 +10,12 @@ fn main() {
     env_logger::init();
 
     let conn = Connection::connect_to_env().unwrap();
-    let display = conn.display();
 
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
-    let registry = display.get_registry(&qh, ()).unwrap();
 
     let mut list_seats =
-        ListSeats { registry_state: RegistryState::new(registry), seat_state: SeatState::new() };
+        ListSeats { registry_state: RegistryState::new(&conn, &qh), seat_state: SeatState::new() };
 
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
@@ -71,12 +70,12 @@ impl SeatHandler for ListSeats {
 
 delegate_seat!(ListSeats);
 
-delegate_registry!(ListSeats: [
-    SeatState,
-]);
+delegate_registry!(ListSeats);
 
 impl ProvidesRegistryState for ListSeats {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
+
+    registry_handlers!(SeatState);
 }

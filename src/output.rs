@@ -12,7 +12,7 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_v1,
 };
 
-use crate::registry::{ProvidesRegistryState, RegistryHandler};
+use crate::registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler};
 
 pub trait OutputHandler: Sized {
     fn output_state(&mut self) -> &mut OutputState;
@@ -46,13 +46,13 @@ pub trait OutputHandler: Sized {
 
 #[derive(Debug)]
 pub struct OutputState {
-    xdg: Option<ZxdgOutputManagerV1>,
+    xdg: GlobalProxy<ZxdgOutputManagerV1>,
     outputs: Vec<OutputInner>,
 }
 
 impl OutputState {
     pub fn new() -> OutputState {
-        OutputState { xdg: None, outputs: vec![] }
+        OutputState { xdg: GlobalProxy::new(), outputs: vec![] }
     }
 
     /// Returns an iterator over all outputs.
@@ -70,20 +70,57 @@ impl OutputState {
             .find(|inner| &inner.wl_output == output)
             .and_then(|inner| inner.current_info.clone())
     }
+
+    fn setup<D>(&mut self, wl_output: wl_output::WlOutput, qh: &QueueHandle<D>)
+    where
+        D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + 'static,
+    {
+        let data = wl_output.data::<OutputData>().unwrap().clone();
+
+        let pending_info = data.0.lock().unwrap().clone();
+        let name = pending_info.id;
+
+        let version = wl_output.version();
+        let pending_xdg = version < 4 && self.xdg.get().is_ok();
+
+        let xdg_output = if pending_xdg {
+            let xdg = self.xdg.get().unwrap();
+
+            Some(xdg.get_xdg_output(&wl_output, qh, data).unwrap())
+        } else {
+            None
+        };
+
+        let inner = OutputInner {
+            name,
+            wl_output,
+            xdg_output,
+            just_created: true,
+            // wl_output::done was added in version 2.
+            // If we have an output at version 1, assume the data was already sent.
+            current_info: if version > 1 { None } else { Some(OutputInfo::new(name)) },
+
+            pending_info,
+            pending_wl: true,
+            pending_xdg,
+        };
+
+        self.outputs.push(inner);
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct OutputData(Arc<Mutex<Option<OutputInfo>>>);
+pub struct OutputData(Arc<Mutex<OutputInfo>>);
 
 impl OutputData {
-    pub fn new() -> OutputData {
-        OutputData(Arc::new(Mutex::new(None)))
+    pub fn new(name: u32) -> OutputData {
+        OutputData(Arc::new(Mutex::new(OutputInfo::new(name))))
     }
 
     pub fn scale_factor(&self) -> i32 {
         let guard = self.0.lock().unwrap();
 
-        guard.as_ref().map(|info| info.scale_factor).unwrap_or(1)
+        guard.scale_factor
     }
 }
 
@@ -500,104 +537,76 @@ where
         + ProvidesRegistryState
         + 'static,
 {
+    fn ready(data: &mut D, _: &Connection, qh: &QueueHandle<D>) {
+        let outputs: Vec<wl_output::WlOutput> =
+            data.registry().bind_all(qh, 1..=4, OutputData::new).expect("Failed to bind global");
+
+        // Only bind xdg output manager if it's needed
+        let xdg = if outputs.iter().any(|o| o.version() < 4) {
+            data.registry().bind_one(qh, 1..=3, ()).into()
+        } else {
+            GlobalProxy::NotReady
+        };
+
+        let output_state = data.output_state();
+        output_state.xdg = xdg;
+
+        for wl_output in outputs {
+            output_state.setup(wl_output, qh);
+        }
+    }
+
     fn new_global(
         data: &mut D,
-        conn: &Connection,
+        _: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
         version: u32,
     ) {
-        match interface {
-            "wl_output" => {
-                let wl_output = data
-                    .registry()
-                    .bind_cached::<wl_output::WlOutput, _, _, _>(conn, qh, name, || {
-                        (u32::min(version, 4), OutputData::new())
-                    })
-                    .expect("Failed to bind global");
-
-                let output_state = data.output_state();
-
-                let version = wl_output.version();
-                let inner = OutputInner {
-                    name,
-                    wl_output: wl_output.clone(),
-                    xdg_output: None,
-                    just_created: true,
-                    // wl_output::done was added in version 2.
-                    // If we have an output at version 1, assume the data was already sent.
-                    current_info: if version > 1 { None } else { Some(OutputInfo::new(name)) },
-
-                    pending_info: OutputInfo::new(name),
-                    pending_wl: true,
-                    pending_xdg: output_state.xdg.is_some(),
-                };
-
-                output_state.outputs.push(inner);
-
-                if output_state.xdg.is_some() {
-                    let xdg = output_state.xdg.as_ref().unwrap();
-
-                    let data = wl_output.data::<OutputData>().unwrap().clone();
-
-                    let xdg_output = xdg.get_xdg_output(&wl_output, qh, data).unwrap();
-                    output_state.outputs.last_mut().unwrap().xdg_output = Some(xdg_output);
-                }
+        if interface == "wl_output" {
+            // Lazily bind xdg output manager if it's needed
+            if version < 4 && matches!(data.output_state().xdg, GlobalProxy::NotReady) {
+                data.output_state().xdg = data.registry().bind_one(qh, 1..=3, ()).into();
             }
 
-            "zxdg_output_manager_v1" => {
-                let global = data
-                    .registry()
-                    .bind_once::<zxdg_output_manager_v1::ZxdgOutputManagerV1, _, _>(
-                        qh,
-                        name,
-                        u32::min(version, 3),
-                        (),
-                    )
-                    .expect("Failed to bind global");
-
-                let output_state = data.output_state();
-
-                output_state.xdg = Some(global);
-
-                let xdg = output_state.xdg.as_ref().unwrap().clone();
-
-                // Because the order in which globals are advertised is undefined, we need to get the extension of any
-                // wl_output we have already gotten.
-                output_state.outputs.iter_mut().for_each(|output| {
-                    let data = output.wl_output.data::<OutputData>().unwrap().clone();
-
-                    let xdg_output = xdg.get_xdg_output(&output.wl_output, qh, data).unwrap();
-                    output.xdg_output = Some(xdg_output);
-                });
-            }
-
-            _ => (),
+            let output = data
+                .registry()
+                .bind_specific(qh, name, 1..=4, OutputData::new(name))
+                .expect("Failed to bind global");
+            data.output_state().setup(output, qh);
         }
     }
 
-    fn remove_global(data: &mut D, conn: &Connection, qh: &QueueHandle<D>, name: u32) {
-        let mut destroyed = vec![];
+    fn remove_global(
+        data: &mut D,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+        name: u32,
+        interface: &str,
+    ) {
+        if interface == "wl_output" {
+            let mut destroyed = vec![];
 
-        data.output_state().outputs.retain(|inner| {
-            let destroy = inner.name != name;
+            data.output_state().outputs.retain(|inner| {
+                let destroy = inner.name != name;
 
-            if destroy {
-                if let Some(xdg_output) = &inner.xdg_output {
-                    xdg_output.destroy();
+                if destroy {
+                    if let Some(xdg_output) = &inner.xdg_output {
+                        xdg_output.destroy();
+                    }
+
+                    inner.wl_output.release();
+
+                    destroyed.push(inner.wl_output.clone());
                 }
 
-                inner.wl_output.release();
+                destroy
+            });
 
-                destroyed.push(inner.wl_output.clone());
+            for output in destroyed {
+                data.output_destroyed(conn, qh, output);
             }
-
-            destroy
-        });
-
-        for output in destroyed {
-            data.output_destroyed(conn, qh, output);
         }
     }
 }
@@ -624,7 +633,7 @@ impl OutputData {
     pub(crate) fn set(&self, info: OutputInfo) {
         let mut guard = self.0.lock().unwrap();
 
-        *guard = Some(info);
+        *guard = info;
     }
 }
 
