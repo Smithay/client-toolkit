@@ -203,6 +203,15 @@ where
                 }
             }
 
+            xdg_toplevel::Event::ConfigureBounds { width, height } => {
+                let pending_configure = &mut *udata.0.pending_configure.lock().unwrap();
+                if width == 0 && height == 0 {
+                    pending_configure.suggested_bounds = None;
+                } else {
+                    pending_configure.suggested_bounds = Some((width as u32, height as u32));
+                }
+            }
+
             _ => unreachable!(),
         }
     }

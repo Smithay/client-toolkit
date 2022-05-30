@@ -246,8 +246,13 @@ impl RegistryState {
         let iface = I::interface();
         if *version.end() > iface.version {
             // This is a panic because it's a compile-time programmer error, not a runtime error.
-            panic!("Maximum version ({}) was higher than the proxy's maximum version ({}); outdated wayland XML files?",
-                version.end(), iface.version);
+            panic!("Maximum version ({}) of {} was higher than the proxy's maximum version ({}); outdated wayland XML files?",
+                version.end(), iface.name, iface.version);
+        }
+        if *version.end() < iface.version {
+            // This is a reminder to evaluate the new API and bump the maximum in order to be able
+            // to use new APIs.  Actual use of new APIs still needs runtime version checks.
+            log::trace!(target: "sctk", "Version {} of {} is available; binding is currently limited to {}", iface.version, iface.name, version.end());
         }
         for global in &self.globals {
             if global.interface != iface.name {
