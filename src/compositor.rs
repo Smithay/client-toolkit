@@ -110,6 +110,11 @@ pub struct SurfaceData {
 }
 
 impl SurfaceData {
+    /// Create a new surface that initially reports the given scale factor.
+    pub fn with_initial_scale(scale_factor: i32) -> Self {
+        Self { scale_factor: AtomicI32::new(scale_factor), outputs: Default::default() }
+    }
+
     /// The scale factor of the output with the highest scale factor.
     pub fn scale_factor(&self) -> i32 {
         self.scale_factor.load(Ordering::Relaxed)
@@ -123,7 +128,7 @@ impl SurfaceData {
 
 impl Default for SurfaceData {
     fn default() -> Self {
-        SurfaceData { scale_factor: AtomicI32::new(1), outputs: Mutex::new(vec![]) }
+        Self::with_initial_scale(1)
     }
 }
 
