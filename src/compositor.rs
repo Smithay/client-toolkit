@@ -90,10 +90,27 @@ pub struct SurfaceData {
     pub(crate) outputs: Mutex<Vec<wl_output::WlOutput>>,
 }
 
+impl SurfaceData {
+    /// The scale factor of the output with the highest scale factor.
+    pub fn scale_factor(&self) -> i32 {
+        self.scale_factor.load(Ordering::Relaxed)
+    }
+
+    /// The outputs the surface is currently inside.
+    pub fn outputs(&self) -> impl Iterator<Item = wl_output::WlOutput> {
+        self.outputs.lock().unwrap().clone().into_iter()
+    }
+}
+
+impl Default for SurfaceData {
+    fn default() -> Self {
+        SurfaceData { scale_factor: AtomicI32::new(1), outputs: Mutex::new(vec![]) }
+    }
+}
+
 #[macro_export]
 macro_rules! delegate_compositor {
     ($ty: ty) => {
-
         $crate::reexports::client::delegate_dispatch!($ty:
             [
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
@@ -134,24 +151,26 @@ where
         }
 
         // Compute the new max of the scale factors for all outputs this surface is displayed on.
-        let current = data.scale_factor.load(Ordering::SeqCst);
+        let current = data.scale_factor.load(Ordering::Relaxed);
 
-        let largest_factor = outputs
+        let factor = match outputs
             .iter()
             .filter_map(|output| output.data::<OutputData>().map(OutputData::scale_factor))
-            .reduce(i32::max);
+            .reduce(i32::max)
+        {
+            // If no scale factor is found, because the surface has left its only output, do not
+            // change the scale factor.
+            None => return,
+            Some(factor) if factor == current => return,
+            Some(factor) => factor,
+        };
+
+        data.scale_factor.store(factor, Ordering::Relaxed);
 
         // Drop the mutex before we send of any events.
         drop(outputs);
 
-        // If no scale factor is found, because the surface has left it's only output, do not change the scale factor.
-        if let Some(factor) = largest_factor {
-            data.scale_factor.store(factor, Ordering::SeqCst);
-
-            if current != factor {
-                state.scale_factor_changed(conn, qh, surface, factor);
-            }
-        }
+        state.scale_factor_changed(conn, qh, surface, factor);
     }
 }
 
