@@ -9,7 +9,7 @@ use smithay_client_toolkit::{
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers},
-        pointer::{PointerHandler, PointerScroll},
+        pointer::{PointerEvent, PointerEventKind, PointerHandler},
         Capability, SeatHandler, SeatState,
     },
     shell::xdg::{
@@ -54,7 +54,6 @@ fn main() {
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
-        pointer_focus: false,
     };
 
     while !simple_window.registry_state.ready() {
@@ -111,7 +110,6 @@ struct SimpleWindow {
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     pointer: Option<wl_pointer::WlPointer>,
-    pointer_focus: bool,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -329,94 +327,37 @@ impl KeyboardHandler for SimpleWindow {
 }
 
 impl PointerHandler for SimpleWindow {
-    fn pointer_focus(
+    fn pointer_frame(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
-        surface: &wl_surface::WlSurface,
-        entered: (f64, f64),
-        _serial: u32,
+        events: &[PointerEvent],
     ) {
-        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
-            println!("Pointer focus on window, entering at {:?}", entered);
-            self.pointer_focus = true;
-        }
-    }
-
-    fn pointer_release_focus(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
-        surface: &wl_surface::WlSurface,
-        _serial: u32,
-    ) {
-        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
-            println!("Release pointer focus on window");
-            self.pointer_focus = false;
-        }
-    }
-
-    fn pointer_motion(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
-        time: u32,
-        position: (f64, f64),
-    ) {
-        if self.pointer_focus {
-            println!("Pointer motion: {:?} @ {}", position, time);
-        }
-    }
-
-    fn pointer_press_button(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
-        time: u32,
-        button: u32,
-        _serial: u32,
-    ) {
-        if self.pointer_focus {
-            println!("Pointer press button: {:?} @ {}", button, time);
-            self.shift = self.shift.xor(Some(0));
-        }
-    }
-
-    fn pointer_release_button(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
-        time: u32,
-        button: u32,
-        _serial: u32,
-    ) {
-        if self.pointer_focus {
-            println!("Pointer release button: {:?} @ {}", button, time);
-        }
-    }
-
-    fn pointer_axis(
-        &mut self,
-        _: &Connection,
-        _: &QueueHandle<Self>,
-        _: &wl_pointer::WlPointer,
-        time: u32,
-        scroll: PointerScroll,
-    ) {
-        if self.pointer_focus {
-            println!("Pointer scroll: @ {}", time);
-
-            if let Some(vertical) = scroll.axis(wl_pointer::Axis::VerticalScroll) {
-                println!("\nV: {:?}", vertical);
+        use PointerEventKind::*;
+        for event in events {
+            // Ignore events for other surfaces
+            if Some(&event.surface) != self.window.as_ref().map(Window::wl_surface) {
+                continue;
             }
-
-            if let Some(horizontal) = scroll.axis(wl_pointer::Axis::HorizontalScroll) {
-                println!("\nH: {:?}", horizontal);
+            match event.kind {
+                Enter { .. } => {
+                    println!("Pointer entered @{:?}", event.position);
+                }
+                Leave { .. } => {
+                    println!("Pointer left");
+                }
+                Motion { .. } => {}
+                Press { button, .. } => {
+                    println!("Press {:x} @ {:?}", button, event.position);
+                    self.shift = self.shift.xor(Some(0));
+                }
+                Release { button, .. } => {
+                    println!("Release {:x} @ {:?}", button, event.position);
+                }
+                Axis { horizontal, vertical, .. } => {
+                    println!("Scroll H:{:?}, V:{:?}", horizontal, vertical);
+                }
             }
         }
     }
