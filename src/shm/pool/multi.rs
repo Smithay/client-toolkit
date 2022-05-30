@@ -75,6 +75,7 @@ use wayland_client::{
     Proxy,
 };
 
+use super::format::bytes_per_pixel;
 use super::raw::RawPool;
 
 #[derive(Debug, thiserror::Error)]
@@ -96,13 +97,21 @@ pub struct MultiPool<K> {
 }
 
 #[derive(Debug, thiserror::Error)]
-struct BufferSlot<K> {
+pub struct BufferSlot<K> {
     free: Arc<AtomicBool>,
     size: usize,
     used: usize,
     offset: usize,
     buffer: Option<wl_buffer::WlBuffer>,
     key: K,
+}
+
+impl<K> BufferSlot<K> {
+    pub fn destroy(&self) -> Result<(), PoolError> {
+        self.buffer.as_ref().ok_or(PoolError::NotFound).and_then(|buffer| {
+            self.free.load(Ordering::Relaxed).then(|| buffer.destroy()).ok_or(PoolError::InUse)
+        })
+    }
 }
 
 impl<K> MultiPool<K> {
@@ -119,29 +128,17 @@ impl<K> MultiPool<K> {
     }
 
     /// Removes the buffer with the given key from the pool and rearranges the others.
-    pub fn remove<Q>(&mut self, key: &Q)
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<BufferSlot<K>>
     where
         Q: PartialEq,
         K: std::borrow::Borrow<Q>,
     {
-        if let Some((i, buf)) =
-            self.buffer_list.iter().enumerate().find(|(_, slot)| slot.key.borrow().eq(key))
-        {
-            let mut offset = buf.offset;
-            if let Some(buf) = self.buffer_list.remove(i).buffer {
-                buf.destroy();
-            }
-            for buf_slot in &mut self.buffer_list {
-                if buf_slot.offset > offset && buf_slot.free.load(Ordering::Relaxed) {
-                    if let Some(buffer) = buf_slot.buffer.take() {
-                        buffer.destroy();
-                    }
-                    std::mem::swap(&mut buf_slot.offset, &mut offset);
-                } else {
-                    break;
-                }
-            }
-        }
+        self.buffer_list
+            .iter()
+            .enumerate()
+            .find(|(_, slot)| slot.key.borrow().eq(key))
+            .map(|(i, _)| i)
+            .map(|i| self.buffer_list.remove(i))
     }
 
     /// Insert a buffer into the pool.
@@ -169,7 +166,7 @@ impl<K> MultiPool<K> {
         let mut found_key = false;
         let size = (stride * height) as usize;
         let mut index = Err(PoolError::NotFound);
-        let bpp = (stride as f32 / width as f32).ceil() as usize;
+        let bpp = bytes_per_pixel(&format) as usize;
 
         for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
             if buf_slot.key.borrow().eq(key) {
@@ -249,6 +246,7 @@ impl<K> MultiPool<K> {
         let size = (stride * height) as usize;
         let buf_slot =
             self.buffer_list.iter_mut().find(|buf_slot| buf_slot.key.borrow().eq(key))?;
+        buf_slot.size.ge(&size).then(|| {})?;
         buf_slot.used = size;
         let offset = buf_slot.offset;
         if buf_slot.buffer.is_none() {
@@ -309,6 +307,7 @@ impl<K> MultiPool<K> {
         let len = self.inner.len();
         let size = (stride * height) as usize;
         let buf_slot = self.buffer_list.get_mut(index)?;
+        buf_slot.size.ge(&size).then(|| {})?;
         buf_slot.used = size;
         let offset = buf_slot.offset;
         if buf_slot.buffer.is_none() {
@@ -330,9 +329,9 @@ impl<K> MultiPool<K> {
     }
 
     /// Calcule the offet and size of a buffer based on its stride.
-    fn offset(&self, mut offset: i32, width: i32, stride: i32, height: i32) -> (usize, usize) {
+    fn offset(&self, mut offset: i32, stride: i32, height: i32, format: &wl_shm::Format) -> (usize, usize) {
         // bytes per pixel
-        let bpp = (stride as f32 / width as f32).ceil() as i32;
+        let bpp = bytes_per_pixel(format) as i32;
         let size = stride * height;
         // 5% padding.
         offset += offset / 20;
@@ -352,7 +351,7 @@ impl<K> MultiPool<K> {
         key: K,
         format: wl_shm::Format,
     ) -> Option<()> {
-        let (offset, size) = self.offset(offset as i32, width, stride, height);
+        let (offset, size) = self.offset(offset as i32, stride, height, &format);
         if self.inner.len() < offset + size {
             self.resize(offset + size + size / 20).ok()?;
         }

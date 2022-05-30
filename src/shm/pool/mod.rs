@@ -1,3 +1,4 @@
+pub mod format;
 pub mod multi;
 pub mod raw;
 pub mod slot;
