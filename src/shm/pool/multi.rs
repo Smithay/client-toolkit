@@ -75,7 +75,6 @@ use wayland_client::{
     Proxy,
 };
 
-use super::format::bytes_per_pixel;
 use super::raw::RawPool;
 
 #[derive(Debug, thiserror::Error)]
@@ -112,6 +111,15 @@ impl<K> BufferSlot<K> {
             self.free.load(Ordering::Relaxed).then(|| buffer.destroy()).ok_or(PoolError::InUse)
         })
     }
+}
+
+fn greatest_factor(uint: usize) -> usize {
+    for i in (1..8).rev() {
+        if uint % i == 0 {
+            return i;
+        }
+    }
+    1
 }
 
 impl<K> MultiPool<K> {
@@ -166,7 +174,7 @@ impl<K> MultiPool<K> {
         let mut found_key = false;
         let size = (stride * height) as usize;
         let mut index = Err(PoolError::NotFound);
-        let bpp = bytes_per_pixel(&format) as usize;
+        let bpp = greatest_factor(stride as usize);
 
         for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
             if buf_slot.key.borrow().eq(key) {
@@ -329,9 +337,9 @@ impl<K> MultiPool<K> {
     }
 
     /// Calcule the offet and size of a buffer based on its stride.
-    fn offset(&self, mut offset: i32, stride: i32, height: i32, format: &wl_shm::Format) -> (usize, usize) {
+    fn offset(&self, mut offset: i32, stride: i32, height: i32) -> (usize, usize) {
         // bytes per pixel
-        let bpp = bytes_per_pixel(format) as i32;
+        let bpp = greatest_factor(stride as usize) as i32;
         let size = stride * height;
         // 5% padding.
         offset += offset / 20;
@@ -351,7 +359,7 @@ impl<K> MultiPool<K> {
         key: K,
         format: wl_shm::Format,
     ) -> Option<()> {
-        let (offset, size) = self.offset(offset as i32, stride, height, &format);
+        let (offset, size) = self.offset(offset as i32, stride, height);
         if self.inner.len() < offset + size {
             self.resize(offset + size + size / 20).ok()?;
         }
