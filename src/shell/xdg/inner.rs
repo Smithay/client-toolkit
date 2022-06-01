@@ -1,7 +1,11 @@
 use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
 use wayland_protocols::xdg::shell::client::xdg_wm_base;
 
-use crate::registry::{ProvidesRegistryState, RegistryHandler};
+use crate::{
+    error::GlobalError,
+    globals::ProvidesBoundGlobal,
+    registry::{ProvidesRegistryState, RegistryHandler},
+};
 
 use super::{XdgShellHandler, XdgShellState};
 
@@ -11,6 +15,13 @@ where
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.xdg_shell_state().xdg_wm_base = data.registry().bind_one(qh, 1..=4, ()).into();
+    }
+}
+
+// Version 4 adds the configure_bounds event, which is a break
+impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4> for XdgShellState {
+    fn bound_global(&self) -> Result<xdg_wm_base::XdgWmBase, GlobalError> {
+        self.xdg_wm_base.get().cloned()
     }
 }
 

@@ -1,7 +1,11 @@
 use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
-use crate::registry::{ProvidesRegistryState, RegistryHandler};
+use crate::{
+    error::GlobalError,
+    globals::ProvidesBoundGlobal,
+    registry::{ProvidesRegistryState, RegistryHandler},
+};
 
 use super::{LayerHandler, LayerState, LayerSurfaceConfigure, LayerSurfaceData};
 
@@ -14,6 +18,32 @@ where
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.layer_state().wlr_layer_shell = data.registry().bind_one(qh, 1..=4, ()).into();
+    }
+}
+
+// Layer shell has only added requests and enum variants in versions 2-4, so its client-facing API
+// is still compatible.
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 1> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 2> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 3> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
     }
 }
 

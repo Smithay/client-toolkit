@@ -1,5 +1,3 @@
-extern crate image;
-
 use std::env;
 
 use smithay_client_toolkit::{
