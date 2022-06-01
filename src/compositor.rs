@@ -10,6 +10,7 @@ use wayland_client::{
 
 use crate::{
     error::GlobalError,
+    globals::ProvidesBoundGlobal,
     output::OutputData,
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
@@ -241,6 +242,12 @@ where
         _: &QueueHandle<D>,
     ) {
         unreachable!("wl_compositor has no events")
+    }
+}
+
+impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5> for CompositorState {
+    fn bound_global(&self) -> Result<wl_compositor::WlCompositor, GlobalError> {
+        self.wl_compositor().cloned()
     }
 }
 

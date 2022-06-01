@@ -20,6 +20,8 @@ use wayland_protocols::{
 };
 
 use crate::{
+    error::GlobalError,
+    globals::ProvidesBoundGlobal,
     registry::{ProvidesRegistryState, RegistryHandler},
     shell::xdg::XdgShellSurface,
 };
@@ -126,6 +128,16 @@ where
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.xdg_window_state().xdg_decoration_manager =
             data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, ()).into();
+    }
+}
+
+impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
+    for XdgWindowState
+{
+    fn bound_global(
+        &self,
+    ) -> Result<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalError> {
+        self.xdg_decoration_manager.get().cloned()
     }
 }
 

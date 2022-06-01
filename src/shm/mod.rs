@@ -6,6 +6,7 @@ use wayland_client::{
 
 use crate::{
     error::GlobalError,
+    globals::ProvidesBoundGlobal,
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
@@ -40,7 +41,7 @@ impl ShmState {
     }
 
     pub fn new_slot_pool(&self, len: usize) -> Result<SlotPool, CreatePoolError> {
-        Ok(SlotPool::new(self.new_raw_pool(len)?))
+        SlotPool::new(len, self)
     }
 
     pub fn new_multi_pool<K>(&self, len: usize) -> Result<MultiPool<K>, CreatePoolError> {
@@ -59,6 +60,12 @@ impl ShmState {
     /// Returns the formats supported in memory pools.
     pub fn formats(&self) -> &[wl_shm::Format] {
         &self.formats[..]
+    }
+}
+
+impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for ShmState {
+    fn bound_global(&self) -> Result<wl_shm::WlShm, GlobalError> {
+        self.wl_shm().cloned()
     }
 }
 
