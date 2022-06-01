@@ -68,7 +68,7 @@
 //! }
 //! ```
 
-use crate::error::GlobalError;
+use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 use wayland_client::{
     backend::InvalidId,
     protocol::{wl_callback, wl_registry},
@@ -505,6 +505,62 @@ impl<I: Proxy> GlobalProxy<I> {
             GlobalProxy::NotReady => Err(GlobalError::NotReady),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct SimpleGlobal<I, const MAX_VERSION: u32> {
+    proxy: GlobalProxy<I>,
+}
+
+impl<I: Proxy, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
+    pub fn new() -> Self {
+        Self { proxy: GlobalProxy::NotReady }
+    }
+
+    pub fn get(&self) -> Result<&I, GlobalError> {
+        self.proxy.get()
+    }
+
+    pub fn with_min_version(&self, min_version: u32) -> Result<&I, GlobalError> {
+        self.proxy.with_min_version(min_version)
+    }
+}
+
+impl<I: Proxy + Clone, const MAX_VERSION: u32> ProvidesBoundGlobal<I, MAX_VERSION>
+    for SimpleGlobal<I, MAX_VERSION>
+{
+    fn bound_global(&self) -> Result<I, GlobalError> {
+        self.proxy.get().cloned()
+    }
+}
+
+impl<D, I, const MAX_VERSION: u32> RegistryHandler<D> for SimpleGlobal<I, MAX_VERSION>
+where
+    D: ProvidesRegistryState + AsMut<Self> + Dispatch<I, ()> + 'static,
+    I: Proxy + 'static,
+{
+    fn ready(data: &mut D, _: &Connection, qh: &QueueHandle<D>) {
+        data.as_mut().proxy = data.registry().bind_one(qh, 0..=MAX_VERSION, ()).into();
+    }
+}
+
+impl<D, I, const MAX_VERSION: u32> DelegateDispatch<I, (), D> for SimpleGlobal<I, MAX_VERSION>
+where
+    D: Dispatch<I, ()>,
+    I: Proxy,
+{
+    fn event(_: &mut D, _: &I, _: <I as Proxy>::Event, _: &(), _: &Connection, _: &QueueHandle<D>) {
+        unreachable!("SimpleGlobal is not suitable for {} which has events", I::interface().name);
+    }
+}
+
+#[macro_export]
+macro_rules! delegate_simple {
+    ($ty:ty, $iface:ty, $max:expr) => {
+        $crate::reexports::client::delegate_dispatch!($ty: [ $iface: () ]
+            => $crate::registry::SimpleGlobal<$iface, $max>
+        );
+    };
 }
 
 /// A helper macro for implementing [`ProvidesRegistryState`].
