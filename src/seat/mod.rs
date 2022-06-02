@@ -21,7 +21,7 @@ use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
     pointer::{PointerData, PointerDataExt, PointerHandler},
-    touch::{TouchData, TouchHandler},
+    touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
 #[non_exhaustive]
@@ -146,6 +146,24 @@ impl SeatState {
     where
         D: Dispatch<wl_touch::WlTouch, TouchData> + TouchHandler + 'static,
     {
+        self.get_touch_with_data(qh, seat, TouchData::default())
+    }
+
+    /// Creates a touch handle from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.
+    pub fn get_touch_with_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        udata: U,
+    ) -> Result<wl_touch::WlTouch, SeatError>
+    where
+        D: Dispatch<wl_touch::WlTouch, U> + TouchHandler + 'static,
+        U: TouchDataExt + 'static,
+    {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
@@ -153,7 +171,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        let touch = seat.get_touch(qh, TouchData::default())?;
+        let touch = seat.get_touch(qh, udata)?;
         Ok(touch)
     }
 }
