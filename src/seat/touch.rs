@@ -25,6 +25,25 @@ macro_rules! delegate_touch {
             ] => $crate::seat::SeatState
         );
     };
+    ($ty: ty, touch: [$($td:ty),* $(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $(
+                    $crate::reexports::client::protocol::wl_touch::WlTouch: $td,
+                )*
+            ] => $crate::seat::SeatState
+        );
+    };
+}
+
+pub trait TouchDataExt: Send + Sync {
+    fn touch_data(&self) -> &TouchData;
+}
+
+impl TouchDataExt for TouchData {
+    fn touch_data(&self) -> &TouchData {
+        self
+    }
 }
 
 pub trait TouchHandler: SeatHandler + Sized {
@@ -112,18 +131,20 @@ pub trait TouchHandler: SeatHandler + Sized {
     fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
-impl<D> DelegateDispatch<WlTouch, TouchData, D> for SeatState
+impl<D, U> DelegateDispatch<WlTouch, U, D> for SeatState
 where
-    D: Dispatch<WlTouch, TouchData> + TouchHandler,
+    D: Dispatch<WlTouch, U> + TouchHandler,
+    U: TouchDataExt,
 {
     fn event(
         data: &mut D,
         touch: &WlTouch,
         event: TouchEvent,
-        udata: &TouchData,
+        udata: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let udata = udata.touch_data();
         match event {
             // Buffer events until frame is received.
             TouchEvent::Down { .. }
@@ -160,7 +181,7 @@ fn process_framed_event<D>(
     qh: &QueueHandle<D>,
     event: TouchEvent,
 ) where
-    D: Dispatch<WlTouch, TouchData> + TouchHandler,
+    D: TouchHandler,
 {
     match event {
         TouchEvent::Down { serial, time, surface, id, x, y } => {
