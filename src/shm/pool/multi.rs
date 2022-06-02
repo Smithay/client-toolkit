@@ -113,15 +113,6 @@ impl<K> BufferSlot<K> {
     }
 }
 
-fn greatest_factor(uint: usize) -> usize {
-    for i in (1..8).rev() {
-        if uint % i == 0 {
-            return i;
-        }
-    }
-    1
-}
-
 impl<K> MultiPool<K> {
     pub(crate) fn new(inner: RawPool) -> Self {
         Self { inner, buffer_list: Vec::new() }
@@ -174,7 +165,6 @@ impl<K> MultiPool<K> {
         let mut found_key = false;
         let size = (stride * height) as usize;
         let mut index = Err(PoolError::NotFound);
-        let bpp = greatest_factor(stride as usize);
 
         for (i, buf_slot) in self.buffer_list.iter_mut().enumerate() {
             if buf_slot.key.borrow().eq(key) {
@@ -212,8 +202,8 @@ impl<K> MultiPool<K> {
                 break;
             }
             let mut size = buf_slot.size;
-            size += size % bpp;
-            size -= size % bpp;
+            size += size % 64;
+            size -= size % 64;
             offset += size;
         }
 
@@ -339,12 +329,11 @@ impl<K> MultiPool<K> {
     /// Calcule the offet and size of a buffer based on its stride.
     fn offset(&self, mut offset: i32, stride: i32, height: i32) -> (usize, usize) {
         // bytes per pixel
-        let bpp = greatest_factor(stride as usize) as i32;
         let size = stride * height;
         // 5% padding.
         offset += offset / 20;
-        offset += offset % bpp;
-        offset -= offset % bpp;
+        offset += offset % 64;
+        offset -= offset % 64;
         (offset as usize, size as usize)
     }
 
