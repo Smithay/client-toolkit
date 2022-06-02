@@ -11,7 +11,7 @@ use wayland_client::{
 use crate::{
     error::GlobalError,
     globals::ProvidesBoundGlobal,
-    output::OutputData,
+    output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
@@ -106,14 +106,22 @@ pub struct SurfaceData {
     /// The scale factor of the output with the highest scale factor.
     pub(crate) scale_factor: AtomicI32,
 
+    inner: Mutex<SurfaceDataInner>,
+}
+
+#[derive(Debug, Default)]
+struct SurfaceDataInner {
     /// The outputs the surface is currently inside.
-    pub(crate) outputs: Mutex<Vec<wl_output::WlOutput>>,
+    outputs: Vec<wl_output::WlOutput>,
+
+    /// A handle to the OutputInfo callback that dispatches scale updates.
+    watcher: Option<ScaleWatcherHandle>,
 }
 
 impl SurfaceData {
     /// Create a new surface that initially reports the given scale factor.
     pub fn with_initial_scale(scale_factor: i32) -> Self {
-        Self { scale_factor: AtomicI32::new(scale_factor), outputs: Default::default() }
+        Self { scale_factor: AtomicI32::new(scale_factor), inner: Default::default() }
     }
 
     /// The scale factor of the output with the highest scale factor.
@@ -123,7 +131,7 @@ impl SurfaceData {
 
     /// The outputs the surface is currently inside.
     pub fn outputs(&self) -> impl Iterator<Item = wl_output::WlOutput> {
-        self.outputs.lock().unwrap().clone().into_iter()
+        self.inner.lock().unwrap().outputs.clone().into_iter()
     }
 }
 
@@ -161,10 +169,8 @@ macro_rules! delegate_compositor {
 
 impl<D, U> DelegateDispatch<wl_surface::WlSurface, U, D> for CompositorState
 where
-    D: Dispatch<wl_surface::WlSurface, U>
-        + Dispatch<wl_output::WlOutput, OutputData>
-        + CompositorHandler,
-    U: SurfaceDataExt,
+    D: Dispatch<wl_surface::WlSurface, U> + CompositorHandler + OutputHandler + 'static,
+    U: SurfaceDataExt + 'static,
 {
     fn event(
         state: &mut D,
@@ -175,24 +181,57 @@ where
         qh: &QueueHandle<D>,
     ) {
         let data = data.surface_data();
-        let mut outputs = data.outputs.lock().unwrap();
+        let mut inner = data.inner.lock().unwrap();
 
         match event {
             wl_surface::Event::Enter { output } => {
-                outputs.push(output);
+                inner.outputs.push(output);
             }
 
             wl_surface::Event::Leave { output } => {
-                outputs.retain(|o| o != &output);
+                inner.outputs.retain(|o| o != &output);
             }
 
             _ => unreachable!(),
         }
 
+        inner.watcher.get_or_insert_with(|| {
+            // Avoid storing the WlSurface inside the closure as that would create a reference
+            // cycle.  Instead, store the ID and re-create the proxy.
+            let id = surface.id();
+            OutputState::add_scale_watcher(state, move |state, conn, qh, _| {
+                let id = id.clone();
+                if let Ok(surface) = wl_surface::WlSurface::from_id(conn, id) {
+                    if let Some(data) = surface.data::<U>() {
+                        let data = data.surface_data();
+                        let inner = data.inner.lock().unwrap();
+                        let current = data.scale_factor.load(Ordering::Relaxed);
+                        let factor = match inner
+                            .outputs
+                            .iter()
+                            .filter_map(|output| {
+                                output.data::<OutputData>().map(OutputData::scale_factor)
+                            })
+                            .reduce(i32::max)
+                        {
+                            None => return,
+                            Some(factor) if factor == current => return,
+                            Some(factor) => factor,
+                        };
+
+                        data.scale_factor.store(factor, Ordering::Relaxed);
+                        drop(inner);
+                        state.scale_factor_changed(conn, qh, &surface, factor);
+                    }
+                }
+            })
+        });
+
         // Compute the new max of the scale factors for all outputs this surface is displayed on.
         let current = data.scale_factor.load(Ordering::Relaxed);
 
-        let factor = match outputs
+        let factor = match inner
+            .outputs
             .iter()
             .filter_map(|output| output.data::<OutputData>().map(OutputData::scale_factor))
             .reduce(i32::max)
@@ -207,7 +246,7 @@ where
         data.scale_factor.store(factor, Ordering::Relaxed);
 
         // Drop the mutex before we send of any events.
-        drop(outputs);
+        drop(inner);
 
         state.scale_factor_changed(conn, qh, surface, factor);
     }
