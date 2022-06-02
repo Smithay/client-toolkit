@@ -303,7 +303,7 @@ impl SlotPool {
         stride: i32,
         format: wl_shm::Format,
     ) -> Result<Buffer, CreateBufferError> {
-        let mut offset = slot.inner.offset as i32;
+        let offset = slot.inner.offset as i32;
         let len = (height as usize) * (stride as usize);
         if len > slot.inner.len {
             return Err(CreateBufferError::SlotTooSmall);
