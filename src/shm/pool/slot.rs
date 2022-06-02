@@ -255,8 +255,9 @@ impl SlotPool {
     }
 
     /// Create a new slot with the given size in bytes.
-    pub fn new_slot(&mut self, len: usize) -> io::Result<Slot> {
-        let len = (len + 15) & !15;
+    pub fn new_slot(&mut self, mut len: usize) -> io::Result<Slot> {
+        len += len % 64;
+        len -= len % 64;
         let offset = self.alloc(len)?;
 
         Ok(Slot {
@@ -303,8 +304,6 @@ impl SlotPool {
         format: wl_shm::Format,
     ) -> Result<Buffer, CreateBufferError> {
         let mut offset = slot.inner.offset as i32;
-        offset += offset % 64;
-        offset -= offset % 64;
         let len = (height as usize) * (stride as usize);
         if len > slot.inner.len {
             return Err(CreateBufferError::SlotTooSmall);
