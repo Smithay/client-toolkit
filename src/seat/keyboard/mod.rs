@@ -52,45 +52,40 @@ impl SeatState {
     where
         D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler + 'static,
     {
+        let udata = match rmlvo {
+            Some(rmlvo) => KeyboardData::from_rmlvo(rmlvo)?,
+            None => KeyboardData::default(),
+        };
+
+        self.get_keyboard_with_data(qh, seat, udata)
+    }
+
+    /// Creates a keyboard from a seat.
+    ///
+    /// This keyboard implementation uses libxkbcommon for the keymap.
+    ///
+    /// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`
+    /// field.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    pub fn get_keyboard_with_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        udata: U,
+    ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
+    where
+        D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
+        U: KeyboardDataExt + 'static,
+    {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
         if !inner.data.has_keyboard.load(Ordering::SeqCst) {
             return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
-
-        let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-        let (user_specified_rmlvo, xkb_state) = if let Some(rmlvo) = rmlvo {
-            let keymap = xkb::Keymap::new_from_names(
-                &xkb_context,
-                &rmlvo.rules.unwrap_or_default(),
-                &rmlvo.model.unwrap_or_default(),
-                &rmlvo.layout.unwrap_or_default(),
-                &rmlvo.variant.unwrap_or_default(),
-                rmlvo.options,
-                xkb::COMPILE_NO_FLAGS,
-            );
-
-            if keymap.is_none() {
-                return Err(KeyboardError::InvalidKeymap);
-            }
-
-            let state = xkb::State::new(&keymap.unwrap());
-
-            (true, Some(state))
-        } else {
-            (false, None)
-        };
-
-        let udata = KeyboardData {
-            first_event: AtomicBool::new(false),
-            xkb_context: Mutex::new(xkb_context),
-            xkb_state: Mutex::new(xkb_state),
-            user_specified_rmlvo,
-            xkb_compose: Mutex::new(None),
-        };
-
-        udata.init_compose();
 
         Ok(seat.get_keyboard(qh, udata).map_err(Into::<SeatError>::into)?)
     }
@@ -299,6 +294,15 @@ macro_rules! delegate_keyboard {
             ] => $crate::seat::SeatState
         );
     };
+    ($ty: ty, keyboard: [$($udata:ty),* $(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $(
+                    $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $udata,
+                )*
+            ] => $crate::seat::SeatState
+        );
+    };
 }
 
 // SAFETY: The state does not share state with any other rust types.
@@ -306,7 +310,55 @@ unsafe impl Send for KeyboardData {}
 // SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
 unsafe impl Sync for KeyboardData {}
 
+impl Default for KeyboardData {
+    fn default() -> Self {
+        let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        let udata = KeyboardData {
+            first_event: AtomicBool::new(false),
+            xkb_context: Mutex::new(xkb_context),
+            xkb_state: Mutex::new(None),
+            user_specified_rmlvo: false,
+            xkb_compose: Mutex::new(None),
+        };
+
+        udata.init_compose();
+
+        udata
+    }
+}
+
 impl KeyboardData {
+    pub fn from_rmlvo(rmlvo: RMLVO) -> Result<Self, KeyboardError> {
+        let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        let keymap = xkb::Keymap::new_from_names(
+            &xkb_context,
+            &rmlvo.rules.unwrap_or_default(),
+            &rmlvo.model.unwrap_or_default(),
+            &rmlvo.layout.unwrap_or_default(),
+            &rmlvo.variant.unwrap_or_default(),
+            rmlvo.options,
+            xkb::COMPILE_NO_FLAGS,
+        );
+
+        if keymap.is_none() {
+            return Err(KeyboardError::InvalidKeymap);
+        }
+
+        let xkb_state = Some(xkb::State::new(&keymap.unwrap()));
+
+        let udata = KeyboardData {
+            first_event: AtomicBool::new(false),
+            xkb_context: Mutex::new(xkb_context),
+            xkb_state: Mutex::new(xkb_state),
+            user_specified_rmlvo: true,
+            xkb_compose: Mutex::new(None),
+        };
+
+        udata.init_compose();
+
+        Ok(udata)
+    }
+
     fn init_compose(&self) {
         let xkb_context = self.xkb_context.lock().unwrap();
 
@@ -347,18 +399,31 @@ impl KeyboardData {
     }
 }
 
-impl<D> DelegateDispatch<wl_keyboard::WlKeyboard, KeyboardData, D> for SeatState
+pub trait KeyboardDataExt: Send + Sync {
+    fn keyboard_data(&self) -> &KeyboardData;
+}
+
+impl KeyboardDataExt for KeyboardData {
+    fn keyboard_data(&self) -> &KeyboardData {
+        self
+    }
+}
+
+impl<D, U> DelegateDispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
 where
-    D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler,
+    D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler,
+    U: KeyboardDataExt,
 {
     fn event(
         data: &mut D,
         keyboard: &wl_keyboard::WlKeyboard,
         event: wl_keyboard::Event,
-        udata: &KeyboardData,
+        udata: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let udata = udata.keyboard_data();
+
         // The compositor has no way to tell clients if the seat is not version 4 or above.
         // In this case, send a synthetic repeat info event using the default repeat values used by the X
         // server.
