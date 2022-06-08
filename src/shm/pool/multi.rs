@@ -201,9 +201,7 @@ impl<K> MultiPool<K> {
             } else if found_key {
                 break;
             }
-            let mut size = buf_slot.size;
-            size += size % 64;
-            size -= size % 64;
+            let size = (buf_slot.size + 63) & !63;
             offset += size;
         }
 
@@ -332,8 +330,7 @@ impl<K> MultiPool<K> {
         let size = stride * height;
         // 5% padding.
         offset += offset / 20;
-        offset += offset % 64;
-        offset -= offset % 64;
+        offset = (offset + 63) & !63;
         (offset as usize, size as usize)
     }
 
