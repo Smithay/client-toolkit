@@ -105,6 +105,12 @@ pub struct BufferSlot<K> {
     key: K,
 }
 
+impl<K> Drop for BufferSlot<K> {
+    fn drop(&mut self) {
+        self.destroy().ok();
+    }
+}
+
 impl<K> BufferSlot<K> {
     pub fn destroy(&self) -> Result<(), PoolError> {
         self.buffer.as_ref().ok_or(PoolError::NotFound).and_then(|buffer| {
