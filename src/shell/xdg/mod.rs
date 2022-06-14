@@ -26,42 +26,6 @@ impl XdgShellState {
     pub fn xdg_wm_base(&self) -> Result<&xdg_wm_base::XdgWmBase, GlobalError> {
         self.xdg_wm_base.get()
     }
-
-    /// Creates an [`XdgShellSurface`].
-    ///
-    /// This function is generally intended to be called in a higher level abstraction, such as
-    /// [`XdgWindowState::create_window`](self::window::XdgWindowState::create_window).
-    ///
-    /// The created [`XdgShellSurface`] will destroy the underlying [`XdgSurface`] or [`WlSurface`] when
-    /// dropped. Higher level abstractions are responsible for ensuring the destruction order of protocol
-    /// objects is correct. Since this function consumes the [`WlSurface`], it may be accessed using
-    /// [`XdgShellSurface::wl_surface`].
-    ///
-    /// # Protocol errors
-    ///
-    /// If the surface already has a role object, the compositor will raise a protocol error.
-    ///
-    /// A surface is considered to have a role object if some other type of surface was created using the
-    /// surface. For example, creating a window, popup, layer, subsurface or some other type of surface object
-    /// all assign a role object to a surface.
-    ///
-    /// [`XdgSurface`]: xdg_surface::XdgSurface
-    /// [`WlSurface`]: wl_surface::WlSurface
-    pub fn create_xdg_surface<U, D>(
-        &self,
-        qh: &QueueHandle<D>,
-        surface: wl_surface::WlSurface,
-        udata: U,
-    ) -> Result<XdgShellSurface, GlobalError>
-    where
-        D: Dispatch<xdg_surface::XdgSurface, U> + 'static,
-        U: Send + Sync + 'static,
-    {
-        let wm_base = self.xdg_wm_base()?;
-        let xdg_surface = wm_base.get_xdg_surface(&surface, qh, udata)?;
-
-        Ok(XdgShellSurface { xdg_surface, surface })
-    }
 }
 
 /// A trivial wrapper for an [`xdg_positioner::XdgPositioner`].
@@ -117,6 +81,41 @@ pub struct XdgShellSurface {
 }
 
 impl XdgShellSurface {
+    /// Creates an [`XdgShellSurface`].
+    ///
+    /// This function is generally intended to be called in a higher level abstraction, such as
+    /// [`XdgWindowState::create_window`](self::window::XdgWindowState::create_window).
+    ///
+    /// The created [`XdgShellSurface`] will destroy the underlying [`XdgSurface`] or [`WlSurface`] when
+    /// dropped. Higher level abstractions are responsible for ensuring the destruction order of protocol
+    /// objects is correct. Since this function consumes the [`WlSurface`], it may be accessed using
+    /// [`XdgShellSurface::wl_surface`].
+    ///
+    /// # Protocol errors
+    ///
+    /// If the surface already has a role object, the compositor will raise a protocol error.
+    ///
+    /// A surface is considered to have a role object if some other type of surface was created using the
+    /// surface. For example, creating a window, popup, layer, subsurface or some other type of surface object
+    /// all assign a role object to a surface.
+    ///
+    /// [`XdgSurface`]: xdg_surface::XdgSurface
+    /// [`WlSurface`]: wl_surface::WlSurface
+    pub fn new<U, D>(
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
+        qh: &QueueHandle<D>,
+        surface: wl_surface::WlSurface,
+        udata: U,
+    ) -> Result<XdgShellSurface, GlobalError>
+    where
+        D: Dispatch<xdg_surface::XdgSurface, U> + 'static,
+        U: Send + Sync + 'static,
+    {
+        let xdg_surface = wm_base.bound_global()?.get_xdg_surface(&surface, qh, udata)?;
+
+        Ok(XdgShellSurface { xdg_surface, surface })
+    }
+
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
         &self.xdg_surface
     }
