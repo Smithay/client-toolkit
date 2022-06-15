@@ -68,7 +68,10 @@
 //! }
 //! ```
 
-use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
+use crate::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
+};
 use wayland_client::{
     backend::InvalidId,
     protocol::{wl_callback, wl_registry},
@@ -197,13 +200,13 @@ impl RegistryState {
     /// This type may be used to bind globals as they are advertised.
     pub fn new<D>(conn: &Connection, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<wl_registry::WlRegistry, ()>
+        D: Dispatch<wl_registry::WlRegistry, GlobalData>
             + Dispatch<wl_callback::WlCallback, RegistryReady>
             + ProvidesRegistryState
             + 'static,
     {
         let display = conn.display();
-        let registry = display.get_registry(qh, ()).unwrap();
+        let registry = display.get_registry(qh, GlobalData(())).unwrap();
         display.sync(qh, RegistryReady).unwrap();
         RegistryState { registry, globals: Vec::new(), ready: false }
     }
@@ -392,22 +395,22 @@ macro_rules! delegate_registry {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_registry::WlRegistry: (),
+                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData,
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::registry::RegistryReady,
             ]  => $crate::registry::RegistryState
         );
     };
 }
 
-impl<D> DelegateDispatch<wl_registry::WlRegistry, (), D> for RegistryState
+impl<D> DelegateDispatch<wl_registry::WlRegistry, GlobalData, D> for RegistryState
 where
-    D: Dispatch<wl_registry::WlRegistry, ()> + ProvidesRegistryState,
+    D: Dispatch<wl_registry::WlRegistry, GlobalData> + ProvidesRegistryState,
 {
     fn event(
         state: &mut D,
         _: &wl_registry::WlRegistry,
         event: wl_registry::Event,
-        _: &(),
+        _: &GlobalData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
