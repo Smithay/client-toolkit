@@ -132,6 +132,46 @@ impl Default for SurfaceData {
     }
 }
 
+/// An owned [`WlSurface`](wl_surface::WlSurface).
+///
+/// This destroys the surface on drop.
+#[derive(Debug)]
+pub struct Surface(wl_surface::WlSurface);
+
+impl Surface {
+    pub fn new<D>(
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
+        qh: &QueueHandle<D>,
+    ) -> Result<Self, GlobalError>
+    where
+        D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
+    {
+        Self::with_data(compositor, qh, Default::default())
+    }
+
+    pub fn with_data<D, U>(
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
+        qh: &QueueHandle<D>,
+        data: U,
+    ) -> Result<Self, GlobalError>
+    where
+        D: Dispatch<wl_surface::WlSurface, U> + 'static,
+        U: Send + Sync + 'static,
+    {
+        Ok(Surface(compositor.bound_global()?.create_surface(qh, data)?))
+    }
+
+    pub fn wl_surface(&self) -> &wl_surface::WlSurface {
+        &self.0
+    }
+}
+
+impl Drop for Surface {
+    fn drop(&mut self) {
+        self.0.destroy();
+    }
+}
+
 #[macro_export]
 macro_rules! delegate_compositor {
     ($ty: ty) => {
