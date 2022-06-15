@@ -5,6 +5,7 @@ use std::sync::Arc;
 use wayland_client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::xdg::shell::client::{xdg_positioner, xdg_surface, xdg_wm_base};
 
+use crate::compositor::Surface;
 use crate::error::GlobalError;
 use crate::globals::ProvidesBoundGlobal;
 use crate::registry::GlobalProxy;
@@ -77,7 +78,7 @@ impl wayland_client::backend::ObjectData for PositionerData {
 #[derive(Debug)]
 pub struct XdgShellSurface {
     xdg_surface: xdg_surface::XdgSurface,
-    surface: wl_surface::WlSurface,
+    surface: Surface,
 }
 
 impl XdgShellSurface {
@@ -104,14 +105,16 @@ impl XdgShellSurface {
     pub fn new<U, D>(
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
         qh: &QueueHandle<D>,
-        surface: wl_surface::WlSurface,
+        surface: impl Into<Surface>,
         udata: U,
     ) -> Result<XdgShellSurface, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, U> + 'static,
         U: Send + Sync + 'static,
     {
-        let xdg_surface = wm_base.bound_global()?.get_xdg_surface(&surface, qh, udata)?;
+        let surface = surface.into();
+        let xdg_surface =
+            wm_base.bound_global()?.get_xdg_surface(surface.wl_surface(), qh, udata)?;
 
         Ok(XdgShellSurface { xdg_surface, surface })
     }
@@ -121,7 +124,7 @@ impl XdgShellSurface {
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.surface
+        self.surface.wl_surface()
     }
 }
 
@@ -142,6 +145,5 @@ impl Drop for XdgShellSurface {
     fn drop(&mut self) {
         // Surface role must be destroyed before the wl_surface
         self.xdg_surface.destroy();
-        self.surface.destroy();
     }
 }
