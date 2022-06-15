@@ -1,6 +1,6 @@
 use std::sync::{
     atomic::{AtomicI32, Ordering},
-    Mutex,
+    Arc, Mutex,
 };
 
 use wayland_client::{
@@ -89,15 +89,6 @@ impl CompositorState {
 
         Ok(surface)
     }
-
-    pub fn create_region<D>(&self, qh: &QueueHandle<D>) -> Result<wl_region::WlRegion, GlobalError>
-    where
-        D: Dispatch<wl_region::WlRegion, ()> + 'static,
-    {
-        let compositor = self.wl_compositor.get()?;
-
-        compositor.create_region(qh, ()).map_err(Into::into)
-    }
 }
 
 /// Data associated with a [`WlSurface`](wl_surface::WlSurface).
@@ -148,7 +139,6 @@ macro_rules! delegate_compositor {
             [
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData,
                 $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData,
-                $crate::reexports::client::protocol::wl_region::WlRegion: (),
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
             ] => $crate::compositor::CompositorState
         );
@@ -160,7 +150,6 @@ macro_rules! delegate_compositor {
                 $(
                     $crate::reexports::client::protocol::wl_surface::WlSurface: $surface,
                 )*
-                $crate::reexports::client::protocol::wl_region::WlRegion: (),
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
             ] => $crate::compositor::CompositorState
         );
@@ -252,20 +241,53 @@ where
     }
 }
 
-impl<D> DelegateDispatch<wl_region::WlRegion, (), D> for CompositorState
-where
-    D: Dispatch<wl_region::WlRegion, ()> + CompositorHandler,
-{
-    fn event(
-        _: &mut D,
-        _: &wl_region::WlRegion,
-        _: wl_region::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<D>,
-    ) {
-        unreachable!("wl_region has no events")
+/// A trivial wrapper around a [`WlRegion`][wl_region::WlRegion].
+///
+/// This destroys the region on drop.
+#[derive(Debug)]
+pub struct Region(wl_region::WlRegion);
+
+impl Region {
+    pub fn new(
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
+    ) -> Result<Region, GlobalError> {
+        compositor
+            .bound_global()?
+            .send_constructor(wl_compositor::Request::CreateRegion {}, Arc::new(RegionData))
+            .map(Region)
+            .map_err(Into::into)
     }
+
+    pub fn add(&self, x: i32, y: i32, width: i32, height: i32) {
+        self.0.add(x, y, width, height)
+    }
+
+    pub fn subtract(&self, x: i32, y: i32, width: i32, height: i32) {
+        self.0.subtract(x, y, width, height)
+    }
+
+    pub fn wl_region(&self) -> &wl_region::WlRegion {
+        &self.0
+    }
+}
+
+impl Drop for Region {
+    fn drop(&mut self) {
+        self.0.destroy()
+    }
+}
+
+struct RegionData;
+
+impl wayland_client::backend::ObjectData for RegionData {
+    fn event(
+        self: Arc<Self>,
+        _: &wayland_client::backend::Backend,
+        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId>,
+    ) -> Option<Arc<(dyn wayland_client::backend::ObjectData + 'static)>> {
+        unreachable!("wl_region has no events");
+    }
+    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
 impl<D> DelegateDispatch<wl_compositor::WlCompositor, GlobalData, D> for CompositorState
