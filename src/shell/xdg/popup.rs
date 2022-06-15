@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{CompositorState, SurfaceData},
+    compositor::{Surface, SurfaceData},
     error::GlobalError,
     globals::ProvidesBoundGlobal,
     shell::xdg::XdgShellSurface,
@@ -9,7 +9,10 @@ use std::sync::{
     atomic::{AtomicI32, AtomicU32, Ordering::Relaxed},
     Arc, Weak,
 };
-use wayland_client::{protocol::wl_surface, Connection, DelegateDispatch, Dispatch, QueueHandle};
+use wayland_client::{
+    protocol::{wl_compositor::WlCompositor, wl_surface},
+    Connection, DelegateDispatch, Dispatch, QueueHandle,
+};
 use wayland_protocols::xdg::shell::client::{
     xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base::XdgWmBase,
 };
@@ -50,7 +53,7 @@ impl Popup {
         parent: &xdg_surface::XdgSurface,
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
-        compositor: &CompositorState,
+        compositor: &impl ProvidesBoundGlobal<WlCompositor, 5>,
         wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
@@ -60,7 +63,7 @@ impl Popup {
             + PopupHandler
             + 'static,
     {
-        let surface = compositor.create_surface(qh)?;
+        let surface = Surface::new(compositor, qh)?;
         let popup = Self::from_surface(Some(parent), position, qh, surface, wm_base)?;
         popup.wl_surface().commit();
         Ok(popup)
@@ -77,7 +80,7 @@ impl Popup {
         parent: Option<&xdg_surface::XdgSurface>,
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
-        surface: wl_surface::WlSurface,
+        surface: impl Into<Surface>,
         wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
@@ -86,11 +89,9 @@ impl Popup {
             + 'static,
     {
         let arc = Arc::new(OnceCell::new());
-        let wm_base = wm_base.bound_global()?;
 
-        let xdg_surface =
-            wm_base.get_xdg_surface(&surface, qh, PopupData { inner: Arc::downgrade(&arc) })?;
-        let surface = XdgShellSurface { surface, xdg_surface };
+        let surface =
+            XdgShellSurface::new(wm_base, qh, surface, PopupData { inner: Arc::downgrade(&arc) })?;
         let xdg_popup = surface.xdg_surface().get_popup(
             parent,
             position,

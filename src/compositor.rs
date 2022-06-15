@@ -166,6 +166,12 @@ impl Surface {
     }
 }
 
+impl From<wl_surface::WlSurface> for Surface {
+    fn from(surface: wl_surface::WlSurface) -> Self {
+        Surface(surface)
+    }
+}
+
 impl Drop for Surface {
     fn drop(&mut self) {
         self.0.destroy();

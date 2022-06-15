@@ -16,6 +16,7 @@ use wayland_protocols::{
     },
 };
 
+use crate::compositor::Surface;
 use crate::error::GlobalError;
 use crate::globals::ProvidesBoundGlobal;
 use crate::registry::GlobalProxy;
@@ -262,7 +263,7 @@ impl WindowBuilder {
         qh: &QueueHandle<D>,
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
         window_state: &mut XdgWindowState,
-        surface: wl_surface::WlSurface,
+        surface: impl Into<Surface>,
     ) -> Result<Window, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, WindowData>
