@@ -3,7 +3,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_l
 
 use crate::{
     error::GlobalError,
-    globals::ProvidesBoundGlobal,
+    globals::{GlobalData, ProvidesBoundGlobal},
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
@@ -11,13 +11,14 @@ use super::{LayerHandler, LayerState, LayerSurfaceConfigure, LayerSurfaceData};
 
 impl<D> RegistryHandler<D> for LayerState
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()>
+    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData>
         + LayerHandler
         + ProvidesRegistryState
         + 'static,
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        data.layer_state().wlr_layer_shell = data.registry().bind_one(qh, 1..=4, ()).into();
+        data.layer_state().wlr_layer_shell =
+            data.registry().bind_one(qh, 1..=4, GlobalData(())).into();
     }
 }
 
@@ -47,15 +48,15 @@ impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4> for LayerStat
     }
 }
 
-impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, (), D> for LayerState
+impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, D> for LayerState
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()> + LayerHandler + 'static,
+    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData> + LayerHandler + 'static,
 {
     fn event(
         _: &mut D,
         _: &zwlr_layer_shell_v1::ZwlrLayerShellV1,
         _: zwlr_layer_shell_v1::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

@@ -13,7 +13,10 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_v1,
 };
 
-use crate::registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler};
+use crate::{
+    globals::GlobalData,
+    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
+};
 
 pub trait OutputHandler: Sized {
     fn output_state(&mut self) -> &mut OutputState;
@@ -288,7 +291,7 @@ macro_rules! delegate_output {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
             $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData,
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: (),
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: $crate::globals::GlobalData,
             $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData,
         ] => $crate::output::OutputState);
     };
@@ -478,15 +481,15 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, (), D> for OutputState
+impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData, D> for OutputState
 where
-    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()> + OutputHandler,
+    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData> + OutputHandler,
 {
     fn event(
         _: &mut D,
         _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
         _: zxdg_output_manager_v1::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -579,7 +582,7 @@ impl<D> RegistryHandler<D> for OutputState
 where
     D: Dispatch<wl_output::WlOutput, OutputData>
         + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()>
+        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
         + OutputHandler
         + ProvidesRegistryState
         + 'static,
@@ -590,7 +593,7 @@ where
 
         // Only bind xdg output manager if it's needed
         let xdg = if outputs.iter().any(|o| o.version() < 4) {
-            data.registry().bind_one(qh, 1..=3, ()).into()
+            data.registry().bind_one(qh, 1..=3, GlobalData(())).into()
         } else {
             GlobalProxy::NotReady
         };
@@ -614,7 +617,8 @@ where
         if interface == "wl_output" {
             // Lazily bind xdg output manager if it's needed
             if version < 4 && matches!(data.output_state().xdg, GlobalProxy::NotReady) {
-                data.output_state().xdg = data.registry().bind_one(qh, 1..=3, ()).into();
+                data.output_state().xdg =
+                    data.registry().bind_one(qh, 1..=3, GlobalData(())).into();
             }
 
             let output = data

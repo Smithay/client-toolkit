@@ -10,7 +10,7 @@ use wayland_client::{
 
 use crate::{
     error::GlobalError,
-    globals::ProvidesBoundGlobal,
+    globals::{GlobalData, ProvidesBoundGlobal},
     output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
@@ -146,7 +146,7 @@ macro_rules! delegate_compositor {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData,
                 $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData,
                 $crate::reexports::client::protocol::wl_region::WlRegion: (),
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
@@ -156,7 +156,7 @@ macro_rules! delegate_compositor {
     ($ty: ty, surface: [$($surface: ty),*$(,)?]) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData,
                 $(
                     $crate::reexports::client::protocol::wl_surface::WlSurface: $surface,
                 )*
@@ -268,15 +268,15 @@ where
     }
 }
 
-impl<D> DelegateDispatch<wl_compositor::WlCompositor, (), D> for CompositorState
+impl<D> DelegateDispatch<wl_compositor::WlCompositor, GlobalData, D> for CompositorState
 where
-    D: Dispatch<wl_compositor::WlCompositor, ()> + CompositorHandler,
+    D: Dispatch<wl_compositor::WlCompositor, GlobalData> + CompositorHandler,
 {
     fn event(
         _: &mut D,
         _: &wl_compositor::WlCompositor,
         _: wl_compositor::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -314,13 +314,13 @@ where
 
 impl<D> RegistryHandler<D> for CompositorState
 where
-    D: Dispatch<wl_compositor::WlCompositor, ()>
+    D: Dispatch<wl_compositor::WlCompositor, GlobalData>
         + CompositorHandler
         + ProvidesRegistryState
         + 'static,
 {
     fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        let compositor = state.registry().bind_one(qh, 1..=5, ());
+        let compositor = state.registry().bind_one(qh, 1..=5, GlobalData(()));
 
         state.compositor_state().wl_compositor = compositor.into();
     }

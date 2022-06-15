@@ -6,7 +6,7 @@ use wayland_client::{
 
 use crate::{
     error::GlobalError,
-    globals::ProvidesBoundGlobal,
+    globals::{GlobalData, ProvidesBoundGlobal},
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
@@ -94,21 +94,21 @@ macro_rules! delegate_shm {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_shm::WlShm: (),
+                $crate::reexports::client::protocol::wl_shm::WlShm: $crate::globals::GlobalData,
             ] => $crate::shm::ShmState
         );
     };
 }
 
-impl<D> DelegateDispatch<wl_shm::WlShm, (), D> for ShmState
+impl<D> DelegateDispatch<wl_shm::WlShm, GlobalData, D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, ()> + ShmHandler,
+    D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler,
 {
     fn event(
         state: &mut D,
         _proxy: &wl_shm::WlShm,
         event: wl_shm::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -134,9 +134,9 @@ where
 
 impl<D> RegistryHandler<D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, ()> + ShmHandler + ProvidesRegistryState + 'static,
+    D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler + ProvidesRegistryState + 'static,
 {
     fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, ()).into();
+        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, GlobalData(())).into();
     }
 }
