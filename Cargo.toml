@@ -13,15 +13,15 @@ readme = "README.md"
 
 [dependencies]
 bitflags = "1.0"
-nix = "0.22"
+nix = { version = "0.24", default-features = false, features = ["mman", "fs"] }
 dlib = "0.5"
 lazy_static = "1.0"
-memmap2 = "0.3.0"
+memmap2 = "0.5.0"
 log = "0.4"
 wayland-client = "0.29"
 wayland-protocols = { version = "0.29" , features = ["client", "unstable_protocols"] }
 wayland-cursor = "0.29"
-calloop = { version = "0.9.3", optional = true }
+calloop = { version = "0.10", optional = true }
 
 [features]
 default = ["calloop", "dlopen"]
@@ -31,4 +31,4 @@ dlopen = ["wayland-client/dlopen"]
 pkg-config = "0.3"
 
 [dev-dependencies]
-image = "0.23"
+image = "0.24"

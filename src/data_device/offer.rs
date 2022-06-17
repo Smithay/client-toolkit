@@ -229,6 +229,7 @@ impl IntoRawFd for ReadPipe {
 #[cfg(feature = "calloop")]
 impl calloop::EventSource for ReadPipe {
     type Event = ();
+    type Error = std::io::Error;
     type Metadata = fs::File;
     type Ret = ();
 
@@ -251,7 +252,7 @@ impl calloop::EventSource for ReadPipe {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut calloop::TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> calloop::Result<()> {
         self.file.register(poll, token_factory)
     }
 
@@ -259,11 +260,11 @@ impl calloop::EventSource for ReadPipe {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut calloop::TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> calloop::Result<()> {
         self.file.reregister(poll, token_factory)
     }
 
-    fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
+    fn unregister(&mut self, poll: &mut calloop::Poll) -> calloop::Result<()> {
         self.file.unregister(poll)
     }
 }
