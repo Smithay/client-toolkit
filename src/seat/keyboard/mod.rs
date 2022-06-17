@@ -13,17 +13,19 @@
 //! (but the rest of the functionnality will not be affected).
 
 #[cfg(feature = "calloop")]
+use calloop::{timer::Timer, RegistrationToken};
+#[cfg(feature = "calloop")]
 use std::num::NonZeroU32;
 #[cfg(feature = "calloop")]
 use std::time::Duration;
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     convert::TryInto,
     fs::File,
     os::unix::io::{FromRawFd, RawFd},
     rc::Rc,
+    time::Instant,
 };
-
 pub use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
@@ -185,12 +187,12 @@ where
 /// **Note:** The keyboard repetition handling requires the `calloop` cargo feature.
 #[cfg(feature = "calloop")]
 pub fn map_keyboard_repeat<F, Data: 'static>(
-    loop_handle: calloop::LoopHandle<Data>,
+    loop_handle: calloop::LoopHandle<'static, Data>,
     seat: &Attached<wl_seat::WlSeat>,
     rmlvo: Option<RMLVO>,
     repeatkind: RepeatKind,
     callback: F,
-) -> Result<(wl_keyboard::WlKeyboard, calloop::RegistrationToken), Error>
+) -> Result<wl_keyboard::WlKeyboard, Error>
 where
     F: FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
 {
@@ -214,40 +216,36 @@ where
     };
 
     // Prepare the repetition handling.
-    let (mut kbd_handler, source) = {
-        let current_repeat = Rc::new(RefCell::new(None));
-
-        let source = RepeatSource {
-            timer: calloop::timer::Timer::new().map_err(Error::TimerError)?,
-            state: state.clone(),
-            current_repeat: current_repeat.clone(),
-        };
-
-        let timer_handle = source.timer.handle();
-
-        let handler = KbdHandler {
-            callback: callback.clone(),
-            state,
-            repeat: Some(KbdRepeat { timer_handle, current_repeat, details: repeat }),
-        };
-        (handler, source)
+    let mut handler = KbdHandler {
+        callback: callback.clone(),
+        state,
+        repeat: Some(KbdRepeat {
+            start_timer: {
+                let my_loop_handle = loop_handle.clone();
+                Box::new(move |source| {
+                    let my_callback = callback.clone();
+                    my_loop_handle
+                        .insert_source(source, move |event, kbd, ddata| {
+                            (&mut *my_callback.borrow_mut())(
+                                event,
+                                kbd.clone(),
+                                wayland_client::DispatchData::wrap(ddata),
+                            )
+                        })
+                        .unwrap()
+                })
+            },
+            stop_timer: Box::new(move |token| loop_handle.remove(token)),
+            current_repeat: Rc::new(RefCell::new(None)),
+            current_timer: Cell::new(None),
+            details: repeat,
+        }),
     };
 
-    let source = loop_handle
-        .insert_source(source, move |event, kbd, ddata| {
-            (&mut *callback.borrow_mut())(
-                event,
-                kbd.clone(),
-                wayland_client::DispatchData::wrap(ddata),
-            )
-        })
-        .map_err(|e| Error::TimerError(e.error))?;
+    keyboard
+        .quick_assign(move |keyboard, event, data| handler.event(keyboard.detach(), event, data));
 
-    keyboard.quick_assign(move |keyboard, event, data| {
-        kbd_handler.event(keyboard.detach(), event, data)
-    });
-
-    Ok((keyboard.detach(), source))
+    Ok(keyboard.detach())
 }
 
 #[cfg(feature = "calloop")]
@@ -287,30 +285,47 @@ struct KbdHandler {
 
 #[cfg(feature = "calloop")]
 struct KbdRepeat {
-    timer_handle: calloop::timer::TimerHandle<()>,
+    start_timer: Box<dyn Fn(RepeatSource) -> RegistrationToken>,
+    stop_timer: Box<dyn Fn(RegistrationToken)>,
+    current_timer: Cell<Option<RegistrationToken>>,
     current_repeat: Rc<RefCell<Option<RepeatData>>>,
     details: RepeatDetails,
 }
 
 #[cfg(feature = "calloop")]
 impl KbdRepeat {
-    fn start_repeat(&self, key: u32, keyboard: wl_keyboard::WlKeyboard, time: u32) {
+    fn start_repeat(
+        &self,
+        key: u32,
+        keyboard: wl_keyboard::WlKeyboard,
+        time: u32,
+        state: Rc<RefCell<KbState>>,
+    ) {
         // Start a new repetition, overwriting the previous ones
-        self.timer_handle.cancel_all_timeouts();
+        if let Some(timer) = self.current_timer.replace(None) {
+            (self.stop_timer)(timer);
+        }
 
         // Handle disabled repeat rate.
         let gap = match self.details.gap {
-            Some(gap) => gap.get() as u64,
+            Some(gap) => Duration::from_micros(gap.get() as u64),
             None => return,
         };
 
+        let now = Instant::now();
         *self.current_repeat.borrow_mut() = Some(RepeatData {
             keyboard,
             keycode: key,
             gap,
-            time: (time + self.details.delay) as u64 * 1000,
+            start_protocol_time: time,
+            start_instant: now,
         });
-        self.timer_handle.add_timeout(Duration::from_micros(self.details.delay as u64 * 1000), ());
+        let token = (self.start_timer)(RepeatSource {
+            timer: Timer::from_deadline(now + Duration::from_millis(self.details.delay as u64)),
+            current_repeat: self.current_repeat.clone(),
+            state,
+        });
+        self.current_timer.set(Some(token));
     }
 
     fn stop_repeat(&self, key: u32) {
@@ -318,14 +333,25 @@ impl KbdRepeat {
         let mut guard = self.current_repeat.borrow_mut();
         let stop = (*guard).as_ref().map(|d| d.keycode == key).unwrap_or(false);
         if stop {
-            self.timer_handle.cancel_all_timeouts();
+            if let Some(timer) = self.current_timer.replace(None) {
+                (self.stop_timer)(timer);
+            }
             *guard = None;
         }
     }
 
     fn stop_all_repeat(&self) {
-        self.timer_handle.cancel_all_timeouts();
+        if let Some(timer) = self.current_timer.replace(None) {
+            (self.stop_timer)(timer);
+        }
         *self.current_repeat.borrow_mut() = None;
+    }
+}
+
+#[cfg(feature = "calloop")]
+impl Drop for KbdRepeat {
+    fn drop(&mut self) {
+        self.stop_all_repeat();
     }
 }
 
@@ -474,7 +500,7 @@ impl KbdHandler {
             if let Some(ref mut repeat_handle) = self.repeat {
                 if repeats {
                     if key_state == wl_keyboard::KeyState::Pressed {
-                        repeat_handle.start_repeat(key, object.clone(), time);
+                        repeat_handle.start_repeat(key, object.clone(), time, self.state.clone());
                     } else {
                         repeat_handle.stop_repeat(key);
                     }
@@ -532,10 +558,10 @@ impl KbdHandler {
 struct RepeatData {
     keyboard: wl_keyboard::WlKeyboard,
     keycode: u32,
-    /// Gap between key presses in microseconds.
-    gap: u64,
-    /// Time of the last event in microseconds.
-    time: u64,
+    /// Gap between key presses
+    gap: Duration,
+    start_protocol_time: u32,
+    start_instant: Instant,
 }
 
 /// An event source managing the key repetition of a keyboard
@@ -551,7 +577,7 @@ struct RepeatData {
 #[cfg(feature = "calloop")]
 #[derive(Debug)]
 pub struct RepeatSource {
-    timer: calloop::timer::Timer<()>,
+    timer: calloop::timer::Timer,
     state: Rc<RefCell<KbState>>,
     current_repeat: Rc<RefCell<Option<RepeatData>>>,
 }
@@ -560,6 +586,7 @@ pub struct RepeatSource {
 impl calloop::EventSource for RepeatSource {
     type Event = Event<'static>;
     type Metadata = wl_keyboard::WlKeyboard;
+    type Error = <calloop::timer::Timer as calloop::EventSource>::Error;
     type Ret = ();
 
     fn process_events<F>(
@@ -573,27 +600,27 @@ impl calloop::EventSource for RepeatSource {
     {
         let current_repeat = &self.current_repeat;
         let state = &self.state;
-        self.timer.process_events(readiness, token, |(), timer_handle| {
+        self.timer.process_events(readiness, token, |last_trigger, &mut ()| {
             if let Some(ref mut data) = *current_repeat.borrow_mut() {
                 // there is something to repeat
                 let mut state = state.borrow_mut();
                 let keysym = state.get_one_sym_raw(data.keycode);
                 let utf8 = state.get_utf8_raw(data.keycode);
-                let new_time = data.gap + data.time;
                 // Notify the callback.
                 callback(
                     Event::Repeat {
-                        time: (new_time / 1000) as u32,
+                        time: data.start_protocol_time
+                            + (last_trigger - data.start_instant).as_millis() as u32,
                         rawkey: data.keycode,
                         keysym,
                         utf8,
                     },
                     &mut data.keyboard,
                 );
-                // Update the time of last event.
-                data.time = new_time;
                 // Schedule the next timeout.
-                timer_handle.add_timeout(Duration::from_micros(data.gap), ());
+                calloop::timer::TimeoutAction::ToInstant(last_trigger + data.gap)
+            } else {
+                calloop::timer::TimeoutAction::Drop
             }
         })
     }
@@ -602,7 +629,7 @@ impl calloop::EventSource for RepeatSource {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut calloop::TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> calloop::Result<()> {
         self.timer.register(poll, token_factory)
     }
 
@@ -610,11 +637,11 @@ impl calloop::EventSource for RepeatSource {
         &mut self,
         poll: &mut calloop::Poll,
         token_factory: &mut calloop::TokenFactory,
-    ) -> std::io::Result<()> {
+    ) -> calloop::Result<()> {
         self.timer.reregister(poll, token_factory)
     }
 
-    fn unregister(&mut self, poll: &mut calloop::Poll) -> std::io::Result<()> {
+    fn unregister(&mut self, poll: &mut calloop::Poll) -> calloop::Result<()> {
         self.timer.unregister(poll)
     }
 }

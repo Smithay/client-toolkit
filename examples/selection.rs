@@ -85,7 +85,7 @@ fn main() {
                     RepeatKind::System,
                     move |event, _, ddata| process_keyboard_event(event, &my_seat, &handle, ddata),
                 ) {
-                    Ok((kbd, _)) => {
+                    Ok(kbd) => {
                         seats.push((name, Some(kbd)));
                     }
                     Err(e) => {
@@ -123,7 +123,7 @@ fn main() {
                     RepeatKind::System,
                     move |event, _, ddata| process_keyboard_event(event, &my_seat, &handle, ddata),
                 ) {
-                    Ok((kbd, _)) => {
+                    Ok(kbd) => {
                         *opt_kbd = Some(kbd);
                     }
                     Err(e) => {
@@ -216,7 +216,7 @@ fn process_keyboard_event(
                                 file.read_to_string(&mut txt).unwrap();
                                 println!("Selection contents are: \"{}\"", txt);
                                 if let Some(src) = ddata.2.take() {
-                                    src_handle.kill(src);
+                                    src_handle.remove(src);
                                 }
                             })
                             .unwrap();
@@ -266,7 +266,7 @@ fn process_keyboard_event(
                                 file.read_to_string(&mut txt).unwrap();
                                 println!("Selection contents are: \"{}\"", txt);
                                 if let Some(src) = ddata.2.take() {
-                                    src_handle.kill(src);
+                                    src_handle.remove(src);
                                 }
                             })
                             .unwrap();

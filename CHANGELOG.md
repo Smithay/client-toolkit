@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+#### Breaking changes
+
+- `calloop` is updated to version 0.10, and the keyboard handling API is slightly changed as a result.
+
+#### Additions
+
+- `DataDevice::with_dnd` and `DataOffer::receive_to_fd` allow more flexible interfaction with the data device abstraction
+- the output integration now supports version `4` of `wl_output`
+
 ## 0.15.4 - 2022-04-10
 
 #### Bugfixes
