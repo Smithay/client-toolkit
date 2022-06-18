@@ -1,3 +1,5 @@
+// Abstraction in later_shell_wlr_module
+
 use smithay_client_toolkit::{
     default_environment,
     environment::SimpleGlobal,
