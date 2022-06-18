@@ -63,7 +63,7 @@ impl DoubleMemPool {
                 }
             };
             if signal {
-                (&mut *my_callback.borrow_mut())(ddata);
+                (my_callback.borrow_mut())(ddata);
             }
         })?;
         let my_free = free.clone();
@@ -78,7 +78,7 @@ impl DoubleMemPool {
                 }
             };
             if signal {
-                (&mut *callback.borrow_mut())(ddata);
+                (callback.borrow_mut())(ddata);
             }
         })?;
         Ok(DoubleMemPool { pool1, pool2, free })
@@ -170,7 +170,7 @@ impl MemPool {
         Ok(MemPool {
             inner: Inner::new(shm)?,
             buffer_count: Rc::new(RefCell::new(0)),
-            callback: Rc::new(RefCell::new(callback)),
+            callback: Rc::new(RefCell::new(callback)) as Rc<RefCell<_>>,
         })
     }
 
@@ -224,7 +224,7 @@ impl MemPool {
                     *my_buffer_count
                 };
                 if new_count == 0 {
-                    (&mut *my_callback.borrow_mut())(dispatch_data);
+                    (my_callback.borrow_mut())(dispatch_data);
                 }
             }
             _ => unreachable!(),

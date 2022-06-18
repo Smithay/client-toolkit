@@ -117,7 +117,11 @@ impl DataOffer {
     /// At least make sure you flush your events to the server before
     /// doing so.
     ///
-    pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: i32) {
+    /// # Safety
+    ///
+    /// The provided file destructor must be a valid FD for writing, and will be closed
+    /// once the contents are written.
+    pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: RawFd) {
         use nix::unistd::close;
 
         self.offer.receive(mime_type, writefd);

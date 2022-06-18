@@ -156,7 +156,7 @@ where
 
     let state = Rc::new(RefCell::new(rmlvo.map(KbState::from_rmlvo).unwrap_or_else(KbState::new)?));
 
-    let callback = Rc::new(RefCell::new(callback));
+    let callback = Rc::new(RefCell::new(callback)) as Rc<RefCell<_>>;
 
     // prepare the handler
     let mut kbd_handler = KbdHandler {
@@ -205,7 +205,7 @@ where
 
     let state = Rc::new(RefCell::new(rmlvo.map(KbState::from_rmlvo).unwrap_or_else(KbState::new)?));
 
-    let callback = Rc::new(RefCell::new(callback));
+    let callback = Rc::new(RefCell::new(callback)) as Rc<RefCell<_>>;
 
     let repeat = match repeatkind {
         RepeatKind::System => RepeatDetails { locked: false, gap: None, delay: 200 },
@@ -226,7 +226,7 @@ where
                     let my_callback = callback.clone();
                     my_loop_handle
                         .insert_source(source, move |event, kbd, ddata| {
-                            (&mut *my_callback.borrow_mut())(
+                            (my_callback.borrow_mut())(
                                 event,
                                 kbd.clone(),
                                 wayland_client::DispatchData::wrap(ddata),
@@ -425,7 +425,7 @@ impl KbdHandler {
             .map(|c| u32::from_ne_bytes(c.try_into().unwrap()))
             .collect::<Vec<_>>();
         let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
-        (&mut *self.callback.borrow_mut())(
+        (self.callback.borrow_mut())(
             Event::Enter { serial, surface, rawkeys: &rawkeys, keysyms: &keys },
             object,
             dispatch_data,
@@ -445,7 +445,7 @@ impl KbdHandler {
                 repeat.stop_all_repeat();
             }
         }
-        (&mut *self.callback.borrow_mut())(Event::Leave { serial, surface }, object, dispatch_data);
+        (self.callback.borrow_mut())(Event::Leave { serial, surface }, object, dispatch_data);
     }
 
     #[cfg_attr(not(feature = "calloop"), allow(unused_variables))]
@@ -508,7 +508,7 @@ impl KbdHandler {
             }
         }
 
-        (&mut *self.callback.borrow_mut())(
+        (self.callback.borrow_mut())(
             Event::Key { serial, time, rawkey: key, keysym: sym, state: key_state, utf8 },
             object,
             dispatch_data,
@@ -527,7 +527,7 @@ impl KbdHandler {
         {
             let mut state = self.state.borrow_mut();
             state.update_modifiers(mods_depressed, mods_latched, mods_locked, group);
-            (&mut *self.callback.borrow_mut())(
+            (self.callback.borrow_mut())(
                 Event::Modifiers { modifiers: state.mods_state() },
                 object,
                 dispatch_data,

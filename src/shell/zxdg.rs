@@ -37,10 +37,7 @@ impl Zxdg {
             zxdg_surface_v6::Event::Configure { serial } => {
                 xdgs.ack_configure(serial);
                 if let Some((new_size, states)) = pending_configure_2.borrow_mut().take() {
-                    (&mut *implementation_2.borrow_mut())(
-                        Event::Configure { new_size, states },
-                        ddata,
-                    );
+                    (implementation_2.borrow_mut())(Event::Configure { new_size, states }, ddata);
                 }
             }
             _ => unreachable!(),
@@ -49,7 +46,7 @@ impl Zxdg {
         toplevel.quick_assign(move |_, evt, ddata| {
             match evt {
                 zxdg_toplevel_v6::Event::Close => {
-                    (&mut *implementation.borrow_mut())(Event::Close, ddata)
+                    (implementation.borrow_mut())(Event::Close, ddata)
                 }
                 zxdg_toplevel_v6::Event::Configure { width, height, states } => {
                     use std::cmp::max;

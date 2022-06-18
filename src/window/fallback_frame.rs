@@ -77,7 +77,7 @@ impl Part {
                 Some(move |dpi, surface: wl_surface::WlSurface, ddata: DispatchData| {
                     surface.set_buffer_scale(dpi);
                     surface.commit();
-                    (&mut inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
+                    (inner.borrow_mut().implem)(FrameRequest::Refresh, 0, ddata);
                 }),
             )
         } else {
@@ -308,7 +308,7 @@ impl Frame for FallbackFrame {
                     Event::Leave { serial, .. } => {
                         data.location = Location::None;
                         change_pointer(&pointer, &inner, data.location, Some(serial));
-                        (&mut inner.implem)(FrameRequest::Refresh, 0, ddata);
+                        (inner.implem)(FrameRequest::Refresh, 0, ddata);
                     }
                     Event::Motion { surface_x, surface_y, .. } => {
                         data.position = (surface_x, surface_y);
@@ -318,7 +318,7 @@ impl Frame for FallbackFrame {
                             match (newpos, data.location) {
                                 (Location::Button(_), _) | (_, Location::Button(_)) => {
                                     // pointer movement involves a button, request refresh
-                                    (&mut inner.implem)(FrameRequest::Refresh, 0, ddata);
+                                    (inner.implem)(FrameRequest::Refresh, 0, ddata);
                                 }
                                 _ => (),
                             }
@@ -343,7 +343,7 @@ impl Frame for FallbackFrame {
                             };
 
                             if let Some(request) = request {
-                                (&mut inner.implem)(request, serial, ddata);
+                                (inner.implem)(request, serial, ddata);
                             }
                         }
                     }
