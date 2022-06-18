@@ -194,12 +194,11 @@ impl crate::environment::MultiGlobalHandler<WlOutput> for OutputHandler {
         // We currently support wl_output up to version 4
         let version = std::cmp::min(version, 4);
         let output = registry.bind::<WlOutput>(version, id);
-        let has_xdg;
-        if let Some(xdg) = self.xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
-            has_xdg = xdg.borrow_mut().new_xdg_output(&output, &self.status_listeners);
+        let has_xdg = if let Some(xdg) = self.xdg_listener.as_ref().and_then(rc::Weak::upgrade) {
+            xdg.borrow_mut().new_xdg_output(&output, &self.status_listeners)
         } else {
-            has_xdg = false;
-        }
+            false
+        };
         if version > 1 {
             // wl_output.done event was only added at version 2
             // In case of an old version 1, we just behave as if it was send at the start
@@ -420,7 +419,7 @@ fn notify_status_listeners(
     // Notify the callbacks listening for new outputs
     listeners.borrow_mut().retain(|lst| {
         if let Some(cb) = rc::Weak::upgrade(lst) {
-            (&mut *cb.borrow_mut())(output.clone(), info, ddata.reborrow());
+            (cb.borrow_mut())(output.clone(), info, ddata.reborrow());
             true
         } else {
             false

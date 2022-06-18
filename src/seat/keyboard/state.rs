@@ -182,9 +182,8 @@ impl KbState {
         if size <= 1 {
             return None;
         };
-        let mut buffer = Vec::with_capacity(size as usize);
+        let mut buffer = vec![0; size as usize];
         unsafe {
-            buffer.set_len(size as usize);
             ffi_dispatch!(
                 XKBH,
                 xkb_state_key_get_utf8,
@@ -230,7 +229,7 @@ impl KbState {
         if size <= 1 {
             return None;
         };
-        let mut buffer = Vec::with_capacity(size as usize);
+        let mut buffer = vec![0; size as usize];
         unsafe {
             buffer.set_len(size as usize);
             ffi_dispatch!(

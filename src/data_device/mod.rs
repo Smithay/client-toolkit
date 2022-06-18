@@ -50,7 +50,7 @@ impl DDInner {
             let cb = callback.clone();
             let my_seat = seat.clone();
             let device = DataDevice::init_for_seat(&mgr, &seat, move |event, dispatch_data| {
-                (&mut *cb.borrow_mut())(my_seat.clone(), event, dispatch_data);
+                (cb.borrow_mut())(my_seat.clone(), event, dispatch_data);
             });
             devices.push((seat.clone(), device));
         }
@@ -71,7 +71,7 @@ impl DDInner {
                 let cb = callback.clone();
                 let my_seat = seat.clone();
                 let device = DataDevice::init_for_seat(mgr, seat, move |event, dispatch_data| {
-                    (&mut *cb.borrow_mut())(my_seat.clone(), event, dispatch_data);
+                    (cb.borrow_mut())(my_seat.clone(), event, dispatch_data);
                 });
                 devices.push((seat.clone(), device));
             }

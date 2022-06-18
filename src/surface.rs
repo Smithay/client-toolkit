@@ -59,7 +59,7 @@ impl SurfaceUserData {
             drop(user_data);
             if let Some(ref cb) = callback {
                 if old_scale_factor != new_scale_factor {
-                    (&mut *cb.borrow_mut())(new_scale_factor, surface.clone(), ddata);
+                    (cb.borrow_mut())(new_scale_factor, surface.clone(), ddata);
                 }
             }
         });
@@ -116,7 +116,7 @@ where
         drop(user_data);
         if let Some(ref cb) = callback {
             if old_scale_factor != new_scale_factor {
-                (&mut *cb.borrow_mut())(new_scale_factor, surface.detach(), ddata);
+                (cb.borrow_mut())(new_scale_factor, surface.detach(), ddata);
             }
         }
     });

@@ -34,10 +34,7 @@ impl Xdg {
             xdg_surface::Event::Configure { serial } => {
                 xdgs.ack_configure(serial);
                 if let Some((new_size, states)) = pending_configure_2.borrow_mut().take() {
-                    (&mut *implementation_2.borrow_mut())(
-                        Event::Configure { new_size, states },
-                        ddata,
-                    );
+                    (implementation_2.borrow_mut())(Event::Configure { new_size, states }, ddata);
                 }
             }
             _ => unreachable!(),
@@ -45,9 +42,7 @@ impl Xdg {
         let toplevel = xdgs.get_toplevel();
         toplevel.quick_assign(move |_, evt, ddata| {
             match evt {
-                xdg_toplevel::Event::Close => {
-                    (&mut *implementation.borrow_mut())(Event::Close, ddata)
-                }
+                xdg_toplevel::Event::Close => (implementation.borrow_mut())(Event::Close, ddata),
                 xdg_toplevel::Event::Configure { width, height, states } => {
                     use std::cmp::max;
                     let new_size = if width == 0 || height == 0 {
