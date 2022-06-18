@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.16.0 - 2022-06-18
+
 #### Breaking changes
 
 - `calloop` is updated to version 0.10, and the keyboard handling API is slightly changed as a result.
