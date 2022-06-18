@@ -623,6 +623,33 @@
 <span id="618">618</span>
 <span id="619">619</span>
 <span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Utilities for keymap interpretation of keyboard input</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module provides an implementation for `wl_keyboard`</span>
@@ -638,17 +665,19 @@
 <span class="doccomment">//! (but the rest of the functionnality will not be affected).</span>
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
+<span class="kw">use</span> <span class="ident">calloop</span>::{<span class="ident">timer::Timer</span>, <span class="ident">RegistrationToken</span>};
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::num::NonZeroU32</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">cell::RefCell</span>,
+    <span class="ident">cell</span>::{<span class="ident">Cell</span>, <span class="ident">RefCell</span>},
     <span class="ident">convert::TryInto</span>,
     <span class="ident">fs::File</span>,
     <span class="ident">os::unix::io</span>::{<span class="ident">FromRawFd</span>, <span class="ident">RawFd</span>},
     <span class="ident">rc::Rc</span>,
+    <span class="ident">time::Instant</span>,
 };
-
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_keyboard::KeyState</span>;
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
     <span class="ident">protocol</span>::{<span class="ident">wl_keyboard</span>, <span class="ident">wl_seat</span>, <span class="ident">wl_surface</span>},
@@ -779,7 +808,7 @@
 
     <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">rmlvo</span>.<span class="ident">map</span>(<span class="ident">KbState::from_rmlvo</span>).<span class="ident">unwrap_or_else</span>(<span class="ident">KbState::new</span>)<span class="question-mark">?</span>));
 
-    <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">callback</span>));
+    <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">callback</span>)) <span class="kw">as</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="comment">// prepare the handler</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kbd_handler</span> <span class="op">=</span> <span class="ident">KbdHandler</span> {
@@ -810,12 +839,12 @@
 <span class="doccomment">/// **Note:** The keyboard repetition handling requires the `calloop` cargo feature.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map_keyboard_repeat</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">Data</span>: <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
-    <span class="ident">loop_handle</span>: <span class="ident">calloop::LoopHandle</span><span class="op">&lt;</span><span class="ident">Data</span><span class="op">&gt;</span>,
+    <span class="ident">loop_handle</span>: <span class="ident">calloop::LoopHandle</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">Data</span><span class="op">&gt;</span>,
     <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span>,
     <span class="ident">rmlvo</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RMLVO</span><span class="op">&gt;</span>,
     <span class="ident">repeatkind</span>: <span class="ident">RepeatKind</span>,
     <span class="ident">callback</span>: <span class="ident">F</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">calloop::RegistrationToken</span>), <span class="ident">Error</span><span class="op">&gt;</span>
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>, <span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">wayland_client::DispatchData</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {
@@ -828,7 +857,7 @@
 
     <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">rmlvo</span>.<span class="ident">map</span>(<span class="ident">KbState::from_rmlvo</span>).<span class="ident">unwrap_or_else</span>(<span class="ident">KbState::new</span>)<span class="question-mark">?</span>));
 
-    <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">callback</span>));
+    <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">callback</span>)) <span class="kw">as</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="kw">let</span> <span class="ident">repeat</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">repeatkind</span> {
         <span class="ident">RepeatKind::System</span> =&gt; <span class="ident">RepeatDetails</span> { <span class="ident">locked</span>: <span class="bool-val">false</span>, <span class="ident">gap</span>: <span class="prelude-val">None</span>, <span class="ident">delay</span>: <span class="number">200</span> },
@@ -839,40 +868,36 @@
     };
 
     <span class="comment">// Prepare the repetition handling.</span>
-    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">kbd_handler</span>, <span class="ident">source</span>) <span class="op">=</span> {
-        <span class="kw">let</span> <span class="ident">current_repeat</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="prelude-val">None</span>));
-
-        <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">RepeatSource</span> {
-            <span class="ident">timer</span>: <span class="ident">calloop::timer::Timer::new</span>().<span class="ident">map_err</span>(<span class="ident">Error::TimerError</span>)<span class="question-mark">?</span>,
-            <span class="ident">state</span>: <span class="ident">state</span>.<span class="ident">clone</span>(),
-            <span class="ident">current_repeat</span>: <span class="ident">current_repeat</span>.<span class="ident">clone</span>(),
-        };
-
-        <span class="kw">let</span> <span class="ident">timer_handle</span> <span class="op">=</span> <span class="ident">source</span>.<span class="ident">timer</span>.<span class="ident">handle</span>();
-
-        <span class="kw">let</span> <span class="ident">handler</span> <span class="op">=</span> <span class="ident">KbdHandler</span> {
-            <span class="ident">callback</span>: <span class="ident">callback</span>.<span class="ident">clone</span>(),
-            <span class="ident">state</span>,
-            <span class="ident">repeat</span>: <span class="prelude-val">Some</span>(<span class="ident">KbdRepeat</span> { <span class="ident">timer_handle</span>, <span class="ident">current_repeat</span>, <span class="ident">details</span>: <span class="ident">repeat</span> }),
-        };
-        (<span class="ident">handler</span>, <span class="ident">source</span>)
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handler</span> <span class="op">=</span> <span class="ident">KbdHandler</span> {
+        <span class="ident">callback</span>: <span class="ident">callback</span>.<span class="ident">clone</span>(),
+        <span class="ident">state</span>,
+        <span class="ident">repeat</span>: <span class="prelude-val">Some</span>(<span class="ident">KbdRepeat</span> {
+            <span class="ident">start_timer</span>: {
+                <span class="kw">let</span> <span class="ident">my_loop_handle</span> <span class="op">=</span> <span class="ident">loop_handle</span>.<span class="ident">clone</span>();
+                <span class="ident">Box::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">source</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">my_callback</span> <span class="op">=</span> <span class="ident">callback</span>.<span class="ident">clone</span>();
+                    <span class="ident">my_loop_handle</span>
+                        .<span class="ident">insert_source</span>(<span class="ident">source</span>, <span class="kw">move</span> <span class="op">|</span><span class="ident">event</span>, <span class="ident">kbd</span>, <span class="ident">ddata</span><span class="op">|</span> {
+                            (<span class="ident">my_callback</span>.<span class="ident">borrow_mut</span>())(
+                                <span class="ident">event</span>,
+                                <span class="ident">kbd</span>.<span class="ident">clone</span>(),
+                                <span class="ident">wayland_client::DispatchData::wrap</span>(<span class="ident">ddata</span>),
+                            )
+                        })
+                        .<span class="ident">unwrap</span>()
+                })
+            },
+            <span class="ident">stop_timer</span>: <span class="ident">Box::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">token</span><span class="op">|</span> <span class="ident">loop_handle</span>.<span class="ident">remove</span>(<span class="ident">token</span>)),
+            <span class="ident">current_repeat</span>: <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="prelude-val">None</span>)),
+            <span class="ident">current_timer</span>: <span class="ident">Cell::new</span>(<span class="prelude-val">None</span>),
+            <span class="ident">details</span>: <span class="ident">repeat</span>,
+        }),
     };
 
-    <span class="kw">let</span> <span class="ident">source</span> <span class="op">=</span> <span class="ident">loop_handle</span>
-        .<span class="ident">insert_source</span>(<span class="ident">source</span>, <span class="kw">move</span> <span class="op">|</span><span class="ident">event</span>, <span class="ident">kbd</span>, <span class="ident">ddata</span><span class="op">|</span> {
-            (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
-                <span class="ident">event</span>,
-                <span class="ident">kbd</span>.<span class="ident">clone</span>(),
-                <span class="ident">wayland_client::DispatchData::wrap</span>(<span class="ident">ddata</span>),
-            )
-        })
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error::TimerError</span>(<span class="ident">e</span>.<span class="ident">error</span>))<span class="question-mark">?</span>;
+    <span class="ident">keyboard</span>
+        .<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">keyboard</span>, <span class="ident">event</span>, <span class="ident">data</span><span class="op">|</span> <span class="ident">handler</span>.<span class="ident">event</span>(<span class="ident">keyboard</span>.<span class="ident">detach</span>(), <span class="ident">event</span>, <span class="ident">data</span>));
 
-    <span class="ident">keyboard</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">keyboard</span>, <span class="ident">event</span>, <span class="ident">data</span><span class="op">|</span> {
-        <span class="ident">kbd_handler</span>.<span class="ident">event</span>(<span class="ident">keyboard</span>.<span class="ident">detach</span>(), <span class="ident">event</span>, <span class="ident">data</span>)
-    });
-
-    <span class="prelude-val">Ok</span>((<span class="ident">keyboard</span>.<span class="ident">detach</span>(), <span class="ident">source</span>))
+    <span class="prelude-val">Ok</span>(<span class="ident">keyboard</span>.<span class="ident">detach</span>())
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
@@ -912,30 +937,47 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">struct</span> <span class="ident">KbdRepeat</span> {
-    <span class="ident">timer_handle</span>: <span class="ident">calloop::timer::TimerHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    <span class="ident">start_timer</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="ident">RepeatSource</span>) -&gt; <span class="ident">RegistrationToken</span><span class="op">&gt;</span>,
+    <span class="ident">stop_timer</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="ident">RegistrationToken</span>)<span class="op">&gt;</span>,
+    <span class="ident">current_timer</span>: <span class="ident">Cell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RegistrationToken</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">current_repeat</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RepeatData</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">details</span>: <span class="ident">RepeatDetails</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="kw">impl</span> <span class="ident">KbdRepeat</span> {
-    <span class="kw">fn</span> <span class="ident">start_repeat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="ident">u32</span>, <span class="ident">keyboard</span>: <span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">time</span>: <span class="ident">u32</span>) {
+    <span class="kw">fn</span> <span class="ident">start_repeat</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">key</span>: <span class="ident">u32</span>,
+        <span class="ident">keyboard</span>: <span class="ident">wl_keyboard::WlKeyboard</span>,
+        <span class="ident">time</span>: <span class="ident">u32</span>,
+        <span class="ident">state</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">KbState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) {
         <span class="comment">// Start a new repetition, overwriting the previous ones</span>
-        <span class="self">self</span>.<span class="ident">timer_handle</span>.<span class="ident">cancel_all_timeouts</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_timer</span>.<span class="ident">replace</span>(<span class="prelude-val">None</span>) {
+            (<span class="self">self</span>.<span class="ident">stop_timer</span>)(<span class="ident">timer</span>);
+        }
 
         <span class="comment">// Handle disabled repeat rate.</span>
         <span class="kw">let</span> <span class="ident">gap</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">details</span>.<span class="ident">gap</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">gap</span>) =&gt; <span class="ident">gap</span>.<span class="ident">get</span>() <span class="kw">as</span> <span class="ident">u64</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">gap</span>) =&gt; <span class="ident">Duration::from_micros</span>(<span class="ident">gap</span>.<span class="ident">get</span>() <span class="kw">as</span> <span class="ident">u64</span>),
             <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
         };
 
+        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
         <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">current_repeat</span>.<span class="ident">borrow_mut</span>() <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">RepeatData</span> {
             <span class="ident">keyboard</span>,
             <span class="ident">keycode</span>: <span class="ident">key</span>,
             <span class="ident">gap</span>,
-            <span class="ident">time</span>: (<span class="ident">time</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">details</span>.<span class="ident">delay</span>) <span class="kw">as</span> <span class="ident">u64</span> <span class="op">*</span> <span class="number">1000</span>,
+            <span class="ident">start_protocol_time</span>: <span class="ident">time</span>,
+            <span class="ident">start_instant</span>: <span class="ident">now</span>,
         });
-        <span class="self">self</span>.<span class="ident">timer_handle</span>.<span class="ident">add_timeout</span>(<span class="ident">Duration::from_micros</span>(<span class="self">self</span>.<span class="ident">details</span>.<span class="ident">delay</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">*</span> <span class="number">1000</span>), ());
+        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">start_timer</span>)(<span class="ident">RepeatSource</span> {
+            <span class="ident">timer</span>: <span class="ident">Timer::from_deadline</span>(<span class="ident">now</span> <span class="op">+</span> <span class="ident">Duration::from_millis</span>(<span class="self">self</span>.<span class="ident">details</span>.<span class="ident">delay</span> <span class="kw">as</span> <span class="ident">u64</span>)),
+            <span class="ident">current_repeat</span>: <span class="self">self</span>.<span class="ident">current_repeat</span>.<span class="ident">clone</span>(),
+            <span class="ident">state</span>,
+        });
+        <span class="self">self</span>.<span class="ident">current_timer</span>.<span class="ident">set</span>(<span class="prelude-val">Some</span>(<span class="ident">token</span>));
     }
 
     <span class="kw">fn</span> <span class="ident">stop_repeat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="ident">u32</span>) {
@@ -943,14 +985,25 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_repeat</span>.<span class="ident">borrow_mut</span>();
         <span class="kw">let</span> <span class="ident">stop</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">guard</span>).<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">keycode</span> <span class="op">==</span> <span class="ident">key</span>).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
         <span class="kw">if</span> <span class="ident">stop</span> {
-            <span class="self">self</span>.<span class="ident">timer_handle</span>.<span class="ident">cancel_all_timeouts</span>();
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_timer</span>.<span class="ident">replace</span>(<span class="prelude-val">None</span>) {
+                (<span class="self">self</span>.<span class="ident">stop_timer</span>)(<span class="ident">timer</span>);
+            }
             <span class="kw-2">*</span><span class="ident">guard</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         }
     }
 
     <span class="kw">fn</span> <span class="ident">stop_all_repeat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">timer_handle</span>.<span class="ident">cancel_all_timeouts</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_timer</span>.<span class="ident">replace</span>(<span class="prelude-val">None</span>) {
+            (<span class="self">self</span>.<span class="ident">stop_timer</span>)(<span class="ident">timer</span>);
+        }
         <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">current_repeat</span>.<span class="ident">borrow_mut</span>() <span class="op">=</span> <span class="prelude-val">None</span>;
+    }
+}
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
+<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">KbdRepeat</span> {
+    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">stop_all_repeat</span>();
     }
 }
 
@@ -1024,7 +1077,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">u32::from_ne_bytes</span>(<span class="ident">c</span>.<span class="ident">try_into</span>().<span class="ident">unwrap</span>()))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
         <span class="kw">let</span> <span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">rawkeys</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> <span class="ident">state</span>.<span class="ident">get_one_sym_raw</span>(<span class="kw-2">*</span><span class="ident">k</span>)).<span class="ident">collect</span>();
-        (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
+        (<span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
             <span class="ident">Event::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">rawkeys</span>: <span class="kw-2">&amp;</span><span class="ident">rawkeys</span>, <span class="ident">keysyms</span>: <span class="kw-2">&amp;</span><span class="ident">keys</span> },
             <span class="ident">object</span>,
             <span class="ident">dispatch_data</span>,
@@ -1044,7 +1097,7 @@
                 <span class="ident">repeat</span>.<span class="ident">stop_all_repeat</span>();
             }
         }
-        (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(<span class="ident">Event::Leave</span> { <span class="ident">serial</span>, <span class="ident">surface</span> }, <span class="ident">object</span>, <span class="ident">dispatch_data</span>);
+        (<span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(<span class="ident">Event::Leave</span> { <span class="ident">serial</span>, <span class="ident">surface</span> }, <span class="ident">object</span>, <span class="ident">dispatch_data</span>);
     }
 
     <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>), <span class="ident">allow</span>(<span class="ident">unused_variables</span>))]</span>
@@ -1099,7 +1152,7 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">repeat_handle</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">repeat</span> {
                 <span class="kw">if</span> <span class="ident">repeats</span> {
                     <span class="kw">if</span> <span class="ident">key_state</span> <span class="op">==</span> <span class="ident">wl_keyboard::KeyState::Pressed</span> {
-                        <span class="ident">repeat_handle</span>.<span class="ident">start_repeat</span>(<span class="ident">key</span>, <span class="ident">object</span>.<span class="ident">clone</span>(), <span class="ident">time</span>);
+                        <span class="ident">repeat_handle</span>.<span class="ident">start_repeat</span>(<span class="ident">key</span>, <span class="ident">object</span>.<span class="ident">clone</span>(), <span class="ident">time</span>, <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">clone</span>());
                     } <span class="kw">else</span> {
                         <span class="ident">repeat_handle</span>.<span class="ident">stop_repeat</span>(<span class="ident">key</span>);
                     }
@@ -1107,7 +1160,7 @@
             }
         }
 
-        (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
+        (<span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
             <span class="ident">Event::Key</span> { <span class="ident">serial</span>, <span class="ident">time</span>, <span class="ident">rawkey</span>: <span class="ident">key</span>, <span class="ident">keysym</span>: <span class="ident">sym</span>, <span class="ident">state</span>: <span class="ident">key_state</span>, <span class="ident">utf8</span> },
             <span class="ident">object</span>,
             <span class="ident">dispatch_data</span>,
@@ -1126,7 +1179,7 @@
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">borrow_mut</span>();
             <span class="ident">state</span>.<span class="ident">update_modifiers</span>(<span class="ident">mods_depressed</span>, <span class="ident">mods_latched</span>, <span class="ident">mods_locked</span>, <span class="ident">group</span>);
-            (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
+            (<span class="self">self</span>.<span class="ident">callback</span>.<span class="ident">borrow_mut</span>())(
                 <span class="ident">Event::Modifiers</span> { <span class="ident">modifiers</span>: <span class="ident">state</span>.<span class="ident">mods_state</span>() },
                 <span class="ident">object</span>,
                 <span class="ident">dispatch_data</span>,
@@ -1157,10 +1210,10 @@
 <span class="kw">struct</span> <span class="ident">RepeatData</span> {
     <span class="ident">keyboard</span>: <span class="ident">wl_keyboard::WlKeyboard</span>,
     <span class="ident">keycode</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// Gap between key presses in microseconds.</span>
-    <span class="ident">gap</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// Time of the last event in microseconds.</span>
-    <span class="ident">time</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// Gap between key presses</span>
+    <span class="ident">gap</span>: <span class="ident">Duration</span>,
+    <span class="ident">start_protocol_time</span>: <span class="ident">u32</span>,
+    <span class="ident">start_instant</span>: <span class="ident">Instant</span>,
 }
 
 <span class="doccomment">/// An event source managing the key repetition of a keyboard</span>
@@ -1176,7 +1229,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;calloop&quot;</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RepeatSource</span> {
-    <span class="ident">timer</span>: <span class="ident">calloop::timer::Timer</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    <span class="ident">timer</span>: <span class="ident">calloop::timer::Timer</span>,
     <span class="ident">state</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">KbState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">current_repeat</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RepeatData</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
@@ -1185,6 +1238,7 @@
 <span class="kw">impl</span> <span class="ident">calloop::EventSource</span> <span class="kw">for</span> <span class="ident">RepeatSource</span> {
     <span class="kw">type</span> <span class="ident">Event</span> <span class="op">=</span> <span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>;
     <span class="kw">type</span> <span class="ident">Metadata</span> <span class="op">=</span> <span class="ident">wl_keyboard::WlKeyboard</span>;
+    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">calloop::timer::Timer</span> <span class="kw">as</span> <span class="ident">calloop::EventSource</span><span class="op">&gt;</span><span class="ident">::Error</span>;
     <span class="kw">type</span> <span class="ident">Ret</span> <span class="op">=</span> ();
 
     <span class="kw">fn</span> <span class="ident">process_events</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
@@ -1198,27 +1252,27 @@
     {
         <span class="kw">let</span> <span class="ident">current_repeat</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">current_repeat</span>;
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>;
-        <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">process_events</span>(<span class="ident">readiness</span>, <span class="ident">token</span>, <span class="op">|</span>(), <span class="ident">timer_handle</span><span class="op">|</span> {
+        <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">process_events</span>(<span class="ident">readiness</span>, <span class="ident">token</span>, <span class="op">|</span><span class="ident">last_trigger</span>, <span class="kw-2">&amp;mut</span> ()<span class="op">|</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">data</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">current_repeat</span>.<span class="ident">borrow_mut</span>() {
                 <span class="comment">// there is something to repeat</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">borrow_mut</span>();
                 <span class="kw">let</span> <span class="ident">keysym</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">get_one_sym_raw</span>(<span class="ident">data</span>.<span class="ident">keycode</span>);
                 <span class="kw">let</span> <span class="ident">utf8</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">get_utf8_raw</span>(<span class="ident">data</span>.<span class="ident">keycode</span>);
-                <span class="kw">let</span> <span class="ident">new_time</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">gap</span> <span class="op">+</span> <span class="ident">data</span>.<span class="ident">time</span>;
                 <span class="comment">// Notify the callback.</span>
                 <span class="ident">callback</span>(
                     <span class="ident">Event::Repeat</span> {
-                        <span class="ident">time</span>: (<span class="ident">new_time</span> <span class="op">/</span> <span class="number">1000</span>) <span class="kw">as</span> <span class="ident">u32</span>,
+                        <span class="ident">time</span>: <span class="ident">data</span>.<span class="ident">start_protocol_time</span>
+                            <span class="op">+</span> (<span class="ident">last_trigger</span> <span class="op">-</span> <span class="ident">data</span>.<span class="ident">start_instant</span>).<span class="ident">as_millis</span>() <span class="kw">as</span> <span class="ident">u32</span>,
                         <span class="ident">rawkey</span>: <span class="ident">data</span>.<span class="ident">keycode</span>,
                         <span class="ident">keysym</span>,
                         <span class="ident">utf8</span>,
                     },
                     <span class="kw-2">&amp;mut</span> <span class="ident">data</span>.<span class="ident">keyboard</span>,
                 );
-                <span class="comment">// Update the time of last event.</span>
-                <span class="ident">data</span>.<span class="ident">time</span> <span class="op">=</span> <span class="ident">new_time</span>;
                 <span class="comment">// Schedule the next timeout.</span>
-                <span class="ident">timer_handle</span>.<span class="ident">add_timeout</span>(<span class="ident">Duration::from_micros</span>(<span class="ident">data</span>.<span class="ident">gap</span>), ());
+                <span class="ident">calloop::timer::TimeoutAction::ToInstant</span>(<span class="ident">last_trigger</span> <span class="op">+</span> <span class="ident">data</span>.<span class="ident">gap</span>)
+            } <span class="kw">else</span> {
+                <span class="ident">calloop::timer::TimeoutAction::Drop</span>
             }
         })
     }
@@ -1227,7 +1281,7 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">poll</span>: <span class="kw-2">&amp;mut</span> <span class="ident">calloop::Poll</span>,
         <span class="ident">token_factory</span>: <span class="kw-2">&amp;mut</span> <span class="ident">calloop::TokenFactory</span>,
-    ) -&gt; <span class="ident">std::io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">calloop::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">register</span>(<span class="ident">poll</span>, <span class="ident">token_factory</span>)
     }
 
@@ -1235,11 +1289,11 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">poll</span>: <span class="kw-2">&amp;mut</span> <span class="ident">calloop::Poll</span>,
         <span class="ident">token_factory</span>: <span class="kw-2">&amp;mut</span> <span class="ident">calloop::TokenFactory</span>,
-    ) -&gt; <span class="ident">std::io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">calloop::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">reregister</span>(<span class="ident">poll</span>, <span class="ident">token_factory</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">unregister</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">poll</span>: <span class="kw-2">&amp;mut</span> <span class="ident">calloop::Poll</span>) -&gt; <span class="ident">std::io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">unregister</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">poll</span>: <span class="kw-2">&amp;mut</span> <span class="ident">calloop::Poll</span>) -&gt; <span class="ident">calloop::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">unregister</span>(<span class="ident">poll</span>)
     }
 }

@@ -144,11 +144,6 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cell::RefCell</span>, <span class="ident">convert::TryInto</span>, <span class="ident">rc::Rc</span>};
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
@@ -185,10 +180,7 @@
             <span class="ident">xdg_surface::Event::Configure</span> { <span class="ident">serial</span> } =&gt; {
                 <span class="ident">xdgs</span>.<span class="ident">ack_configure</span>(<span class="ident">serial</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">new_size</span>, <span class="ident">states</span>)) <span class="op">=</span> <span class="ident">pending_configure_2</span>.<span class="ident">borrow_mut</span>().<span class="ident">take</span>() {
-                    (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">implementation_2</span>.<span class="ident">borrow_mut</span>())(
-                        <span class="ident">Event::Configure</span> { <span class="ident">new_size</span>, <span class="ident">states</span> },
-                        <span class="ident">ddata</span>,
-                    );
+                    (<span class="ident">implementation_2</span>.<span class="ident">borrow_mut</span>())(<span class="ident">Event::Configure</span> { <span class="ident">new_size</span>, <span class="ident">states</span> }, <span class="ident">ddata</span>);
                 }
             }
             <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
@@ -196,9 +188,7 @@
         <span class="kw">let</span> <span class="ident">toplevel</span> <span class="op">=</span> <span class="ident">xdgs</span>.<span class="ident">get_toplevel</span>();
         <span class="ident">toplevel</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span>, <span class="ident">evt</span>, <span class="ident">ddata</span><span class="op">|</span> {
             <span class="kw">match</span> <span class="ident">evt</span> {
-                <span class="ident">xdg_toplevel::Event::Close</span> =&gt; {
-                    (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">implementation</span>.<span class="ident">borrow_mut</span>())(<span class="ident">Event::Close</span>, <span class="ident">ddata</span>)
-                }
+                <span class="ident">xdg_toplevel::Event::Close</span> =&gt; (<span class="ident">implementation</span>.<span class="ident">borrow_mut</span>())(<span class="ident">Event::Close</span>, <span class="ident">ddata</span>),
                 <span class="ident">xdg_toplevel::Event::Configure</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">states</span> } =&gt; {
                     <span class="kw">use</span> <span class="ident">std::cmp::max</span>;
                     <span class="kw">let</span> <span class="ident">new_size</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">width</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">height</span> <span class="op">==</span> <span class="number">0</span> {

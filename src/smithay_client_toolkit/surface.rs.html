@@ -252,7 +252,7 @@
             <span class="ident">drop</span>(<span class="ident">user_data</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">cb</span>) <span class="op">=</span> <span class="ident">callback</span> {
                 <span class="kw">if</span> <span class="ident">old_scale_factor</span> <span class="op">!</span><span class="op">=</span> <span class="ident">new_scale_factor</span> {
-                    (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">cb</span>.<span class="ident">borrow_mut</span>())(<span class="ident">new_scale_factor</span>, <span class="ident">surface</span>.<span class="ident">clone</span>(), <span class="ident">ddata</span>);
+                    (<span class="ident">cb</span>.<span class="ident">borrow_mut</span>())(<span class="ident">new_scale_factor</span>, <span class="ident">surface</span>.<span class="ident">clone</span>(), <span class="ident">ddata</span>);
                 }
             }
         });
@@ -309,7 +309,7 @@
         <span class="ident">drop</span>(<span class="ident">user_data</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">cb</span>) <span class="op">=</span> <span class="ident">callback</span> {
             <span class="kw">if</span> <span class="ident">old_scale_factor</span> <span class="op">!</span><span class="op">=</span> <span class="ident">new_scale_factor</span> {
-                (<span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">cb</span>.<span class="ident">borrow_mut</span>())(<span class="ident">new_scale_factor</span>, <span class="ident">surface</span>.<span class="ident">detach</span>(), <span class="ident">ddata</span>);
+                (<span class="ident">cb</span>.<span class="ident">borrow_mut</span>())(<span class="ident">new_scale_factor</span>, <span class="ident">surface</span>.<span class="ident">detach</span>(), <span class="ident">ddata</span>);
             }
         }
     });

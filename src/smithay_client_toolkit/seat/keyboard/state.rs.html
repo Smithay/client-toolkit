@@ -436,7 +436,6 @@
 <span id="431">431</span>
 <span id="432">432</span>
 <span id="433">433</span>
-<span id="434">434</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">memmap2::MmapOptions</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">env</span>, <span class="ident">ffi::CString</span>, <span class="ident">fs::File</span>, <span class="ident">os::raw::c_char</span>, <span class="ident">os::unix::ffi::OsStringExt</span>, <span class="ident">ptr</span>};
 
@@ -621,9 +620,8 @@
         <span class="kw">if</span> <span class="ident">size</span> <span class="op">&lt;</span><span class="op">=</span> <span class="number">1</span> {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>];
         <span class="kw">unsafe</span> {
-            <span class="ident">buffer</span>.<span class="ident">set_len</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
             <span class="macro">ffi_dispatch!</span>(
                 <span class="ident">XKBH</span>,
                 <span class="ident">xkb_state_key_get_utf8</span>,
@@ -669,7 +667,7 @@
         <span class="kw">if</span> <span class="ident">size</span> <span class="op">&lt;</span><span class="op">=</span> <span class="number">1</span> {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>];
         <span class="kw">unsafe</span> {
             <span class="ident">buffer</span>.<span class="ident">set_len</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
             <span class="macro">ffi_dispatch!</span>(
