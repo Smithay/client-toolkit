@@ -23,11 +23,11 @@ lazy_static = "1.0"
 memmap2 = "0.5"
 log = "0.4"
 thiserror = "1.0.30"
-wayland-backend = "=0.1.0-beta.1"
-wayland-client = "=0.30.0-beta.1"
-wayland-protocols = { version = "=0.30.0-beta.1", features = ["client", "unstable"] }
-wayland-protocols-wlr = { version = "=0.1.0-beta.1", features = ["client"] }
-wayland-cursor = "=0.30.0-beta.1"
+wayland-backend = "=0.1.0-beta.4"
+wayland-client = "=0.30.0-beta.4"
+wayland-protocols = { version = "=0.30.0-beta.4", features = ["client", "unstable"] }
+wayland-protocols-wlr = { version = "=0.1.0-beta.4", features = ["client"] }
+wayland-cursor = "=0.30.0-beta.4"
 
 # Explicit dependency until release
 xkbcommon = { version = "=0.5.0-beta.0", optional = true, features = ["wayland"] }
