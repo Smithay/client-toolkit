@@ -20,8 +20,8 @@ use wayland_client::{
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    pointer::{PointerData, PointerHandler},
-    touch::{TouchData, TouchHandler},
+    pointer::{PointerData, PointerDataExt, PointerHandler},
+    touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
 #[non_exhaustive]
@@ -104,6 +104,24 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
+        self.get_pointer_with_data(qh, seat, PointerData::default())
+    }
+
+    /// Creates a pointer from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    pub fn get_pointer_with_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        pointer_data: U,
+    ) -> Result<wl_pointer::WlPointer, SeatError>
+    where
+        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
+        U: PointerDataExt + 'static,
+    {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
@@ -111,7 +129,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        let pointer = seat.get_pointer(qh, PointerData::default())?;
+        let pointer = seat.get_pointer(qh, pointer_data)?;
         Ok(pointer)
     }
 
@@ -128,6 +146,24 @@ impl SeatState {
     where
         D: Dispatch<wl_touch::WlTouch, TouchData> + TouchHandler + 'static,
     {
+        self.get_touch_with_data(qh, seat, TouchData::default())
+    }
+
+    /// Creates a touch handle from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.
+    pub fn get_touch_with_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        udata: U,
+    ) -> Result<wl_touch::WlTouch, SeatError>
+    where
+        D: Dispatch<wl_touch::WlTouch, U> + TouchHandler + 'static,
+        U: TouchDataExt + 'static,
+    {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
@@ -135,7 +171,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        let touch = seat.get_touch(qh, TouchData::default())?;
+        let touch = seat.get_touch(qh, udata)?;
         Ok(touch)
     }
 }

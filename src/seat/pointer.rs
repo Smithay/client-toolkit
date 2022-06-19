@@ -112,12 +112,31 @@ pub struct PointerData {
     inner: Mutex<PointerDataInner>,
 }
 
+pub trait PointerDataExt: Send + Sync {
+    fn pointer_data(&self) -> &PointerData;
+}
+
+impl PointerDataExt for PointerData {
+    fn pointer_data(&self) -> &PointerData {
+        self
+    }
+}
+
 #[macro_export]
 macro_rules! delegate_pointer {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
                 $crate::reexports::client::protocol::wl_pointer::WlPointer: $crate::seat::pointer::PointerData
+            ] => $crate::seat::SeatState
+        );
+    };
+    ($ty: ty, pointer: [$($pointer_data:ty),* $(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $(
+                    $crate::reexports::client::protocol::wl_pointer::WlPointer: $pointer_data,
+                )*
             ] => $crate::seat::SeatState
         );
     };
@@ -134,18 +153,20 @@ pub(crate) struct PointerDataInner {
     pending: SmallVec<[PointerEvent; 3]>,
 }
 
-impl<D> DelegateDispatch<wl_pointer::WlPointer, PointerData, D> for SeatState
+impl<D, U> DelegateDispatch<wl_pointer::WlPointer, U, D> for SeatState
 where
-    D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler,
+    D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler,
+    U: PointerDataExt,
 {
     fn event(
         data: &mut D,
         pointer: &wl_pointer::WlPointer,
         event: wl_pointer::Event,
-        udata: &PointerData,
+        udata: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let udata = udata.pointer_data();
         let mut guard = udata.inner.lock().unwrap();
         let mut leave_surface = None;
         let kind = match event {

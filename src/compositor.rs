@@ -39,6 +39,16 @@ pub trait CompositorHandler: Sized {
     );
 }
 
+pub trait SurfaceDataExt: Send + Sync {
+    fn surface_data(&self) -> &SurfaceData;
+}
+
+impl SurfaceDataExt for SurfaceData {
+    fn surface_data(&self) -> &SurfaceData {
+        self
+    }
+}
+
 #[derive(Debug)]
 pub struct CompositorState {
     wl_compositor: GlobalProxy<wl_compositor::WlCompositor>,
@@ -60,12 +70,21 @@ impl CompositorState {
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
     {
+        self.create_surface_with_data(qh, Default::default())
+    }
+
+    pub fn create_surface_with_data<D, U>(
+        &self,
+        qh: &QueueHandle<D>,
+        data: U,
+    ) -> Result<wl_surface::WlSurface, GlobalError>
+    where
+        D: Dispatch<wl_surface::WlSurface, U> + 'static,
+        U: SurfaceDataExt + 'static,
+    {
         let compositor = self.wl_compositor.get()?;
 
-        let surface = compositor.create_surface(
-            qh,
-            SurfaceData { scale_factor: AtomicI32::new(1), outputs: Mutex::new(vec![]) },
-        )?;
+        let surface = compositor.create_surface(qh, data)?;
 
         Ok(surface)
     }
@@ -90,10 +109,32 @@ pub struct SurfaceData {
     pub(crate) outputs: Mutex<Vec<wl_output::WlOutput>>,
 }
 
+impl SurfaceData {
+    /// Create a new surface that initially reports the given scale factor.
+    pub fn with_initial_scale(scale_factor: i32) -> Self {
+        Self { scale_factor: AtomicI32::new(scale_factor), outputs: Default::default() }
+    }
+
+    /// The scale factor of the output with the highest scale factor.
+    pub fn scale_factor(&self) -> i32 {
+        self.scale_factor.load(Ordering::Relaxed)
+    }
+
+    /// The outputs the surface is currently inside.
+    pub fn outputs(&self) -> impl Iterator<Item = wl_output::WlOutput> {
+        self.outputs.lock().unwrap().clone().into_iter()
+    }
+}
+
+impl Default for SurfaceData {
+    fn default() -> Self {
+        Self::with_initial_scale(1)
+    }
+}
+
 #[macro_export]
 macro_rules! delegate_compositor {
     ($ty: ty) => {
-
         $crate::reexports::client::delegate_dispatch!($ty:
             [
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
@@ -103,22 +144,36 @@ macro_rules! delegate_compositor {
             ] => $crate::compositor::CompositorState
         );
     };
+    ($ty: ty, surface: [$($surface: ty),*$(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: (),
+                $(
+                    $crate::reexports::client::protocol::wl_surface::WlSurface: $surface,
+                )*
+                $crate::reexports::client::protocol::wl_region::WlRegion: (),
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
+            ] => $crate::compositor::CompositorState
+        );
+    };
 }
 
-impl<D> DelegateDispatch<wl_surface::WlSurface, SurfaceData, D> for CompositorState
+impl<D, U> DelegateDispatch<wl_surface::WlSurface, U, D> for CompositorState
 where
-    D: Dispatch<wl_surface::WlSurface, SurfaceData>
+    D: Dispatch<wl_surface::WlSurface, U>
         + Dispatch<wl_output::WlOutput, OutputData>
         + CompositorHandler,
+    U: SurfaceDataExt,
 {
     fn event(
         state: &mut D,
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
-        data: &SurfaceData,
+        data: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let data = data.surface_data();
         let mut outputs = data.outputs.lock().unwrap();
 
         match event {
@@ -134,24 +189,26 @@ where
         }
 
         // Compute the new max of the scale factors for all outputs this surface is displayed on.
-        let current = data.scale_factor.load(Ordering::SeqCst);
+        let current = data.scale_factor.load(Ordering::Relaxed);
 
-        let largest_factor = outputs
+        let factor = match outputs
             .iter()
             .filter_map(|output| output.data::<OutputData>().map(OutputData::scale_factor))
-            .reduce(i32::max);
+            .reduce(i32::max)
+        {
+            // If no scale factor is found, because the surface has left its only output, do not
+            // change the scale factor.
+            None => return,
+            Some(factor) if factor == current => return,
+            Some(factor) => factor,
+        };
+
+        data.scale_factor.store(factor, Ordering::Relaxed);
 
         // Drop the mutex before we send of any events.
         drop(outputs);
 
-        // If no scale factor is found, because the surface has left it's only output, do not change the scale factor.
-        if let Some(factor) = largest_factor {
-            data.scale_factor.store(factor, Ordering::SeqCst);
-
-            if current != factor {
-                state.scale_factor_changed(conn, qh, surface, factor);
-            }
-        }
+        state.scale_factor_changed(conn, qh, surface, factor);
     }
 }
 
