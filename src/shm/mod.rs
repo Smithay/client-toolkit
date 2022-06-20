@@ -9,7 +9,7 @@ use crate::{
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
-use self::pool::{raw::RawPool, slot::SlotPool, CreatePoolError};
+use self::pool::{multi::MultiPool, raw::RawPool, slot::SlotPool, CreatePoolError};
 
 pub trait ShmHandler {
     fn shm_state(&mut self) -> &mut ShmState;
@@ -32,6 +32,10 @@ impl ShmState {
 
     pub fn new_slot_pool(&self, len: usize) -> Result<SlotPool, CreatePoolError> {
         Ok(SlotPool::new(self.new_raw_pool(len)?))
+    }
+
+    pub fn new_multi_pool<K>(&self, len: usize) -> Result<MultiPool<K>, CreatePoolError> {
+        Ok(MultiPool::new(self.new_raw_pool(len)?))
     }
 
     /// Creates a new raw pool.

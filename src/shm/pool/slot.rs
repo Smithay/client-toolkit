@@ -255,8 +255,8 @@ impl SlotPool {
     }
 
     /// Create a new slot with the given size in bytes.
-    pub fn new_slot(&mut self, len: usize) -> io::Result<Slot> {
-        let len = (len + 15) & !15;
+    pub fn new_slot(&mut self, mut len: usize) -> io::Result<Slot> {
+        len = (len + 63) & !63;
         let offset = self.alloc(len)?;
 
         Ok(Slot {
