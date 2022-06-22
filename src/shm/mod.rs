@@ -21,6 +21,15 @@ pub struct ShmState {
     formats: Vec<wl_shm::Format>,
 }
 
+impl From<wl_shm::WlShm> for ShmState {
+    fn from(wl_shm: wl_shm::WlShm) -> Self {
+        Self {
+            wl_shm: GlobalProxy::Bound(wl_shm),
+            formats: Vec::new()
+        }
+    }
+}
+
 impl ShmState {
     pub fn new() -> ShmState {
         ShmState { wl_shm: GlobalProxy::NotReady, formats: vec![] }
