@@ -24,10 +24,7 @@ pub struct ShmState {
 
 impl From<wl_shm::WlShm> for ShmState {
     fn from(wl_shm: wl_shm::WlShm) -> Self {
-        Self {
-            wl_shm: GlobalProxy::Bound(wl_shm),
-            formats: Vec::new()
-        }
+        Self { wl_shm: GlobalProxy::Bound(wl_shm), formats: Vec::new() }
     }
 }
 
