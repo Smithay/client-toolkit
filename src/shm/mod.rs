@@ -8,7 +8,7 @@ use crate::{
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
-use self::pool::{multi::MultiPool, raw::RawPool, slot::SlotPool, CreatePoolError};
+use self::pool::{buffer::Buffer, multi::MultiPool, raw::RawPool, slot::SlotPool, CreatePoolError};
 
 pub trait ShmHandler {
     fn shm_state(&mut self) -> &mut ShmState;
@@ -41,6 +41,20 @@ impl ShmState {
 
     pub fn new_multi_pool<K>(&self, len: usize) -> Result<MultiPool<K>, CreatePoolError> {
         Ok(MultiPool::new(self.new_raw_pool(len)?))
+    }
+
+    /// Creates a new buffer pool.
+    ///
+    /// A buffer pool contains a single, fixed size buffer.
+    pub fn new_buffer(
+        &self,
+        width: i32,
+        stride: i32,
+        height: i32,
+        format: wl_shm::Format,
+    ) -> Result<Buffer, CreatePoolError> {
+        let len = (stride as usize) * (height as usize);
+        Buffer::new(self.new_raw_pool(len)?, width, stride, height, format)
     }
 
     /// Creates a new raw pool.

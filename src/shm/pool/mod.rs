@@ -1,3 +1,4 @@
+pub mod buffer;
 pub mod multi;
 pub mod raw;
 pub mod slot;
@@ -5,6 +6,7 @@ pub mod slot;
 use std::io;
 
 use nix::errno::Errno;
+use wayland_backend::client::InvalidId;
 
 use crate::error::GlobalError;
 
@@ -18,6 +20,9 @@ pub enum CreatePoolError {
     /// Error while allocating the shared memory.
     #[error(transparent)]
     Create(#[from] io::Error),
+
+    #[error(transparent)]
+    InvalidId(#[from] InvalidId),
 }
 
 impl From<Errno> for CreatePoolError {
