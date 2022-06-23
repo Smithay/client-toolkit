@@ -10,7 +10,7 @@ where
     D: Dispatch<xdg_wm_base::XdgWmBase, ()> + XdgShellHandler + ProvidesRegistryState + 'static,
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        data.xdg_shell_state().xdg_wm_base = data.registry().bind_one(qh, 1..=3, ()).into();
+        data.xdg_shell_state().xdg_wm_base = data.registry().bind_one(qh, 1..=4, ()).into();
     }
 }
 
