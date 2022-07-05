@@ -1,31 +1,62 @@
 use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
-use crate::registry::{ProvidesRegistryState, RegistryHandler};
+use crate::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
+    registry::{ProvidesRegistryState, RegistryHandler},
+};
 
 use super::{LayerHandler, LayerState, LayerSurfaceConfigure, LayerSurfaceData};
 
 impl<D> RegistryHandler<D> for LayerState
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()>
+    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData>
         + LayerHandler
         + ProvidesRegistryState
         + 'static,
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        data.layer_state().wlr_layer_shell = data.registry().bind_one(qh, 1..=4, ()).into();
+        data.layer_state().wlr_layer_shell =
+            data.registry().bind_one(qh, 1..=4, GlobalData(())).into();
     }
 }
 
-impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, (), D> for LayerState
+// Layer shell has only added requests and enum variants in versions 2-4, so its client-facing API
+// is still compatible.
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 1> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 2> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 3> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4> for LayerState {
+    fn bound_global(&self) -> Result<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
+        self.wlr_layer_shell.get().cloned()
+    }
+}
+
+impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, D> for LayerState
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, ()> + LayerHandler + 'static,
+    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData> + LayerHandler + 'static,
 {
     fn event(
         _: &mut D,
         _: &zwlr_layer_shell_v1::ZwlrLayerShellV1,
         _: zwlr_layer_shell_v1::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

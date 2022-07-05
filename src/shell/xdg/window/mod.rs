@@ -12,15 +12,18 @@ use wayland_protocols::{
     xdg::shell::client::{
         xdg_surface,
         xdg_toplevel::{self, State},
+        xdg_wm_base,
     },
 };
 
+use crate::compositor::Surface;
 use crate::error::GlobalError;
+use crate::globals::ProvidesBoundGlobal;
 use crate::registry::GlobalProxy;
 
 use self::inner::{WindowDataInner, WindowInner};
 
-use super::{XdgShellHandler, XdgShellState};
+use super::{XdgShellHandler, XdgShellSurface};
 
 pub(super) mod inner;
 
@@ -258,9 +261,9 @@ impl WindowBuilder {
     pub fn map<D>(
         self,
         qh: &QueueHandle<D>,
-        shell_state: &XdgShellState,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
         window_state: &mut XdgWindowState,
-        surface: wl_surface::WlSurface,
+        surface: impl Into<Surface>,
     ) -> Result<Window, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, WindowData>
@@ -282,7 +285,7 @@ impl WindowBuilder {
         });
         let window_data = WindowData(data);
 
-        let xdg_surface = shell_state.create_xdg_surface(qh, surface, window_data.clone())?;
+        let xdg_surface = XdgShellSurface::new(wm_base, qh, surface, window_data.clone())?;
 
         let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, window_data.clone())?;
 
@@ -478,7 +481,7 @@ macro_rules! delegate_xdg_window {
         $crate::reexports::client::delegate_dispatch!($ty: [
             $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::window::WindowData,
             $crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel: $crate::shell::xdg::window::WindowData,
-            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1: (),
+            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1: $crate::globals::GlobalData,
             $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData,
         ] => $crate::shell::xdg::window::XdgWindowState);
     };

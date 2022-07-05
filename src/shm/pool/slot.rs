@@ -12,7 +12,7 @@ use wayland_client::{
     Proxy,
 };
 
-use super::raw::RawPool;
+use crate::{globals::ProvidesBoundGlobal, shm::pool::raw::RawPool, shm::pool::CreatePoolError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateBufferError {
@@ -124,9 +124,14 @@ impl BufferData {
 }
 
 impl SlotPool {
-    pub(crate) fn new(inner: RawPool) -> Self {
+    pub fn new(
+        len: usize,
+        shm: &impl ProvidesBoundGlobal<wl_shm::WlShm, 1>,
+    ) -> Result<Self, CreatePoolError> {
+        let shm = shm.bound_global()?;
+        let inner = RawPool::new(len, &shm)?;
         let free_list = Arc::new(Mutex::new(vec![FreelistEntry { offset: 0, len: inner.len() }]));
-        SlotPool { inner, free_list }
+        Ok(SlotPool { inner, free_list })
     }
 
     /// Create a new buffer in a new slot.

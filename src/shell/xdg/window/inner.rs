@@ -15,11 +15,12 @@ use wayland_protocols::{
     xdg::shell::client::{
         xdg_surface,
         xdg_toplevel::{self, State},
-        xdg_wm_base,
     },
 };
 
 use crate::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
     registry::{ProvidesRegistryState, RegistryHandler},
     shell::xdg::XdgShellSurface,
 };
@@ -115,8 +116,7 @@ const DECORATION_MANAGER_VERSION: u32 = 1;
 
 impl<D> RegistryHandler<D> for XdgWindowState
 where
-    D: Dispatch<xdg_wm_base::XdgWmBase, ()>
-        + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, ()>
+    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData>
         // Lateinit for decorations
         + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData>
         + WindowHandler
@@ -125,7 +125,17 @@ where
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.xdg_window_state().xdg_decoration_manager =
-            data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, ()).into();
+            data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, GlobalData(())).into();
+    }
+}
+
+impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
+    for XdgWindowState
+{
+    fn bound_global(
+        &self,
+    ) -> Result<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalError> {
+        self.xdg_decoration_manager.get().cloned()
     }
 }
 
@@ -219,16 +229,16 @@ where
 
 // XDG decoration
 
-impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, (), D>
+impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D>
     for XdgWindowState
 where
-    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, ()> + WindowHandler,
+    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData> + WindowHandler,
 {
     fn event(
         _: &mut D,
         _: &zxdg_decoration_manager_v1::ZxdgDecorationManagerV1,
         _: zxdg_decoration_manager_v1::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

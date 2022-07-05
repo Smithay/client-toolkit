@@ -1,6 +1,7 @@
 use std::{
+    any::Any,
     fmt::{self, Display, Formatter},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Weak},
 };
 
 use wayland_client::{
@@ -12,7 +13,10 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_v1,
 };
 
-use crate::registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler};
+use crate::{
+    globals::GlobalData,
+    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
+};
 
 pub trait OutputHandler: Sized {
     fn output_state(&mut self) -> &mut OutputState;
@@ -44,15 +48,36 @@ pub trait OutputHandler: Sized {
     );
 }
 
-#[derive(Debug)]
+type ScaleWatcherFn =
+    dyn Fn(&mut dyn Any, &Connection, &dyn Any, &wl_output::WlOutput) + Send + Sync;
+
 pub struct OutputState {
     xdg: GlobalProxy<ZxdgOutputManagerV1>,
     outputs: Vec<OutputInner>,
+    callbacks: Vec<Weak<ScaleWatcherFn>>,
+}
+
+impl fmt::Debug for OutputState {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("OutputState")
+            .field("xdg", &self.xdg)
+            .field("outputs", &self.outputs)
+            .field("callbacks", &self.callbacks.len())
+            .finish()
+    }
+}
+
+pub struct ScaleWatcherHandle(Arc<ScaleWatcherFn>);
+
+impl fmt::Debug for ScaleWatcherHandle {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("ScaleWatcherHandle").finish_non_exhaustive()
+    }
 }
 
 impl OutputState {
     pub fn new() -> OutputState {
-        OutputState { xdg: GlobalProxy::new(), outputs: vec![] }
+        OutputState { xdg: GlobalProxy::new(), outputs: vec![], callbacks: vec![] }
     }
 
     /// Returns an iterator over all outputs.
@@ -69,6 +94,22 @@ impl OutputState {
             .iter()
             .find(|inner| &inner.wl_output == output)
             .and_then(|inner| inner.current_info.clone())
+    }
+
+    pub fn add_scale_watcher<F, D>(data: &mut D, f: F) -> ScaleWatcherHandle
+    where
+        D: OutputHandler + 'static,
+        F: Fn(&mut D, &Connection, &QueueHandle<D>, &wl_output::WlOutput) + Send + Sync + 'static,
+    {
+        let state = data.output_state();
+        let rv = ScaleWatcherHandle(Arc::new(move |data, conn, qh, output| {
+            if let (Some(data), Some(qh)) = (data.downcast_mut(), qh.downcast_ref()) {
+                f(data, conn, qh, output);
+            }
+        }));
+        state.callbacks.retain(|f| f.upgrade().is_some());
+        state.callbacks.push(Arc::downgrade(&rv.0));
+        rv
     }
 
     fn setup<D>(&mut self, wl_output: wl_output::WlOutput, qh: &QueueHandle<D>)
@@ -250,7 +291,7 @@ macro_rules! delegate_output {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
             $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData,
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: (),
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: $crate::globals::GlobalData,
             $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData,
         ] => $crate::output::OutputState);
     };
@@ -258,7 +299,7 @@ macro_rules! delegate_output {
 
 impl<D> DelegateDispatch<wl_output::WlOutput, OutputData, D> for OutputState
 where
-    D: Dispatch<wl_output::WlOutput, OutputData> + OutputHandler,
+    D: Dispatch<wl_output::WlOutput, OutputData> + OutputHandler + 'static,
 {
     fn event(
         state: &mut D,
@@ -415,14 +456,23 @@ where
                     inner.pending_xdg = false;
                 }
 
-                // Set the user data
-                data.set(info);
+                // Set the user data, see if we need to run scale callbacks
+                let run_callbacks = data.set(info);
 
                 if inner.just_created {
                     inner.just_created = false;
                     state.new_output(conn, qh, output.clone());
                 } else {
                     state.update_output(conn, qh, output.clone());
+                }
+
+                if run_callbacks {
+                    let callbacks = state.output_state().callbacks.clone();
+                    for cb in callbacks {
+                        if let Some(cb) = cb.upgrade() {
+                            cb(state, conn, qh, output);
+                        }
+                    }
                 }
             }
 
@@ -431,15 +481,15 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, (), D> for OutputState
+impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData, D> for OutputState
 where
-    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()> + OutputHandler,
+    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData> + OutputHandler,
 {
     fn event(
         _: &mut D,
         _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
         _: zxdg_output_manager_v1::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -532,7 +582,7 @@ impl<D> RegistryHandler<D> for OutputState
 where
     D: Dispatch<wl_output::WlOutput, OutputData>
         + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, ()>
+        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
         + OutputHandler
         + ProvidesRegistryState
         + 'static,
@@ -543,7 +593,7 @@ where
 
         // Only bind xdg output manager if it's needed
         let xdg = if outputs.iter().any(|o| o.version() < 4) {
-            data.registry().bind_one(qh, 1..=3, ()).into()
+            data.registry().bind_one(qh, 1..=3, GlobalData(())).into()
         } else {
             GlobalProxy::NotReady
         };
@@ -567,7 +617,8 @@ where
         if interface == "wl_output" {
             // Lazily bind xdg output manager if it's needed
             if version < 4 && matches!(data.output_state().xdg, GlobalProxy::NotReady) {
-                data.output_state().xdg = data.registry().bind_one(qh, 1..=3, ()).into();
+                data.output_state().xdg =
+                    data.registry().bind_one(qh, 1..=3, GlobalData(())).into();
             }
 
             let output = data
@@ -630,10 +681,14 @@ impl OutputInfo {
 }
 
 impl OutputData {
-    pub(crate) fn set(&self, info: OutputInfo) {
+    pub(crate) fn set(&self, info: OutputInfo) -> bool {
         let mut guard = self.0.lock().unwrap();
 
+        let rv = guard.scale_factor != info.scale_factor;
+
         *guard = info;
+
+        rv
     }
 }
 

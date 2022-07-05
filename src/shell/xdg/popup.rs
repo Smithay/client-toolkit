@@ -1,15 +1,21 @@
 use crate::{
-    compositor::{CompositorState, SurfaceData},
+    compositor::{Surface, SurfaceData},
     error::GlobalError,
-    shell::xdg::{XdgShellState, XdgShellSurface},
+    globals::ProvidesBoundGlobal,
+    shell::xdg::XdgShellSurface,
 };
 use once_cell::sync::OnceCell;
 use std::sync::{
     atomic::{AtomicI32, AtomicU32, Ordering::Relaxed},
     Arc, Weak,
 };
-use wayland_client::{protocol::wl_surface, Connection, DelegateDispatch, Dispatch, QueueHandle};
-use wayland_protocols::xdg::shell::client::{xdg_popup, xdg_positioner, xdg_surface};
+use wayland_client::{
+    protocol::{wl_compositor::WlCompositor, wl_surface},
+    Connection, DelegateDispatch, Dispatch, QueueHandle,
+};
+use wayland_protocols::xdg::shell::client::{
+    xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base::XdgWmBase,
+};
 
 #[derive(Debug, Clone)]
 pub struct Popup {
@@ -47,8 +53,8 @@ impl Popup {
         parent: &xdg_surface::XdgSurface,
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
-        compositor: &CompositorState,
-        wm_base: &XdgShellState,
+        compositor: &impl ProvidesBoundGlobal<WlCompositor, 5>,
+        wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData>
@@ -57,7 +63,7 @@ impl Popup {
             + PopupHandler
             + 'static,
     {
-        let surface = compositor.create_surface(qh)?;
+        let surface = Surface::new(compositor, qh)?;
         let popup = Self::from_surface(Some(parent), position, qh, surface, wm_base)?;
         popup.wl_surface().commit();
         Ok(popup)
@@ -74,8 +80,8 @@ impl Popup {
         parent: Option<&xdg_surface::XdgSurface>,
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
-        surface: wl_surface::WlSurface,
-        wm_base: &XdgShellState,
+        surface: impl Into<Surface>,
+        wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, PopupData>
@@ -85,7 +91,7 @@ impl Popup {
         let arc = Arc::new(OnceCell::new());
 
         let surface =
-            wm_base.create_xdg_surface(qh, surface, PopupData { inner: Arc::downgrade(&arc) })?;
+            XdgShellSurface::new(wm_base, qh, surface, PopupData { inner: Arc::downgrade(&arc) })?;
         let xdg_popup = surface.xdg_surface().get_popup(
             parent,
             position,

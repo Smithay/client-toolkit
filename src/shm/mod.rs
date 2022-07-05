@@ -6,6 +6,7 @@ use wayland_client::{
 
 use crate::{
     error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
@@ -23,10 +24,7 @@ pub struct ShmState {
 
 impl From<wl_shm::WlShm> for ShmState {
     fn from(wl_shm: wl_shm::WlShm) -> Self {
-        Self {
-            wl_shm: GlobalProxy::Bound(wl_shm),
-            formats: Vec::new()
-        }
+        Self { wl_shm: GlobalProxy::Bound(wl_shm), formats: Vec::new() }
     }
 }
 
@@ -40,7 +38,7 @@ impl ShmState {
     }
 
     pub fn new_slot_pool(&self, len: usize) -> Result<SlotPool, CreatePoolError> {
-        Ok(SlotPool::new(self.new_raw_pool(len)?))
+        SlotPool::new(len, self)
     }
 
     pub fn new_multi_pool<K>(&self, len: usize) -> Result<MultiPool<K>, CreatePoolError> {
@@ -59,6 +57,12 @@ impl ShmState {
     /// Returns the formats supported in memory pools.
     pub fn formats(&self) -> &[wl_shm::Format] {
         &self.formats[..]
+    }
+}
+
+impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for ShmState {
+    fn bound_global(&self) -> Result<wl_shm::WlShm, GlobalError> {
+        self.wl_shm().cloned()
     }
 }
 
@@ -90,21 +94,21 @@ macro_rules! delegate_shm {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_shm::WlShm: (),
+                $crate::reexports::client::protocol::wl_shm::WlShm: $crate::globals::GlobalData,
             ] => $crate::shm::ShmState
         );
     };
 }
 
-impl<D> DelegateDispatch<wl_shm::WlShm, (), D> for ShmState
+impl<D> DelegateDispatch<wl_shm::WlShm, GlobalData, D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, ()> + ShmHandler,
+    D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler,
 {
     fn event(
         state: &mut D,
         _proxy: &wl_shm::WlShm,
         event: wl_shm::Event,
-        _: &(),
+        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -130,9 +134,9 @@ where
 
 impl<D> RegistryHandler<D> for ShmState
 where
-    D: Dispatch<wl_shm::WlShm, ()> + ShmHandler + ProvidesRegistryState + 'static,
+    D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler + ProvidesRegistryState + 'static,
 {
     fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, ()).into();
+        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, GlobalData(())).into();
     }
 }
