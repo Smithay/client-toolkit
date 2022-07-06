@@ -388,7 +388,7 @@ where
         + 'static,
 {
     fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        let compositor = state.registry().bind_one(qh, 1..=5, GlobalData(()));
+        let compositor = state.registry().bind_one(qh, 1..=5, GlobalData);
 
         state.compositor_state().wl_compositor = compositor.into();
     }

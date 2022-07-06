@@ -18,7 +18,7 @@ where
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.layer_state().wlr_layer_shell =
-            data.registry().bind_one(qh, 1..=4, GlobalData(())).into();
+            data.registry().bind_one(qh, 1..=4, GlobalData).into();
     }
 }
 

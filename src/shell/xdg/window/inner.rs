@@ -125,7 +125,7 @@ where
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.xdg_window_state().xdg_decoration_manager =
-            data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, GlobalData(())).into();
+            data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, GlobalData).into();
     }
 }
 

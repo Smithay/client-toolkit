@@ -206,7 +206,7 @@ impl RegistryState {
             + 'static,
     {
         let display = conn.display();
-        let registry = display.get_registry(qh, GlobalData(())).unwrap();
+        let registry = display.get_registry(qh, GlobalData).unwrap();
         display.sync(qh, RegistryReady).unwrap();
         RegistryState { registry, globals: Vec::new(), ready: false }
     }

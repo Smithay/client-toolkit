@@ -50,4 +50,4 @@ pub trait ProvidesBoundGlobal<I: Proxy, const API_COMPAT_VERSION: u32> {
 ///
 /// This is used instead of `()` to allow multiple `Dispatch` impls on the same object.
 #[derive(Debug)]
-pub struct GlobalData(());
+pub struct GlobalData;
