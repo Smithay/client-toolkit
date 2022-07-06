@@ -18,7 +18,7 @@ where
 {
     fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
         data.xdg_shell_state().xdg_wm_base =
-            data.registry().bind_one(qh, 1..=4, GlobalData(())).into();
+            data.registry().bind_one(qh, 1..=4, GlobalData).into();
     }
 }
 
