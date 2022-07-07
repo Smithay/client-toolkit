@@ -617,8 +617,7 @@ where
         if interface == "wl_output" {
             // Lazily bind xdg output manager if it's needed
             if version < 4 && matches!(data.output_state().xdg, GlobalProxy::NotReady) {
-                data.output_state().xdg =
-                    data.registry().bind_one(qh, 1..=3, GlobalData).into();
+                data.output_state().xdg = data.registry().bind_one(qh, 1..=3, GlobalData).into();
             }
 
             let output = data
