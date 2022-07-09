@@ -137,6 +137,6 @@ where
     D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler + ProvidesRegistryState + 'static,
 {
     fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, GlobalData(())).into();
+        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, GlobalData).into();
     }
 }
