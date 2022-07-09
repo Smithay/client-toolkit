@@ -1,4 +1,4 @@
-use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
+use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::{
@@ -47,7 +47,7 @@ impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4> for LayerStat
     }
 }
 
-impl<D> DelegateDispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, D> for LayerState
+impl<D> Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, D> for LayerState
 where
     D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData> + LayerHandler + 'static,
 {
@@ -63,8 +63,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData, D>
-    for LayerState
+impl<D> Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData, D> for LayerState
 where
     D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData>
         + LayerHandler

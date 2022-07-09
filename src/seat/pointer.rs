@@ -3,7 +3,7 @@ use wayland_backend::smallvec::SmallVec;
 
 use wayland_client::{
     protocol::{wl_pointer, wl_surface},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use super::{SeatHandler, SeatState};
@@ -153,7 +153,7 @@ pub(crate) struct PointerDataInner {
     pending: SmallVec<[PointerEvent; 3]>,
 }
 
-impl<D, U> DelegateDispatch<wl_pointer::WlPointer, U, D> for SeatState
+impl<D, U> Dispatch<wl_pointer::WlPointer, U, D> for SeatState
 where
     D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler,
     U: PointerDataExt,

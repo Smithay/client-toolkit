@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
-use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
+use wayland_client::{Connection, Dispatch, QueueHandle};
 
 use crate::seat::{SeatHandler, SeatState};
 
@@ -131,7 +131,7 @@ pub trait TouchHandler: SeatHandler + Sized {
     fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
-impl<D, U> DelegateDispatch<WlTouch, U, D> for SeatState
+impl<D, U> Dispatch<WlTouch, U, D> for SeatState
 where
     D: Dispatch<WlTouch, U> + TouchHandler,
     U: TouchDataExt,

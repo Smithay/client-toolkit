@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     //
     // After the delegates have bound their globals and created the necessary objects, we need to dispatch
     // again so that events may be sent to the newly created objects.
-    event_queue.sync_roundtrip(&mut list_outputs)?;
+    event_queue.roundtrip(&mut list_outputs)?;
 
     // Now our outputs have been initialized with data, we may access what outputs exist and information about
     // said outputs using the output delegate.

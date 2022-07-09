@@ -5,7 +5,7 @@ use std::{
 
 use wayland_client::{
     protocol::{wl_output, wl_seat},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
@@ -139,7 +139,7 @@ impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
     }
 }
 
-impl<D> DelegateDispatch<xdg_surface::XdgSurface, WindowData, D> for XdgWindowState
+impl<D> Dispatch<xdg_surface::XdgSurface, WindowData, D> for XdgWindowState
 where
     D: Dispatch<xdg_surface::XdgSurface, WindowData> + WindowHandler,
 {
@@ -171,7 +171,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<xdg_toplevel::XdgToplevel, WindowData, D> for XdgWindowState
+impl<D> Dispatch<xdg_toplevel::XdgToplevel, WindowData, D> for XdgWindowState
 where
     D: Dispatch<xdg_toplevel::XdgToplevel, WindowData> + WindowHandler,
 {
@@ -229,7 +229,7 @@ where
 
 // XDG decoration
 
-impl<D> DelegateDispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D>
+impl<D> Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D>
     for XdgWindowState
 where
     D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData> + WindowHandler,
@@ -246,7 +246,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D>
+impl<D> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D>
     for XdgWindowState
 where
     D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData> + WindowHandler,

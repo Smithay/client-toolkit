@@ -1,8 +1,6 @@
 pub mod pool;
 
-use wayland_client::{
-    protocol::wl_shm, Connection, DelegateDispatch, Dispatch, QueueHandle, WEnum,
-};
+use wayland_client::{protocol::wl_shm, Connection, Dispatch, QueueHandle, WEnum};
 
 use crate::{
     error::GlobalError,
@@ -100,7 +98,7 @@ macro_rules! delegate_shm {
     };
 }
 
-impl<D> DelegateDispatch<wl_shm::WlShm, GlobalData, D> for ShmState
+impl<D> Dispatch<wl_shm::WlShm, GlobalData, D> for ShmState
 where
     D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler,
 {

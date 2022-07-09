@@ -14,7 +14,7 @@ use std::{
 use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_pointer, wl_seat, wl_touch},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
@@ -292,7 +292,7 @@ struct SeatInner {
     data: SeatData,
 }
 
-impl<D> DelegateDispatch<wl_seat::WlSeat, SeatData, D> for SeatState
+impl<D> Dispatch<wl_seat::WlSeat, SeatData, D> for SeatState
 where
     D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler,
 {

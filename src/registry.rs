@@ -75,7 +75,7 @@ use crate::{
 use wayland_client::{
     backend::InvalidId,
     protocol::{wl_callback, wl_registry},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 /// A trait implemented by modular parts of a smithay's client toolkit and protocol delegates that may be used
@@ -402,7 +402,7 @@ macro_rules! delegate_registry {
     };
 }
 
-impl<D> DelegateDispatch<wl_registry::WlRegistry, GlobalData, D> for RegistryState
+impl<D> Dispatch<wl_registry::WlRegistry, GlobalData, D> for RegistryState
 where
     D: Dispatch<wl_registry::WlRegistry, GlobalData> + ProvidesRegistryState,
 {
@@ -437,7 +437,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<wl_callback::WlCallback, RegistryReady, D> for RegistryState
+impl<D> Dispatch<wl_callback::WlCallback, RegistryReady, D> for RegistryState
 where
     D: Dispatch<wl_callback::WlCallback, RegistryReady> + ProvidesRegistryState,
 {
@@ -547,7 +547,7 @@ where
     }
 }
 
-impl<D, I, const MAX_VERSION: u32> DelegateDispatch<I, (), D> for SimpleGlobal<I, MAX_VERSION>
+impl<D, I, const MAX_VERSION: u32> Dispatch<I, (), D> for SimpleGlobal<I, MAX_VERSION>
 where
     D: Dispatch<I, ()>,
     I: Proxy,

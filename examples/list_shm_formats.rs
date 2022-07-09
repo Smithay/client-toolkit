@@ -26,7 +26,7 @@ fn main() {
     while !list_formats.registry_state.ready() {
         event_queue.blocking_dispatch(&mut list_formats).unwrap();
     }
-    event_queue.sync_roundtrip(&mut list_formats).unwrap();
+    event_queue.roundtrip(&mut list_formats).unwrap();
     println!("Supported formats:");
 
     for format in list_formats.shm_state.formats() {
