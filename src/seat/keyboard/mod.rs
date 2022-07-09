@@ -14,7 +14,7 @@ use std::{
 
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use xkbcommon::xkb;
 
@@ -409,7 +409,7 @@ impl KeyboardDataExt for KeyboardData {
     }
 }
 
-impl<D, U> DelegateDispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
+impl<D, U> Dispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
 where
     D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler,
     U: KeyboardDataExt,

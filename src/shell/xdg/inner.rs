@@ -1,4 +1,4 @@
-use wayland_client::{Connection, DelegateDispatch, Dispatch, QueueHandle};
+use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols::xdg::shell::client::xdg_wm_base;
 
 use crate::{
@@ -30,7 +30,7 @@ impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4> for XdgShellState {
 
 /* Delegate trait impls */
 
-impl<D> DelegateDispatch<xdg_wm_base::XdgWmBase, GlobalData, D> for XdgShellState
+impl<D> Dispatch<xdg_wm_base::XdgWmBase, GlobalData, D> for XdgShellState
 where
     D: Dispatch<xdg_wm_base::XdgWmBase, GlobalData> + XdgShellHandler,
 {

@@ -11,7 +11,7 @@ use std::sync::{
 };
 use wayland_client::{
     protocol::{wl_compositor::WlCompositor, wl_surface},
-    Connection, DelegateDispatch, Dispatch, QueueHandle,
+    Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::xdg::shell::client::{
     xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base::XdgWmBase,
@@ -179,7 +179,7 @@ pub trait PopupHandler: Sized {
     fn done(&mut self, conn: &Connection, qh: &QueueHandle<Self>, popup: &Popup);
 }
 
-impl<D> DelegateDispatch<xdg_surface::XdgSurface, PopupData, D> for PopupData
+impl<D> Dispatch<xdg_surface::XdgSurface, PopupData, D> for PopupData
 where
     D: Dispatch<xdg_surface::XdgSurface, PopupData> + PopupHandler,
 {
@@ -222,7 +222,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<xdg_popup::XdgPopup, PopupData, D> for PopupData
+impl<D> Dispatch<xdg_popup::XdgPopup, PopupData, D> for PopupData
 where
     D: Dispatch<xdg_popup::XdgPopup, PopupData> + PopupHandler,
 {

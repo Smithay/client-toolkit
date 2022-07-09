@@ -5,7 +5,7 @@ use std::sync::{
 
 use wayland_client::{
     protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
@@ -202,7 +202,7 @@ macro_rules! delegate_compositor {
     };
 }
 
-impl<D, U> DelegateDispatch<wl_surface::WlSurface, U, D> for CompositorState
+impl<D, U> Dispatch<wl_surface::WlSurface, U, D> for CompositorState
 where
     D: Dispatch<wl_surface::WlSurface, U> + CompositorHandler + OutputHandler + 'static,
     U: SurfaceDataExt + 'static,
@@ -336,7 +336,7 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
-impl<D> DelegateDispatch<wl_compositor::WlCompositor, GlobalData, D> for CompositorState
+impl<D> Dispatch<wl_compositor::WlCompositor, GlobalData, D> for CompositorState
 where
     D: Dispatch<wl_compositor::WlCompositor, GlobalData> + CompositorHandler,
 {
@@ -358,7 +358,7 @@ impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5> for CompositorState {
     }
 }
 
-impl<D> DelegateDispatch<wl_callback::WlCallback, wl_surface::WlSurface, D> for CompositorState
+impl<D> Dispatch<wl_callback::WlCallback, wl_surface::WlSurface, D> for CompositorState
 where
     D: Dispatch<wl_callback::WlCallback, wl_surface::WlSurface> + CompositorHandler,
 {

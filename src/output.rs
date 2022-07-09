@@ -6,7 +6,7 @@ use std::{
 
 use wayland_client::{
     protocol::wl_output::{self, Subpixel, Transform},
-    Connection, DelegateDispatch, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
@@ -297,7 +297,7 @@ macro_rules! delegate_output {
     };
 }
 
-impl<D> DelegateDispatch<wl_output::WlOutput, OutputData, D> for OutputState
+impl<D> Dispatch<wl_output::WlOutput, OutputData, D> for OutputState
 where
     D: Dispatch<wl_output::WlOutput, OutputData> + OutputHandler + 'static,
 {
@@ -481,7 +481,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData, D> for OutputState
+impl<D> Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData, D> for OutputState
 where
     D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData> + OutputHandler,
 {
@@ -497,7 +497,7 @@ where
     }
 }
 
-impl<D> DelegateDispatch<zxdg_output_v1::ZxdgOutputV1, OutputData, D> for OutputState
+impl<D> Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData, D> for OutputState
 where
     D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + OutputHandler,
 {
