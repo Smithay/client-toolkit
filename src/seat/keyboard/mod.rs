@@ -1,647 +1,621 @@
-//! Utilities for keymap interpretation of keyboard input
-//!
-//! This module provides an implementation for `wl_keyboard`
-//! objects using `libxkbcommon` to interpret the keyboard input
-//! given the user keymap.
-//!
-//! The entry point of this module is the [`map_keyboard`](fn.map_keyboard.html)
-//! function which, given a `wl_seat` and a callback, setup keymap interpretation
-//! and key repetition for the `wl_keyboard` of this seat.
-//!
-//! Key repetition relies on an event source, that needs to be inserted in your
-//! calloop event loop. Not doing so will prevent key repetition to work
-//! (but the rest of the functionnality will not be affected).
-
-#[cfg(feature = "calloop")]
-use calloop::{timer::Timer, RegistrationToken};
-#[cfg(feature = "calloop")]
-use std::num::NonZeroU32;
-#[cfg(feature = "calloop")]
-use std::time::Duration;
-use std::{
-    cell::{Cell, RefCell},
-    convert::TryInto,
-    fs::File,
-    os::unix::io::{FromRawFd, RawFd},
-    rc::Rc,
-    time::Instant,
-};
-pub use wayland_client::protocol::wl_keyboard::KeyState;
-use wayland_client::{
-    protocol::{wl_keyboard, wl_seat, wl_surface},
-    Attached,
-};
-
-#[rustfmt::skip]
-mod ffi;
-mod state;
 #[rustfmt::skip]
 pub mod keysyms;
 
-use self::state::KbState;
-pub use self::state::{ModifiersState, RMLVO};
-
-#[cfg(feature = "calloop")]
-const MICROS_IN_SECOND: u32 = 1000000;
-
-/// Possible kinds of key repetition
-#[derive(Debug)]
-pub enum RepeatKind {
-    /// keys will be repeated at a set rate and delay
-    Fixed {
-        /// The number of repetitions per second that should occur.
-        rate: u32,
-        /// delay (in milliseconds) between a key press and the start of repetition
-        delay: u32,
+use std::{
+    convert::TryInto,
+    env,
+    fmt::Debug,
+    num::NonZeroU32,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
     },
-    /// keys will be repeated at a rate and delay set by the wayland server
-    System,
+};
+
+use wayland_client::{
+    protocol::{wl_keyboard, wl_seat, wl_surface},
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+};
+use xkbcommon::xkb;
+
+use super::{Capability, SeatError, SeatHandler, SeatState};
+
+/// Error when creating a keyboard.
+#[derive(Debug, thiserror::Error)]
+pub enum KeyboardError {
+    /// Seat error.
+    #[error(transparent)]
+    Seat(#[from] SeatError),
+
+    /// The specified keymap (RMLVO) is not valid.
+    #[error("invalid keymap was specified")]
+    InvalidKeymap,
 }
 
-#[derive(Debug)]
-/// An error that occurred while trying to initialize a mapped keyboard
-pub enum Error {
-    /// libxkbcommon is not available
-    XKBNotFound,
-    /// Provided RMLVO specified a keymap that would not be loaded
-    BadNames,
-    /// The provided seat does not have the keyboard capability
-    NoKeyboard,
-    /// Failed to init timers for repetition
-    TimerError(std::io::Error),
-}
-
-/// Events received from a mapped keyboard
-#[derive(Debug)]
-pub enum Event<'a> {
-    /// The keyboard focus has entered a surface
-    Enter {
-        /// serial number of the event
-        serial: u32,
-        /// surface that was entered
-        surface: wl_surface::WlSurface,
-        /// raw values of the currently pressed keys
-        rawkeys: &'a [u32],
-        /// interpreted symbols of the currently pressed keys
-        keysyms: &'a [u32],
-    },
-    /// The keyboard focus has left a surface
-    Leave {
-        /// serial number of the event
-        serial: u32,
-        /// surface that was left
-        surface: wl_surface::WlSurface,
-    },
-    /// The key modifiers have changed state
-    Modifiers {
-        /// current state of the modifiers
-        modifiers: ModifiersState,
-    },
-    /// A key event occurred
-    Key {
-        /// serial number of the event
-        serial: u32,
-        /// time at which the keypress occurred
-        time: u32,
-        /// raw value of the key
-        rawkey: u32,
-        /// interpreted symbol of the key
-        keysym: u32,
-        /// new state of the key
-        state: KeyState,
-        /// utf8 interpretation of the entered text
-        ///
-        /// will always be `None` on key release events
-        utf8: Option<String>,
-    },
-    /// A key repetition event
-    Repeat {
-        /// time at which the repetition occured
-        time: u32,
-        /// raw value of the key
-        rawkey: u32,
-        /// interpreted symbol of the key
-        keysym: u32,
-        /// utf8 interpretation of the entered text
-        utf8: Option<String>,
-    },
-}
-
-/// Implement a keyboard for keymap translation with key repetition
-///
-/// This requires you to provide a callback to receive the events after they
-/// have been interpreted with the keymap.
-///
-/// The keymap will be loaded from the provided RMLVO rules, or from the compositor
-/// provided keymap if `None`.
-///
-/// Returns an error if xkbcommon could not be initialized, the RMLVO specification
-/// contained invalid values, or if the provided seat does not have keyboard capability.
-///
-/// **Note:** This adapter does not handle key repetition. See `map_keyboard_repeat` for that.
-pub fn map_keyboard<F>(
-    seat: &Attached<wl_seat::WlSeat>,
-    rmlvo: Option<RMLVO>,
-    callback: F,
-) -> Result<wl_keyboard::WlKeyboard, Error>
-where
-    F: FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
-{
-    let has_kbd = super::with_seat_data(seat, |data| data.has_keyboard).unwrap_or(false);
-    let keyboard = if has_kbd {
-        seat.get_keyboard()
-    } else {
-        return Err(Error::NoKeyboard);
-    };
-
-    let state = Rc::new(RefCell::new(rmlvo.map(KbState::from_rmlvo).unwrap_or_else(KbState::new)?));
-
-    let callback = Rc::new(RefCell::new(callback)) as Rc<RefCell<_>>;
-
-    // prepare the handler
-    let mut kbd_handler = KbdHandler {
-        callback,
-        state,
-        #[cfg(feature = "calloop")]
-        repeat: None,
-    };
-
-    keyboard.quick_assign(move |keyboard, event, data| {
-        kbd_handler.event(keyboard.detach(), event, data)
-    });
-
-    Ok(keyboard.detach())
-}
-
-/// Implement a keyboard for keymap translation with key repetition
-///
-/// This requires you to provide a callback to receive the events after they
-/// have been interpreted with the keymap.
-///
-/// The keymap will be loaded from the provided RMLVO rules, or from the compositor
-/// provided keymap if `None`.
-///
-/// Returns an error if xkbcommon could not be initialized, the RMLVO specification
-/// contained invalid values, or if the provided seat does not have keyboard capability.
-///
-/// **Note:** The keyboard repetition handling requires the `calloop` cargo feature.
-#[cfg(feature = "calloop")]
-pub fn map_keyboard_repeat<F, Data: 'static>(
-    loop_handle: calloop::LoopHandle<'static, Data>,
-    seat: &Attached<wl_seat::WlSeat>,
-    rmlvo: Option<RMLVO>,
-    repeatkind: RepeatKind,
-    callback: F,
-) -> Result<wl_keyboard::WlKeyboard, Error>
-where
-    F: FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>) + 'static,
-{
-    let has_kbd = super::with_seat_data(seat, |data| data.has_keyboard).unwrap_or(false);
-    let keyboard = if has_kbd {
-        seat.get_keyboard()
-    } else {
-        return Err(Error::NoKeyboard);
-    };
-
-    let state = Rc::new(RefCell::new(rmlvo.map(KbState::from_rmlvo).unwrap_or_else(KbState::new)?));
-
-    let callback = Rc::new(RefCell::new(callback)) as Rc<RefCell<_>>;
-
-    let repeat = match repeatkind {
-        RepeatKind::System => RepeatDetails { locked: false, gap: None, delay: 200 },
-        RepeatKind::Fixed { rate, delay } => {
-            let gap = rate_to_gap(rate as i32);
-            RepeatDetails { locked: true, gap, delay }
-        }
-    };
-
-    // Prepare the repetition handling.
-    let mut handler = KbdHandler {
-        callback: callback.clone(),
-        state,
-        repeat: Some(KbdRepeat {
-            start_timer: {
-                let my_loop_handle = loop_handle.clone();
-                Box::new(move |source| {
-                    let my_callback = callback.clone();
-                    my_loop_handle
-                        .insert_source(source, move |event, kbd, ddata| {
-                            (my_callback.borrow_mut())(
-                                event,
-                                kbd.clone(),
-                                wayland_client::DispatchData::wrap(ddata),
-                            )
-                        })
-                        .unwrap()
-                })
-            },
-            stop_timer: Box::new(move |token| loop_handle.remove(token)),
-            current_repeat: Rc::new(RefCell::new(None)),
-            current_timer: Cell::new(None),
-            details: repeat,
-        }),
-    };
-
-    keyboard
-        .quick_assign(move |keyboard, event, data| handler.event(keyboard.detach(), event, data));
-
-    Ok(keyboard.detach())
-}
-
-#[cfg(feature = "calloop")]
-fn rate_to_gap(rate: i32) -> Option<NonZeroU32> {
-    if rate <= 0 {
-        None
-    } else if MICROS_IN_SECOND < rate as u32 {
-        NonZeroU32::new(1)
-    } else {
-        NonZeroU32::new(MICROS_IN_SECOND / rate as u32)
-    }
-}
-
-/*
- * Classic handling
- */
-
-type KbdCallback = dyn FnMut(Event<'_>, wl_keyboard::WlKeyboard, wayland_client::DispatchData<'_>);
-
-#[cfg(feature = "calloop")]
-struct RepeatDetails {
-    locked: bool,
-    /// Gap between key presses in microseconds.
+impl SeatState {
+    /// Creates a keyboard from a seat.
     ///
-    /// If the `gap` is `None`, it means that repeat is disabled.
-    gap: Option<NonZeroU32>,
-    /// Delay before starting key repeat in milliseconds.
-    delay: u32,
-}
-
-struct KbdHandler {
-    state: Rc<RefCell<KbState>>,
-    callback: Rc<RefCell<KbdCallback>>,
-    #[cfg(feature = "calloop")]
-    repeat: Option<KbdRepeat>,
-}
-
-#[cfg(feature = "calloop")]
-struct KbdRepeat {
-    start_timer: Box<dyn Fn(RepeatSource) -> RegistrationToken>,
-    stop_timer: Box<dyn Fn(RegistrationToken)>,
-    current_timer: Cell<Option<RegistrationToken>>,
-    current_repeat: Rc<RefCell<Option<RepeatData>>>,
-    details: RepeatDetails,
-}
-
-#[cfg(feature = "calloop")]
-impl KbdRepeat {
-    fn start_repeat(
-        &self,
-        key: u32,
-        keyboard: wl_keyboard::WlKeyboard,
-        time: u32,
-        state: Rc<RefCell<KbState>>,
-    ) {
-        // Start a new repetition, overwriting the previous ones
-        if let Some(timer) = self.current_timer.replace(None) {
-            (self.stop_timer)(timer);
-        }
-
-        // Handle disabled repeat rate.
-        let gap = match self.details.gap {
-            Some(gap) => Duration::from_micros(gap.get() as u64),
-            None => return,
+    /// This keyboard implementation uses libxkbcommon for the keymap.
+    ///
+    /// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`
+    /// field.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    pub fn get_keyboard<D>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        rmlvo: Option<RMLVO>,
+    ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
+    where
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler + 'static,
+    {
+        let udata = match rmlvo {
+            Some(rmlvo) => KeyboardData::from_rmlvo(rmlvo)?,
+            None => KeyboardData::default(),
         };
 
-        let now = Instant::now();
-        *self.current_repeat.borrow_mut() = Some(RepeatData {
-            keyboard,
-            keycode: key,
-            gap,
-            start_protocol_time: time,
-            start_instant: now,
-        });
-        let token = (self.start_timer)(RepeatSource {
-            timer: Timer::from_deadline(now + Duration::from_millis(self.details.delay as u64)),
-            current_repeat: self.current_repeat.clone(),
-            state,
-        });
-        self.current_timer.set(Some(token));
+        self.get_keyboard_with_data(qh, seat, udata)
     }
 
-    fn stop_repeat(&self, key: u32) {
-        // only cancel if the released key is the currently repeating key
-        let mut guard = self.current_repeat.borrow_mut();
-        let stop = (*guard).as_ref().map(|d| d.keycode == key).unwrap_or(false);
-        if stop {
-            if let Some(timer) = self.current_timer.replace(None) {
-                (self.stop_timer)(timer);
-            }
-            *guard = None;
-        }
-    }
+    /// Creates a keyboard from a seat.
+    ///
+    /// This keyboard implementation uses libxkbcommon for the keymap.
+    ///
+    /// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`
+    /// field.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    pub fn get_keyboard_with_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        udata: U,
+    ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
+    where
+        D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
+        U: KeyboardDataExt + 'static,
+    {
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
-    fn stop_all_repeat(&self) {
-        if let Some(timer) = self.current_timer.replace(None) {
-            (self.stop_timer)(timer);
+        if !inner.data.has_keyboard.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
-        *self.current_repeat.borrow_mut() = None;
+
+        Ok(seat.get_keyboard(qh, udata).map_err(Into::<SeatError>::into)?)
     }
 }
 
-#[cfg(feature = "calloop")]
-impl Drop for KbdRepeat {
-    fn drop(&mut self) {
-        self.stop_all_repeat();
-    }
-}
-
-impl KbdHandler {
-    fn event(
-        &mut self,
-        kbd: wl_keyboard::WlKeyboard,
-        event: wl_keyboard::Event,
-        dispatch_data: wayland_client::DispatchData,
-    ) {
-        use wl_keyboard::Event;
-
-        match event {
-            Event::Keymap { format, fd, size } => self.keymap(kbd, format, fd, size),
-            Event::Enter { serial, surface, keys } => {
-                self.enter(kbd, serial, surface, keys, dispatch_data)
-            }
-            Event::Leave { serial, surface } => self.leave(kbd, serial, surface, dispatch_data),
-            Event::Key { serial, time, key, state } => {
-                self.key(kbd, serial, time, key, state, dispatch_data)
-            }
-            Event::Modifiers { mods_depressed, mods_latched, mods_locked, group, .. } => {
-                self.modifiers(kbd, mods_depressed, mods_latched, mods_locked, group, dispatch_data)
-            }
-            Event::RepeatInfo { rate, delay } => self.repeat_info(kbd, rate, delay),
-            _ => {}
-        }
-    }
-
-    fn keymap(
-        &mut self,
-        _: wl_keyboard::WlKeyboard,
-        format: wl_keyboard::KeymapFormat,
-        fd: RawFd,
-        size: u32,
-    ) {
-        let fd = unsafe { File::from_raw_fd(fd) };
-        let mut state = self.state.borrow_mut();
-        if state.locked() {
-            // state is locked, ignore keymap updates
-            return;
-        }
-        if state.ready() {
-            // new keymap, we first deinit to free resources
-            unsafe {
-                state.de_init();
-            }
-        }
-        match format {
-            wl_keyboard::KeymapFormat::XkbV1 => unsafe {
-                state.init_with_fd(fd, size as usize);
-            },
-            wl_keyboard::KeymapFormat::NoKeymap => {
-                // TODO: how to handle this (hopefully never occuring) case?
-            }
-            _ => unreachable!(),
-        }
-    }
-
+/// Handler trait for keyboard input.
+///
+/// The functions defined in this trait are called as keyboard events are received from the compositor.
+pub trait KeyboardHandler: SeatHandler + Sized {
+    /// The keyboard has entered a surface.
+    ///
+    /// When called, you may assume the specified surface has keyboard focus.
+    ///
+    /// When a keyboard enters a surface, the `raw` and `keysym` fields indicate which keys are currently
+    /// pressed.
+    #[allow(clippy::too_many_arguments)]
     fn enter(
         &mut self,
-        object: wl_keyboard::WlKeyboard,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        keyboard: &wl_keyboard::WlKeyboard,
+        surface: &wl_surface::WlSurface,
         serial: u32,
-        surface: wl_surface::WlSurface,
-        keys: Vec<u8>,
-        dispatch_data: wayland_client::DispatchData,
-    ) {
-        let mut state = self.state.borrow_mut();
-        let rawkeys = keys
-            .chunks_exact(4)
-            .map(|c| u32::from_ne_bytes(c.try_into().unwrap()))
-            .collect::<Vec<_>>();
-        let keys: Vec<u32> = rawkeys.iter().map(|k| state.get_one_sym_raw(*k)).collect();
-        (self.callback.borrow_mut())(
-            Event::Enter { serial, surface, rawkeys: &rawkeys, keysyms: &keys },
-            object,
-            dispatch_data,
-        );
-    }
+        raw: &[u32],
+        keysyms: &[u32],
+    );
 
+    /// The keyboard has left a surface.
+    ///
+    /// When called, keyboard focus leaves the specified surface.
+    ///
+    /// All currently held down keys are released when this event occurs.
     fn leave(
         &mut self,
-        object: wl_keyboard::WlKeyboard,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        keyboard: &wl_keyboard::WlKeyboard,
+        surface: &wl_surface::WlSurface,
         serial: u32,
-        surface: wl_surface::WlSurface,
-        dispatch_data: wayland_client::DispatchData,
-    ) {
-        #[cfg(feature = "calloop")]
-        {
-            if let Some(ref mut repeat) = self.repeat {
-                repeat.stop_all_repeat();
-            }
-        }
-        (self.callback.borrow_mut())(Event::Leave { serial, surface }, object, dispatch_data);
-    }
+    );
 
-    #[cfg_attr(not(feature = "calloop"), allow(unused_variables))]
-    fn key(
+    /// A key has been pressed on the keyboard.
+    ///
+    /// The key will repeat if there is no other press event afterwards or the key is released.
+    fn press_key(
         &mut self,
-        object: wl_keyboard::WlKeyboard,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        keyboard: &wl_keyboard::WlKeyboard,
         serial: u32,
-        time: u32,
-        key: u32,
-        key_state: wl_keyboard::KeyState,
-        dispatch_data: wayland_client::DispatchData,
+        event: KeyEvent,
+    );
+
+    /// A key has been released.
+    ///
+    /// This stops the key from being repeated if the key is the last key which was pressed.
+    fn release_key(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        keyboard: &wl_keyboard::WlKeyboard,
+        serial: u32,
+        event: KeyEvent,
+    );
+
+    /// Keyboard modifiers have been updated.
+    ///
+    /// This happens when one of the modifier keys, such as "Shift", "Control" or "Alt" is pressed or
+    /// released.
+    fn update_modifiers(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        keyboard: &wl_keyboard::WlKeyboard,
+        serial: u32,
+        modifiers: Modifiers,
+    );
+
+    /// The keyboard has updated the rate and delay between repeating key inputs.
+    ///
+    /// This function does nothing by default but is provided if a repeat mechanism outside of calloop is\
+    /// used.
+    fn update_repeat_info(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        _info: RepeatInfo,
     ) {
-        let (sym, utf8, repeats) = {
-            let mut state = self.state.borrow_mut();
-            // Get the values to generate a key event
-            let sym = state.get_one_sym_raw(key);
-            let utf8 = if key_state == wl_keyboard::KeyState::Pressed {
-                match state.compose_feed(sym) {
-                    Some(ffi::xkb_compose_feed_result::XKB_COMPOSE_FEED_ACCEPTED) => {
-                        if let Some(status) = state.compose_status() {
-                            match status {
-                                ffi::xkb_compose_status::XKB_COMPOSE_COMPOSED => {
-                                    state.compose_get_utf8()
-                                }
-                                ffi::xkb_compose_status::XKB_COMPOSE_NOTHING => {
-                                    state.get_utf8_raw(key)
-                                }
-                                _ => None,
-                            }
-                        } else {
-                            state.get_utf8_raw(key)
-                        }
-                    }
-                    Some(_) => {
-                        // XKB_COMPOSE_FEED_IGNORED
-                        None
-                    }
-                    None => {
-                        // XKB COMPOSE is not initialized
-                        state.get_utf8_raw(key)
-                    }
-                }
-            } else {
-                None
-            };
-            let repeats = unsafe { state.key_repeats(key + 8) };
-            (sym, utf8, repeats)
+    }
+}
+
+/// The rate at which a pressed key is repeated.
+#[derive(Debug)]
+pub enum RepeatInfo {
+    /// Keys will be repeated at the specified rate and delay.
+    Repeat {
+        /// The number of repetitions per second that should occur.
+        rate: NonZeroU32,
+
+        /// Delay (in milliseconds) between a key press and the start of repetition.
+        delay: u32,
+    },
+
+    /// Keys should not be repeated.
+    Disable,
+}
+
+/// Data associated with a key press or release event.
+#[derive(Debug, Clone)]
+pub struct KeyEvent {
+    /// Time at which the keypress occurred.
+    pub time: u32,
+
+    /// The raw value of the key.
+    pub raw_code: u32,
+
+    /// The interpreted symbol of the key.
+    ///
+    /// This corresponds to one of the values in the [`keysyms`] module.
+    pub keysym: u32,
+
+    /// UTF-8 interpretation of the entered text.
+    ///
+    /// This will always be [`None`] on release events.
+    pub utf8: Option<String>,
+}
+
+/// The state of keyboard modifiers
+///
+/// Each field of this indicates whether a specified modifier is active.
+///
+/// Depending on the modifier, the modifier key may currently be pressed or toggled.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Modifiers {
+    /// The "control" key
+    pub ctrl: bool,
+
+    /// The "alt" key
+    pub alt: bool,
+
+    /// The "shift" key
+    pub shift: bool,
+
+    /// The "Caps lock" key
+    pub caps_lock: bool,
+
+    /// The "logo" key
+    ///
+    /// Also known as the "windows" or "super" key on a keyboard.
+    #[doc(alias = "windows")]
+    #[doc(alias = "super")]
+    pub logo: bool,
+
+    /// The "Num lock" key
+    pub num_lock: bool,
+}
+
+/// The RMLVO description of a keymap
+///
+/// All fields are optional, and the system default
+/// will be used if set to `None`.
+#[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
+pub struct RMLVO {
+    /// The rules file to use
+    pub rules: Option<String>,
+
+    /// The keyboard model by which to interpret keycodes and LEDs
+    pub model: Option<String>,
+
+    /// A comma separated list of layouts (languages) to include in the keymap
+    pub layout: Option<String>,
+
+    /// A comma separated list of variants, one per layout, which may modify or
+    /// augment the respective layout in various ways
+    pub variant: Option<String>,
+
+    /// A comma separated list of options, through which the user specifies
+    /// non-layout related preferences, like which key combinations are
+    /// used for switching layouts, or which key is the Compose key.
+    pub options: Option<String>,
+}
+
+pub struct KeyboardData {
+    first_event: AtomicBool,
+    xkb_context: Mutex<xkb::Context>,
+    /// If the user manually specified the RMLVO to use.
+    user_specified_rmlvo: bool,
+    xkb_state: Mutex<Option<xkb::State>>,
+    xkb_compose: Mutex<Option<xkb::compose::State>>,
+}
+
+impl Debug for KeyboardData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyboardData").finish_non_exhaustive()
+    }
+}
+
+#[macro_export]
+macro_rules! delegate_keyboard {
+    ($ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData
+            ] => $crate::seat::SeatState
+        );
+    };
+    ($ty: ty, keyboard: [$($udata:ty),* $(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $(
+                    $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $udata,
+                )*
+            ] => $crate::seat::SeatState
+        );
+    };
+}
+
+// SAFETY: The state does not share state with any other rust types.
+unsafe impl Send for KeyboardData {}
+// SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
+unsafe impl Sync for KeyboardData {}
+
+impl Default for KeyboardData {
+    fn default() -> Self {
+        let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        let udata = KeyboardData {
+            first_event: AtomicBool::new(false),
+            xkb_context: Mutex::new(xkb_context),
+            xkb_state: Mutex::new(None),
+            user_specified_rmlvo: false,
+            xkb_compose: Mutex::new(None),
         };
 
-        #[cfg(feature = "calloop")]
+        udata.init_compose();
+
+        udata
+    }
+}
+
+impl KeyboardData {
+    pub fn from_rmlvo(rmlvo: RMLVO) -> Result<Self, KeyboardError> {
+        let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        let keymap = xkb::Keymap::new_from_names(
+            &xkb_context,
+            &rmlvo.rules.unwrap_or_default(),
+            &rmlvo.model.unwrap_or_default(),
+            &rmlvo.layout.unwrap_or_default(),
+            &rmlvo.variant.unwrap_or_default(),
+            rmlvo.options,
+            xkb::COMPILE_NO_FLAGS,
+        );
+
+        if keymap.is_none() {
+            return Err(KeyboardError::InvalidKeymap);
+        }
+
+        let xkb_state = Some(xkb::State::new(&keymap.unwrap()));
+
+        let udata = KeyboardData {
+            first_event: AtomicBool::new(false),
+            xkb_context: Mutex::new(xkb_context),
+            xkb_state: Mutex::new(xkb_state),
+            user_specified_rmlvo: true,
+            xkb_compose: Mutex::new(None),
+        };
+
+        udata.init_compose();
+
+        Ok(udata)
+    }
+
+    fn init_compose(&self) {
+        let xkb_context = self.xkb_context.lock().unwrap();
+
+        if let Some(locale) = env::var_os("LC_ALL")
+            .and_then(|v| if v.is_empty() { None } else { Some(v) })
+            .or_else(|| env::var_os("LC_CTYPE"))
+            .and_then(|v| if v.is_empty() { None } else { Some(v) })
+            .or_else(|| env::var_os("LANG"))
+            .and_then(|v| if v.is_empty() { None } else { Some(v) })
+            .unwrap_or_else(|| "C".into())
+            .to_str()
         {
-            if let Some(ref mut repeat_handle) = self.repeat {
-                if repeats {
-                    if key_state == wl_keyboard::KeyState::Pressed {
-                        repeat_handle.start_repeat(key, object.clone(), time, self.state.clone());
-                    } else {
-                        repeat_handle.stop_repeat(key);
+            // TODO: Pending new release of xkbcommon to use new_from_locale with OsStr
+            if let Ok(table) = xkb::compose::Table::new_from_locale(
+                &xkb_context,
+                locale,
+                xkb::compose::COMPILE_NO_FLAGS,
+            ) {
+                let compose_state =
+                    xkb::compose::State::new(&table, xkb::compose::COMPILE_NO_FLAGS);
+                *self.xkb_compose.lock().unwrap() = Some(compose_state);
+            }
+        }
+    }
+
+    fn update_modifiers(&self) -> Modifiers {
+        let guard = self.xkb_state.lock().unwrap();
+        let state = guard.as_ref().unwrap();
+
+        Modifiers {
+            ctrl: state.mod_name_is_active(xkb::MOD_NAME_CTRL, xkb::STATE_MODS_EFFECTIVE),
+            alt: state.mod_name_is_active(xkb::MOD_NAME_ALT, xkb::STATE_MODS_EFFECTIVE),
+            shift: state.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE),
+            caps_lock: state.mod_name_is_active(xkb::MOD_NAME_CAPS, xkb::STATE_MODS_EFFECTIVE),
+            logo: state.mod_name_is_active(xkb::MOD_NAME_LOGO, xkb::STATE_MODS_EFFECTIVE),
+            num_lock: state.mod_name_is_active(xkb::MOD_NAME_NUM, xkb::STATE_MODS_EFFECTIVE),
+        }
+    }
+}
+
+pub trait KeyboardDataExt: Send + Sync {
+    fn keyboard_data(&self) -> &KeyboardData;
+}
+
+impl KeyboardDataExt for KeyboardData {
+    fn keyboard_data(&self) -> &KeyboardData {
+        self
+    }
+}
+
+impl<D, U> Dispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
+where
+    D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler,
+    U: KeyboardDataExt,
+{
+    fn event(
+        data: &mut D,
+        keyboard: &wl_keyboard::WlKeyboard,
+        event: wl_keyboard::Event,
+        udata: &U,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        let udata = udata.keyboard_data();
+
+        // The compositor has no way to tell clients if the seat is not version 4 or above.
+        // In this case, send a synthetic repeat info event using the default repeat values used by the X
+        // server.
+        if keyboard.version() < 4 && udata.first_event.load(Ordering::SeqCst) {
+            udata.first_event.store(true, Ordering::SeqCst);
+
+            data.update_repeat_info(
+                conn,
+                qh,
+                keyboard,
+                RepeatInfo::Repeat { rate: NonZeroU32::new(200).unwrap(), delay: 200 },
+            );
+        }
+
+        match event {
+            wl_keyboard::Event::Keymap { format, fd, size } => {
+                match format {
+                    WEnum::Value(format) => match format {
+                        wl_keyboard::KeymapFormat::NoKeymap => {
+                            log::warn!(target: "sctk", "non-xkb compatible keymap");
+                        }
+
+                        wl_keyboard::KeymapFormat::XkbV1 => {
+                            if udata.user_specified_rmlvo {
+                                // state is locked, ignore keymap updates
+                                return;
+                            }
+
+                            let context = udata.xkb_context.lock().unwrap();
+
+                            // 0.5.0-beta.0 does not mark this function as unsafe but upstream rightly makes
+                            // this function unsafe.
+                            //
+                            // Version 7 of wl_keyboard requires the file descriptor to be mapped using
+                            // MAP_PRIVATE. xkbcommon-rs does mmap the file descriptor properly.
+                            //
+                            // SAFETY:
+                            // - wayland-client guarantees we have received a valid file descriptor.
+                            #[allow(unused_unsafe)] // Upstream release will change this
+                            match unsafe {
+                                xkb::Keymap::new_from_fd(
+                                    &context,
+                                    fd,
+                                    size as usize,
+                                    xkb::KEYMAP_FORMAT_TEXT_V1,
+                                    xkb::COMPILE_NO_FLAGS,
+                                )
+                            } {
+                                Some(keymap) => {
+                                    let state = xkb::State::new(&keymap);
+                                    let mut state_guard = udata.xkb_state.lock().unwrap();
+                                    *state_guard = Some(state);
+                                }
+
+                                None => {
+                                    log::error!(target: "sctk", "invalid keymap");
+                                }
+                            }
+                        }
+
+                        _ => unreachable!(),
+                    },
+
+                    WEnum::Unknown(value) => {
+                        log::warn!(target: "sctk", "unknown keymap format 0x{:x}", value)
                     }
                 }
             }
-        }
 
-        (self.callback.borrow_mut())(
-            Event::Key { serial, time, rawkey: key, keysym: sym, state: key_state, utf8 },
-            object,
-            dispatch_data,
-        );
-    }
+            wl_keyboard::Event::Enter { serial, surface, keys } => {
+                let state_guard = udata.xkb_state.lock().unwrap();
 
-    fn modifiers(
-        &mut self,
-        object: wl_keyboard::WlKeyboard,
-        mods_depressed: u32,
-        mods_latched: u32,
-        mods_locked: u32,
-        group: u32,
-        dispatch_data: wayland_client::DispatchData,
-    ) {
-        {
-            let mut state = self.state.borrow_mut();
-            state.update_modifiers(mods_depressed, mods_latched, mods_locked, group);
-            (self.callback.borrow_mut())(
-                Event::Modifiers { modifiers: state.mods_state() },
-                object,
-                dispatch_data,
-            );
-        }
-    }
+                if let Some(guard) = state_guard.as_ref() {
+                    // Keysyms are encoded as an array of u32
+                    let raw = keys
+                        .chunks_exact(4)
+                        .flat_map(TryInto::<[u8; 4]>::try_into)
+                        .map(u32::from_le_bytes)
+                        .collect::<Vec<_>>();
 
-    #[cfg_attr(not(feature = "calloop"), allow(unused_variables))]
-    fn repeat_info(&mut self, _: wl_keyboard::WlKeyboard, rate: i32, delay: i32) {
-        #[cfg(feature = "calloop")]
-        {
-            if let Some(ref mut repeat_handle) = self.repeat {
-                if !repeat_handle.details.locked {
-                    repeat_handle.details.gap = rate_to_gap(rate);
-                    repeat_handle.details.delay = delay as u32;
+                    let keysyms = raw
+                        .iter()
+                        .copied()
+                        // We must add 8 to the keycode for any functions we pass the raw keycode into per
+                        // wl_keyboard protocol.
+                        .map(|raw| guard.key_get_one_sym(raw + 8))
+                        .collect::<Vec<_>>();
+
+                    // Drop guard before calling user code.
+                    drop(state_guard);
+
+                    data.enter(conn, qh, keyboard, &surface, serial, &raw, &keysyms);
                 }
             }
-        }
-    }
-}
 
-/*
- * Repeat handling
- */
-
-#[derive(Debug)]
-#[cfg(feature = "calloop")]
-struct RepeatData {
-    keyboard: wl_keyboard::WlKeyboard,
-    keycode: u32,
-    /// Gap between key presses
-    gap: Duration,
-    start_protocol_time: u32,
-    start_instant: Instant,
-}
-
-/// An event source managing the key repetition of a keyboard
-///
-/// It is given to you from [`map_keyboard`](fn.map_keyboard.html), and you need to
-/// insert it in your calloop event loop if you want to have functionning key repetition.
-///
-/// If don't want key repetition you can just drop it.
-///
-/// This source will not directly generate calloop events, and the callback provided to
-/// `EventLoopHandle::insert_source()` will be ignored. Instead it triggers the
-/// callback you provided to [`map_keyboard`](fn.map_keyboard.html).
-#[cfg(feature = "calloop")]
-#[derive(Debug)]
-pub struct RepeatSource {
-    timer: calloop::timer::Timer,
-    state: Rc<RefCell<KbState>>,
-    current_repeat: Rc<RefCell<Option<RepeatData>>>,
-}
-
-#[cfg(feature = "calloop")]
-impl calloop::EventSource for RepeatSource {
-    type Event = Event<'static>;
-    type Metadata = wl_keyboard::WlKeyboard;
-    type Error = <calloop::timer::Timer as calloop::EventSource>::Error;
-    type Ret = ();
-
-    fn process_events<F>(
-        &mut self,
-        readiness: calloop::Readiness,
-        token: calloop::Token,
-        mut callback: F,
-    ) -> std::io::Result<calloop::PostAction>
-    where
-        F: FnMut(Event<'static>, &mut wl_keyboard::WlKeyboard),
-    {
-        let current_repeat = &self.current_repeat;
-        let state = &self.state;
-        self.timer.process_events(readiness, token, |last_trigger, &mut ()| {
-            if let Some(ref mut data) = *current_repeat.borrow_mut() {
-                // there is something to repeat
-                let mut state = state.borrow_mut();
-                let keysym = state.get_one_sym_raw(data.keycode);
-                let utf8 = state.get_utf8_raw(data.keycode);
-                // Notify the callback.
-                callback(
-                    Event::Repeat {
-                        time: data.start_protocol_time
-                            + (last_trigger - data.start_instant).as_millis() as u32,
-                        rawkey: data.keycode,
-                        keysym,
-                        utf8,
-                    },
-                    &mut data.keyboard,
-                );
-                // Schedule the next timeout.
-                calloop::timer::TimeoutAction::ToInstant(last_trigger + data.gap)
-            } else {
-                calloop::timer::TimeoutAction::Drop
+            wl_keyboard::Event::Leave { serial, surface } => {
+                // We can send this event without any other checks in the protocol will guarantee a leave is
+                // sent before entering a new surface.
+                data.leave(conn, qh, keyboard, &surface, serial);
             }
-        })
-    }
 
-    fn register(
-        &mut self,
-        poll: &mut calloop::Poll,
-        token_factory: &mut calloop::TokenFactory,
-    ) -> calloop::Result<()> {
-        self.timer.register(poll, token_factory)
-    }
+            wl_keyboard::Event::Key { serial, time, key, state } => match state {
+                WEnum::Value(state) => {
+                    let state_guard = udata.xkb_state.lock().unwrap();
 
-    fn reregister(
-        &mut self,
-        poll: &mut calloop::Poll,
-        token_factory: &mut calloop::TokenFactory,
-    ) -> calloop::Result<()> {
-        self.timer.reregister(poll, token_factory)
-    }
+                    if let Some(guard) = state_guard.as_ref() {
+                        // We must add 8 to the keycode for any functions we pass the raw keycode into per
+                        // wl_keyboard protocol.
+                        let keysym = guard.key_get_one_sym(key + 8);
+                        let utf8 = if state == wl_keyboard::KeyState::Pressed {
+                            let mut compose = udata.xkb_compose.lock().unwrap();
 
-    fn unregister(&mut self, poll: &mut calloop::Poll) -> calloop::Result<()> {
-        self.timer.unregister(poll)
+                            match compose.as_mut() {
+                                Some(compose) => match compose.feed(keysym) {
+                                    xkb::FeedResult::Ignored => None,
+                                    xkb::FeedResult::Accepted => match compose.status() {
+                                        xkb::Status::Composed => compose.utf8(),
+                                        xkb::Status::Nothing => Some(guard.key_get_utf8(key + 8)),
+                                        _ => None,
+                                    },
+                                },
+
+                                // No compose
+                                None => Some(guard.key_get_utf8(key + 8)),
+                            }
+                        } else {
+                            None
+                        };
+
+                        // Drop guard before calling user code.
+                        drop(state_guard);
+
+                        let event = KeyEvent { time, raw_code: key, keysym, utf8 };
+
+                        match state {
+                            wl_keyboard::KeyState::Released => {
+                                data.release_key(conn, qh, keyboard, serial, event);
+                            }
+
+                            wl_keyboard::KeyState::Pressed => {
+                                data.press_key(conn, qh, keyboard, serial, event);
+                            }
+
+                            _ => unreachable!(),
+                        }
+                    };
+                }
+
+                WEnum::Unknown(unknown) => {
+                    log::warn!(target: "sctk", "{}: compositor sends invalid key state: {:x}", keyboard.id(), unknown);
+                }
+            },
+
+            wl_keyboard::Event::Modifiers {
+                serial,
+                mods_depressed,
+                mods_latched,
+                mods_locked,
+                group,
+            } => {
+                let mut guard = udata.xkb_state.lock().unwrap();
+
+                let mask = match guard.as_mut() {
+                    Some(state) => {
+                        state.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group)
+                    }
+                    None => return,
+                };
+
+                // Drop guard before calling user code.
+                drop(guard);
+
+                if mask & xkb::STATE_MODS_EFFECTIVE != 0 {
+                    let modifiers = udata.update_modifiers();
+                    data.update_modifiers(conn, qh, keyboard, serial, modifiers);
+                }
+            }
+
+            wl_keyboard::Event::RepeatInfo { rate, delay } => {
+                let info = if rate != 0 {
+                    RepeatInfo::Repeat {
+                        rate: NonZeroU32::new(rate as u32).unwrap(),
+                        delay: delay as u32,
+                    }
+                } else {
+                    RepeatInfo::Disable
+                };
+
+                data.update_repeat_info(conn, qh, keyboard, info);
+            }
+
+            _ => unreachable!(),
+        }
     }
 }

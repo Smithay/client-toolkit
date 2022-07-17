@@ -3002,4 +3002,3 @@ pub const XKB_KEY_guilder              :u32 = 0x100000be;
 pub const XKB_KEY_IO                   :u32 = 0x100000ee;
 pub const XKB_KEY_longminus            :u32 = 0x100000f6;
 pub const XKB_KEY_block                :u32 = 0x100000fc;
-
