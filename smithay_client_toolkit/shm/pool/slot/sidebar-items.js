@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ActivateSlotError",""],["CreateBufferError",""]],"struct":[["Buffer","A [`wl_buffer::WlBuffer`] allocated from a [SlotPool]."],["Slot","A chunk of memory allocated from a [SlotPool]"],["SlotPool",""]],"trait":[["CanvasKey","A helper trait for [SlotPool::canvas]."]]});

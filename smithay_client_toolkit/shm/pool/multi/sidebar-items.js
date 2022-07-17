@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["PoolError",""]],"struct":[["BufferSlot",""],["MultiPool","This pool manages buffers associated with keys. Only one buffer can be attributed to a given key."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["popup",""],["window",""]],"struct":[["XdgPositioner","A trivial wrapper for an [`xdg_positioner::XdgPositioner`]."],["XdgShellState",""],["XdgShellSurface",""]],"trait":[["XdgShellHandler",""]]});

@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Utilities for binding globals with [`wl_registry`] in delegates."><meta name="keywords" content="rust, rustlang, rust-lang, registry"><title>smithay_client_toolkit::registry - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Module registry</a></h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div></section><div id="sidebar-vars" data-name="registry" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Module <a href="../index.html">smithay_client_toolkit</a>::<wbr><a class="mod" href="#">registry</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../src/smithay_client_toolkit/registry.rs.html#1-610">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Utilities for binding globals with [<code>wl_registry</code>] in delegates.</p>
+<p>This module is based around the <a href="trait.RegistryHandler.html" title="RegistryHandler"><code>RegistryHandler</code></a> trait and <a href="struct.RegistryState.html" title="RegistryState"><code>RegistryState</code></a>.</p>
+<p><a href="struct.RegistryState.html" title="RegistryState"><code>RegistryState</code></a> provides an interface to bind globals regularly, creating an object with each new
+instantiation or caching bound globals to prevent duplicate object instances from being created. Binding
+a global regularly is accomplished through [<code>RegistryState::bind_once</code>]. For caching a bound global use
+[<code>RegistryState::bind_cached</code>].</p>
+<p>The <a href="../macro.delegate_registry.html" title="delegate_registry"><code>delegate_registry</code></a> macro is used to implement handling for [<code>wl_registry</code>].</p>
+<h3 id="sample-implementation-of-registryhandler"><a href="#sample-implementation-of-registryhandler">Sample implementation of <code>RegistryHandler</code></a></h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">smithay_client_toolkit::reexports::client</span>::{
+    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">QueueHandle</span>,
+    <span class="ident">delegate_dispatch</span>,
+    <span class="ident">protocol::wl_compositor</span>,
+};
+
+<span class="kw">use</span> <span class="ident">smithay_client_toolkit::registry</span>::{
+    <span class="ident">GlobalProxy</span>, <span class="ident">ProvidesRegistryState</span>, <span class="ident">RegistryHandler</span>, <span class="ident">RegistryState</span>,
+};
+
+<span class="kw">struct</span> <span class="ident">ExampleApp</span> {
+    <span class="doccomment">/// The registry state is needed to use the global abstractions.</span>
+    <span class="ident">registry_state</span>: <span class="ident">RegistryState</span>,
+    <span class="doccomment">/// This is a type we want to delegate global handling to.</span>
+    <span class="ident">delegate_that_wants_registry</span>: <span class="ident">Delegate</span>,
+}
+
+<span class="doccomment">/// The delegate a global should be provided to.</span>
+<span class="kw">struct</span> <span class="ident">Delegate</span> {
+    <span class="comment">// You usually want to cache the bound global so you can use it later</span>
+    <span class="ident">compositor</span>: <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span><span class="op">&gt;</span>,
+}
+
+<span class="comment">// When implementing RegistryHandler, you must be able to dispatch any type you could bind using the registry state.</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Delegate</span>
+<span class="kw">where</span>
+    <span class="comment">// In order to bind a global, you must statically assert the global may be handled with the data type.</span>
+    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span>, ()<span class="op">&gt;</span>
+        <span class="comment">// ProvidesRegistryState provides a function to access the RegistryState within the impl.</span>
+        <span class="op">+</span> <span class="ident">ProvidesRegistryState</span>
+        <span class="comment">// We need some way to access our part of the application&#39;s state.  This uses AsMut,</span>
+        <span class="comment">// but you may prefer to create your own trait to avoid making .as_mut() ambiguous.</span>
+        <span class="op">+</span> <span class="ident">AsMut</span><span class="op">&lt;</span><span class="ident">Delegate</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+{
+    <span class="comment">// When all globals have been enumerated, this is called.</span>
+    <span class="kw">fn</span> <span class="ident">ready</span>(
+        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    ) {
+        <span class="comment">// Bind the global and store it in our state.</span>
+        <span class="ident">data</span>.<span class="ident">as_mut</span>().<span class="ident">compositor</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">registry</span>().<span class="ident">bind_one</span>(
+            <span class="ident">qh</span>,
+            <span class="number">1</span>..<span class="op">=</span><span class="number">2</span>, <span class="comment">// we want to bind version 1 or 2 of the global.</span>
+            (), <span class="comment">// and we provide the user data for the wl_compositor being created.</span>
+        ).<span class="ident">into</span>();
+
+        <span class="comment">// You could either handle errors here or when attempting to use the interface.  Most</span>
+        <span class="comment">// Wayland protocols are optional, so if your application can function without a</span>
+        <span class="comment">// protocol it should try to do so; the From impl of GlobalProxy is written to make</span>
+        <span class="comment">// this straightforward.</span>
+    }
+}</code></pre></div>
+</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.RegistryReady.html" title="smithay_client_toolkit::registry::RegistryReady struct">RegistryReady</a></div><div class="item-right docblock-short"><p>A helper that sets <a href="struct.RegistryState.html#method.ready" title="RegistryState::ready">RegistryState::ready</a> when enumeration is finished.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.RegistryState.html" title="smithay_client_toolkit::registry::RegistryState struct">RegistryState</a></div><div class="item-right docblock-short"><p>State object associated with the registry handling for smithay’s client toolkit.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.SimpleGlobal.html" title="smithay_client_toolkit::registry::SimpleGlobal struct">SimpleGlobal</a></div><div class="item-right docblock-short"></div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.BindError.html" title="smithay_client_toolkit::registry::BindError enum">BindError</a></div><div class="item-right docblock-short"><p>An error when binding a global.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.GlobalProxy.html" title="smithay_client_toolkit::registry::GlobalProxy enum">GlobalProxy</a></div><div class="item-right docblock-short"><p>A helper for storing a bound global.</p>
+</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.ProvidesRegistryState.html" title="smithay_client_toolkit::registry::ProvidesRegistryState trait">ProvidesRegistryState</a></div><div class="item-right docblock-short"><p>Trait which asserts a data type may provide a mutable reference to the registry state.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.RegistryHandler.html" title="smithay_client_toolkit::registry::RegistryHandler trait">RegistryHandler</a></div><div class="item-right docblock-short"><p>A trait implemented by modular parts of a smithay’s client toolkit and protocol delegates that may be used
+to receive notification of a global being created or destroyed.</p>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
+</body></html>

@@ -701,124 +701,676 @@
 <span id="696">696</span>
 <span id="697">697</span>
 <span id="698">698</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Types and functions related to graphical outputs</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This modules provides two main elements. The first is the</span>
-<span class="doccomment">//! [`OutputHandler`](struct.OutputHandler.html) type, which is a</span>
-<span class="doccomment">//! [`MultiGlobalHandler`](../environment/trait.MultiGlobalHandler.html) for</span>
-<span class="doccomment">//! use with the [`init_environment!`](../macro.init_environment.html) macro. It is automatically</span>
-<span class="doccomment">//! included if you use the [`new_default_environment!`](../macro.new_default_environment.html).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The second is the [`with_output_info`](fn.with_output_info.html) with allows you to</span>
-<span class="doccomment">//! access the information associated to this output, as an [`OutputInfo`](struct.OutputInfo.html).</span>
-
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">cell::RefCell</span>,
-    <span class="ident">fmt</span>,
-    <span class="ident">rc</span>::{<span class="self">self</span>, <span class="ident">Rc</span>},
-    <span class="ident">sync</span>::{<span class="self">self</span>, <span class="ident">Arc</span>, <span class="ident">Mutex</span>},
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">any::Any</span>,
+    <span class="ident">fmt</span>::{<span class="self">self</span>, <span class="ident">Display</span>, <span class="ident">Formatter</span>},
+    <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>, <span class="ident">Weak</span>},
 };
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{
-        <span class="ident">wl_output</span>::{<span class="self">self</span>, <span class="ident">Event</span>, <span class="ident">WlOutput</span>},
-        <span class="ident">wl_registry</span>,
-    },
-    <span class="ident">Attached</span>, <span class="ident">DispatchData</span>, <span class="ident">Main</span>,
+    <span class="ident">protocol::wl_output</span>::{<span class="self">self</span>, <span class="ident">Subpixel</span>, <span class="ident">Transform</span>},
+    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>, <span class="ident">WEnum</span>,
+};
+<span class="kw">use</span> <span class="ident">wayland_protocols::xdg::xdg_output::zv1::client</span>::{
+    <span class="ident">zxdg_output_manager_v1</span>::{<span class="self">self</span>, <span class="ident">ZxdgOutputManagerV1</span>},
+    <span class="ident">zxdg_output_v1</span>,
 };
 
-<span class="kw">use</span> <span class="ident">wayland_protocols::unstable::xdg_output::v1::client</span>::{
-    <span class="ident">zxdg_output_manager_v1::ZxdgOutputManagerV1</span>,
-    <span class="ident">zxdg_output_v1</span>::{<span class="self">self</span>, <span class="ident">ZxdgOutputV1</span>},
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">globals::GlobalData</span>,
+    <span class="ident">registry</span>::{<span class="ident">GlobalProxy</span>, <span class="ident">ProvidesRegistryState</span>, <span class="ident">RegistryHandler</span>},
 };
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_output</span>::{<span class="ident">Subpixel</span>, <span class="ident">Transform</span>};
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OutputHandler</span>: <span class="ident">Sized</span> {
+    <span class="kw">fn</span> <span class="ident">output_state</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">OutputState</span>;
 
-<span class="doccomment">/// A possible mode for an output</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+    <span class="doccomment">/// A new output has been advertised.</span>
+    <span class="kw">fn</span> <span class="ident">new_output</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+        <span class="ident">output</span>: <span class="ident">wl_output::WlOutput</span>,
+    );
+
+    <span class="doccomment">/// An existing output has changed.</span>
+    <span class="kw">fn</span> <span class="ident">update_output</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+        <span class="ident">output</span>: <span class="ident">wl_output::WlOutput</span>,
+    );
+
+    <span class="doccomment">/// An output is no longer advertised.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The info passed to this function was the state of the output before destruction.</span>
+    <span class="kw">fn</span> <span class="ident">output_destroyed</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+        <span class="ident">output</span>: <span class="ident">wl_output::WlOutput</span>,
+    );
+}
+
+<span class="kw">type</span> <span class="ident">ScaleWatcherFn</span> <span class="op">=</span>
+    <span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Any</span>, <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Any</span>, <span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>;
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OutputState</span> {
+    <span class="ident">xdg</span>: <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span>,
+    <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OutputInner</span><span class="op">&gt;</span>,
+    <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">ScaleWatcherFn</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputState</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="ident">fmt</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputState&quot;</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;xdg&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">xdg</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;outputs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">outputs</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;callbacks&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">callbacks</span>.<span class="ident">len</span>())
+            .<span class="ident">finish</span>()
+    }
+}
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ScaleWatcherHandle</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ScaleWatcherFn</span><span class="op">&gt;</span>);
+
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">ScaleWatcherHandle</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="ident">fmt</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;ScaleWatcherHandle&quot;</span>).<span class="ident">finish_non_exhaustive</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">OutputState</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">OutputState</span> {
+        <span class="ident">OutputState</span> { <span class="ident">xdg</span>: <span class="ident">GlobalProxy::new</span>(), <span class="ident">outputs</span>: <span class="macro">vec!</span>[], <span class="ident">callbacks</span>: <span class="macro">vec!</span>[] }
+    }
+
+    <span class="doccomment">/// Returns an iterator over all outputs.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">output</span>.<span class="ident">wl_output</span>).<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>()
+    }
+
+    <span class="doccomment">/// Returns information about an output.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This may be none if the output has been destroyed or the compositor has not sent information about the</span>
+    <span class="doccomment">/// output yet.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OutputInfo</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">outputs</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">current_info</span>.<span class="ident">clone</span>())
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_scale_watcher</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">ScaleWatcherHandle</span>
+    <span class="kw">where</span>
+        <span class="ident">D</span>: <span class="ident">OutputHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+        <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">output_state</span>();
+        <span class="kw">let</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">ScaleWatcherHandle</span>(<span class="ident">Arc::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">data</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="kw">let</span> (<span class="prelude-val">Some</span>(<span class="ident">data</span>), <span class="prelude-val">Some</span>(<span class="ident">qh</span>)) <span class="op">=</span> (<span class="ident">data</span>.<span class="ident">downcast_mut</span>(), <span class="ident">qh</span>.<span class="ident">downcast_ref</span>()) {
+                <span class="ident">f</span>(<span class="ident">data</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>);
+            }
+        }));
+        <span class="ident">state</span>.<span class="ident">callbacks</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">upgrade</span>().<span class="ident">is_some</span>());
+        <span class="ident">state</span>.<span class="ident">callbacks</span>.<span class="ident">push</span>(<span class="ident">Arc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">rv</span>.<span class="number">0</span>));
+        <span class="ident">rv</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">setup</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">wl_output</span>: <span class="ident">wl_output::WlOutput</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>)
+    <span class="kw">where</span>
+        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_v1::ZxdgOutputV1</span>, <span class="ident">OutputData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">wl_output</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
+
+        <span class="kw">let</span> <span class="ident">pending_info</span> <span class="op">=</span> <span class="ident">data</span>.<span class="number">0</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">pending_info</span>.<span class="ident">id</span>;
+
+        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">wl_output</span>.<span class="ident">version</span>();
+        <span class="kw">let</span> <span class="ident">pending_xdg</span> <span class="op">=</span> <span class="ident">version</span> <span class="op">&lt;</span> <span class="number">4</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">xdg</span>.<span class="ident">get</span>().<span class="ident">is_ok</span>();
+
+        <span class="kw">let</span> <span class="ident">xdg_output</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">pending_xdg</span> {
+            <span class="kw">let</span> <span class="ident">xdg</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">xdg</span>.<span class="ident">get</span>().<span class="ident">unwrap</span>();
+
+            <span class="prelude-val">Some</span>(<span class="ident">xdg</span>.<span class="ident">get_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">wl_output</span>, <span class="ident">qh</span>, <span class="ident">data</span>).<span class="ident">unwrap</span>())
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        };
+
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">OutputInner</span> {
+            <span class="ident">name</span>,
+            <span class="ident">wl_output</span>,
+            <span class="ident">xdg_output</span>,
+            <span class="ident">just_created</span>: <span class="bool-val">true</span>,
+            <span class="comment">// wl_output::done was added in version 2.</span>
+            <span class="comment">// If we have an output at version 1, assume the data was already sent.</span>
+            <span class="ident">current_info</span>: <span class="kw">if</span> <span class="ident">version</span> <span class="op">&gt;</span> <span class="number">1</span> { <span class="prelude-val">None</span> } <span class="kw">else</span> { <span class="prelude-val">Some</span>(<span class="ident">OutputInfo::new</span>(<span class="ident">name</span>)) },
+
+            <span class="ident">pending_info</span>,
+            <span class="ident">pending_wl</span>: <span class="bool-val">true</span>,
+            <span class="ident">pending_xdg</span>,
+        };
+
+        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">push</span>(<span class="ident">inner</span>);
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OutputData</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+
+<span class="kw">impl</span> <span class="ident">OutputData</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">u32</span>) -&gt; <span class="ident">OutputData</span> {
+        <span class="ident">OutputData</span>(<span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">OutputInfo::new</span>(<span class="ident">name</span>))))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scale_factor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">i32</span> {
+        <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+
+        <span class="ident">guard</span>.<span class="ident">scale_factor</span>
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Mode</span> {
     <span class="doccomment">/// Number of pixels of this mode in format `(width, height)`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// for example `(1920, 1080)`</span>
     <span class="kw">pub</span> <span class="ident">dimensions</span>: (<span class="ident">i32</span>, <span class="ident">i32</span>),
-    <span class="doccomment">/// Refresh rate for this mode, in mHz</span>
+
+    <span class="doccomment">/// Refresh rate for this mode.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The refresh rate is specified in terms of millihertz (mHz). To convert approximately to Hertz,</span>
+    <span class="doccomment">/// divide the value by 1000.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This value could be zero if an output has no correct refresh rate, such as a virtual output.</span>
     <span class="kw">pub</span> <span class="ident">refresh_rate</span>: <span class="ident">i32</span>,
-    <span class="doccomment">/// Whether this is the current mode for this output</span>
-    <span class="kw">pub</span> <span class="ident">is_current</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// Whether this is the preferred mode for this output</span>
-    <span class="kw">pub</span> <span class="ident">is_preferred</span>: <span class="ident">bool</span>,
+
+    <span class="doccomment">/// Whether this is the current mode for this output.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Per the Wayland protocol, non-current modes are deprecated and clients should not rely on deprecated</span>
+    <span class="doccomment">/// modes.</span>
+    <span class="kw">pub</span> <span class="ident">current</span>: <span class="ident">bool</span>,
+
+    <span class="doccomment">/// Whether this is the preferred mode for this output.</span>
+    <span class="kw">pub</span> <span class="ident">preferred</span>: <span class="ident">bool</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Mode</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">current</span> {
+            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;(current) &quot;</span>)<span class="question-mark">?</span>;
+        }
+
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">preferred</span> {
+            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;(preferred) &quot;</span>)<span class="question-mark">?</span>;
+        }
+
+        <span class="macro">write!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;{}×{}px @ {}.{:03} Hz&quot;</span>,
+            <span class="self">self</span>.<span class="ident">dimensions</span>.<span class="number">0</span>,
+            <span class="self">self</span>.<span class="ident">dimensions</span>.<span class="number">1</span>,
+            <span class="comment">// Print the refresh rate in hertz since it is more familiar unit.</span>
+            <span class="self">self</span>.<span class="ident">refresh_rate</span> <span class="op">/</span> <span class="number">1000</span>,
+            <span class="self">self</span>.<span class="ident">refresh_rate</span> <span class="op">%</span> <span class="number">1000</span>
+        )
+    }
+}
+
+<span class="doccomment">/// Information about an output.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="doccomment">/// Compiled information about an output</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OutputInfo</span> {
-    <span class="doccomment">/// The ID of this output as a global</span>
+    <span class="doccomment">/// The id of the output.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This corresponds to the global `name` of the wl_output.</span>
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// The model name of this output as advertised by the server</span>
+
+    <span class="doccomment">/// The model name of this output as advertised by the server.</span>
     <span class="kw">pub</span> <span class="ident">model</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// The make name of this output as advertised by the server</span>
+
+    <span class="doccomment">/// The make name of this output as advertised by the server.</span>
     <span class="kw">pub</span> <span class="ident">make</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// The name of this output as advertised by the server</span>
+
+    <span class="doccomment">/// Location of the top-left corner of this output in compositor space.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Each name is unique among all wl_output globals, but if a wl_output</span>
-    <span class="doccomment">/// global is destroyed the same name may be reused later. The names will</span>
-    <span class="doccomment">/// also remain consistent across sessions with the same hardware and</span>
-    <span class="doccomment">/// software configuration.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Examples of names include &#39;HDMI-A-1&#39;, &#39;WL-1&#39;, &#39;X11-1&#39;, etc. However, do</span>
-    <span class="doccomment">/// not assume that the name is a reflection of an underlying DRM connector,</span>
-    <span class="doccomment">/// X11 connection, etc.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that this is not filled in by version 3 of the wl_output protocol,</span>
-    <span class="doccomment">/// but it has been proposed for inclusion in version 4.  Until then, it is</span>
-    <span class="doccomment">/// only filled in if your environment has an [XdgOutputHandler] global</span>
-    <span class="doccomment">/// handler for [ZxdgOutputManagerV1].</span>
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// The description of this output as advertised by the server</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The description is a UTF-8 string with no convention defined for its</span>
-    <span class="doccomment">/// contents. The description is not guaranteed to be unique among all</span>
-    <span class="doccomment">/// wl_output globals. Examples might include &#39;Foocorp 11&quot; Display&#39; or</span>
-    <span class="doccomment">/// &#39;Virtual X11 output via :1&#39;.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that this is not filled in by version 3 of the wl_output protocol,</span>
-    <span class="doccomment">/// but it has been proposed for inclusion in version 4.  Until then, it is</span>
-    <span class="doccomment">/// only filled in if your environment has an [XdgOutputHandler] global</span>
-    <span class="doccomment">/// handler for [ZxdgOutputManagerV1].</span>
-    <span class="kw">pub</span> <span class="ident">description</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// Location of the top-left corner of this output in compositor</span>
-    <span class="doccomment">/// space</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that the compositor may decide to always report (0,0) if</span>
-    <span class="doccomment">/// it decides clients are not allowed to know this information.</span>
+    <span class="doccomment">/// Note that the compositor may decide to always report (0,0) if it decides clients are not allowed to</span>
+    <span class="doccomment">/// know this information.</span>
     <span class="kw">pub</span> <span class="ident">location</span>: (<span class="ident">i32</span>, <span class="ident">i32</span>),
-    <span class="doccomment">/// Physical dimensions of this output, in unspecified units</span>
+
+    <span class="doccomment">/// Physical dimensions of this output, in millimeters.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This value may be set to (0, 0) if a physical size does not make sense for the output (e.g. projectors</span>
+    <span class="doccomment">/// and virtual outputs).</span>
     <span class="kw">pub</span> <span class="ident">physical_size</span>: (<span class="ident">i32</span>, <span class="ident">i32</span>),
-    <span class="doccomment">/// The subpixel layout for this output</span>
+
+    <span class="doccomment">/// The subpixel layout for this output.</span>
     <span class="kw">pub</span> <span class="ident">subpixel</span>: <span class="ident">Subpixel</span>,
+
     <span class="doccomment">/// The current transformation applied to this output</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// You can pre-render your buffers taking this information</span>
-    <span class="doccomment">/// into account and advertising it via `wl_buffer.set_tranform`</span>
-    <span class="doccomment">/// for better performances.</span>
+    <span class="doccomment">/// You can pre-render your buffers taking this information into account and advertising it via</span>
+    <span class="doccomment">/// `wl_buffer.set_transform` for better performance.</span>
     <span class="kw">pub</span> <span class="ident">transform</span>: <span class="ident">Transform</span>,
+
     <span class="doccomment">/// The scaling factor of this output</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Any buffer whose scaling factor does not match the one</span>
-    <span class="doccomment">/// of the output it is displayed on will be rescaled accordingly.</span>
+    <span class="doccomment">/// Any buffer whose scaling factor does not match the one of the output it is displayed on will be</span>
+    <span class="doccomment">/// rescaled accordingly.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// For example, a buffer of scaling factor 1 will be doubled in</span>
-    <span class="doccomment">/// size if the output scaling factor is 2.</span>
+    <span class="doccomment">/// For example, a buffer of scaling factor 1 will be doubled in size if the output scaling factor is 2.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// You can pre-render your buffers taking this information into account and advertising it via</span>
+    <span class="doccomment">/// `wl_surface.set_buffer_scale` so you may advertise a higher detail image.</span>
     <span class="kw">pub</span> <span class="ident">scale_factor</span>: <span class="ident">i32</span>,
-    <span class="doccomment">/// Possible modes for an output</span>
+
+    <span class="doccomment">/// Possible modes for an output.</span>
     <span class="kw">pub</span> <span class="ident">modes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Mode</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Has this output been unadvertized by the registry</span>
+
+    <span class="doccomment">/// The name of the this output as advertised by the surface.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If this is the case, it has become inert, you might want to</span>
-    <span class="doccomment">/// call its `release()` method if you don&#39;t plan to use it any</span>
-    <span class="doccomment">/// longer.</span>
-    <span class="kw">pub</span> <span class="ident">obsolete</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Examples of names include &#39;HDMI-A-1&#39;, &#39;WL-1&#39;, &#39;X11-1&#39;, etc. However, do not assume that the name is a</span>
+    <span class="doccomment">/// reflection of an underlying DRM connector, X11 connection, etc.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Compositors are not required to provide a name for the output and the value may be [`None`].</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The name will be [`None`] if the compositor does not support version 4 of the wl-output protocol or</span>
+    <span class="doccomment">/// version 2 of the zxdg-output-v1 protocol.</span>
+    <span class="kw">pub</span> <span class="ident">name</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// The description of this output as advertised by the server</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The description is a UTF-8 string with no convention defined for its contents. The description is not</span>
+    <span class="doccomment">/// guaranteed to be unique among all wl_output globals. Examples might include &#39;Foocorp 11&quot; Display&#39; or</span>
+    <span class="doccomment">/// &#39;Virtual X11 output via :1&#39;.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Compositors are not required to provide a description of the output and the value may be [`None`].</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The value will be [`None`] if the compositor does not support version 4 of the wl-output</span>
+    <span class="doccomment">/// protocol, version 2 of the zxdg-output-v1 protocol.</span>
+    <span class="kw">pub</span> <span class="ident">description</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+}
+
+<span class="attribute">#[<span class="ident">macro_export</span>]</span>
+<span class="macro">macro_rules!</span> <span class="ident">delegate_output</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_output::WlOutput</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputData</span>,
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>,
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputData</span>,
+        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputState</span>);
+    };
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_output::WlOutput</span>, <span class="ident">OutputData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">OutputState</span>
+<span class="kw">where</span>
+    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_output::WlOutput</span>, <span class="ident">OutputData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">OutputHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">fn</span> <span class="ident">event</span>(
+        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
+        <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span>,
+        <span class="ident">event</span>: <span class="ident">wl_output::Event</span>,
+        <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">OutputData</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    ) {
+        <span class="kw">match</span> <span class="ident">event</span> {
+            <span class="ident">wl_output::Event::Geometry</span> {
+                <span class="ident">x</span>,
+                <span class="ident">y</span>,
+                <span class="ident">physical_width</span>,
+                <span class="ident">physical_height</span>,
+                <span class="ident">subpixel</span>,
+                <span class="ident">make</span>,
+                <span class="ident">model</span>,
+                <span class="ident">transform</span>,
+            } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">location</span> <span class="op">=</span> (<span class="ident">x</span>, <span class="ident">y</span>);
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">physical_size</span> <span class="op">=</span> (<span class="ident">physical_width</span>, <span class="ident">physical_height</span>);
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">subpixel</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">subpixel</span> {
+                    <span class="ident">WEnum::Value</span>(<span class="ident">subpixel</span>) =&gt; <span class="ident">subpixel</span>,
+                    <span class="ident">WEnum::Unknown</span>(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;Warn about invalid subpixel value&quot;</span>),
+                };
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">make</span> <span class="op">=</span> <span class="ident">make</span>;
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">model</span> <span class="op">=</span> <span class="ident">model</span>;
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">transform</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">transform</span> {
+                    <span class="ident">WEnum::Value</span>(<span class="ident">subpixel</span>) =&gt; <span class="ident">subpixel</span>,
+                    <span class="ident">WEnum::Unknown</span>(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;Warn about invalid transform value&quot;</span>),
+                };
+                <span class="ident">inner</span>.<span class="ident">pending_wl</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">wl_output::Event::Mode</span> { <span class="ident">flags</span>, <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">refresh</span> } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">index</span>, <span class="kw">_</span>)) <span class="op">=</span>
+                    <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">modes</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">find</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">mode</span>)<span class="op">|</span> {
+                        <span class="ident">mode</span>.<span class="ident">dimensions</span> <span class="op">==</span> (<span class="ident">width</span>, <span class="ident">height</span>) <span class="op">&amp;&amp;</span> <span class="ident">mode</span>.<span class="ident">refresh_rate</span> <span class="op">==</span> <span class="ident">refresh</span>
+                    })
+                {
+                    <span class="comment">// We found a match, remove the old mode.</span>
+                    <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">modes</span>.<span class="ident">remove</span>(<span class="ident">index</span>);
+                }
+
+                <span class="kw">let</span> <span class="ident">flags</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">flags</span> {
+                    <span class="ident">WEnum::Value</span>(<span class="ident">flags</span>) =&gt; <span class="ident">flags</span>,
+                    <span class="ident">WEnum::Unknown</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid flags&quot;</span>),
+                };
+
+                <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Current</span>);
+                <span class="kw">let</span> <span class="ident">preferred</span> <span class="op">=</span> <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Preferred</span>);
+
+                <span class="comment">// Now create the new mode.</span>
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">modes</span>.<span class="ident">push</span>(<span class="ident">Mode</span> {
+                    <span class="ident">dimensions</span>: (<span class="ident">width</span>, <span class="ident">height</span>),
+                    <span class="ident">refresh_rate</span>: <span class="ident">refresh</span>,
+                    <span class="ident">current</span>,
+                    <span class="ident">preferred</span>,
+                });
+
+                <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">modes</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>;
+
+                <span class="comment">// Any mode that isn&#39;t current is deprecated, let&#39;s deprecate any existing modes that may be</span>
+                <span class="comment">// marked as current.</span>
+                <span class="comment">//</span>
+                <span class="comment">// If a new mode is advertised as preferred, then mark the existing preferred mode as not.</span>
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">modes</span>.<span class="ident">iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">mode_index</span>, <span class="ident">mode</span>)<span class="op">|</span> {
+                    <span class="kw">if</span> <span class="ident">index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">mode_index</span> {
+                        <span class="comment">// This mode is no longer preferred.</span>
+                        <span class="kw">if</span> <span class="ident">mode</span>.<span class="ident">preferred</span> <span class="op">&amp;&amp;</span> <span class="ident">preferred</span> {
+                            <span class="ident">mode</span>.<span class="ident">preferred</span> <span class="op">=</span> <span class="bool-val">false</span>;
+                        }
+
+                        <span class="comment">// This mode is no longer current.</span>
+                        <span class="kw">if</span> <span class="ident">mode</span>.<span class="ident">current</span> <span class="op">&amp;&amp;</span> <span class="ident">current</span> {
+                            <span class="ident">mode</span>.<span class="ident">current</span> <span class="op">=</span> <span class="bool-val">false</span>;
+                        }
+                    }
+                });
+
+                <span class="ident">inner</span>.<span class="ident">pending_wl</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">wl_output::Event::Scale</span> { <span class="ident">factor</span> } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">scale_factor</span> <span class="op">=</span> <span class="ident">factor</span>;
+                <span class="ident">inner</span>.<span class="ident">pending_wl</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">wl_output::Event::Name</span> { <span class="ident">name</span> } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">name</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>);
+                <span class="ident">inner</span>.<span class="ident">pending_wl</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">wl_output::Event::Description</span> { <span class="ident">description</span> } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">description</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">description</span>);
+                <span class="ident">inner</span>.<span class="ident">pending_wl</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">wl_output::Event::Done</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">wl_output</span> <span class="op">==</span> <span class="ident">output</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">clone</span>();
+                <span class="ident">inner</span>.<span class="ident">current_info</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">info</span>.<span class="ident">clone</span>());
+                <span class="ident">inner</span>.<span class="ident">pending_wl</span> <span class="op">=</span> <span class="bool-val">false</span>;
+
+                <span class="kw">if</span> <span class="ident">inner</span>
+                    .<span class="ident">xdg_output</span>
+                    .<span class="ident">as_ref</span>()
+                    .<span class="ident">map</span>(<span class="ident">Proxy::version</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span> <span class="op">&gt;</span> <span class="number">3</span>) <span class="comment">// version 3 of xdg_output deprecates xdg_output::done</span>
+                    .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
+                {
+                    <span class="ident">inner</span>.<span class="ident">pending_xdg</span> <span class="op">=</span> <span class="bool-val">false</span>;
+                }
+
+                <span class="comment">// Set the user data, see if we need to run scale callbacks</span>
+                <span class="kw">let</span> <span class="ident">run_callbacks</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">set</span>(<span class="ident">info</span>);
+
+                <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">just_created</span> {
+                    <span class="ident">inner</span>.<span class="ident">just_created</span> <span class="op">=</span> <span class="bool-val">false</span>;
+                    <span class="ident">state</span>.<span class="ident">new_output</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>.<span class="ident">clone</span>());
+                } <span class="kw">else</span> {
+                    <span class="ident">state</span>.<span class="ident">update_output</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>.<span class="ident">clone</span>());
+                }
+
+                <span class="kw">if</span> <span class="ident">run_callbacks</span> {
+                    <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">output_state</span>().<span class="ident">callbacks</span>.<span class="ident">clone</span>();
+                    <span class="kw">for</span> <span class="ident">cb</span> <span class="kw">in</span> <span class="ident">callbacks</span> {
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cb</span>) <span class="op">=</span> <span class="ident">cb</span>.<span class="ident">upgrade</span>() {
+                            <span class="ident">cb</span>(<span class="ident">state</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>);
+                        }
+                    }
+                }
+            }
+
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+        }
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_manager_v1::ZxdgOutputManagerV1</span>, <span class="ident">GlobalData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">OutputState</span>
+<span class="kw">where</span>
+    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_manager_v1::ZxdgOutputManagerV1</span>, <span class="ident">GlobalData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">OutputHandler</span>,
+{
+    <span class="kw">fn</span> <span class="ident">event</span>(
+        <span class="kw">_</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">zxdg_output_manager_v1::ZxdgOutputManagerV1</span>,
+        <span class="kw">_</span>: <span class="ident">zxdg_output_manager_v1::Event</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalData</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    ) {
+        <span class="macro">unreachable!</span>(<span class="string">&quot;zxdg_output_manager_v1 has no events&quot;</span>)
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_v1::ZxdgOutputV1</span>, <span class="ident">OutputData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">OutputState</span>
+<span class="kw">where</span>
+    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_v1::ZxdgOutputV1</span>, <span class="ident">OutputData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">OutputHandler</span>,
+{
+    <span class="kw">fn</span> <span class="ident">event</span>(
+        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
+        <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">zxdg_output_v1::ZxdgOutputV1</span>,
+        <span class="ident">event</span>: <span class="ident">zxdg_output_v1::Event</span>,
+        <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">OutputData</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    ) {
+        <span class="kw">match</span> <span class="ident">event</span> {
+            <span class="comment">// Already provided by wl_output</span>
+            <span class="ident">zxdg_output_v1::Event::LogicalPosition</span> { <span class="ident">x</span>: <span class="kw">_</span>, <span class="ident">y</span>: <span class="kw">_</span> } =&gt; (),
+            <span class="ident">zxdg_output_v1::Event::LogicalSize</span> { <span class="ident">width</span>: <span class="kw">_</span>, <span class="ident">height</span>: <span class="kw">_</span> } =&gt; (),
+
+            <span class="ident">zxdg_output_v1::Event::Name</span> { <span class="ident">name</span> } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">xdg_output</span>.<span class="ident">as_ref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">output</span>))
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">name</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>);
+                <span class="ident">inner</span>.<span class="ident">pending_xdg</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">zxdg_output_v1::Event::Description</span> { <span class="ident">description</span> } =&gt; {
+                <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                    .<span class="ident">output_state</span>()
+                    .<span class="ident">outputs</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">xdg_output</span>.<span class="ident">as_ref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">output</span>))
+                    .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">description</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">description</span>);
+                <span class="ident">inner</span>.<span class="ident">pending_xdg</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            }
+
+            <span class="ident">zxdg_output_v1::Event::Done</span> =&gt; {
+                <span class="comment">// This event is deprecated starting in version 3, wl_output::done should be sent instead.</span>
+                <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">version</span>() <span class="op">&lt;</span> <span class="number">3</span> {
+                    <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">state</span>
+                        .<span class="ident">output_state</span>()
+                        .<span class="ident">outputs</span>
+                        .<span class="ident">iter_mut</span>()
+                        .<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">xdg_output</span>.<span class="ident">as_ref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">output</span>))
+                        .<span class="ident">expect</span>(<span class="string">&quot;Received event for dead output&quot;</span>);
+
+                    <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_info</span>.<span class="ident">clone</span>();
+                    <span class="ident">inner</span>.<span class="ident">current_info</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">info</span>.<span class="ident">clone</span>());
+                    <span class="ident">inner</span>.<span class="ident">pending_xdg</span> <span class="op">=</span> <span class="bool-val">false</span>;
+
+                    <span class="comment">// Set the user data</span>
+                    <span class="ident">data</span>.<span class="ident">set</span>(<span class="ident">info</span>);
+
+                    <span class="kw">let</span> <span class="ident">pending_wl</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_wl</span>;
+                    <span class="kw">let</span> <span class="ident">just_created</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">just_created</span>;
+                    <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">wl_output</span>.<span class="ident">clone</span>();
+
+                    <span class="kw">if</span> <span class="ident">just_created</span> {
+                        <span class="ident">inner</span>.<span class="ident">just_created</span> <span class="op">=</span> <span class="bool-val">false</span>;
+                    }
+
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">pending_wl</span> {
+                        <span class="kw">if</span> <span class="ident">just_created</span> {
+                            <span class="ident">state</span>.<span class="ident">new_output</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>);
+                        } <span class="kw">else</span> {
+                            <span class="ident">state</span>.<span class="ident">update_output</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>);
+                        }
+                    }
+                }
+            }
+
+            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+        }
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">OutputState</span>
+<span class="kw">where</span>
+    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_output::WlOutput</span>, <span class="ident">OutputData</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_v1::ZxdgOutputV1</span>, <span class="ident">OutputData</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_output_manager_v1::ZxdgOutputManagerV1</span>, <span class="ident">GlobalData</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="ident">OutputHandler</span>
+        <span class="op">+</span> <span class="ident">ProvidesRegistryState</span>
+        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">fn</span> <span class="ident">ready</span>(<span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span> <span class="op">=</span>
+            <span class="ident">data</span>.<span class="ident">registry</span>().<span class="ident">bind_all</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">4</span>, <span class="ident">OutputData::new</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to bind global&quot;</span>);
+
+        <span class="comment">// Only bind xdg output manager if it&#39;s needed</span>
+        <span class="kw">let</span> <span class="ident">xdg</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">outputs</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">version</span>() <span class="op">&lt;</span> <span class="number">4</span>) {
+            <span class="ident">data</span>.<span class="ident">registry</span>().<span class="ident">bind_one</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">3</span>, <span class="ident">GlobalData</span>).<span class="ident">into</span>()
+        } <span class="kw">else</span> {
+            <span class="ident">GlobalProxy::NotReady</span>
+        };
+
+        <span class="kw">let</span> <span class="ident">output_state</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">output_state</span>();
+        <span class="ident">output_state</span>.<span class="ident">xdg</span> <span class="op">=</span> <span class="ident">xdg</span>;
+
+        <span class="kw">for</span> <span class="ident">wl_output</span> <span class="kw">in</span> <span class="ident">outputs</span> {
+            <span class="ident">output_state</span>.<span class="ident">setup</span>(<span class="ident">wl_output</span>, <span class="ident">qh</span>);
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">new_global</span>(
+        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+        <span class="ident">name</span>: <span class="ident">u32</span>,
+        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">version</span>: <span class="ident">u32</span>,
+    ) {
+        <span class="kw">if</span> <span class="ident">interface</span> <span class="op">==</span> <span class="string">&quot;wl_output&quot;</span> {
+            <span class="comment">// Lazily bind xdg output manager if it&#39;s needed</span>
+            <span class="kw">if</span> <span class="ident">version</span> <span class="op">&lt;</span> <span class="number">4</span> <span class="op">&amp;&amp;</span> <span class="macro">matches!</span>(<span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">xdg</span>, <span class="ident">GlobalProxy::NotReady</span>) {
+                <span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">xdg</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">registry</span>().<span class="ident">bind_one</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">3</span>, <span class="ident">GlobalData</span>).<span class="ident">into</span>();
+            }
+
+            <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">data</span>
+                .<span class="ident">registry</span>()
+                .<span class="ident">bind_specific</span>(<span class="ident">qh</span>, <span class="ident">name</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">4</span>, <span class="ident">OutputData::new</span>(<span class="ident">name</span>))
+                .<span class="ident">expect</span>(<span class="string">&quot;Failed to bind global&quot;</span>);
+            <span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">setup</span>(<span class="ident">output</span>, <span class="ident">qh</span>);
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">remove_global</span>(
+        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
+        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+        <span class="ident">name</span>: <span class="ident">u32</span>,
+        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    ) {
+        <span class="kw">if</span> <span class="ident">interface</span> <span class="op">==</span> <span class="string">&quot;wl_output&quot;</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">destroyed</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+
+            <span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">outputs</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">destroy</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">name</span>;
+
+                <span class="kw">if</span> <span class="ident">destroy</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_output</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">xdg_output</span> {
+                        <span class="ident">xdg_output</span>.<span class="ident">destroy</span>();
+                    }
+
+                    <span class="ident">inner</span>.<span class="ident">wl_output</span>.<span class="ident">release</span>();
+
+                    <span class="ident">destroyed</span>.<span class="ident">push</span>(<span class="ident">inner</span>.<span class="ident">wl_output</span>.<span class="ident">clone</span>());
+                }
+
+                <span class="ident">destroy</span>
+            });
+
+            <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">destroyed</span> {
+                <span class="ident">data</span>.<span class="ident">output_destroyed</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>);
+            }
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">OutputInfo</span> {
@@ -827,578 +1379,44 @@
             <span class="ident">id</span>,
             <span class="ident">model</span>: <span class="ident">String::new</span>(),
             <span class="ident">make</span>: <span class="ident">String::new</span>(),
-            <span class="ident">name</span>: <span class="ident">String::new</span>(),
-            <span class="ident">description</span>: <span class="ident">String::new</span>(),
             <span class="ident">location</span>: (<span class="number">0</span>, <span class="number">0</span>),
             <span class="ident">physical_size</span>: (<span class="number">0</span>, <span class="number">0</span>),
             <span class="ident">subpixel</span>: <span class="ident">Subpixel::Unknown</span>,
             <span class="ident">transform</span>: <span class="ident">Transform::Normal</span>,
             <span class="ident">scale_factor</span>: <span class="number">1</span>,
-            <span class="ident">modes</span>: <span class="ident">Vec::new</span>(),
-            <span class="ident">obsolete</span>: <span class="bool-val">false</span>,
+            <span class="ident">modes</span>: <span class="macro">vec!</span>[],
+            <span class="ident">name</span>: <span class="prelude-val">None</span>,
+            <span class="ident">description</span>: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">type</span> <span class="ident">OutputCallback</span> <span class="op">=</span> <span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>;
+<span class="kw">impl</span> <span class="ident">OutputData</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">info</span>: <span class="ident">OutputInfo</span>) -&gt; <span class="ident">bool</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
 
-<span class="kw">enum</span> <span class="ident">OutputData</span> {
-    <span class="ident">Ready</span> {
-        <span class="ident">info</span>: <span class="ident">OutputInfo</span>,
-        <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync::Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
-    <span class="ident">Pending</span> {
-        <span class="ident">id</span>: <span class="ident">u32</span>,
-        <span class="ident">has_xdg</span>: <span class="ident">bool</span>,
-        <span class="ident">events</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&gt;</span>,
-        <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync::Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
-    <span class="ident">PendingXDG</span> {
-        <span class="ident">info</span>: <span class="ident">OutputInfo</span>,
-        <span class="ident">callbacks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync::Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
-}
+        <span class="kw">let</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">guard</span>.<span class="ident">scale_factor</span> <span class="op">!</span><span class="op">=</span> <span class="ident">info</span>.<span class="ident">scale_factor</span>;
 
-<span class="kw">type</span> <span class="ident">OutputStatusCallback</span> <span class="op">=</span> <span class="kw">dyn</span> <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span>;
+        <span class="kw-2">*</span><span class="ident">guard</span> <span class="op">=</span> <span class="ident">info</span>;
 
-<span class="doccomment">/// A handler for `wl_output`</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This handler can be used for managing `wl_output` in the</span>
-<span class="doccomment">/// [`init_environment!`](../macro.init_environment.html) macro, and is automatically</span>
-<span class="doccomment">/// included in [`new_default_environment!`](../macro.new_default_environment.html).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// It aggregates the output information and makes it available via the</span>
-<span class="doccomment">/// [`with_output_info`](fn.with_output_info.html) function.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OutputHandler</span> {
-    <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    <span class="ident">status_listeners</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">xdg_listener</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">XdgOutputHandlerInner</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">OutputHandler</span> {
-    <span class="doccomment">/// Create a new instance of this handler</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">OutputHandler</span> {
-        <span class="ident">OutputHandler</span> {
-            <span class="ident">outputs</span>: <span class="ident">Vec::new</span>(),
-            <span class="ident">status_listeners</span>: <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">Vec::new</span>())),
-            <span class="ident">xdg_listener</span>: <span class="prelude-val">None</span>,
-        }
+        <span class="ident">rv</span>
     }
-}
-
-<span class="kw">impl</span> <span class="ident"><span class="kw">crate</span>::environment::MultiGlobalHandler</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">OutputHandler</span> {
-    <span class="kw">fn</span> <span class="ident">created</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">registry</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_registry::WlRegistry</span><span class="op">&gt;</span>,
-        <span class="ident">id</span>: <span class="ident">u32</span>,
-        <span class="ident">version</span>: <span class="ident">u32</span>,
-        <span class="kw">_</span>: <span class="ident">DispatchData</span>,
-    ) {
-        <span class="comment">// We currently support wl_output up to version 4</span>
-        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="ident">version</span>, <span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">registry</span>.<span class="ident">bind</span>::<span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>(<span class="ident">version</span>, <span class="ident">id</span>);
-        <span class="kw">let</span> <span class="ident">has_xdg</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">xdg_listener</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="ident">rc::Weak::upgrade</span>) {
-            <span class="ident">xdg</span>.<span class="ident">borrow_mut</span>().<span class="ident">new_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">status_listeners</span>)
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        };
-        <span class="kw">if</span> <span class="ident">version</span> <span class="op">&gt;</span> <span class="number">1</span> {
-            <span class="comment">// wl_output.done event was only added at version 2</span>
-            <span class="comment">// In case of an old version 1, we just behave as if it was send at the start</span>
-            <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">set_threadsafe</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">Mutex::new</span>(<span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">events</span>: <span class="macro">vec!</span>[], <span class="ident">callbacks</span>: <span class="macro">vec!</span>[] })
-            });
-        } <span class="kw">else</span> {
-            <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">set_threadsafe</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">Mutex::new</span>(<span class="ident">OutputData::Ready</span> { <span class="ident">info</span>: <span class="ident">OutputInfo::new</span>(<span class="ident">id</span>), <span class="ident">callbacks</span>: <span class="macro">vec!</span>[] })
-            });
-        }
-        <span class="kw">let</span> <span class="ident">status_listeners_handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">status_listeners</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">xdg_listener_handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">xdg_listener</span>.<span class="ident">clone</span>();
-        <span class="ident">output</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">output</span>, <span class="ident">event</span>, <span class="ident">ddata</span><span class="op">|</span> {
-            <span class="ident">process_output_event</span>(
-                <span class="ident">output</span>,
-                <span class="ident">event</span>,
-                <span class="ident">ddata</span>,
-                <span class="kw-2">&amp;</span><span class="ident">status_listeners_handle</span>,
-                <span class="kw-2">&amp;</span><span class="ident">xdg_listener_handle</span>,
-            )
-        });
-        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">push</span>((<span class="ident">id</span>, (<span class="kw-2">*</span><span class="ident">output</span>).<span class="ident">clone</span>()));
-    }
-    <span class="kw">fn</span> <span class="ident">removed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u32</span>, <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span>) {
-        <span class="kw">let</span> <span class="ident">status_listeners_handle</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">status_listeners</span>;
-        <span class="kw">let</span> <span class="ident">xdg_listener_handle</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">xdg_listener</span>;
-        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">retain</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">o</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">i</span> <span class="op">!</span><span class="op">=</span> <span class="ident">id</span> {
-                <span class="bool-val">true</span>
-            } <span class="kw">else</span> {
-                <span class="ident">make_obsolete</span>(<span class="ident">o</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">status_listeners_handle</span>, <span class="ident">xdg_listener_handle</span>);
-                <span class="bool-val">false</span>
-            }
-        });
-    }
-    <span class="kw">fn</span> <span class="ident">get_all</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">o</span>)<span class="op">|</span> <span class="ident">o</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>()
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputHandler</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputHandler&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;outputs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">outputs</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;status_listeners&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;Fn() -&gt; { ... }&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;xdg_listener&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">xdg_listener</span>)
-            .<span class="ident">finish</span>()
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">process_output_event</span>(
-    <span class="ident">output</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>,
-    <span class="ident">event</span>: <span class="ident">Event</span>,
-    <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span>,
-    <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">xdg_listener</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">XdgOutputHandlerInner</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) {
-    <span class="kw">let</span> <span class="ident">udata_mutex</span> <span class="op">=</span> <span class="ident">output</span>
-        .<span class="ident">as_ref</span>()
-        .<span class="ident">user_data</span>()
-        .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Event::Done</span> <span class="op">=</span> <span class="ident">event</span> {
-        <span class="kw">let</span> (<span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">pending_events</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span> } =&gt; {
-                (<span class="ident">id</span>, <span class="ident">has_xdg</span>, <span class="ident">std::mem::take</span>(<span class="ident">v</span>), <span class="ident">std::mem::take</span>(<span class="ident">cb</span>))
-            }
-            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } =&gt; {
-                <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
-                <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
-                <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">info</span>.<span class="ident">clone</span>();
-                <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">std::mem::take</span>(<span class="ident">callbacks</span>);
-                <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
-                <span class="kw">return</span>;
-            }
-            <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } =&gt; {
-                <span class="comment">// a Done event on an output that is already ready was due to a</span>
-                <span class="comment">// status change (which was already merged)</span>
-                <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">callbacks</span>);
-                <span class="kw">return</span>;
-            }
-        };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">OutputInfo::new</span>(<span class="ident">id</span>);
-        <span class="kw">for</span> <span class="ident">evt</span> <span class="kw">in</span> <span class="ident">pending_events</span> {
-            <span class="ident">merge_event</span>(<span class="kw-2">&amp;mut</span> <span class="ident">info</span>, <span class="ident">evt</span>);
-        }
-        <span class="ident">notify</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">callbacks</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg</span>) <span class="op">=</span> <span class="ident">xdg_listener</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="ident">rc::Weak::upgrade</span>) {
-            <span class="kw">if</span> <span class="ident">has_xdg</span> <span class="op">|</span><span class="op">|</span> <span class="ident">xdg</span>.<span class="ident">borrow_mut</span>().<span class="ident">new_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="ident">listeners</span>) {
-                <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::PendingXDG</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
-                <span class="kw">return</span>;
-            }
-        }
-        <span class="ident">notify_status_listeners</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
-        <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
-    } <span class="kw">else</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::Pending</span> { <span class="ident">events</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">v</span>, .. } =&gt; <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">event</span>),
-            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, .. }
-            <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, .. } =&gt; {
-                <span class="ident">merge_event</span>(<span class="ident">info</span>, <span class="ident">event</span>);
-            }
-        }
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">make_obsolete</span>(
-    <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>,
-    <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span>,
-    <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">xdg_listener</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">XdgOutputHandlerInner</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) {
-    <span class="kw">let</span> <span class="ident">udata_mutex</span> <span class="op">=</span> <span class="ident">output</span>
-        .<span class="ident">as_ref</span>()
-        .<span class="ident">user_data</span>()
-        .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg</span>) <span class="op">=</span> <span class="ident">xdg_listener</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="ident">rc::Weak::upgrade</span>) {
-        <span class="ident">xdg</span>.<span class="ident">borrow_mut</span>().<span class="ident">destroy_xdg_output</span>(<span class="ident">output</span>);
-    }
-    <span class="kw">let</span> (<span class="ident">id</span>, <span class="kw-2">mut</span> <span class="ident">callbacks</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-        <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> }
-        <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">info</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span> } =&gt; {
-            <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="ident">notify</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
-            <span class="ident">notify_status_listeners</span>(<span class="ident">output</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
-            <span class="kw">return</span>;
-        }
-        <span class="ident">OutputData::Pending</span> { <span class="ident">id</span>, <span class="ident">callbacks</span>: <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">cb</span>, .. } =&gt; (<span class="ident">id</span>, <span class="ident">std::mem::take</span>(<span class="ident">cb</span>)),
-    };
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">OutputInfo::new</span>(<span class="ident">id</span>);
-    <span class="ident">info</span>.<span class="ident">obsolete</span> <span class="op">=</span> <span class="bool-val">true</span>;
-    <span class="ident">notify</span>(<span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">callbacks</span>);
-    <span class="ident">notify_status_listeners</span>(<span class="ident">output</span>, <span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
-    <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
-}
-
-<span class="kw">fn</span> <span class="ident">merge_event</span>(<span class="ident">info</span>: <span class="kw-2">&amp;mut</span> <span class="ident">OutputInfo</span>, <span class="ident">event</span>: <span class="ident">Event</span>) {
-    <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">Event::Geometry</span> {
-            <span class="ident">x</span>,
-            <span class="ident">y</span>,
-            <span class="ident">physical_width</span>,
-            <span class="ident">physical_height</span>,
-            <span class="ident">subpixel</span>,
-            <span class="ident">model</span>,
-            <span class="ident">make</span>,
-            <span class="ident">transform</span>,
-        } =&gt; {
-            <span class="ident">info</span>.<span class="ident">location</span> <span class="op">=</span> (<span class="ident">x</span>, <span class="ident">y</span>);
-            <span class="ident">info</span>.<span class="ident">physical_size</span> <span class="op">=</span> (<span class="ident">physical_width</span>, <span class="ident">physical_height</span>);
-            <span class="ident">info</span>.<span class="ident">subpixel</span> <span class="op">=</span> <span class="ident">subpixel</span>;
-            <span class="ident">info</span>.<span class="ident">transform</span> <span class="op">=</span> <span class="ident">transform</span>;
-            <span class="ident">info</span>.<span class="ident">model</span> <span class="op">=</span> <span class="ident">model</span>;
-            <span class="ident">info</span>.<span class="ident">make</span> <span class="op">=</span> <span class="ident">make</span>;
-        }
-        <span class="ident">Event::Scale</span> { <span class="ident">factor</span> } =&gt; {
-            <span class="ident">info</span>.<span class="ident">scale_factor</span> <span class="op">=</span> <span class="ident">factor</span>;
-        }
-        <span class="ident">Event::Mode</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">refresh</span>, <span class="ident">flags</span> } =&gt; {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">found</span> <span class="op">=</span> <span class="bool-val">false</span>;
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mode</span>) <span class="op">=</span> <span class="ident">info</span>
-                .<span class="ident">modes</span>
-                .<span class="ident">iter_mut</span>()
-                .<span class="ident">find</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> <span class="ident">m</span>.<span class="ident">dimensions</span> <span class="op">==</span> (<span class="ident">width</span>, <span class="ident">height</span>) <span class="op">&amp;&amp;</span> <span class="ident">m</span>.<span class="ident">refresh_rate</span> <span class="op">==</span> <span class="ident">refresh</span>)
-            {
-                <span class="comment">// this mode already exists, update it</span>
-                <span class="ident">mode</span>.<span class="ident">is_preferred</span> <span class="op">=</span> <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Preferred</span>);
-                <span class="ident">mode</span>.<span class="ident">is_current</span> <span class="op">=</span> <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Current</span>);
-                <span class="ident">found</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            }
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">found</span> {
-                <span class="comment">// otherwise, add it</span>
-                <span class="ident">info</span>.<span class="ident">modes</span>.<span class="ident">push</span>(<span class="ident">Mode</span> {
-                    <span class="ident">dimensions</span>: (<span class="ident">width</span>, <span class="ident">height</span>),
-                    <span class="ident">refresh_rate</span>: <span class="ident">refresh</span>,
-                    <span class="ident">is_preferred</span>: <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Preferred</span>),
-                    <span class="ident">is_current</span>: <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">wl_output::Mode::Current</span>),
-                })
-            }
-        }
-        <span class="ident">Event::Name</span> { <span class="ident">name</span> } =&gt; {
-            <span class="ident">info</span>.<span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>;
-        }
-        <span class="ident">Event::Description</span> { <span class="ident">description</span> } =&gt; {
-            <span class="ident">info</span>.<span class="ident">description</span> <span class="op">=</span> <span class="ident">description</span>;
-        }
-        <span class="comment">// ignore all other events</span>
-        <span class="kw">_</span> =&gt; (),
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">notify</span>(
-    <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
-    <span class="ident">info</span>: <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>,
-    <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span>,
-    <span class="ident">callbacks</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">sync::Weak</span><span class="op">&lt;</span><span class="ident">OutputCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) {
-    <span class="ident">callbacks</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">weak</span><span class="op">|</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">arc</span>) <span class="op">=</span> <span class="ident">sync::Weak::upgrade</span>(<span class="ident">weak</span>) {
-            (<span class="kw-2">*</span><span class="ident">arc</span>)(<span class="ident">output</span>.<span class="ident">clone</span>(), <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>());
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
-    });
-}
-
-<span class="kw">fn</span> <span class="ident">notify_status_listeners</span>(
-    <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
-    <span class="ident">info</span>: <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>,
-    <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span>,
-    <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) {
-    <span class="comment">// Notify the callbacks listening for new outputs</span>
-    <span class="ident">listeners</span>.<span class="ident">borrow_mut</span>().<span class="ident">retain</span>(<span class="op">|</span><span class="ident">lst</span><span class="op">|</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cb</span>) <span class="op">=</span> <span class="ident">rc::Weak::upgrade</span>(<span class="ident">lst</span>) {
-            (<span class="ident">cb</span>.<span class="ident">borrow_mut</span>())(<span class="ident">output</span>.<span class="ident">clone</span>(), <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>());
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
-    })
-}
-
-<span class="doccomment">/// Access the info associated with this output</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The provided closure is given the [`OutputInfo`](struct.OutputInfo.html) as argument,</span>
-<span class="doccomment">/// and its return value is returned from this function.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If the provided `WlOutput` has not yet been initialized or is not managed by SCTK, `None` is returned.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If the output has been removed by the compositor, the `obsolete` field of the `OutputInfo`</span>
-<span class="doccomment">/// will be set to `true`. This handler will not automatically detroy the output by calling its</span>
-<span class="doccomment">/// `release` method, to avoid interfering with your logic.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_output_info</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>) -&gt; <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>, <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="ident">info</span>, .. } =&gt; {
-                <span class="prelude-val">Some</span>(<span class="ident">f</span>(<span class="ident">info</span>))
-            }
-            <span class="ident">OutputData::Pending</span> { .. } =&gt; <span class="prelude-val">None</span>,
-        }
-    } <span class="kw">else</span> {
-        <span class="prelude-val">None</span>
-    }
-}
-
-<span class="doccomment">/// Add a listener to this output</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The provided closure will be called whenever a property of the output changes,</span>
-<span class="doccomment">/// including when it is removed by the compositor (in this case it&#39;ll be marked as</span>
-<span class="doccomment">/// obsolete).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The returned [`OutputListener`](struct.OutputListener) keeps your callback alive,</span>
-<span class="doccomment">/// dropping it will disable the callback and free the closure.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_output_listener</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Fn</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
-    <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
-    <span class="ident">f</span>: <span class="ident">F</span>,
-) -&gt; <span class="ident">OutputListener</span> {
-    <span class="kw">let</span> <span class="ident">arc</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">f</span>) <span class="kw">as</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>;
-
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">udata_mutex</span>) <span class="op">=</span> <span class="ident">output</span>.<span class="ident">as_ref</span>().<span class="ident">user_data</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-            <span class="ident">OutputData::Pending</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. }
-            <span class="op">|</span> <span class="ident">OutputData::PendingXDG</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. }
-            <span class="op">|</span> <span class="ident">OutputData::Ready</span> { <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">callbacks</span>, .. } =&gt; {
-                <span class="ident">callbacks</span>.<span class="ident">push</span>(<span class="ident">Arc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">arc</span>));
-            }
-        }
-    }
-
-    <span class="ident">OutputListener</span> { <span class="ident">_cb</span>: <span class="ident">arc</span> }
-}
-
-<span class="doccomment">/// A handle to an output listener callback</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Dropping it disables the associated callback and frees the closure.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OutputListener</span> {
-    <span class="ident">_cb</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputListener</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputListener&quot;</span>).<span class="ident">field</span>(<span class="string">&quot;_cb&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;fn() -&gt; { ... }&quot;</span>).<span class="ident">finish</span>()
-    }
-}
-
-<span class="doccomment">/// A handle to an output status callback</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Dropping it disables the associated callback and frees the closure.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OutputStatusListener</span> {
-    <span class="ident">_cb</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">OutputStatusListener</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;OutputStatusListener&quot;</span>).<span class="ident">field</span>(<span class="string">&quot;_cb&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;fn() -&gt; { ... }&quot;</span>).<span class="ident">finish</span>()
-    }
-}
-
-<span class="doccomment">/// Trait representing the OutputHandler functions</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Implementing this trait on your inner environment struct used with the</span>
-<span class="doccomment">/// [`environment!`](../macro.environment.html) by delegating it to its</span>
-<span class="doccomment">/// [`OutputHandler`](struct.OutputHandler.html) field will make available the output-associated</span>
-<span class="doccomment">/// method on your [`Environment`](../environment/struct.Environment.html).</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OutputHandling</span> {
-    <span class="doccomment">/// Insert a listener for output creation and removal events</span>
-    <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">f</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">OutputStatusListener</span>;
-}
-
-<span class="kw">impl</span> <span class="ident">OutputHandling</span> <span class="kw">for</span> <span class="ident">OutputHandler</span> {
-    <span class="kw">fn</span> <span class="ident">listen</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">f</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">OutputStatusListener</span> {
-        <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">f</span>)) <span class="kw">as</span> <span class="ident">Rc</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>;
-        <span class="self">self</span>.<span class="ident">status_listeners</span>.<span class="ident">borrow_mut</span>().<span class="ident">push</span>(<span class="ident">Rc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">rc</span>));
-        <span class="ident">OutputStatusListener</span> { <span class="ident">_cb</span>: <span class="ident">rc</span> }
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="ident">OutputHandling</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::environment::Environment</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Insert a new listener for outputs</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The provided closure will be invoked whenever a `wl_output` is created or removed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that if outputs already exist when this callback is setup, it&#39;ll not be invoked on them.</span>
-    <span class="doccomment">/// For you to be notified of them as well, you need to first process them manually by calling</span>
-    <span class="doccomment">/// `.get_all_outputs()`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The returned [`OutputStatusListener`](../output/struct.OutputStatusListener.hmtl) keeps your</span>
-    <span class="doccomment">/// callback alive, dropping it will disable it.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;the returned OutputStatusListener keeps your callback alive, dropping it will disable it&quot;</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">listen_for_outputs</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">WlOutput</span>, <span class="kw-2">&amp;</span><span class="ident">OutputInfo</span>, <span class="ident">DispatchData</span>) <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">f</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">OutputStatusListener</span> {
-        <span class="self">self</span>.<span class="ident">with_inner</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">OutputHandling::listen</span>(<span class="ident">inner</span>, <span class="ident">f</span>))
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="ident"><span class="kw">crate</span>::environment::MultiGlobalHandler</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::environment::Environment</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Shorthand method to retrieve the list of outputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_all_outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_all_globals</span>::<span class="op">&lt;</span><span class="ident">WlOutput</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">detach</span>()).<span class="ident">collect</span>()
-    }
-}
-
-<span class="doccomment">/// A handler for `zxdg_output_manager_v1`</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This handler adds additional information to the OutputInfo struct that is</span>
-<span class="doccomment">/// available through the xdg_output interface.  Because this requires binding</span>
-<span class="doccomment">/// the two handlers together when they are being created, it does not work with</span>
-<span class="doccomment">/// [`new_default_environment!`](../macro.new_default_environment.html); you</span>
-<span class="doccomment">/// must use [`default_environment!`](../macro.default_environment.html) and</span>
-<span class="doccomment">/// create the [OutputHandler] outside the constructor.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```no_compile</span>
-<span class="doccomment">///  let (sctk_outputs, sctk_xdg_out) = smithay_client_toolkit::output::XdgOutputHandler::new_output_handlers();</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///  let env = smithay_client_toolkit::environment::Environment::new(&amp;wl_display, &amp;mut wl_queue, Globals {</span>
-<span class="doccomment">///      sctk_compositor: SimpleGlobal::new(),</span>
-<span class="doccomment">///      sctk_shm: smithay_client_toolkit::shm::ShmHandler::new(),</span>
-<span class="doccomment">///      sctk_seats : smithay_client_toolkit::seat::SeatHandler::new(),</span>
-<span class="doccomment">///      sctk_shell : smithay_client_toolkit::shell::ShellHandler::new(),</span>
-<span class="doccomment">///      sctk_outputs,</span>
-<span class="doccomment">///      sctk_xdg_out,</span>
-<span class="doccomment">///      // ...</span>
-<span class="doccomment">///  })?;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">XdgOutputHandler</span> {
-    <span class="ident">inner</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">XdgOutputHandlerInner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">XdgOutputHandlerInner</span> {
-    <span class="ident">xdg_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">WlOutput</span>, <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">ZxdgOutputV1</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-}
+<span class="kw">struct</span> <span class="ident">OutputInner</span> {
+    <span class="doccomment">/// The name of the wl_output global.</span>
+    <span class="ident">name</span>: <span class="ident">u32</span>,
+    <span class="ident">wl_output</span>: <span class="ident">wl_output::WlOutput</span>,
+    <span class="ident">xdg_output</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">zxdg_output_v1::ZxdgOutputV1</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Whether this output was just created and has not an event yet.</span>
+    <span class="ident">just_created</span>: <span class="ident">bool</span>,
 
-<span class="kw">impl</span> <span class="ident">XdgOutputHandler</span> {
-    <span class="doccomment">/// Create a new instance of this handler bound to the given OutputHandler.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">output_handler</span>: <span class="kw-2">&amp;mut</span> <span class="ident">OutputHandler</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span>
-            <span class="ident">Rc::new</span>(<span class="ident">RefCell::new</span>(<span class="ident">XdgOutputHandlerInner</span> { <span class="ident">xdg_manager</span>: <span class="prelude-val">None</span>, <span class="ident">outputs</span>: <span class="ident">Vec::new</span>() }));
-        <span class="ident">output_handler</span>.<span class="ident">xdg_listener</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Rc::downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">inner</span>));
-        <span class="ident">XdgOutputHandler</span> { <span class="ident">inner</span> }
-    }
-
-    <span class="doccomment">/// Helper function to create a bound pair of OutputHandler and XdgOutputHandler.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_output_handlers</span>() -&gt; (<span class="ident">OutputHandler</span>, <span class="self">Self</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oh</span> <span class="op">=</span> <span class="ident">OutputHandler::new</span>();
-        <span class="kw">let</span> <span class="ident">xh</span> <span class="op">=</span> <span class="ident">XdgOutputHandler::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">oh</span>);
-        (<span class="ident">oh</span>, <span class="ident">xh</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">XdgOutputHandlerInner</span> {
-    <span class="kw">fn</span> <span class="ident">new_xdg_output</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
-        <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_manager</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">xdg_manager</span> {
-            <span class="kw">let</span> <span class="ident">xdg_main</span> <span class="op">=</span> <span class="ident">xdg_manager</span>.<span class="ident">get_xdg_output</span>(<span class="ident">output</span>);
-            <span class="kw">let</span> <span class="ident">wl_out</span> <span class="op">=</span> <span class="ident">output</span>.<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">listeners</span> <span class="op">=</span> <span class="ident">listeners</span>.<span class="ident">clone</span>();
-            <span class="ident">xdg_main</span>.<span class="ident">quick_assign</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">_xdg_out</span>, <span class="ident">event</span>, <span class="ident">ddata</span><span class="op">|</span> {
-                <span class="ident">process_xdg_event</span>(<span class="kw-2">&amp;</span><span class="ident">wl_out</span>, <span class="ident">event</span>, <span class="ident">ddata</span>, <span class="kw-2">&amp;</span><span class="ident">listeners</span>)
-            });
-            <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">push</span>((<span class="ident">output</span>.<span class="ident">clone</span>(), <span class="ident">xdg_main</span>.<span class="ident">into</span>()));
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
-    }
-    <span class="kw">fn</span> <span class="ident">destroy_xdg_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>) {
-        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">retain</span>(<span class="op">|</span>(<span class="ident">out</span>, <span class="ident">xdg_out</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">out</span>.<span class="ident">as_ref</span>().<span class="ident">is_alive</span>() <span class="op">&amp;&amp;</span> <span class="ident">out</span> <span class="op">!</span><span class="op">=</span> <span class="ident">output</span> {
-                <span class="bool-val">true</span>
-            } <span class="kw">else</span> {
-                <span class="ident">xdg_out</span>.<span class="ident">destroy</span>();
-                <span class="bool-val">false</span>
-            }
-        });
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">process_xdg_event</span>(
-    <span class="ident">wl_out</span>: <span class="kw-2">&amp;</span><span class="ident">WlOutput</span>,
-    <span class="ident">event</span>: <span class="ident">zxdg_output_v1::Event</span>,
-    <span class="kw-2">mut</span> <span class="ident">ddata</span>: <span class="ident">DispatchData</span>,
-    <span class="ident">listeners</span>: <span class="kw-2">&amp;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">rc::Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">OutputStatusCallback</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) {
-    <span class="kw">use</span> <span class="ident">zxdg_output_v1::Event</span>;
-    <span class="kw">let</span> <span class="ident">udata_mutex</span> <span class="op">=</span> <span class="ident">wl_out</span>
-        .<span class="ident">as_ref</span>()
-        .<span class="ident">user_data</span>()
-        .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">OutputData</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;SCTK: wl_output has invalid UserData&quot;</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-    <span class="kw">let</span> (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="ident">pending</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;mut</span> <span class="kw-2">*</span><span class="ident">udata</span> {
-        <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> } =&gt; (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="bool-val">false</span>),
-        <span class="ident">OutputData::PendingXDG</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> } =&gt; (<span class="ident">info</span>, <span class="ident">callbacks</span>, <span class="bool-val">true</span>),
-        <span class="ident">OutputData::Pending</span> { .. } =&gt; <span class="macro">unreachable!</span>(),
-    };
-    <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">Event::Name</span> { <span class="ident">name</span> } =&gt; {
-            <span class="ident">info</span>.<span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>;
-        }
-        <span class="ident">Event::Description</span> { <span class="ident">description</span> } =&gt; {
-            <span class="ident">info</span>.<span class="ident">description</span> <span class="op">=</span> <span class="ident">description</span>;
-        }
-        <span class="ident">Event::Done</span> =&gt; {
-            <span class="ident">notify</span>(<span class="ident">wl_out</span>, <span class="ident">info</span>, <span class="ident">ddata</span>.<span class="ident">reborrow</span>(), <span class="ident">callbacks</span>);
-            <span class="kw">if</span> <span class="ident">pending</span> {
-                <span class="ident">notify_status_listeners</span>(<span class="ident">wl_out</span>, <span class="ident">info</span>, <span class="ident">ddata</span>, <span class="ident">listeners</span>);
-                <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">info</span>.<span class="ident">clone</span>();
-                <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">std::mem::take</span>(<span class="ident">callbacks</span>);
-                <span class="kw-2">*</span><span class="ident">udata</span> <span class="op">=</span> <span class="ident">OutputData::Ready</span> { <span class="ident">info</span>, <span class="ident">callbacks</span> };
-            }
-        }
-        <span class="kw">_</span> =&gt; (),
-    }
-}
-
-<span class="kw">impl</span> <span class="ident"><span class="kw">crate</span>::environment::GlobalHandler</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">XdgOutputHandler</span> {
-    <span class="kw">fn</span> <span class="ident">created</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">registry</span>: <span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">wl_registry::WlRegistry</span><span class="op">&gt;</span>,
-        <span class="ident">id</span>: <span class="ident">u32</span>,
-        <span class="ident">version</span>: <span class="ident">u32</span>,
-        <span class="kw">_</span>: <span class="ident">DispatchData</span>,
-    ) {
-        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(<span class="ident">version</span>, <span class="number">3</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow_mut</span>();
-        <span class="kw">let</span> <span class="ident">xdg_manager</span>: <span class="ident">Main</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">version</span>, <span class="ident">id</span>);
-        <span class="ident">inner</span>.<span class="ident">xdg_manager</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_manager</span>.<span class="ident">into</span>());
-    }
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Attached</span><span class="op">&lt;</span><span class="ident">ZxdgOutputManagerV1</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">borrow</span>();
-        <span class="ident">inner</span>.<span class="ident">xdg_manager</span>.<span class="ident">clone</span>()
-    }
+    <span class="ident">current_info</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OutputInfo</span><span class="op">&gt;</span>,
+    <span class="ident">pending_info</span>: <span class="ident">OutputInfo</span>,
+    <span class="ident">pending_wl</span>: <span class="ident">bool</span>,
+    <span class="ident">pending_xdg</span>: <span class="ident">bool</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
 </body></html>

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["WaylandSource","An adapter to insert an [`EventQueue`] into a calloop `EventLoop`."]]});

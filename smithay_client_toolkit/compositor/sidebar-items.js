@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CompositorState",""],["Region","A trivial wrapper around a [`WlRegion`][wl_region::WlRegion]."],["Surface","An owned `WlSurface`."],["SurfaceData","Data associated with a `WlSurface`."]],"trait":[["CompositorHandler",""],["SurfaceDataExt",""]]});
