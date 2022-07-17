@@ -17,7 +17,7 @@ use smithay_client_toolkit::{
         XdgShellHandler, XdgShellState,
     },
     shm::{
-        pool::slot::{Buffer, SlotPool},
+        slot::{Buffer, SlotPool},
         ShmHandler, ShmState,
     },
 };
@@ -60,10 +60,11 @@ fn main() {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
     }
 
-    let pool = simple_window
-        .shm_state
-        .new_slot_pool(simple_window.width as usize * simple_window.height as usize * 4)
-        .expect("Failed to create pool");
+    let pool = SlotPool::new(
+        simple_window.width as usize * simple_window.height as usize * 4,
+        &simple_window.shm_state,
+    )
+    .expect("Failed to create pool");
     simple_window.pool = Some(pool);
 
     let surface = simple_window.compositor_state.create_surface(&qh).unwrap();

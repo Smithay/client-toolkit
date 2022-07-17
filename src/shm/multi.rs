@@ -13,7 +13,7 @@
 //!     protocol::wl_surface::WlSurface,
 //!     protocol::wl_shm::Format,
 //! };
-//! use smithay_client_toolkit::shm::pool::multi::MultiPool;
+//! use smithay_client_toolkit::shm::multi::MultiPool;
 //!
 //! struct WlFoo {
 //!     // The surface we'll draw on and the index of buffer associated to it
@@ -75,7 +75,10 @@ use wayland_client::{
     Proxy,
 };
 
+use crate::globals::ProvidesBoundGlobal;
+
 use super::raw::RawPool;
+use super::CreatePoolError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PoolError {
@@ -120,8 +123,8 @@ impl<K> BufferSlot<K> {
 }
 
 impl<K> MultiPool<K> {
-    pub(crate) fn new(inner: RawPool) -> Self {
-        Self { inner, buffer_list: Vec::new() }
+    pub fn new(shm: &impl ProvidesBoundGlobal<wl_shm::WlShm, 1>) -> Result<Self, CreatePoolError> {
+        Ok(Self { inner: RawPool::new(4096, shm)?, buffer_list: Vec::new() })
     }
 
     /// Resizes the memory pool, notifying the server the pool has changed in size.
