@@ -5,7 +5,7 @@ authors = ["Victor Berger <victor.berger@m4x.org>"]
 documentation = "https://smithay.github.io/client-toolkit"
 repository = "https://github.com/smithay/client-toolkit"
 license = "MIT"
-edition = "2018"
+edition = "2021"
 categories = ["gui"]
 keywords = ["wayland", "client"]
 description = "Toolkit for making client wayland applications."
@@ -43,3 +43,10 @@ pkg-config = "0.3"
 [dev-dependencies]
 image = "0.23"
 env_logger = "0.9"
+wgpu = "0.13.1"
+raw-window-handle = "0.4.3"
+pollster = "0.2.5"
+
+[[example]]
+name = "wgpu"
+required-features = ["wayland-backend/client_system"]
