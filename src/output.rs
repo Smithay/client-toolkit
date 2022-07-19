@@ -636,27 +636,21 @@ where
         interface: &str,
     ) {
         if interface == "wl_output" {
-            let mut destroyed = vec![];
+            let output = data
+                .output_state()
+                .outputs
+                .iter()
+                .position(|o| o.name == name)
+                .expect("Removed non-existing output");
 
-            data.output_state().outputs.retain(|inner| {
-                let destroy = inner.name != name;
+            let wl_output = data.output_state().outputs[output].wl_output.clone();
+            data.output_destroyed(conn, qh, wl_output);
 
-                if destroy {
-                    if let Some(xdg_output) = &inner.xdg_output {
-                        xdg_output.destroy();
-                    }
-
-                    inner.wl_output.release();
-
-                    destroyed.push(inner.wl_output.clone());
-                }
-
-                destroy
-            });
-
-            for output in destroyed {
-                data.output_destroyed(conn, qh, output);
+            let output = data.output_state().outputs.remove(output);
+            if let Some(xdg_output) = &output.xdg_output {
+                xdg_output.destroy();
             }
+            output.wl_output.release();
         }
     }
 }
