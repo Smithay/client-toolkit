@@ -147,7 +147,7 @@ impl PopupData {
     /// Get a new handle to the Popup
     ///
     /// This returns `None` if the popup has been destroyed.
-    fn popup(&self) -> Option<Popup> {
+    pub fn popup(&self) -> Option<Popup> {
         let inner = self.inner.upgrade()?;
         if inner.is_some() {
             Some(Popup { inner })
