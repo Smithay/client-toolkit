@@ -4,7 +4,6 @@ use crate::{
     globals::ProvidesBoundGlobal,
     shell::xdg::XdgShellSurface,
 };
-use once_cell::sync::OnceCell;
 use std::sync::{
     atomic::{AtomicI32, AtomicU32, Ordering::Relaxed},
     Arc, Weak,
@@ -19,7 +18,7 @@ use wayland_protocols::xdg::shell::client::{
 
 #[derive(Debug, Clone)]
 pub struct Popup {
-    inner: Arc<OnceCell<PopupInner>>,
+    inner: Arc<Option<PopupInner>>,
 }
 
 impl Eq for Popup {}
@@ -31,7 +30,7 @@ impl PartialEq for Popup {
 
 #[derive(Debug)]
 pub struct PopupData {
-    inner: Weak<OnceCell<PopupInner>>,
+    inner: Weak<Option<PopupInner>>,
 }
 
 #[derive(Debug)]
@@ -88,46 +87,75 @@ impl Popup {
             + Dispatch<xdg_popup::XdgPopup, PopupData>
             + 'static,
     {
-        let arc = Arc::new(OnceCell::new());
+        // We really need an Arc::try_new_cyclic function to handle errors during creation.
+        // Emulate that function by creating an Arc containing None in the error case, and use the
+        // closure's context to pass the real error back to the caller so the invalid Arc is never
+        // returned.
+        let mut err = Ok(());
+        let inner = Arc::new_cyclic(|weak| {
+            let surface =
+                XdgShellSurface::new(wm_base, qh, surface, PopupData { inner: weak.clone() })
+                    .map_err(|e| err = Err(e))
+                    .ok()?;
+            let xdg_popup = surface
+                .xdg_surface()
+                .get_popup(parent, position, qh, PopupData { inner: weak.clone() })
+                .map_err(|e| err = Err(e.into()))
+                .ok()?;
 
-        let surface =
-            XdgShellSurface::new(wm_base, qh, surface, PopupData { inner: Arc::downgrade(&arc) })?;
-        let xdg_popup = surface.xdg_surface().get_popup(
-            parent,
-            position,
-            qh,
-            PopupData { inner: Arc::downgrade(&arc) },
-        )?;
-        arc.set(PopupInner {
-            surface,
-            xdg_popup,
-            pending_position: (AtomicI32::new(0), AtomicI32::new(0)),
-            pending_dimensions: (AtomicI32::new(-1), AtomicI32::new(-1)),
-            pending_token: AtomicU32::new(0),
-            configure_state: AtomicU32::new(PopupConfigure::STATE_NEW),
-        })
-        .unwrap();
-        Ok(Popup { inner: arc })
+            Some(PopupInner {
+                surface,
+                xdg_popup,
+                pending_position: (AtomicI32::new(0), AtomicI32::new(0)),
+                pending_dimensions: (AtomicI32::new(-1), AtomicI32::new(-1)),
+                pending_token: AtomicU32::new(0),
+                configure_state: AtomicU32::new(PopupConfigure::STATE_NEW),
+            })
+        });
+        // This assert checks that err was set properly above; it should be impossible to trigger,
+        // so it's not a run-time assert.
+        debug_assert!(inner.is_some() || err.is_err());
+        err.map(|()| Popup { inner })
+    }
+
+    fn inner(&self) -> &PopupInner {
+        Option::as_ref(&self.inner).expect("The contents of an initialized Popup cannot be None")
     }
 
     pub fn xdg_popup(&self) -> &xdg_popup::XdgPopup {
-        &self.inner.get().unwrap().xdg_popup
+        &self.inner().xdg_popup
     }
 
     pub fn xdg_shell_surface(&self) -> &XdgShellSurface {
-        &self.inner.get().unwrap().surface
+        &self.inner().surface
     }
 
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.inner.get().unwrap().surface.xdg_surface()
+        self.inner().surface.xdg_surface()
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.inner.get().unwrap().surface.wl_surface()
+        self.inner().surface.wl_surface()
     }
 
     pub fn reposition(&self, position: &xdg_positioner::XdgPositioner, token: u32) {
         self.xdg_popup().reposition(position, token);
+    }
+}
+
+impl PopupData {
+    /// Get a new handle to the Popup
+    ///
+    /// This returns `None` if the popup has been destroyed.
+    pub fn popup(&self) -> Option<Popup> {
+        let inner = self.inner.upgrade()?;
+        if inner.is_some() {
+            Some(Popup { inner })
+        } else {
+            // This is unlikely but it could happen if another thread gets the data out of the
+            // XdgSurface before it is destroyed and calls popup before the empty Arc is dropped.
+            None
+        }
     }
 }
 
@@ -191,11 +219,11 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let popup = match pdata.inner.upgrade() {
-            Some(inner) => Popup { inner },
+        let popup = match pdata.popup() {
+            Some(popup) => popup,
             None => return,
         };
-        let inner = popup.inner.get().unwrap();
+        let inner = popup.inner();
         match event {
             xdg_surface::Event::Configure { serial } => {
                 xdg_surface.ack_configure(serial);
@@ -234,11 +262,11 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let popup = match pdata.inner.upgrade() {
-            Some(inner) => Popup { inner },
+        let popup = match pdata.popup() {
+            Some(popup) => popup,
             None => return,
         };
-        let inner = popup.inner.get().unwrap();
+        let inner = popup.inner();
         match event {
             xdg_popup::Event::Configure { x, y, width, height } => {
                 inner.pending_position.0.store(x, Relaxed);
