@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["pool",""]],"struct":[["ShmState",""]],"trait":[["ShmHandler",""]]});
+initSidebarItems({"enum":[["CreatePoolError","An error that may occur when creating a pool."]],"mod":[["multi","A pool implementation which automatically manage buffers."],["raw","A raw shared memory pool handler."],["slot","A pool implementation based on buffer slots"]],"struct":[["ShmState",""]],"trait":[["ShmHandler",""]]});

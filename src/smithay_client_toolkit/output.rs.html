@@ -704,12 +704,6 @@
 <span id="699">699</span>
 <span id="700">700</span>
 <span id="701">701</span>
-<span id="702">702</span>
-<span id="703">703</span>
-<span id="704">704</span>
-<span id="705">705</span>
-<span id="706">706</span>
-<span id="707">707</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">any::Any</span>,
     <span class="ident">fmt</span>::{<span class="self">self</span>, <span class="ident">Display</span>, <span class="ident">Formatter</span>},
@@ -1348,27 +1342,21 @@
         <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
         <span class="kw">if</span> <span class="ident">interface</span> <span class="op">==</span> <span class="string">&quot;wl_output&quot;</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">destroyed</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+            <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">data</span>
+                .<span class="ident">output_state</span>()
+                .<span class="ident">outputs</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">position</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">o</span>.<span class="ident">name</span> <span class="op">==</span> <span class="ident">name</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;Removed non-existing output&quot;</span>);
 
-            <span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">outputs</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">destroy</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">name</span>;
+            <span class="kw">let</span> <span class="ident">wl_output</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">outputs</span>[<span class="ident">output</span>].<span class="ident">wl_output</span>.<span class="ident">clone</span>();
+            <span class="ident">data</span>.<span class="ident">output_destroyed</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">wl_output</span>);
 
-                <span class="kw">if</span> <span class="ident">destroy</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_output</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">xdg_output</span> {
-                        <span class="ident">xdg_output</span>.<span class="ident">destroy</span>();
-                    }
-
-                    <span class="ident">inner</span>.<span class="ident">wl_output</span>.<span class="ident">release</span>();
-
-                    <span class="ident">destroyed</span>.<span class="ident">push</span>(<span class="ident">inner</span>.<span class="ident">wl_output</span>.<span class="ident">clone</span>());
-                }
-
-                <span class="ident">destroy</span>
-            });
-
-            <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">destroyed</span> {
-                <span class="ident">data</span>.<span class="ident">output_destroyed</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">output</span>);
+            <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">output_state</span>().<span class="ident">outputs</span>.<span class="ident">remove</span>(<span class="ident">output</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">xdg_output</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">output</span>.<span class="ident">xdg_output</span> {
+                <span class="ident">xdg_output</span>.<span class="ident">destroy</span>();
             }
+            <span class="ident">output</span>.<span class="ident">wl_output</span>.<span class="ident">release</span>();
         }
     }
 }

@@ -143,8 +143,17 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
-</pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">pool</span>;
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+</pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">multi</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">raw</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slot</span>;
 
+<span class="kw">use</span> <span class="ident">std::io</span>;
+
+<span class="kw">use</span> <span class="ident">nix::errno::Errno</span>;
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{<span class="ident">protocol::wl_shm</span>, <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">QueueHandle</span>, <span class="ident">WEnum</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -152,8 +161,6 @@
     <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
     <span class="ident">registry</span>::{<span class="ident">GlobalProxy</span>, <span class="ident">ProvidesRegistryState</span>, <span class="ident">RegistryHandler</span>},
 };
-
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::pool</span>::{<span class="ident">multi::MultiPool</span>, <span class="ident">raw::RawPool</span>, <span class="ident">slot::SlotPool</span>, <span class="ident">CreatePoolError</span>};
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ShmHandler</span> {
     <span class="kw">fn</span> <span class="ident">shm_state</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">ShmState</span>;
@@ -180,23 +187,6 @@
         <span class="self">self</span>.<span class="ident">wl_shm</span>.<span class="ident">get</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_slot_pool</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SlotPool</span>, <span class="ident">CreatePoolError</span><span class="op">&gt;</span> {
-        <span class="ident">SlotPool::new</span>(<span class="ident">len</span>, <span class="self">self</span>)
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_multi_pool</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MultiPool</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>, <span class="ident">CreatePoolError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">MultiPool::new</span>(<span class="self">self</span>.<span class="ident">new_raw_pool</span>(<span class="ident">len</span>)<span class="question-mark">?</span>))
-    }
-
-    <span class="doccomment">/// Creates a new raw pool.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// In most cases this is not what you want. You should use TODO name here or TODO in most cases.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_raw_pool</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RawPool</span>, <span class="ident">CreatePoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">shm</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wl_shm</span>()<span class="question-mark">?</span>;
-
-        <span class="ident">RawPool::new</span>(<span class="ident">len</span>, <span class="ident">shm</span>)
-    }
-
     <span class="doccomment">/// Returns the formats supported in memory pools.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">formats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">wl_shm::Format</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">formats</span>[..]
@@ -206,6 +196,24 @@
 <span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span>, <span class="number">1</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ShmState</span> {
     <span class="kw">fn</span> <span class="ident">bound_global</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">wl_shm</span>().<span class="ident">cloned</span>()
+    }
+}
+
+<span class="doccomment">/// An error that may occur when creating a pool.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreatePoolError</span> {
+    <span class="doccomment">/// The wl_shm global is not bound.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">Global</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">GlobalError</span>),
+
+    <span class="doccomment">/// Error while allocating the shared memory.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">Create</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">io::Error</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Errno</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CreatePoolError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">errno</span>: <span class="ident">Errno</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Into</span>::<span class="op">&lt;</span><span class="ident">io::Error</span><span class="op">&gt;</span><span class="ident">::into</span>(<span class="ident">errno</span>).<span class="ident">into</span>()
     }
 }
 
