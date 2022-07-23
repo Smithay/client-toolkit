@@ -24,7 +24,7 @@ use wayland_client::{
     Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use crate::error::GlobalError;
+use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 
 use super::CreatePoolError;
 
@@ -42,6 +42,26 @@ pub struct RawPool {
 }
 
 impl RawPool {
+    pub fn new(
+        len: usize,
+        shm: &impl ProvidesBoundGlobal<wl_shm::WlShm, 1>,
+    ) -> Result<RawPool, CreatePoolError> {
+        let shm = shm.bound_global()?;
+        let shm_fd = RawPool::create_shm_fd()?;
+        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
+        mem_file.set_len(len as u64)?;
+
+        let pool = shm
+            .send_constructor(
+                wl_shm::Request::CreatePool { fd: shm_fd, size: len as i32 },
+                Arc::new(ShmPoolData),
+            )
+            .map_err(GlobalError::from)?;
+        let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
+
+        Ok(RawPool { pool, len, mem_file, mmap })
+    }
+
     /// Resizes the memory pool, notifying the server the pool has changed in size.
     ///
     /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
@@ -150,22 +170,6 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
-    pub(crate) fn new(len: usize, shm: &wl_shm::WlShm) -> Result<RawPool, CreatePoolError> {
-        let shm_fd = RawPool::create_shm_fd()?;
-        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
-        mem_file.set_len(len as u64)?;
-
-        let pool = shm
-            .send_constructor(
-                wl_shm::Request::CreatePool { fd: shm_fd, size: len as i32 },
-                Arc::new(ShmPoolData),
-            )
-            .map_err(GlobalError::from)?;
-        let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
-
-        Ok(RawPool { pool, len, mem_file, mmap })
-    }
-
     fn create_shm_fd() -> io::Result<RawFd> {
         #[cfg(target_os = "linux")]
         {

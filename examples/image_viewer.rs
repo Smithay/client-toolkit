@@ -12,7 +12,7 @@ use smithay_client_toolkit::{
         XdgShellHandler, XdgShellState,
     },
     shm::{
-        pool::slot::{Buffer, SlotPool},
+        slot::{Buffer, SlotPool},
         ShmHandler, ShmState,
     },
 };
@@ -82,7 +82,7 @@ fn main() {
         });
     }
 
-    let pool = state.shm_state.new_slot_pool(pool_size as usize).expect("Failed to create pool");
+    let pool = SlotPool::new(pool_size as usize, &state.shm_state).expect("Failed to create pool");
     state.pool = Some(pool);
 
     if state.windows.is_empty() {

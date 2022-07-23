@@ -18,7 +18,7 @@ use smithay_client_toolkit::{
         Anchor, KeyboardInteractivity, Layer, LayerHandler, LayerState, LayerSurface,
         LayerSurfaceConfigure,
     },
-    shm::{pool::slot::SlotPool, ShmHandler, ShmState},
+    shm::{slot::SlotPool, ShmHandler, ShmState},
 };
 use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
@@ -57,10 +57,11 @@ fn main() {
         event_queue.blocking_dispatch(&mut simple_layer).unwrap();
     }
 
-    let pool = simple_layer
-        .shm_state
-        .new_slot_pool(simple_layer.width as usize * simple_layer.height as usize * 4)
-        .expect("Failed to create pool");
+    let pool = SlotPool::new(
+        simple_layer.width as usize * simple_layer.height as usize * 4,
+        &simple_layer.shm_state,
+    )
+    .expect("Failed to create pool");
     simple_layer.pool = Some(pool);
 
     let surface = simple_layer.compositor_state.create_surface(&qh).unwrap();

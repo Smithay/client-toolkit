@@ -1,5 +1,10 @@
-pub mod pool;
+pub mod multi;
+pub mod raw;
+pub mod slot;
 
+use std::io;
+
+use nix::errno::Errno;
 use wayland_client::{protocol::wl_shm, Connection, Dispatch, QueueHandle, WEnum};
 
 use crate::{
@@ -7,8 +12,6 @@ use crate::{
     globals::{GlobalData, ProvidesBoundGlobal},
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
-
-use self::pool::{multi::MultiPool, raw::RawPool, slot::SlotPool, CreatePoolError};
 
 pub trait ShmHandler {
     fn shm_state(&mut self) -> &mut ShmState;
@@ -35,23 +38,6 @@ impl ShmState {
         self.wl_shm.get()
     }
 
-    pub fn new_slot_pool(&self, len: usize) -> Result<SlotPool, CreatePoolError> {
-        SlotPool::new(len, self)
-    }
-
-    pub fn new_multi_pool<K>(&self, len: usize) -> Result<MultiPool<K>, CreatePoolError> {
-        Ok(MultiPool::new(self.new_raw_pool(len)?))
-    }
-
-    /// Creates a new raw pool.
-    ///
-    /// In most cases this is not what you want. You should use TODO name here or TODO in most cases.
-    pub fn new_raw_pool(&self, len: usize) -> Result<RawPool, CreatePoolError> {
-        let shm = self.wl_shm()?;
-
-        RawPool::new(len, shm)
-    }
-
     /// Returns the formats supported in memory pools.
     pub fn formats(&self) -> &[wl_shm::Format] {
         &self.formats[..]
@@ -61,6 +47,24 @@ impl ShmState {
 impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for ShmState {
     fn bound_global(&self) -> Result<wl_shm::WlShm, GlobalError> {
         self.wl_shm().cloned()
+    }
+}
+
+/// An error that may occur when creating a pool.
+#[derive(Debug, thiserror::Error)]
+pub enum CreatePoolError {
+    /// The wl_shm global is not bound.
+    #[error(transparent)]
+    Global(#[from] GlobalError),
+
+    /// Error while allocating the shared memory.
+    #[error(transparent)]
+    Create(#[from] io::Error),
+}
+
+impl From<Errno> for CreatePoolError {
+    fn from(errno: Errno) -> Self {
+        Into::<io::Error>::into(errno).into()
     }
 }
 
