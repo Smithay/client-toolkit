@@ -8,22 +8,21 @@ use std::{
 use bitflags::bitflags;
 use wayland_client::{
     protocol::{wl_output, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
-use crate::error::GlobalError;
 use crate::registry::GlobalProxy;
+use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 
 #[derive(Debug)]
 pub struct LayerState {
     wlr_layer_shell: GlobalProxy<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
-    surfaces: Vec<Weak<LayerSurfaceInner>>,
 }
 
 impl LayerState {
     pub fn new() -> LayerState {
-        LayerState { wlr_layer_shell: GlobalProxy::NotReady, surfaces: Vec::new() }
+        LayerState { wlr_layer_shell: GlobalProxy::NotReady }
     }
 
     /// Returns whether the layer shell is available.
@@ -32,23 +31,6 @@ impl LayerState {
     /// compositor support is available.
     pub fn is_available(&self) -> bool {
         self.wlr_layer_shell.get().is_ok()
-    }
-
-    pub fn wlr_layer_shell(&self) -> Result<&zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalError> {
-        self.wlr_layer_shell.get()
-    }
-
-    pub fn get_wlr_surface(
-        &self,
-        surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
-    ) -> Option<LayerSurface> {
-        self.surfaces
-            .iter()
-            .filter_map(Weak::upgrade)
-            .find(|inner| match inner.kind {
-                SurfaceKind::Wlr(ref wlr) => wlr == surface,
-            })
-            .map(LayerSurface)
     }
 }
 
@@ -138,7 +120,7 @@ impl LayerSurfaceBuilder {
     pub fn map<D>(
         self,
         qh: &QueueHandle<D>,
-        layer_state: &mut LayerState,
+        shell: &impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4>,
         surface: wl_surface::WlSurface,
         layer: Layer,
     ) -> Result<LayerSurface, GlobalError>
@@ -148,15 +130,37 @@ impl LayerSurfaceBuilder {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
         // will stay for ext-layer-shell-v1 support.
 
-        let layer_shell = layer_state.wlr_layer_shell()?;
-        let layer_surface = layer_shell.get_layer_surface(
-            &surface,
-            self.output.as_ref(),
-            layer.into(),
-            self.namespace.unwrap_or_default(),
-            qh,
-            LayerSurfaceData {},
-        )?;
+        // We really need an Arc::try_new_cyclic function to handle errors during creation.
+        // Emulate that function by creating an Arc containing None in the error case, and use the
+        // closure's context to pass the real error back to the caller so the invalid Arc is never
+        // returned.
+        let mut err = Ok(());
+        let inner = Arc::new_cyclic(|weak| {
+            let wlr_layer_shell = shell.bound_global().map_err(|e| err = Err(e)).ok()?;
+
+            let layer_surface = wlr_layer_shell
+                .get_layer_surface(
+                    &surface,
+                    self.output.as_ref(),
+                    layer.into(),
+                    self.namespace.unwrap_or_default(),
+                    qh,
+                    LayerSurfaceData { inner: weak.clone() },
+                )
+                .map_err(|e| err = Err(e.into()))
+                .ok()?;
+
+            Some(LayerSurfaceInner {
+                wl_surface: surface.clone(),
+                kind: SurfaceKind::Wlr(layer_surface),
+            })
+        });
+
+        // This assert checks that err was set properly above; it should be impossible to trigger,
+        // so it's not a run-time assert.
+        debug_assert!(inner.is_some() || err.is_err());
+
+        let layer_surface = err.map(|()| LayerSurface(inner))?;
 
         // Set data for initial commit
         if let Some(size) = self.size {
@@ -165,8 +169,7 @@ impl LayerSurfaceBuilder {
 
         if let Some(anchor) = self.anchor {
             // We currently rely on the bitsets matching
-            layer_surface
-                .set_anchor(zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()));
+            layer_surface.set_anchor(anchor);
         }
 
         if let Some(zone) = self.zone {
@@ -178,25 +181,18 @@ impl LayerSurfaceBuilder {
         }
 
         if let Some(interactivity) = self.interactivity {
-            layer_surface.set_keyboard_interactivity(interactivity.into())
+            layer_surface.set_keyboard_interactivity(interactivity);
         }
 
         // Initial commit
         surface.commit();
-
-        let layer_surface = LayerSurface(Arc::new(LayerSurfaceInner {
-            wl_surface: surface,
-            kind: SurfaceKind::Wlr(layer_surface),
-        }));
-
-        layer_state.surfaces.push(Arc::downgrade(&layer_surface.0));
 
         Ok(layer_surface)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct LayerSurface(Arc<LayerSurfaceInner>);
+pub struct LayerSurface(Arc<Option<LayerSurfaceInner>>);
 
 impl PartialEq for LayerSurface {
     fn eq(&self, other: &Self) -> bool {
@@ -205,6 +201,14 @@ impl PartialEq for LayerSurface {
 }
 
 impl LayerSurface {
+    pub fn from_wlr_surface(
+        surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
+    ) -> Option<LayerSurface> {
+        surface.data::<LayerSurfaceData>().and_then(|data| data.inner.upgrade()).map(LayerSurface)
+    }
+
+    // TODO(from_wl_surface): This will require us to initialize the surface.
+
     pub fn builder() -> LayerSurfaceBuilder {
         LayerSurfaceBuilder {
             output: None,
@@ -222,13 +226,13 @@ impl LayerSurface {
     // Double buffered state
 
     pub fn set_size(&self, width: u32, height: u32) {
-        match self.0.kind {
+        match self.inner().kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_size(width, height),
         }
     }
 
     pub fn set_anchor(&self, anchor: Anchor) {
-        match self.0.kind {
+        match self.inner().kind {
             // We currently rely on the bitsets being the same
             SurfaceKind::Wlr(ref wlr) => {
                 wlr.set_anchor(zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()))
@@ -237,35 +241,35 @@ impl LayerSurface {
     }
 
     pub fn set_exclusive_zone(&self, zone: i32) {
-        match self.0.kind {
+        match self.inner().kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_exclusive_zone(zone),
         }
     }
 
     pub fn set_margin(&self, top: i32, right: i32, bottom: i32, left: i32) {
-        match self.0.kind {
+        match self.inner().kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_margin(top, right, bottom, left),
         }
     }
 
     pub fn set_keyboard_interactivity(&self, value: KeyboardInteractivity) {
-        match self.0.kind {
+        match self.inner().kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_keyboard_interactivity(value.into()),
         }
     }
 
     pub fn set_layer(&self, layer: Layer) {
-        match self.0.kind {
+        match self.inner().kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_layer(layer.into()),
         }
     }
 
     pub fn kind(&self) -> &SurfaceKind {
-        &self.0.kind
+        &self.inner().kind
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.0.wl_surface
+        &self.inner().wl_surface
     }
 }
 
@@ -366,7 +370,13 @@ pub struct LayerSurfaceConfigure {
 
 #[derive(Debug)]
 pub struct LayerSurfaceData {
-    // This is empty right now, but may be populated in the future.
+    inner: Weak<Option<LayerSurfaceInner>>,
+}
+
+impl LayerSurfaceData {
+    pub fn layer_surface(&self) -> Option<LayerSurface> {
+        self.inner.upgrade().map(LayerSurface)
+    }
 }
 
 #[macro_export]
@@ -377,6 +387,12 @@ macro_rules! delegate_layer {
             $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData,
         ] => $crate::shell::layer::LayerState);
     };
+}
+
+impl LayerSurface {
+    fn inner(&self) -> &LayerSurfaceInner {
+        Option::as_ref(&self.0).expect("The contents of an initialized LayerSurface cannot be None")
+    }
 }
 
 #[derive(Debug)]

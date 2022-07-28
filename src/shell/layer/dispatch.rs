@@ -7,7 +7,7 @@ use crate::{
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
-use super::{LayerHandler, LayerState, LayerSurfaceConfigure, LayerSurfaceData};
+use super::{LayerHandler, LayerState, LayerSurface, LayerSurfaceConfigure, LayerSurfaceData};
 
 impl<D> RegistryHandler<D> for LayerState
 where
@@ -77,27 +77,21 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        // Remove any surfaces that have been dropped
-        data.layer_state().surfaces.retain(|surface| surface.upgrade().is_some());
-
-        match event {
-            zwlr_layer_surface_v1::Event::Configure { serial, width, height } => {
-                if let Some(layer_surface) = data.layer_state().get_wlr_surface(surface) {
+        if let Some(layer_surface) = LayerSurface::from_wlr_surface(surface) {
+            match event {
+                zwlr_layer_surface_v1::Event::Configure { serial, width, height } => {
                     surface.ack_configure(serial);
 
                     let configure = LayerSurfaceConfigure { new_size: (width, height) };
-
                     data.configure(conn, qh, &layer_surface, configure, serial);
                 }
-            }
 
-            zwlr_layer_surface_v1::Event::Closed => {
-                if let Some(layer_surface) = data.layer_state().get_wlr_surface(surface) {
+                zwlr_layer_surface_v1::Event::Closed => {
                     data.closed(conn, qh, &layer_surface);
                 }
-            }
 
-            _ => unreachable!(),
+                _ => unreachable!(),
+            }
         }
     }
 }
