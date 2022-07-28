@@ -392,7 +392,7 @@ impl SimpleLayer {
             window.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
 
             // Request our next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone()).expect("create callback");
+            window.wl_surface().frame(qh, window.wl_surface().clone());
 
             // Attach and commit to present.
             buffer.attach_to(window.wl_surface()).expect("buffer attach");

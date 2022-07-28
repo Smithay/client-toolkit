@@ -301,21 +301,15 @@ impl WindowBuilder {
     {
         let decoration_manager = window_state.xdg_decoration_manager.get().ok();
 
-        // We really need an Arc::try_new_cyclic function to handle errors during creation.
-        // Emulate that function by creating an Arc containing None in the error case, and use the
-        // closure's context to pass the real error back to the caller so the invalid Arc is never
-        // returned.
-        let mut err = Ok(());
-        let inner = Arc::new_cyclic(|weak| {
-            let xdg_surface = XdgShellSurface::new(wm_base, qh, surface, WindowData(weak.clone()))
-                .map_err(|e| err = Err(e))
-                .ok()?;
+        let surface = surface.into();
+        let wm_base = wm_base.bound_global()?;
 
-            let xdg_toplevel = xdg_surface
-                .xdg_surface()
-                .get_toplevel(qh, WindowData(weak.clone()))
-                .map_err(|e| err = Err(e.into()))
-                .ok()?;
+        let window = Window(Arc::new_cyclic(|weak| {
+            let xdg_surface =
+                wm_base.get_xdg_surface(surface.wl_surface(), qh, WindowData(weak.clone()));
+            let xdg_surface = XdgShellSurface { surface, xdg_surface };
+
+            let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, WindowData(weak.clone()));
 
             // If server side decorations are available, create the toplevel decoration.
             let toplevel_decoration = if let Some(decoration_manager) = decoration_manager {
@@ -325,9 +319,11 @@ impl WindowBuilder {
 
                     _ => {
                         // Create the toplevel decoration.
-                        let toplevel_decoration = decoration_manager
-                            .get_toplevel_decoration(&xdg_toplevel, qh, WindowData(weak.clone()))
-                            .expect("failed to create toplevel decoration");
+                        let toplevel_decoration = decoration_manager.get_toplevel_decoration(
+                            &xdg_toplevel,
+                            qh,
+                            WindowData(weak.clone()),
+                        );
 
                         // Tell the compositor we would like a specific mode.
                         let mode = match self.decorations {
@@ -347,7 +343,7 @@ impl WindowBuilder {
                 None
             };
 
-            Some(WindowInner {
+            WindowInner {
                 xdg_surface,
                 xdg_toplevel,
                 toplevel_decoration,
@@ -358,14 +354,8 @@ impl WindowBuilder {
                     decoration_mode: DecorationMode::Client,
                     states: Vec::new(),
                 }),
-            })
-        });
-
-        // This assert checks that err was set properly above; it should be impossible to trigger,
-        // so it's not a run-time assert.
-        debug_assert!(inner.is_some() || err.is_err());
-
-        let window = err.map(|()| Window(inner))?;
+            }
+        }));
 
         // Apply state from builder
         if let Some(title) = self.title {
@@ -404,7 +394,7 @@ impl WindowBuilder {
 }
 
 #[derive(Debug, Clone)]
-pub struct Window(Arc<Option<WindowInner>>);
+pub struct Window(Arc<WindowInner>);
 
 impl Window {
     pub fn from_xdg_toplevel(toplevel: &xdg_toplevel::XdgToplevel) -> Option<Window> {
@@ -530,7 +520,7 @@ impl PartialEq for Window {
 }
 
 #[derive(Debug, Clone)]
-pub struct WindowData(pub(crate) Weak<Option<WindowInner>>);
+pub struct WindowData(pub(crate) Weak<WindowInner>);
 
 #[macro_export]
 macro_rules! delegate_xdg_window {
@@ -546,6 +536,6 @@ macro_rules! delegate_xdg_window {
 
 impl Window {
     fn inner(&self) -> &WindowInner {
-        Option::as_ref(&self.0).expect("The contents of an initialized Window cannot be None")
+        &self.0
     }
 }

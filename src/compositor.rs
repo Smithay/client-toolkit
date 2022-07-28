@@ -85,7 +85,7 @@ impl CompositorState {
     {
         let compositor = self.wl_compositor.get()?;
 
-        let surface = compositor.create_surface(qh, data)?;
+        let surface = compositor.create_surface(qh, data);
 
         Ok(surface)
     }
@@ -158,7 +158,7 @@ impl Surface {
         D: Dispatch<wl_surface::WlSurface, U> + 'static,
         U: Send + Sync + 'static,
     {
-        Ok(Surface(compositor.bound_global()?.create_surface(qh, data)?))
+        Ok(Surface(compositor.bound_global()?.create_surface(qh, data)))
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {

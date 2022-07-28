@@ -113,8 +113,7 @@ impl XdgShellSurface {
         U: Send + Sync + 'static,
     {
         let surface = surface.into();
-        let xdg_surface =
-            wm_base.bound_global()?.get_xdg_surface(surface.wl_surface(), qh, udata)?;
+        let xdg_surface = wm_base.bound_global()?.get_xdg_surface(surface.wl_surface(), qh, udata);
 
         Ok(XdgShellSurface { xdg_surface, surface })
     }
