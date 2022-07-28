@@ -187,11 +187,20 @@ pub struct RegistryState {
     ready: bool,
 }
 
-#[derive(Debug)]
-struct Global {
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct Global {
+    /// The numeric name for this global, usable in [RegistryState::bind_specific].
+    pub name: u32,
+    /// The maximum version supported by the compositor for this global.
+    pub version: u32,
     interface: String,
-    version: u32,
-    name: u32,
+}
+
+impl Global {
+    /// The interface name for this global.
+    pub fn interface(&self) -> &str {
+        &self.interface
+    }
 }
 
 impl RegistryState {
@@ -229,6 +238,26 @@ impl RegistryState {
     /// to serve bind requests.
     pub fn ready(&self) -> bool {
         self.ready
+    }
+
+    /// Returns an iterator over all globals.
+    ///
+    /// This list may be incomplete if [Self::ready] returns false, and may change later if the
+    /// compositor adds or removes globals after initial enumeration.
+    ///
+    /// No guarantees are provided about the ordering of the globals in this iterator.
+    pub fn globals(&self) -> impl Iterator<Item = &Global> + '_ {
+        self.globals.iter()
+    }
+
+    /// Returns an iterator over all globals implementing the given interface.
+    ///
+    /// This may be more efficient than searching [Self::globals].
+    pub fn globals_by_interface<'a>(
+        &'a self,
+        interface: &'a str,
+    ) -> impl Iterator<Item = &Global> + 'a {
+        self.globals.iter().filter(move |g| g.interface == interface)
     }
 
     /// Binds a global, returning a new object associated with the global.
