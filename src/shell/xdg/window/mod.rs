@@ -303,6 +303,9 @@ impl WindowBuilder {
 
         let surface = surface.into();
         let wm_base = wm_base.bound_global()?;
+        // Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        let freeze = qh.freeze();
 
         let window = Window(Arc::new_cyclic(|weak| {
             let xdg_surface =
@@ -356,6 +359,7 @@ impl WindowBuilder {
                 }),
             }
         }));
+        drop(freeze);
 
         // Apply state from builder
         if let Some(title) = self.title {

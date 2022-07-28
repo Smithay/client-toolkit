@@ -12,9 +12,7 @@ use wayland_client::{
     protocol::{wl_compositor::WlCompositor, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
-use wayland_protocols::xdg::shell::client::{
-    xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base::XdgWmBase,
-};
+use wayland_protocols::xdg::shell::client::{xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base};
 
 #[derive(Debug, Clone)]
 pub struct Popup {
@@ -53,7 +51,7 @@ impl Popup {
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
         compositor: &impl ProvidesBoundGlobal<WlCompositor, 5>,
-        wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData>
@@ -80,7 +78,7 @@ impl Popup {
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
         surface: impl Into<Surface>,
-        wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, PopupData>
@@ -89,6 +87,9 @@ impl Popup {
     {
         let surface = surface.into();
         let wm_base = wm_base.bound_global()?;
+        // Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        let freeze = qh.freeze();
         let inner = Arc::new_cyclic(|weak| {
             let xdg_surface = wm_base.get_xdg_surface(
                 surface.wl_surface(),
@@ -112,6 +113,7 @@ impl Popup {
                 configure_state: AtomicU32::new(PopupConfigure::STATE_NEW),
             }
         });
+        drop(freeze);
         Ok(Popup { inner })
     }
 

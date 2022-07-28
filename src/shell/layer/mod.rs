@@ -128,6 +128,9 @@ impl LayerSurfaceBuilder {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
         // will stay for ext-layer-shell-v1 support.
         let layer_shell = shell.bound_global()?;
+        // Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        let freeze = qh.freeze();
 
         let inner = Arc::new_cyclic(|weak| {
             let layer_surface = layer_shell.get_layer_surface(
@@ -141,6 +144,7 @@ impl LayerSurfaceBuilder {
 
             LayerSurfaceInner { wl_surface: surface.clone(), kind: SurfaceKind::Wlr(layer_surface) }
         });
+        drop(freeze);
 
         let layer_surface = LayerSurface(inner);
 
