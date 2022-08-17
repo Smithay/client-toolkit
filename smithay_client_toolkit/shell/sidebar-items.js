@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["layer",""],["xdg","Cross desktop group (XDG) shell"]]});
+window.SIDEBAR_ITEMS = {"mod":[["layer",""],["xdg","Cross desktop group (XDG) shell"]]};

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["WaylandSource","An adapter to insert an [`EventQueue`] into a calloop `EventLoop`."]]});
+window.SIDEBAR_ITEMS = {"struct":[["WaylandSource","An adapter to insert an [`EventQueue`] into a calloop `EventLoop`."]]};

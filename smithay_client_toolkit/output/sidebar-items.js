@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Mode",""],["OutputData",""],["OutputInfo","Information about an output."],["OutputState",""],["ScaleWatcherHandle",""]],"trait":[["OutputHandler",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["Mode",""],["OutputData",""],["OutputInfo","Information about an output."],["OutputState",""],["ScaleWatcherHandle",""]],"trait":[["OutputHandler",""]]};
