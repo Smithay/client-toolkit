@@ -50,7 +50,10 @@ impl SeatState {
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData>
+            + SeatHandler
+            + KeyboardHandler
+            + 'static,
     {
         let udata = match rmlvo {
             Some(rmlvo) => KeyboardData::from_rmlvo(rmlvo)?,
@@ -77,7 +80,7 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, U> + SeatHandler + KeyboardHandler + 'static,
         U: KeyboardDataExt + 'static,
     {
         let inner =
@@ -94,7 +97,7 @@ impl SeatState {
 /// Handler trait for keyboard input.
 ///
 /// The functions defined in this trait are called as keyboard events are received from the compositor.
-pub trait KeyboardHandler: SeatHandler + Sized {
+pub trait KeyboardHandler: Sized {
     /// The keyboard has entered a surface.
     ///
     /// When called, you may assume the specified surface has keyboard focus.
