@@ -377,7 +377,7 @@ impl KeyboardData {
             // TODO: Pending new release of xkbcommon to use new_from_locale with OsStr
             if let Ok(table) = xkb::compose::Table::new_from_locale(
                 &xkb_context,
-                locale,
+                locale.as_ref(),
                 xkb::compose::COMPILE_NO_FLAGS,
             ) {
                 let compose_state =
@@ -475,14 +475,18 @@ where
                                     xkb::COMPILE_NO_FLAGS,
                                 )
                             } {
-                                Some(keymap) => {
+                                Ok(Some(keymap)) => {
                                     let state = xkb::State::new(&keymap);
                                     let mut state_guard = udata.xkb_state.lock().unwrap();
                                     *state_guard = Some(state);
                                 }
 
-                                None => {
+                                Ok(None) => {
                                     log::error!(target: "sctk", "invalid keymap");
+                                }
+
+                                Err(err) => {
+                                    log::error!(target: "sctk", "{}", err);
                                 }
                             }
                         }
