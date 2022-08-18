@@ -439,7 +439,6 @@
 <span id="433">433</span>
 <span id="434">434</span>
 <span id="435">435</span>
-<span id="436">436</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">dispatch</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -494,21 +493,19 @@
     }
 }
 
+<span class="doccomment">/// Handler for operations on a [`LayerSurface`]</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">LayerHandler</span>: <span class="ident">Sized</span> {
     <span class="kw">fn</span> <span class="ident">layer_state</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">LayerState</span>;
 
-    <span class="doccomment">/// Called when the surface will no longer be shown.</span>
+    <span class="doccomment">/// The layer surface has been closed.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This may occur as a result of the output the layer is placed on being destroyed or the user has caused</span>
-    <span class="doccomment">/// the layer to be removed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You should drop the layer you have when this event is received.</span>
+    <span class="doccomment">/// When this requested is called, the layer surface is no longer shown and all handles of the [`LayerSurface`]</span>
+    <span class="doccomment">/// should be dropped.</span>
     <span class="kw">fn</span> <span class="ident">closed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">layer</span>: <span class="kw-2">&amp;</span><span class="ident">LayerSurface</span>);
 
-    <span class="doccomment">/// Called when the compositor has sent a configure event to an layer</span>
+    <span class="doccomment">/// Apply a suggested surface change.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// A configure atomically indicates that a sequence of events describing how a surface has changed have</span>
-    <span class="doccomment">/// all been sent.</span>
+    <span class="doccomment">/// When this function is called, the compositor is requesting the layer surfaces&#39;s size or state to change.</span>
     <span class="kw">fn</span> <span class="ident">configure</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
@@ -790,19 +787,20 @@
     }
 }
 
-<span class="doccomment">/// The configure state of a layer</span>
+<span class="doccomment">/// A layer surface configure.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// This type indicates compositor changes to the layer, such as a new size.</span>
+<span class="doccomment">/// A configure describes a compositor request to resize the layer surface or change it&#39;s state.</span>
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LayerSurfaceConfigure</span> {
-    <span class="doccomment">/// The compositor suggested new size of the layer.</span>
+    <span class="doccomment">/// The compositor suggested new size of the layer in surface-local coordinates.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// The size is a hint, meaning the client is free to ignore the new size (if the client does not resize),</span>
-    <span class="doccomment">/// pick a smaller size to satisfy aspect ratio or resize in steps. If you pick a small size and the</span>
-    <span class="doccomment">/// surface is anchored to two opposite anchors, then surface will be centered on the axis.</span>
+    <span class="doccomment">/// The size is a hint, meaning the new size can be ignored. A smaller size could be picked to satisfy</span>
+    <span class="doccomment">/// some aspect ratio or resize in steps. If the size is smaller than suggested and the layer surface is</span>
+    <span class="doccomment">/// anchored to two opposite anchors then the layer surface will be centered on that axis.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If either the width or height is 0, the compositor may choose any size for that specific width or height.</span>
+    <span class="doccomment">/// If the width is zero, you may choose any width you want. If the height is zero, you may choose any</span>
+    <span class="doccomment">/// height you want.</span>
     <span class="kw">pub</span> <span class="ident">new_size</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>),
 }
 
