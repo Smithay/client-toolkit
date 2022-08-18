@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, Weak};
 
 use wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
@@ -21,7 +21,7 @@ use crate::error::GlobalError;
 use crate::globals::ProvidesBoundGlobal;
 use crate::registry::GlobalProxy;
 
-use self::inner::{WindowDataInner, WindowInner};
+use self::inner::WindowInner;
 
 use super::{XdgShellHandler, XdgShellSurface};
 
@@ -29,38 +29,12 @@ pub(super) mod inner;
 
 #[derive(Debug)]
 pub struct XdgWindowState {
-    // (name, global)
     xdg_decoration_manager: GlobalProxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
-    windows: Vec<Weak<WindowInner>>,
 }
 
 impl XdgWindowState {
     pub fn new() -> XdgWindowState {
-        XdgWindowState { xdg_decoration_manager: GlobalProxy::NotReady, windows: vec![] }
-    }
-
-    pub fn window_by_wl(&self, surface: &wl_surface::WlSurface) -> Option<Window> {
-        self.windows
-            .iter()
-            .filter_map(Weak::upgrade)
-            .find(|window| window.xdg_surface.wl_surface() == surface)
-            .map(Window)
-    }
-
-    pub fn window_by_xdg(&self, surface: &xdg_surface::XdgSurface) -> Option<Window> {
-        self.windows
-            .iter()
-            .filter_map(Weak::upgrade)
-            .find(|window| window.xdg_surface.xdg_surface() == surface)
-            .map(Window)
-    }
-
-    pub fn window_by_toplevel(&self, toplevel: &xdg_toplevel::XdgToplevel) -> Option<Window> {
-        self.windows
-            .iter()
-            .filter_map(Weak::upgrade)
-            .find(|window| &window.xdg_toplevel == toplevel)
-            .map(Window)
+        XdgWindowState { xdg_decoration_manager: GlobalProxy::NotReady }
     }
 }
 
@@ -327,55 +301,71 @@ impl WindowBuilder {
     {
         let decoration_manager = window_state.xdg_decoration_manager.get().ok();
 
-        let data = Arc::new(WindowDataInner {
-            pending_configure: Mutex::new(WindowConfigure {
-                new_size: None,
-                suggested_bounds: None,
-                // Initial configure will indicate whether there are server side decorations.
-                decoration_mode: DecorationMode::Client,
-                states: Vec::new(),
-            }),
-        });
-        let window_data = WindowData(data);
+        // We really need an Arc::try_new_cyclic function to handle errors during creation.
+        // Emulate that function by creating an Arc containing None in the error case, and use the
+        // closure's context to pass the real error back to the caller so the invalid Arc is never
+        // returned.
+        let mut err = Ok(());
+        let inner = Arc::new_cyclic(|weak| {
+            let xdg_surface = XdgShellSurface::new(wm_base, qh, surface, WindowData(weak.clone()))
+                .map_err(|e| err = Err(e))
+                .ok()?;
 
-        let xdg_surface = XdgShellSurface::new(wm_base, qh, surface, window_data.clone())?;
+            let xdg_toplevel = xdg_surface
+                .xdg_surface()
+                .get_toplevel(qh, WindowData(weak.clone()))
+                .map_err(|e| err = Err(e.into()))
+                .ok()?;
 
-        let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, window_data.clone())?;
+            // If server side decorations are available, create the toplevel decoration.
+            let toplevel_decoration = if let Some(decoration_manager) = decoration_manager {
+                match self.decorations {
+                    // Window does not want any server side decorations.
+                    WindowDecorations::ClientOnly | WindowDecorations::None => None,
 
-        // If server side decorations are available, create the toplevel decoration.
-        let toplevel_decoration = if let Some(decoration_manager) = decoration_manager {
-            match self.decorations {
-                // Window does not want any server side decorations.
-                WindowDecorations::ClientOnly | WindowDecorations::None => None,
+                    _ => {
+                        // Create the toplevel decoration.
+                        let toplevel_decoration = decoration_manager
+                            .get_toplevel_decoration(&xdg_toplevel, qh, WindowData(weak.clone()))
+                            .expect("failed to create toplevel decoration");
 
-                _ => {
-                    // Create the toplevel decoration.
-                    let toplevel_decoration = decoration_manager
-                        .get_toplevel_decoration(&xdg_toplevel, qh, window_data)
-                        .expect("failed to create toplevel decoration");
+                        // Tell the compositor we would like a specific mode.
+                        let mode = match self.decorations {
+                            WindowDecorations::RequestServer => Some(Mode::ServerSide),
+                            WindowDecorations::RequestClient => Some(Mode::ClientSide),
+                            _ => None,
+                        };
 
-                    // Tell the compositor we would like a specific mode.
-                    let mode = match self.decorations {
-                        WindowDecorations::RequestServer => Some(Mode::ServerSide),
-                        WindowDecorations::RequestClient => Some(Mode::ClientSide),
-                        _ => None,
-                    };
+                        if let Some(mode) = mode {
+                            toplevel_decoration.set_mode(mode);
+                        }
 
-                    if let Some(mode) = mode {
-                        toplevel_decoration.set_mode(mode);
+                        Some(toplevel_decoration)
                     }
-
-                    Some(toplevel_decoration)
                 }
-            }
-        } else {
-            None
-        };
+            } else {
+                None
+            };
 
-        let window =
-            Window(Arc::new(WindowInner { xdg_surface, xdg_toplevel, toplevel_decoration }));
+            Some(WindowInner {
+                xdg_surface,
+                xdg_toplevel,
+                toplevel_decoration,
+                pending_configure: Mutex::new(WindowConfigure {
+                    new_size: None,
+                    suggested_bounds: None,
+                    // Initial configure will indicate whether there are server side decorations.
+                    decoration_mode: DecorationMode::Client,
+                    states: Vec::new(),
+                }),
+            })
+        });
 
-        window_state.windows.push(Arc::downgrade(&window.0));
+        // This assert checks that err was set properly above; it should be impossible to trigger,
+        // so it's not a run-time assert.
+        debug_assert!(inner.is_some() || err.is_err());
+
+        let window = err.map(|()| Window(inner))?;
 
         // Apply state from builder
         if let Some(title) = self.title {
@@ -414,9 +404,23 @@ impl WindowBuilder {
 }
 
 #[derive(Debug, Clone)]
-pub struct Window(Arc<WindowInner>);
+pub struct Window(Arc<Option<WindowInner>>);
 
 impl Window {
+    pub fn from_xdg_toplevel(toplevel: &xdg_toplevel::XdgToplevel) -> Option<Window> {
+        toplevel.data::<WindowData>().and_then(|data| data.0.upgrade()).map(Window)
+    }
+
+    pub fn from_xdg_surface(surface: &xdg_surface::XdgSurface) -> Option<Window> {
+        surface.data::<WindowData>().and_then(|data| data.0.upgrade()).map(Window)
+    }
+
+    pub fn from_toplevel_decoration(
+        decoration: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
+    ) -> Option<Window> {
+        decoration.data::<WindowData>().and_then(|data| data.0.upgrade()).map(Window)
+    }
+
     pub fn builder() -> WindowBuilder {
         WindowBuilder {
             title: None,
@@ -431,39 +435,39 @@ impl Window {
     }
 
     pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, position: (u32, u32)) {
-        self.0.show_window_menu(seat, serial, position.0, position.1)
+        self.inner().show_window_menu(seat, serial, position.0, position.1)
     }
 
     pub fn set_title(&self, title: impl Into<String>) {
-        self.0.set_title(title.into())
+        self.inner().set_title(title.into())
     }
 
     pub fn set_app_id(&self, app_id: impl Into<String>) {
-        self.0.set_app_id(app_id.into())
+        self.inner().set_app_id(app_id.into())
     }
 
     pub fn set_parent(&self, parent: Option<&Window>) {
-        self.0.set_parent(parent)
+        self.inner().set_parent(parent)
     }
 
     pub fn set_maximized(&self) {
-        self.0.set_maximized()
+        self.inner().set_maximized()
     }
 
     pub fn unset_maximized(&self) {
-        self.0.unset_maximized()
+        self.inner().unset_maximized()
     }
 
     pub fn set_mimimized(&self) {
-        self.0.set_minmized()
+        self.inner().set_minmized()
     }
 
     pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
-        self.0.set_fullscreen(output)
+        self.inner().set_fullscreen(output)
     }
 
     pub fn unset_fullscreen(&self) {
-        self.0.unset_fullscreen()
+        self.inner().unset_fullscreen()
     }
 
     /// Requests the window should use the specified decoration mode.
@@ -477,7 +481,7 @@ impl Window {
     ///
     /// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.
     pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
-        self.0.request_decoration_mode(mode)
+        self.inner().request_decoration_mode(mode)
     }
 
     // TODO: Move
@@ -487,14 +491,14 @@ impl Window {
     // Double buffered window state
 
     pub fn set_min_size(&self, min_size: Option<(u32, u32)>) {
-        self.0.set_min_size(min_size)
+        self.inner().set_min_size(min_size)
     }
 
     /// # Protocol errors
     ///
     /// The maximum size of the window may not be smaller than the minimum size.
     pub fn set_max_size(&self, max_size: Option<(u32, u32)>) {
-        self.0.set_max_size(max_size)
+        self.inner().set_max_size(max_size)
     }
 
     // TODO: Window geometry
@@ -505,17 +509,17 @@ impl Window {
 
     /// Returns the underlying surface wrapped by this window.
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.0.xdg_surface.wl_surface()
+        self.inner().xdg_surface.wl_surface()
     }
 
     /// Returns the underlying xdg surface wrapped by this window.
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.0.xdg_surface.xdg_surface()
+        self.inner().xdg_surface.xdg_surface()
     }
 
     /// Returns the underlying xdg toplevel wrapped by this window.
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
-        &self.0.xdg_toplevel
+        &self.inner().xdg_toplevel
     }
 }
 
@@ -526,7 +530,7 @@ impl PartialEq for Window {
 }
 
 #[derive(Debug, Clone)]
-pub struct WindowData(pub(crate) Arc<WindowDataInner>);
+pub struct WindowData(pub(crate) Weak<Option<WindowInner>>);
 
 #[macro_export]
 macro_rules! delegate_xdg_window {
@@ -538,4 +542,10 @@ macro_rules! delegate_xdg_window {
             $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData,
         ] => $crate::shell::xdg::window::XdgWindowState);
     };
+}
+
+impl Window {
+    fn inner(&self) -> &WindowInner {
+        Option::as_ref(&self.0).expect("The contents of an initialized Window cannot be None")
+    }
 }

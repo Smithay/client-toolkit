@@ -5,7 +5,7 @@ use std::{
 
 use wayland_client::{
     protocol::{wl_output, wl_seat},
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
@@ -43,9 +43,10 @@ impl Drop for WindowInner {
 
 #[derive(Debug)]
 pub struct WindowInner {
-    pub(crate) xdg_surface: XdgShellSurface,
-    pub(crate) xdg_toplevel: xdg_toplevel::XdgToplevel,
-    pub(crate) toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
+    pub(super) xdg_surface: XdgShellSurface,
+    pub(super) xdg_toplevel: xdg_toplevel::XdgToplevel,
+    pub(super) toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
+    pub(super) pending_configure: Mutex<WindowConfigure>,
 }
 
 impl WindowInner {
@@ -107,11 +108,6 @@ impl WindowInner {
     }
 }
 
-#[derive(Debug)]
-pub struct WindowDataInner {
-    pub(crate) pending_configure: Mutex<WindowConfigure>,
-}
-
 const DECORATION_MANAGER_VERSION: u32 = 1;
 
 impl<D> RegistryHandler<D> for XdgWindowState
@@ -147,27 +143,23 @@ where
         data: &mut D,
         xdg_surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
-        udata: &WindowData,
+        _: &WindowData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        match event {
-            xdg_surface::Event::Configure { serial } => {
-                // Acknowledge the configure per protocol requirements.
-                xdg_surface.ack_configure(serial);
+        if let Some(window) = Window::from_xdg_surface(xdg_surface) {
+            match event {
+                xdg_surface::Event::Configure { serial } => {
+                    // Acknowledge the configure per protocol requirements.
+                    xdg_surface.ack_configure(serial);
 
-                if let Some(window) = data.xdg_window_state().window_by_xdg(xdg_surface) {
-                    let configure = { udata.0.pending_configure.lock().unwrap().clone() };
-
+                    let configure = { window.inner().pending_configure.lock().unwrap().clone() };
                     WindowHandler::configure(data, conn, qh, &window, configure, serial);
                 }
+
+                _ => unreachable!(),
             }
-
-            _ => unreachable!(),
         }
-
-        // Destroy dropped weak handles
-        data.xdg_window_state().windows.retain(|window| window.upgrade().is_some());
     }
 }
 
@@ -179,50 +171,48 @@ where
         data: &mut D,
         toplevel: &xdg_toplevel::XdgToplevel,
         event: xdg_toplevel::Event,
-        udata: &WindowData,
+        _: &WindowData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        match event {
-            xdg_toplevel::Event::Configure { width, height, states } => {
-                // The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
-                // bytes.
-                let states = states
-                    .chunks_exact(4)
-                    .flat_map(TryInto::<[u8; 4]>::try_into)
-                    .map(u32::from_ne_bytes)
-                    .flat_map(State::try_from)
-                    .collect::<Vec<_>>();
+        if let Some(window) = Window::from_xdg_toplevel(toplevel) {
+            match event {
+                xdg_toplevel::Event::Configure { width, height, states } => {
+                    // The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
+                    // bytes.
+                    let states = states
+                        .chunks_exact(4)
+                        .flat_map(TryInto::<[u8; 4]>::try_into)
+                        .map(u32::from_ne_bytes)
+                        .flat_map(State::try_from)
+                        .collect::<Vec<_>>();
 
-                let new_size = if width == 0 && height == 0 {
-                    None
-                } else {
-                    Some((width as u32, height as u32))
-                };
+                    let new_size = if width == 0 && height == 0 {
+                        None
+                    } else {
+                        Some((width as u32, height as u32))
+                    };
 
-                let pending_configure = &mut *udata.0.pending_configure.lock().unwrap();
-                pending_configure.new_size = new_size;
-                pending_configure.states = states;
-            }
+                    let pending_configure = &mut window.inner().pending_configure.lock().unwrap();
+                    pending_configure.new_size = new_size;
+                    pending_configure.states = states;
+                }
 
-            xdg_toplevel::Event::Close => {
-                if let Some(window) = data.xdg_window_state().window_by_toplevel(toplevel) {
+                xdg_toplevel::Event::Close => {
                     data.request_close(conn, qh, &window);
-                } else {
-                    log::warn!(target: "sctk", "closed event received for dead window: {}", toplevel.id());
                 }
-            }
 
-            xdg_toplevel::Event::ConfigureBounds { width, height } => {
-                let pending_configure = &mut *udata.0.pending_configure.lock().unwrap();
-                if width == 0 && height == 0 {
-                    pending_configure.suggested_bounds = None;
-                } else {
-                    pending_configure.suggested_bounds = Some((width as u32, height as u32));
+                xdg_toplevel::Event::ConfigureBounds { width, height } => {
+                    let pending_configure = &mut window.inner().pending_configure.lock().unwrap();
+                    if width == 0 && height == 0 {
+                        pending_configure.suggested_bounds = None;
+                    } else {
+                        pending_configure.suggested_bounds = Some((width as u32, height as u32));
+                    }
                 }
-            }
 
-            _ => unreachable!(),
+                _ => unreachable!(),
+            }
         }
     }
 }
@@ -253,31 +243,33 @@ where
 {
     fn event(
         _: &mut D,
-        _: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
+        decoration: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
         event: zxdg_toplevel_decoration_v1::Event,
-        data: &WindowData,
+        _: &WindowData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
-        match event {
-            zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
-                wayland_client::WEnum::Value(mode) => {
-                    let mode = match mode {
-                        Mode::ClientSide => DecorationMode::Client,
-                        Mode::ServerSide => DecorationMode::Server,
+        if let Some(window) = Window::from_toplevel_decoration(decoration) {
+            match event {
+                zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
+                    wayland_client::WEnum::Value(mode) => {
+                        let mode = match mode {
+                            Mode::ClientSide => DecorationMode::Client,
+                            Mode::ServerSide => DecorationMode::Server,
 
-                        _ => unreachable!(),
-                    };
+                            _ => unreachable!(),
+                        };
 
-                    data.0.pending_configure.lock().unwrap().decoration_mode = mode;
-                }
+                        window.inner().pending_configure.lock().unwrap().decoration_mode = mode;
+                    }
 
-                wayland_client::WEnum::Unknown(unknown) => {
-                    log::error!(target: "sctk", "unknown decoration mode 0x{:x}", unknown);
-                }
-            },
+                    wayland_client::WEnum::Unknown(unknown) => {
+                        log::error!(target: "sctk", "unknown decoration mode 0x{:x}", unknown);
+                    }
+                },
 
-            _ => unreachable!(),
+                _ => unreachable!(),
+            }
         }
     }
 }
