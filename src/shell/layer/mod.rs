@@ -52,21 +52,19 @@ impl LayerState {
     }
 }
 
+/// Handler for operations on a [`LayerSurface`]
 pub trait LayerHandler: Sized {
     fn layer_state(&mut self) -> &mut LayerState;
 
-    /// Called when the surface will no longer be shown.
+    /// The layer surface has been closed.
     ///
-    /// This may occur as a result of the output the layer is placed on being destroyed or the user has caused
-    /// the layer to be removed.
-    ///
-    /// You should drop the layer you have when this event is received.
+    /// When this requested is called, the layer surface is no longer shown and all handles of the [`LayerSurface`]
+    /// should be dropped.
     fn closed(&mut self, conn: &Connection, qh: &QueueHandle<Self>, layer: &LayerSurface);
 
-    /// Called when the compositor has sent a configure event to an layer
+    /// Apply a suggested surface change.
     ///
-    /// A configure atomically indicates that a sequence of events describing how a surface has changed have
-    /// all been sent.
+    /// When this function is called, the compositor is requesting the layer surfaces's size or state to change.
     fn configure(
         &mut self,
         conn: &Connection,
@@ -348,19 +346,20 @@ bitflags! {
     }
 }
 
-/// The configure state of a layer
+/// A layer surface configure.
 ///
-/// This type indicates compositor changes to the layer, such as a new size.
+/// A configure describes a compositor request to resize the layer surface or change it's state.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct LayerSurfaceConfigure {
-    /// The compositor suggested new size of the layer.
+    /// The compositor suggested new size of the layer in surface-local coordinates.
     ///
-    /// The size is a hint, meaning the client is free to ignore the new size (if the client does not resize),
-    /// pick a smaller size to satisfy aspect ratio or resize in steps. If you pick a small size and the
-    /// surface is anchored to two opposite anchors, then surface will be centered on the axis.
+    /// The size is a hint, meaning the new size can be ignored. A smaller size could be picked to satisfy
+    /// some aspect ratio or resize in steps. If the size is smaller than suggested and the layer surface is
+    /// anchored to two opposite anchors then the layer surface will be centered on that axis.
     ///
-    /// If either the width or height is 0, the compositor may choose any size for that specific width or height.
+    /// If the width is zero, you may choose any width you want. If the height is zero, you may choose any
+    /// height you want.
     pub new_size: (u32, u32),
 }
 

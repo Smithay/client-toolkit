@@ -64,20 +64,23 @@ impl XdgWindowState {
     }
 }
 
+/// Handler for toplevel operations on a [`Window`].
 pub trait WindowHandler: XdgShellHandler + Sized {
     fn xdg_window_state(&mut self) -> &mut XdgWindowState;
 
-    /// Called when a window has been requested to close.
+    /// Request to close a window.
     ///
-    /// This request does not destroy the window. You must drop the [`Window`] for the window to be destroyed.
-    ///
-    /// This may be sent at any time, whether it is the client side window decorations or the compositor.
+    /// This request does not destroy the window. You must drop all [`Window`] handles to destroy the window.
+    /// This request may be sent either by the compositor or by some other mechanism (such as client side decorations).
     fn request_close(&mut self, conn: &Connection, qh: &QueueHandle<Self>, window: &Window);
 
-    /// Called when the compositor has sent a configure event to an XdgSurface
+    /// Apply a suggested surface change.
     ///
-    /// A configure atomically indicates that a sequence of events describing how a surface has changed have
-    /// all been sent.
+    /// When this function is called, the compositor is requesting the window's size or state to change.
+    ///
+    /// Internally this function is called when the underlying `xdg_surface` is configured. Any extension
+    /// protocols that interface with xdg-shell are able to be notified that the surface's configure sequence
+    /// is complete.
     fn configure(
         &mut self,
         conn: &Connection,
@@ -98,14 +101,13 @@ pub enum DecorationMode {
     Server,
 }
 
-/// The configure state of a window
+/// A window configure.
 ///
-/// This type indicates compositor changes to the window, such as a new size and if the state of the window
-/// has changed.
+/// A configure describes a compositor request to resize the window or change it's state.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct WindowConfigure {
-    /// The compositor suggested new size of the window.
+    /// The compositor suggested new size of the window in window geometry coordinates.
     ///
     /// If this value is [`None`], you may set the size of the window as you wish.
     pub new_size: Option<(u32, u32)>,
@@ -121,29 +123,80 @@ pub struct WindowConfigure {
     /// supported.
     pub decoration_mode: DecorationMode,
 
-    /// States indicating how the window should be resized.
+    /// Window states.
     ///
-    /// Some states require the new size of the window to be obeyed. States may also be combined. For example,
-    /// a window could be activated and maximized at the same time.
+    /// Depending on which states are set, the allowed size of the window may change. States may also be
+    /// combined. For example, a window could be activated and maximized at the same time.
+    /// Along side this [`Vec`] of states, there are also helper functions that are part of [`WindowConfigure`]
+    /// to test if some particular state is set.
     ///
     /// Below is a table explains the constraints a window needs to obey depending on the set states:
     ///
     /// | State(s) | Any size | Notes |
     /// |-------|----------|-------|
     /// | No states | yes ||
-    /// | [`Maximized`](State::Maximized) | no | the window geometry must be obeyed. Drop shadows should also been hidden. |
-    /// | [`Fullscreen`](State::Fullscreen) | no | the window geometry is a maximum. A smaller size may be used but letterboxes will appear. |
-    /// | [`Resizing`](State::Resizing) | no | the window geometry is a maximum. If you have cell sizing or a fixed aspect ratio, a smaller size may be used. |
-    /// | [`Activated`](State::Activated) | yes? | if the client provides window decorations, the decorations should be drawn as if the window is active. |
+    /// | [`Maximized`](State::Maximized) | no | The window geometry must be obeyed. Drop shadows should also been hidden. |
+    /// | [`Fullscreen`](State::Fullscreen) | no[^fullscreen] | The window geometry is the maximum allowed size. |
+    /// | [`Resizing`](State::Resizing) | no[^resizing] | The window geometry is the maximum allowed size. |
+    /// | [`Activated`](State::Activated) | yes | If the client provides window decorations, the decorations should be drawn as if the window is active. |
     ///
     /// There are also states that indicate the sides of a window which are tiled. Tiling is a hint which
-    /// specifies which sides of a window should probably not be resized and may be used to hide shadows.
+    /// indicates what sides of a window should probably not be resized and may be used to hide shadows on tiled
+    /// edges.
+    ///
     /// Tiling values include:
     /// - [`Left`](State::TiledLeft)
     /// - [`Right`](State::TiledRight)
     /// - [`Top`](State::TiledTop)
     /// - [`Bottom`](State::TiledBottom)
+    ///
+    /// [^fullscreen]: A smaller size buffer may be used, but letterboxing or cropping could occur.
+    ///
+    /// [^resizing]: If you have cell sizing or a fixed aspect ratio, a smaller size buffer may be used.
     pub states: Vec<State>,
+    // TODO: wm capabilities added in version 5.
+}
+
+impl WindowConfigure {
+    /// Is [`State::Maximized`] the state is set.
+    pub fn is_maximized(&self) -> bool {
+        self.states.iter().any(|&state| state == State::Maximized)
+    }
+
+    /// Is [`State::Fullscreen`] the state is set.
+    pub fn is_fullscreen(&self) -> bool {
+        self.states.iter().any(|&state| state == State::Fullscreen)
+    }
+
+    /// Is [`State::Resizing`] the state is set.
+    pub fn is_resizing(&self) -> bool {
+        self.states.iter().any(|&state| state == State::Resizing)
+    }
+
+    /// Is [`State::Activated`] the state is set.
+    pub fn is_activated(&self) -> bool {
+        self.states.iter().any(|&state| state == State::Activated)
+    }
+
+    /// Is [`State::TiledLeft`] the state is set.
+    pub fn is_tiled_left(&self) -> bool {
+        self.states.iter().any(|&state| state == State::TiledLeft)
+    }
+
+    /// Is [`State::TiledRight`] the state is set.
+    pub fn is_tiled_right(&self) -> bool {
+        self.states.iter().any(|&state| state == State::TiledRight)
+    }
+
+    /// Is [`State::TiledTop`] the state is set.
+    pub fn is_tiled_top(&self) -> bool {
+        self.states.iter().any(|&state| state == State::TiledTop)
+    }
+
+    /// Is [`State::TiledBottom`] the state is set.
+    pub fn is_tiled_bottom(&self) -> bool {
+        self.states.iter().any(|&state| state == State::TiledBottom)
+    }
 }
 
 /// Decorations a window is created with.
