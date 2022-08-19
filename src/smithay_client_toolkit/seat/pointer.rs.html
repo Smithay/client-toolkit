@@ -355,7 +355,7 @@
     <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>, <span class="ident">WEnum</span>,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">SeatHandler</span>, <span class="ident">SeatState</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SeatState</span>;
 
 <span class="comment">/* From linux/input-event-codes.h - the buttons usually used by mice */</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_LEFT</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x110</span>;
@@ -440,7 +440,7 @@
     },
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PointerHandler</span>: <span class="ident">SeatHandler</span> <span class="op">+</span> <span class="ident">Sized</span> {
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PointerHandler</span>: <span class="ident">Sized</span> {
     <span class="doccomment">/// One or more pointer events are available.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Multiple related events may be grouped together in a single frame.  Some examples:</span>

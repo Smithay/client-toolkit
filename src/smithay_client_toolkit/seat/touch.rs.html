@@ -215,7 +215,7 @@
 <span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_touch</span>::{<span class="ident">Event</span> <span class="kw">as</span> <span class="ident">TouchEvent</span>, <span class="ident">WlTouch</span>};
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{<span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">QueueHandle</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::seat</span>::{<span class="ident">SeatHandler</span>, <span class="ident">SeatState</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::seat::SeatState</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TouchData</span> {
@@ -257,7 +257,7 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">TouchHandler</span>: <span class="ident">SeatHandler</span> <span class="op">+</span> <span class="ident">Sized</span> {
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">TouchHandler</span>: <span class="ident">Sized</span> {
     <span class="doccomment">/// New touch point.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Indicates a new touch point has appeared on the surface, starting a touch sequence. The ID</span>
