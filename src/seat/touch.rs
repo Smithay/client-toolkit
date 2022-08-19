@@ -4,7 +4,7 @@ use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
 use wayland_client::{Connection, Dispatch, QueueHandle};
 
-use crate::seat::{SeatHandler, SeatState};
+use crate::seat::SeatState;
 
 #[derive(Debug, Default)]
 pub struct TouchData {
@@ -46,7 +46,7 @@ impl TouchDataExt for TouchData {
     }
 }
 
-pub trait TouchHandler: SeatHandler + Sized {
+pub trait TouchHandler: Sized {
     /// New touch point.
     ///
     /// Indicates a new touch point has appeared on the surface, starting a touch sequence. The ID
