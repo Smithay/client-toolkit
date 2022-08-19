@@ -6,7 +6,7 @@ use wayland_client::{
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use super::{SeatHandler, SeatState};
+use super::SeatState;
 
 /* From linux/input-event-codes.h - the buttons usually used by mice */
 pub const BTN_LEFT: u32 = 0x110;
@@ -91,7 +91,7 @@ pub enum PointerEventKind {
     },
 }
 
-pub trait PointerHandler: SeatHandler + Sized {
+pub trait PointerHandler: Sized {
     /// One or more pointer events are available.
     ///
     /// Multiple related events may be grouped together in a single frame.  Some examples:
