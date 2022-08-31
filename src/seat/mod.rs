@@ -11,7 +11,6 @@ use std::{
     },
 };
 
-use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_pointer, wl_seat, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
@@ -53,10 +52,6 @@ pub enum SeatError {
     /// The seat is dead.
     #[error("the seat is dead")]
     DeadObject,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
 }
 
 #[derive(Debug)]

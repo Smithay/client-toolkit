@@ -298,10 +298,12 @@ impl Region {
         compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
     ) -> Result<Region, GlobalError> {
         compositor
-            .bound_global()?
-            .send_constructor(wl_compositor::Request::CreateRegion {}, Arc::new(RegionData))
+            .bound_global()
+            .map(|c| {
+                c.send_constructor(wl_compositor::Request::CreateRegion {}, Arc::new(RegionData))
+                    .unwrap_or_else(|_| Proxy::inert(c.backend().clone()))
+            })
             .map(Region)
-            .map_err(Into::into)
     }
 
     pub fn add(&self, x: i32, y: i32, width: i32, height: i32) {

@@ -260,12 +260,16 @@ impl<K> MultiPool<K> {
             }
             let free = Arc::new(AtomicBool::new(true));
             let data = BufferObjectData { free: free.clone() };
-            let buffer = self
-                .inner
-                .create_buffer_raw(offset as i32, width, height, stride, format, Arc::new(data))
-                .ok();
+            let buffer = self.inner.create_buffer_raw(
+                offset as i32,
+                width,
+                height,
+                stride,
+                format,
+                Arc::new(data),
+            );
             buf_slot.free = free;
-            buf_slot.buffer = buffer;
+            buf_slot.buffer = Some(buffer);
         }
         let buf = buf_slot.buffer.as_ref()?;
         buf_slot.free.store(false, Ordering::Relaxed);
@@ -321,12 +325,16 @@ impl<K> MultiPool<K> {
             }
             let free = Arc::new(AtomicBool::new(true));
             let data = BufferObjectData { free: free.clone() };
-            let buffer = self
-                .inner
-                .create_buffer_raw(offset as i32, width, height, stride, format, Arc::new(data))
-                .ok();
+            let buffer = self.inner.create_buffer_raw(
+                offset as i32,
+                width,
+                height,
+                stride,
+                format,
+                Arc::new(data),
+            );
             buf_slot.free = free;
-            buf_slot.buffer = buffer;
+            buf_slot.buffer = Some(buffer);
         }
         buf_slot.free.store(false, Ordering::Relaxed);
         let buf = buf_slot.buffer.as_ref().unwrap();
@@ -360,10 +368,14 @@ impl<K> MultiPool<K> {
         }
         let free = Arc::new(AtomicBool::new(true));
         let data = BufferObjectData { free: free.clone() };
-        let buffer = self
-            .inner
-            .create_buffer_raw(offset as i32, width, height, stride, format, Arc::new(data))
-            .ok()?;
+        let buffer = self.inner.create_buffer_raw(
+            offset as i32,
+            width,
+            height,
+            stride,
+            format,
+            Arc::new(data),
+        );
         self.buffer_list.push(BufferSlot {
             offset,
             used: 0,

@@ -72,7 +72,6 @@ use crate::{
     globals::{GlobalData, ProvidesBoundGlobal},
 };
 use wayland_client::{
-    backend::InvalidId,
     protocol::{wl_callback, wl_registry},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -168,10 +167,6 @@ pub enum BindError {
     /// The requested version of the global is not supported.
     #[error("the requested version of the global is not supported")]
     UnsupportedVersion,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
 
     /// The requested global was not found in the registry.
     #[error("the requested global was not found in the registry")]

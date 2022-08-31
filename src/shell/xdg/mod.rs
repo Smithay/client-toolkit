@@ -41,10 +41,16 @@ impl XdgPositioner {
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
     ) -> Result<Self, GlobalError> {
         wm_base
-            .bound_global()?
-            .send_constructor(xdg_wm_base::Request::CreatePositioner {}, Arc::new(PositionerData))
+            .bound_global()
+            .map(|wm_base| {
+                wm_base
+                    .send_constructor(
+                        xdg_wm_base::Request::CreatePositioner {},
+                        Arc::new(PositionerData),
+                    )
+                    .unwrap_or_else(|_| Proxy::inert(wm_base.backend().clone()))
+            })
             .map(XdgPositioner)
-            .map_err(From::from)
     }
 }
 
