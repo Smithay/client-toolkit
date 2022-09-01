@@ -262,7 +262,7 @@ impl WindowBuilder {
 
     /// Sets the decoration mode the window should be created with.
     ///
-    /// By default the decoration mode is set to [`DecorationMode::RequestServer`] to use server provided
+    /// By default the decoration mode is set to [`DecorationMode::Server`] to use server provided
     /// decorations where possible.
     pub fn decorations(self, decorations: WindowDecorations) -> Self {
         Self { decorations, ..self }
