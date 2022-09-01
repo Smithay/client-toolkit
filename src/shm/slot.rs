@@ -78,7 +78,7 @@ struct SlotInner {
     all_refs: AtomicUsize,
 }
 
-/// A [`wl_buffer::WlBuffer`] allocated from a [SlotPool].
+/// A wrapper around a [`wl_buffer::WlBuffer`] which has been allocated via a [SlotPool].
 ///
 /// When this object is dropped, the buffer will be destroyed immediately if it is not active, or
 /// upon the server's release if it is.
@@ -398,9 +398,9 @@ impl Buffer {
     /// This marks the slot as active until the server releases the buffer, which will happen
     /// automatically assuming the surface is committed without attaching a different buffer.
     ///
-    /// Note: if you need to ensure that canvas() calls never return data that could be attached to
-    /// a surface in a multi-threaded client, make this call while you have exclusive access to the
-    /// corresponding SlotPool.
+    /// Note: if you need to ensure that [`canvas()`](Buffer::canvas) calls never return data that
+    /// could be attached to a surface in a multi-threaded client, make this call while you have
+    /// exclusive access to the corresponding [`SlotPool`].
     pub fn attach_to(&self, surface: &wl_surface::WlSurface) -> Result<(), ActivateSlotError> {
         self.activate()?;
         surface.attach(Some(&self.buffer), 0, 0);
