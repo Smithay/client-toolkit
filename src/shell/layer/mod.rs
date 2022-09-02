@@ -272,7 +272,7 @@ impl LayerSurface {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SurfaceKind {
     Wlr(zwlr_layer_surface_v1::ZwlrLayerSurfaceV1),
 }
