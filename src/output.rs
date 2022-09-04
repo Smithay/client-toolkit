@@ -127,7 +127,7 @@ impl OutputState {
         let xdg_output = if pending_xdg {
             let xdg = self.xdg.get().unwrap();
 
-            Some(xdg.get_xdg_output(&wl_output, qh, data).unwrap())
+            Some(xdg.get_xdg_output(&wl_output, qh, data))
         } else {
             None
         };

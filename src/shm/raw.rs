@@ -116,7 +116,7 @@ impl RawPool {
         D: Dispatch<wl_buffer::WlBuffer, U> + 'static,
         U: Send + Sync + 'static,
     {
-        let buffer = self.pool.create_buffer(offset, width, height, stride, format, qh, udata)?;
+        let buffer = self.pool.create_buffer(offset, width, height, stride, format, qh, udata);
 
         Ok(buffer)
     }

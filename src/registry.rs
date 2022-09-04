@@ -215,8 +215,8 @@ impl RegistryState {
             + 'static,
     {
         let display = conn.display();
-        let registry = display.get_registry(qh, GlobalData).unwrap();
-        display.sync(qh, RegistryReady).unwrap();
+        let registry = display.get_registry(qh, GlobalData);
+        display.sync(qh, RegistryReady);
         RegistryState { registry, globals: Vec::new(), ready: false }
     }
 
@@ -294,7 +294,7 @@ impl RegistryState {
                 return Err(BindError::UnsupportedVersion);
             }
             let version = global.version.min(*version.end());
-            let proxy = self.registry.bind(global.name, version, qh, udata)?;
+            let proxy = self.registry.bind(global.name, version, qh, udata);
             log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
 
             return Ok(proxy);
@@ -333,7 +333,7 @@ impl RegistryState {
                 return Err(BindError::UnsupportedVersion);
             }
             let version = global.version.min(*version.end());
-            let proxy = self.registry.bind(global.name, version, qh, udata)?;
+            let proxy = self.registry.bind(global.name, version, qh, udata);
             log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
 
             return Ok(proxy);
@@ -370,7 +370,7 @@ impl RegistryState {
             }
             let version = global.version.min(*version.end());
             let udata = make_udata(global.name);
-            let proxy = self.registry.bind(global.name, version, qh, udata)?;
+            let proxy = self.registry.bind(global.name, version, qh, udata);
             log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
 
             rv.push(proxy);

@@ -136,17 +136,14 @@ impl LayerSurfaceBuilder {
         let inner = Arc::new_cyclic(|weak| {
             let wlr_layer_shell = shell.bound_global().map_err(|e| err = Err(e)).ok()?;
 
-            let layer_surface = wlr_layer_shell
-                .get_layer_surface(
-                    &surface,
-                    self.output.as_ref(),
-                    layer.into(),
-                    self.namespace.unwrap_or_default(),
-                    qh,
-                    LayerSurfaceData { inner: weak.clone() },
-                )
-                .map_err(|e| err = Err(e.into()))
-                .ok()?;
+            let layer_surface = wlr_layer_shell.get_layer_surface(
+                &surface,
+                self.output.as_ref(),
+                layer.into(),
+                self.namespace.unwrap_or_default(),
+                qh,
+                LayerSurfaceData { inner: weak.clone() },
+            );
 
             Some(LayerSurfaceInner {
                 wl_surface: surface.clone(),

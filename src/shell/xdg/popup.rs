@@ -97,11 +97,12 @@ impl Popup {
                 XdgShellSurface::new(wm_base, qh, surface, PopupData { inner: weak.clone() })
                     .map_err(|e| err = Err(e))
                     .ok()?;
-            let xdg_popup = surface
-                .xdg_surface()
-                .get_popup(parent, position, qh, PopupData { inner: weak.clone() })
-                .map_err(|e| err = Err(e.into()))
-                .ok()?;
+            let xdg_popup = surface.xdg_surface().get_popup(
+                parent,
+                position,
+                qh,
+                PopupData { inner: weak.clone() },
+            );
 
             Some(PopupInner {
                 surface,

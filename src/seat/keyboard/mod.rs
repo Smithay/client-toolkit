@@ -90,7 +90,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
 
-        Ok(seat.get_keyboard(qh, udata).map_err(Into::<SeatError>::into)?)
+        Ok(seat.get_keyboard(qh, udata))
     }
 }
 
