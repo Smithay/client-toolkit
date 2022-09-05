@@ -181,7 +181,7 @@ impl OutputState {
         let xdg_output = if pending_xdg {
             let xdg = self.xdg.get().unwrap();
 
-            Some(xdg.get_xdg_output(&wl_output, qh, data).unwrap())
+            Some(xdg.get_xdg_output(&wl_output, qh, data))
         } else {
             None
         };
@@ -344,9 +344,13 @@ pub struct OutputInfo {
 macro_rules! delegate_output {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
-            $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData,
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: $crate::globals::GlobalData,
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData,
+            $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData
+        ] => $crate::output::OutputState);
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: $crate::globals::GlobalData
+        ] => $crate::output::OutputState);
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData
         ] => $crate::output::OutputState);
     };
 }

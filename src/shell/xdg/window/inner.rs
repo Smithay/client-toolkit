@@ -153,7 +153,7 @@ where
                     // Acknowledge the configure per protocol requirements.
                     xdg_surface.ack_configure(serial);
 
-                    let configure = { window.inner().pending_configure.lock().unwrap().clone() };
+                    let configure = { window.0.pending_configure.lock().unwrap().clone() };
                     WindowHandler::configure(data, conn, qh, &window, configure, serial);
                 }
 
@@ -193,7 +193,7 @@ where
                         Some((width as u32, height as u32))
                     };
 
-                    let pending_configure = &mut window.inner().pending_configure.lock().unwrap();
+                    let pending_configure = &mut window.0.pending_configure.lock().unwrap();
                     pending_configure.new_size = new_size;
                     pending_configure.states = states;
                 }
@@ -203,7 +203,7 @@ where
                 }
 
                 xdg_toplevel::Event::ConfigureBounds { width, height } => {
-                    let pending_configure = &mut window.inner().pending_configure.lock().unwrap();
+                    let pending_configure = &mut window.0.pending_configure.lock().unwrap();
                     if width == 0 && height == 0 {
                         pending_configure.suggested_bounds = None;
                     } else {
@@ -260,7 +260,7 @@ where
                             _ => unreachable!(),
                         };
 
-                        window.inner().pending_configure.lock().unwrap().decoration_mode = mode;
+                        window.0.pending_configure.lock().unwrap().decoration_mode = mode;
                     }
 
                     wayland_client::WEnum::Unknown(unknown) => {

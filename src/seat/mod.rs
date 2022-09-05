@@ -11,7 +11,6 @@ use std::{
     },
 };
 
-use wayland_backend::client::InvalidId;
 use wayland_client::{
     protocol::{wl_pointer, wl_seat, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
@@ -53,10 +52,6 @@ pub enum SeatError {
     /// The seat is dead.
     #[error("the seat is dead")]
     DeadObject,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
 }
 
 #[derive(Debug)]
@@ -129,7 +124,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        let pointer = seat.get_pointer(qh, pointer_data)?;
+        let pointer = seat.get_pointer(qh, pointer_data);
         Ok(pointer)
     }
 
@@ -171,7 +166,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        let touch = seat.get_touch(qh, udata)?;
+        let touch = seat.get_touch(qh, udata);
         Ok(touch)
     }
 }
@@ -280,7 +275,7 @@ macro_rules! delegate_seat {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData,
+                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData
             ] => $crate::seat::SeatState
         );
     };

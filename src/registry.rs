@@ -72,7 +72,6 @@ use crate::{
     globals::{GlobalData, ProvidesBoundGlobal},
 };
 use wayland_client::{
-    backend::InvalidId,
     protocol::{wl_callback, wl_registry},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -169,10 +168,6 @@ pub enum BindError {
     #[error("the requested version of the global is not supported")]
     UnsupportedVersion,
 
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
-
     /// The requested global was not found in the registry.
     #[error("the requested global was not found in the registry")]
     NotPresent,
@@ -216,8 +211,8 @@ impl RegistryState {
             + 'static,
     {
         let display = conn.display();
-        let registry = display.get_registry(qh, GlobalData).unwrap();
-        display.sync(qh, RegistryReady).unwrap();
+        let registry = display.get_registry(qh, GlobalData);
+        display.sync(qh, RegistryReady);
         RegistryState { registry, globals: Vec::new(), ready: false }
     }
 
@@ -295,7 +290,7 @@ impl RegistryState {
                 return Err(BindError::UnsupportedVersion);
             }
             let version = global.version.min(*version.end());
-            let proxy = self.registry.bind(global.name, version, qh, udata)?;
+            let proxy = self.registry.bind(global.name, version, qh, udata);
             log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
 
             return Ok(proxy);
@@ -334,7 +329,7 @@ impl RegistryState {
                 return Err(BindError::UnsupportedVersion);
             }
             let version = global.version.min(*version.end());
-            let proxy = self.registry.bind(global.name, version, qh, udata)?;
+            let proxy = self.registry.bind(global.name, version, qh, udata);
             log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
 
             return Ok(proxy);
@@ -371,7 +366,7 @@ impl RegistryState {
             }
             let version = global.version.min(*version.end());
             let udata = make_udata(global.name);
-            let proxy = self.registry.bind(global.name, version, qh, udata)?;
+            let proxy = self.registry.bind(global.name, version, qh, udata);
             log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
 
             rv.push(proxy);
@@ -425,9 +420,13 @@ macro_rules! delegate_registry {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData,
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::registry::RegistryReady,
-            ]  => $crate::registry::RegistryState
+                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData
+            ] => $crate::registry::RegistryState
+        );
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::registry::RegistryReady
+            ] => $crate::registry::RegistryState
         );
     };
 }

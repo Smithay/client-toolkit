@@ -127,38 +127,26 @@ impl LayerSurfaceBuilder {
     {
         // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
         // will stay for ext-layer-shell-v1 support.
+        let layer_shell = shell.bound_global()?;
+        // Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        let freeze = qh.freeze();
 
-        // We really need an Arc::try_new_cyclic function to handle errors during creation.
-        // Emulate that function by creating an Arc containing None in the error case, and use the
-        // closure's context to pass the real error back to the caller so the invalid Arc is never
-        // returned.
-        let mut err = Ok(());
         let inner = Arc::new_cyclic(|weak| {
-            let wlr_layer_shell = shell.bound_global().map_err(|e| err = Err(e)).ok()?;
+            let layer_surface = layer_shell.get_layer_surface(
+                &surface,
+                self.output.as_ref(),
+                layer.into(),
+                self.namespace.unwrap_or_default(),
+                qh,
+                LayerSurfaceData { inner: weak.clone() },
+            );
 
-            let layer_surface = wlr_layer_shell
-                .get_layer_surface(
-                    &surface,
-                    self.output.as_ref(),
-                    layer.into(),
-                    self.namespace.unwrap_or_default(),
-                    qh,
-                    LayerSurfaceData { inner: weak.clone() },
-                )
-                .map_err(|e| err = Err(e.into()))
-                .ok()?;
-
-            Some(LayerSurfaceInner {
-                wl_surface: surface.clone(),
-                kind: SurfaceKind::Wlr(layer_surface),
-            })
+            LayerSurfaceInner { wl_surface: surface.clone(), kind: SurfaceKind::Wlr(layer_surface) }
         });
+        drop(freeze);
 
-        // This assert checks that err was set properly above; it should be impossible to trigger,
-        // so it's not a run-time assert.
-        debug_assert!(inner.is_some() || err.is_err());
-
-        let layer_surface = err.map(|()| LayerSurface(inner))?;
+        let layer_surface = LayerSurface(inner);
 
         // Set data for initial commit
         if let Some(size) = self.size {
@@ -190,7 +178,7 @@ impl LayerSurfaceBuilder {
 }
 
 #[derive(Debug, Clone)]
-pub struct LayerSurface(Arc<Option<LayerSurfaceInner>>);
+pub struct LayerSurface(Arc<LayerSurfaceInner>);
 
 impl PartialEq for LayerSurface {
     fn eq(&self, other: &Self) -> bool {
@@ -224,13 +212,13 @@ impl LayerSurface {
     // Double buffered state
 
     pub fn set_size(&self, width: u32, height: u32) {
-        match self.inner().kind {
+        match self.0.kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_size(width, height),
         }
     }
 
     pub fn set_anchor(&self, anchor: Anchor) {
-        match self.inner().kind {
+        match self.0.kind {
             // We currently rely on the bitsets being the same
             SurfaceKind::Wlr(ref wlr) => {
                 wlr.set_anchor(zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()))
@@ -239,35 +227,35 @@ impl LayerSurface {
     }
 
     pub fn set_exclusive_zone(&self, zone: i32) {
-        match self.inner().kind {
+        match self.0.kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_exclusive_zone(zone),
         }
     }
 
     pub fn set_margin(&self, top: i32, right: i32, bottom: i32, left: i32) {
-        match self.inner().kind {
+        match self.0.kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_margin(top, right, bottom, left),
         }
     }
 
     pub fn set_keyboard_interactivity(&self, value: KeyboardInteractivity) {
-        match self.inner().kind {
+        match self.0.kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_keyboard_interactivity(value.into()),
         }
     }
 
     pub fn set_layer(&self, layer: Layer) {
-        match self.inner().kind {
+        match self.0.kind {
             SurfaceKind::Wlr(ref wlr) => wlr.set_layer(layer.into()),
         }
     }
 
     pub fn kind(&self) -> &SurfaceKind {
-        &self.inner().kind
+        &self.0.kind
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.inner().wl_surface
+        &self.0.wl_surface
     }
 }
 
@@ -369,7 +357,7 @@ pub struct LayerSurfaceConfigure {
 
 #[derive(Debug)]
 pub struct LayerSurfaceData {
-    inner: Weak<Option<LayerSurfaceInner>>,
+    inner: Weak<LayerSurfaceInner>,
 }
 
 impl LayerSurfaceData {
@@ -382,16 +370,12 @@ impl LayerSurfaceData {
 macro_rules! delegate_layer {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData,
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData,
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData
+        ] => $crate::shell::layer::LayerState);
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData
         ] => $crate::shell::layer::LayerState);
     };
-}
-
-impl LayerSurface {
-    fn inner(&self) -> &LayerSurfaceInner {
-        Option::as_ref(&self.0).expect("The contents of an initialized LayerSurface cannot be None")
-    }
 }
 
 #[derive(Debug)]

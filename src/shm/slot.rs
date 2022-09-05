@@ -7,7 +7,6 @@ use std::sync::{
 };
 
 use wayland_client::{
-    backend::InvalidId,
     protocol::{wl_buffer, wl_shm, wl_surface},
     Proxy,
 };
@@ -16,10 +15,6 @@ use crate::{globals::ProvidesBoundGlobal, shm::raw::RawPool, shm::CreatePoolErro
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateBufferError {
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
-
     /// Slot creation error.
     #[error(transparent)]
     Io(#[from] io::Error),
@@ -38,10 +33,6 @@ pub enum ActivateSlotError {
     /// Buffer was already active
     #[error("Buffer was already active")]
     AlreadyActive,
-
-    /// Protocol error.
-    #[error(transparent)]
-    Protocol(#[from] InvalidId),
 }
 
 #[derive(Debug)]
@@ -323,7 +314,7 @@ impl SlotPool {
             inner: slot.inner.clone(),
             state: AtomicU8::new(BufferData::INACTIVE),
         });
-        let buffer = self.inner.create_buffer_raw(offset, width, height, stride, format, data)?;
+        let buffer = self.inner.create_buffer_raw(offset, width, height, stride, format, data);
         Ok(Buffer { buffer, height, stride, slot })
     }
 }
@@ -449,7 +440,7 @@ impl Buffer {
     /// An active buffer prevents drawing on its slot until a Release event is received or until
     /// manually deactivated.
     pub fn activate(&self) -> Result<(), ActivateSlotError> {
-        let data = self.data().ok_or(InvalidId)?;
+        let data = self.data().expect("UserData type mismatch");
 
         // This bitwise AND will transition INACTIVE -> ACTIVE, or do nothing if the buffer was
         // already ACTIVE.  No other ordering is required, as the server will not send a Release
@@ -470,7 +461,7 @@ impl Buffer {
     /// attached to a surface but not committed.  Calling this function on a buffer that was
     /// committed to a surface risks making the surface contents undefined.
     pub fn deactivate(&self) -> Result<(), ActivateSlotError> {
-        let data = self.data().ok_or(InvalidId)?;
+        let data = self.data().expect("UserData type mismatch");
 
         // Same operation as the Release event, but we know the Buffer was not dropped.
         match data.state.fetch_or(BufferData::RELEASE_SET, Ordering::Relaxed) {

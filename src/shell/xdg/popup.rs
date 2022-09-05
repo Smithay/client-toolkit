@@ -12,13 +12,11 @@ use wayland_client::{
     protocol::{wl_compositor::WlCompositor, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
-use wayland_protocols::xdg::shell::client::{
-    xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base::XdgWmBase,
-};
+use wayland_protocols::xdg::shell::client::{xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base};
 
 #[derive(Debug, Clone)]
 pub struct Popup {
-    inner: Arc<Option<PopupInner>>,
+    inner: Arc<PopupInner>,
 }
 
 impl Eq for Popup {}
@@ -30,7 +28,7 @@ impl PartialEq for Popup {
 
 #[derive(Debug)]
 pub struct PopupData {
-    inner: Weak<Option<PopupInner>>,
+    inner: Weak<PopupInner>,
 }
 
 #[derive(Debug)]
@@ -53,7 +51,7 @@ impl Popup {
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
         compositor: &impl ProvidesBoundGlobal<WlCompositor, 5>,
-        wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData>
@@ -80,62 +78,59 @@ impl Popup {
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
         surface: impl Into<Surface>,
-        wm_base: &impl ProvidesBoundGlobal<XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, PopupData>
             + Dispatch<xdg_popup::XdgPopup, PopupData>
             + 'static,
     {
-        // We really need an Arc::try_new_cyclic function to handle errors during creation.
-        // Emulate that function by creating an Arc containing None in the error case, and use the
-        // closure's context to pass the real error back to the caller so the invalid Arc is never
-        // returned.
-        let mut err = Ok(());
+        let surface = surface.into();
+        let wm_base = wm_base.bound_global()?;
+        // Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        let freeze = qh.freeze();
         let inner = Arc::new_cyclic(|weak| {
-            let surface =
-                XdgShellSurface::new(wm_base, qh, surface, PopupData { inner: weak.clone() })
-                    .map_err(|e| err = Err(e))
-                    .ok()?;
-            let xdg_popup = surface
-                .xdg_surface()
-                .get_popup(parent, position, qh, PopupData { inner: weak.clone() })
-                .map_err(|e| err = Err(e.into()))
-                .ok()?;
+            let xdg_surface = wm_base.get_xdg_surface(
+                surface.wl_surface(),
+                qh,
+                PopupData { inner: weak.clone() },
+            );
+            let surface = XdgShellSurface { surface, xdg_surface };
+            let xdg_popup = surface.xdg_surface().get_popup(
+                parent,
+                position,
+                qh,
+                PopupData { inner: weak.clone() },
+            );
 
-            Some(PopupInner {
+            PopupInner {
                 surface,
                 xdg_popup,
                 pending_position: (AtomicI32::new(0), AtomicI32::new(0)),
                 pending_dimensions: (AtomicI32::new(-1), AtomicI32::new(-1)),
                 pending_token: AtomicU32::new(0),
                 configure_state: AtomicU32::new(PopupConfigure::STATE_NEW),
-            })
+            }
         });
-        // This assert checks that err was set properly above; it should be impossible to trigger,
-        // so it's not a run-time assert.
-        debug_assert!(inner.is_some() || err.is_err());
-        err.map(|()| Popup { inner })
-    }
-
-    fn inner(&self) -> &PopupInner {
-        Option::as_ref(&self.inner).expect("The contents of an initialized Popup cannot be None")
+        drop(freeze);
+        Ok(Popup { inner })
     }
 
     pub fn xdg_popup(&self) -> &xdg_popup::XdgPopup {
-        &self.inner().xdg_popup
+        &self.inner.xdg_popup
     }
 
     pub fn xdg_shell_surface(&self) -> &XdgShellSurface {
-        &self.inner().surface
+        &self.inner.surface
     }
 
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.inner().surface.xdg_surface()
+        self.inner.surface.xdg_surface()
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.inner().surface.wl_surface()
+        self.inner.surface.wl_surface()
     }
 
     pub fn reposition(&self, position: &xdg_positioner::XdgPositioner, token: u32) {
@@ -149,13 +144,7 @@ impl PopupData {
     /// This returns `None` if the popup has been destroyed.
     pub fn popup(&self) -> Option<Popup> {
         let inner = self.inner.upgrade()?;
-        if inner.is_some() {
-            Some(Popup { inner })
-        } else {
-            // This is unlikely but it could happen if another thread gets the data out of the
-            // XdgSurface before it is destroyed and calls popup before the empty Arc is dropped.
-            None
-        }
+        Some(Popup { inner })
     }
 }
 
@@ -223,7 +212,7 @@ where
             Some(popup) => popup,
             None => return,
         };
-        let inner = popup.inner();
+        let inner = &popup.inner;
         match event {
             xdg_surface::Event::Configure { serial } => {
                 xdg_surface.ack_configure(serial);
@@ -266,7 +255,7 @@ where
             Some(popup) => popup,
             None => return,
         };
-        let inner = popup.inner();
+        let inner = &popup.inner;
         match event {
             xdg_popup::Event::Configure { x, y, width, height } => {
                 inner.pending_position.0.store(x, Relaxed);
@@ -290,8 +279,10 @@ where
 macro_rules! delegate_xdg_popup {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
-            $crate::reexports::protocols::xdg::shell::client::xdg_popup::XdgPopup: $crate::shell::xdg::popup::PopupData,
-            $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::popup::PopupData,
+            $crate::reexports::protocols::xdg::shell::client::xdg_popup::XdgPopup: $crate::shell::xdg::popup::PopupData
+        ] => $crate::shell::xdg::popup::PopupData);
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::popup::PopupData
         ] => $crate::shell::xdg::popup::PopupData);
     };
 }

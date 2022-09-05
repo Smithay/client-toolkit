@@ -85,7 +85,7 @@ impl CompositorState {
     {
         let compositor = self.wl_compositor.get()?;
 
-        let surface = compositor.create_surface(qh, data)?;
+        let surface = compositor.create_surface(qh, data);
 
         Ok(surface)
     }
@@ -158,7 +158,7 @@ impl Surface {
         D: Dispatch<wl_surface::WlSurface, U> + 'static,
         U: Send + Sync + 'static,
     {
-        Ok(Surface(compositor.bound_global()?.create_surface(qh, data)?))
+        Ok(Surface(compositor.bound_global()?.create_surface(qh, data)))
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
@@ -183,20 +183,36 @@ macro_rules! delegate_compositor {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData,
-                $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData,
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
+            ] => $crate::compositor::CompositorState
+        );
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData
+            ] => $crate::compositor::CompositorState
+        );
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
             ] => $crate::compositor::CompositorState
         );
     };
     ($ty: ty, surface: [$($surface: ty),*$(,)?]) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData,
-                $(
-                    $crate::reexports::client::protocol::wl_surface::WlSurface: $surface,
-                )*
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface,
+                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
+            ] => $crate::compositor::CompositorState
+        );
+        $(
+            $crate::reexports::client::delegate_dispatch!($ty:
+                [
+                    $crate::reexports::client::protocol::wl_surface::WlSurface: $surface
+                ] => $crate::compositor::CompositorState
+            );
+        )*
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
             ] => $crate::compositor::CompositorState
         );
     };
@@ -298,10 +314,12 @@ impl Region {
         compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
     ) -> Result<Region, GlobalError> {
         compositor
-            .bound_global()?
-            .send_constructor(wl_compositor::Request::CreateRegion {}, Arc::new(RegionData))
+            .bound_global()
+            .map(|c| {
+                c.send_constructor(wl_compositor::Request::CreateRegion {}, Arc::new(RegionData))
+                    .unwrap_or_else(|_| Proxy::inert(c.backend().clone()))
+            })
             .map(Region)
-            .map_err(Into::into)
     }
 
     pub fn add(&self, x: i32, y: i32, width: i32, height: i32) {

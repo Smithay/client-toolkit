@@ -19,12 +19,12 @@ use nix::{
     unistd,
 };
 use wayland_client::{
-    backend::{InvalidId, ObjectData},
+    backend::ObjectData,
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
     Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
+use crate::globals::ProvidesBoundGlobal;
 
 use super::CreatePoolError;
 
@@ -56,7 +56,7 @@ impl RawPool {
                 wl_shm::Request::CreatePool { fd: shm_fd, size: len as i32 },
                 Arc::new(ShmPoolData),
             )
-            .map_err(GlobalError::from)?;
+            .unwrap_or_else(|_| Proxy::inert(shm.backend().clone()));
         let mmap = unsafe { MmapMut::map_mut(&mem_file)? };
 
         Ok(RawPool { pool, len, mem_file, mmap })
@@ -111,14 +111,12 @@ impl RawPool {
         format: wl_shm::Format,
         udata: U,
         qh: &QueueHandle<D>,
-    ) -> Result<wl_buffer::WlBuffer, InvalidId>
+    ) -> wl_buffer::WlBuffer
     where
         D: Dispatch<wl_buffer::WlBuffer, U> + 'static,
         U: Send + Sync + 'static,
     {
-        let buffer = self.pool.create_buffer(offset, width, height, stride, format, qh, udata)?;
-
-        Ok(buffer)
+        self.pool.create_buffer(offset, width, height, stride, format, qh, udata)
     }
 
     /// Create a new buffer to this pool.
@@ -134,17 +132,19 @@ impl RawPool {
         stride: i32,
         format: wl_shm::Format,
         data: Arc<dyn ObjectData + 'static>,
-    ) -> Result<wl_buffer::WlBuffer, InvalidId> {
-        self.pool.send_constructor(
-            wl_shm_pool::Request::CreateBuffer {
-                offset,
-                width,
-                height,
-                stride,
-                format: WEnum::Value(format),
-            },
-            data,
-        )
+    ) -> wl_buffer::WlBuffer {
+        self.pool
+            .send_constructor(
+                wl_shm_pool::Request::CreateBuffer {
+                    offset,
+                    width,
+                    height,
+                    stride,
+                    format: WEnum::Value(format),
+                },
+                data,
+            )
+            .unwrap_or_else(|_| Proxy::inert(self.pool.backend().clone()))
     }
 
     /// Returns the pool object used to communicate with the server.

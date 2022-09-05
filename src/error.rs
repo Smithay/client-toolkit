@@ -1,5 +1,3 @@
-use wayland_backend::client::InvalidId;
-
 /// An error that may occur when creating objects using a global.
 #[derive(Debug, thiserror::Error)]
 pub enum GlobalError {
@@ -14,10 +12,4 @@ pub enum GlobalError {
     /// This is likely a programming error due to a missing entry in the registry_handlers! macro.
     #[error("global enumeration is not finished or missing ProvidesRegistryState delegation")]
     NotReady,
-
-    /// An invalid id was acted upon
-    ///
-    /// This likely means a request was sent to a dead protocol object.
-    #[error(transparent)]
-    Id(#[from] InvalidId),
 }
