@@ -643,16 +643,16 @@
 <span id="637">637</span>
 <span id="638">638</span>
 <span id="639">639</span>
+<span id="640">640</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! [`RegistryState`] provides an interface to bind globals regularly, creating an object with each new</span>
 <span class="doccomment">//! instantiation or caching bound globals to prevent duplicate object instances from being created. Binding</span>
-<span class="doccomment">//! a global regularly is accomplished through [`RegistryState::bind_once`]. For caching a bound global use</span>
-<span class="doccomment">//! [`RegistryState::bind_cached`].</span>
+<span class="doccomment">//! a global regularly is accomplished through [`RegistryState::bind_one`].</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The [`delegate_registry`] macro is used to implement handling for [`wl_registry`].</span>
+<span class="doccomment">//! The [`delegate_registry`](crate::delegate_registry) macro is used to implement handling for [`wl_registry`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Sample implementation of [`RegistryHandler`]</span>
 <span class="doccomment">//!</span>
@@ -729,6 +729,8 @@
 <span class="doccomment">/// Delegates that choose to implement this trait may be used in [`registry_handlers`] which</span>
 <span class="doccomment">/// automatically notifies delegates about the creation and destruction of globals.</span>
 <span class="doccomment">///</span>
+<span class="doccomment">/// [`registry_handlers`]: crate::registry_handlers</span>
+<span class="doccomment">///</span>
 <span class="doccomment">/// Note that in order to delegate registry handling to a type which implements this trait, your `D` data type</span>
 <span class="doccomment">/// must implement [`ProvidesRegistryState`].</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>
@@ -744,7 +746,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The provided registry handle may be used to bind the global.  This is not called during</span>
     <span class="doccomment">/// initial enumeration of globals, only for globals added after the calls to</span>
-    <span class="doccomment">/// [`Registryhandler::ready`].  It is primarily useful for multi-instance globals such as</span>
+    <span class="doccomment">/// [`RegistryHandler::ready`].  It is primarily useful for multi-instance globals such as</span>
     <span class="doccomment">/// `wl_output` and `wl_seat`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default implementation does nothing.</span>
