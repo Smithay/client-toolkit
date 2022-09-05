@@ -643,7 +643,6 @@
 <span id="637">637</span>
 <span id="638">638</span>
 <span id="639">639</span>
-<span id="640">640</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].</span>
@@ -718,7 +717,6 @@
     <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
 };
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">backend::InvalidId</span>,
     <span class="ident">protocol</span>::{<span class="ident">wl_callback</span>, <span class="ident">wl_registry</span>},
     <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
 };
@@ -815,10 +813,6 @@
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the requested version of the global is not supported&quot;</span>)]</span>
     <span class="ident">UnsupportedVersion</span>,
 
-    <span class="doccomment">/// Protocol error.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Protocol</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">InvalidId</span>),
-
     <span class="doccomment">/// The requested global was not found in the registry.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the requested global was not found in the registry&quot;</span>)]</span>
     <span class="ident">NotPresent</span>,
@@ -862,8 +856,8 @@
             <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let</span> <span class="ident">display</span> <span class="op">=</span> <span class="ident">conn</span>.<span class="ident">display</span>();
-        <span class="kw">let</span> <span class="ident">registry</span> <span class="op">=</span> <span class="ident">display</span>.<span class="ident">get_registry</span>(<span class="ident">qh</span>, <span class="ident">GlobalData</span>).<span class="ident">unwrap</span>();
-        <span class="ident">display</span>.<span class="ident">sync</span>(<span class="ident">qh</span>, <span class="ident">RegistryReady</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">registry</span> <span class="op">=</span> <span class="ident">display</span>.<span class="ident">get_registry</span>(<span class="ident">qh</span>, <span class="ident">GlobalData</span>);
+        <span class="ident">display</span>.<span class="ident">sync</span>(<span class="ident">qh</span>, <span class="ident">RegistryReady</span>);
         <span class="ident">RegistryState</span> { <span class="ident">registry</span>, <span class="ident">globals</span>: <span class="ident">Vec::new</span>(), <span class="ident">ready</span>: <span class="bool-val">false</span> }
     }
 
@@ -941,7 +935,7 @@
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BindError::UnsupportedVersion</span>);
             }
             <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">global</span>.<span class="ident">version</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>());
-            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>);
             <span class="macro">log::debug!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, <span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>);
 
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>);
@@ -980,7 +974,7 @@
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BindError::UnsupportedVersion</span>);
             }
             <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">global</span>.<span class="ident">version</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>());
-            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>);
             <span class="macro">log::debug!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, <span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>);
 
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>);
@@ -1017,7 +1011,7 @@
             }
             <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">global</span>.<span class="ident">version</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>());
             <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">make_udata</span>(<span class="ident">global</span>.<span class="ident">name</span>);
-            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>);
             <span class="macro">log::debug!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, <span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>);
 
             <span class="ident">rv</span>.<span class="ident">push</span>(<span class="ident">proxy</span>);
@@ -1071,9 +1065,13 @@
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_registry::WlRegistry</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>,
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryReady</span>,
-            ]  =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryState</span>
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_registry::WlRegistry</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
+            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryState</span>
+        );
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+            [
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryReady</span>
+            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryState</span>
         );
     };
 }

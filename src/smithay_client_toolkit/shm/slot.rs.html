@@ -558,15 +558,6 @@
 <span id="552">552</span>
 <span id="553">553</span>
 <span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A pool implementation based on buffer slots</span>
 
 <span class="kw">use</span> <span class="ident">std::io</span>;
@@ -576,7 +567,6 @@
 };
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">backend::InvalidId</span>,
     <span class="ident">protocol</span>::{<span class="ident">wl_buffer</span>, <span class="ident">wl_shm</span>, <span class="ident">wl_surface</span>},
     <span class="ident">Proxy</span>,
 };
@@ -585,10 +575,6 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateBufferError</span> {
-    <span class="doccomment">/// Protocol error.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Protocol</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">InvalidId</span>),
-
     <span class="doccomment">/// Slot creation error.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">Io</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">io::Error</span>),
@@ -607,10 +593,6 @@
     <span class="doccomment">/// Buffer was already active</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Buffer was already active&quot;</span>)]</span>
     <span class="ident">AlreadyActive</span>,
-
-    <span class="doccomment">/// Protocol error.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Protocol</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">InvalidId</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -892,7 +874,7 @@
             <span class="ident">inner</span>: <span class="ident">slot</span>.<span class="ident">inner</span>.<span class="ident">clone</span>(),
             <span class="ident">state</span>: <span class="ident">AtomicU8::new</span>(<span class="ident">BufferData::INACTIVE</span>),
         });
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">create_buffer_raw</span>(<span class="ident">offset</span>, <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">stride</span>, <span class="ident">format</span>, <span class="ident">data</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">create_buffer_raw</span>(<span class="ident">offset</span>, <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">stride</span>, <span class="ident">format</span>, <span class="ident">data</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">Buffer</span> { <span class="ident">buffer</span>, <span class="ident">height</span>, <span class="ident">stride</span>, <span class="ident">slot</span> })
     }
 }
@@ -1018,7 +1000,7 @@
     <span class="doccomment">/// An active buffer prevents drawing on its slot until a Release event is received or until</span>
     <span class="doccomment">/// manually deactivated.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">activate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ActivateSlotError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>().<span class="ident">ok_or</span>(<span class="ident">InvalidId</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>().<span class="ident">expect</span>(<span class="string">&quot;UserData type mismatch&quot;</span>);
 
         <span class="comment">// This bitwise AND will transition INACTIVE -&gt; ACTIVE, or do nothing if the buffer was</span>
         <span class="comment">// already ACTIVE.  No other ordering is required, as the server will not send a Release</span>
@@ -1039,7 +1021,7 @@
     <span class="doccomment">/// attached to a surface but not committed.  Calling this function on a buffer that was</span>
     <span class="doccomment">/// committed to a surface risks making the surface contents undefined.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deactivate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ActivateSlotError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>().<span class="ident">ok_or</span>(<span class="ident">InvalidId</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>().<span class="ident">expect</span>(<span class="string">&quot;UserData type mismatch&quot;</span>);
 
         <span class="comment">// Same operation as the Release event, but we know the Buffer was not dropped.</span>
         <span class="kw">match</span> <span class="ident">data</span>.<span class="ident">state</span>.<span class="ident">fetch_or</span>(<span class="ident">BufferData::RELEASE_SET</span>, <span class="ident">Ordering::Relaxed</span>) {

@@ -549,12 +549,6 @@
 <span id="543">543</span>
 <span id="544">544</span>
 <span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>, <span class="ident">Weak</span>};
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
@@ -858,21 +852,18 @@
     {
         <span class="kw">let</span> <span class="ident">decoration_manager</span> <span class="op">=</span> <span class="ident">window_state</span>.<span class="ident">xdg_decoration_manager</span>.<span class="ident">get</span>().<span class="ident">ok</span>();
 
-        <span class="comment">// We really need an Arc::try_new_cyclic function to handle errors during creation.</span>
-        <span class="comment">// Emulate that function by creating an Arc containing None in the error case, and use the</span>
-        <span class="comment">// closure&#39;s context to pass the real error back to the caller so the invalid Arc is never</span>
-        <span class="comment">// returned.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">err</span> <span class="op">=</span> <span class="prelude-val">Ok</span>(());
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new_cyclic</span>(<span class="op">|</span><span class="ident">weak</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span> <span class="ident">XdgShellSurface::new</span>(<span class="ident">wm_base</span>, <span class="ident">qh</span>, <span class="ident">surface</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()))
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">err</span> <span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>))
-                .<span class="ident">ok</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">surface</span>.<span class="ident">into</span>();
+        <span class="kw">let</span> <span class="ident">wm_base</span> <span class="op">=</span> <span class="ident">wm_base</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>;
+        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the</span>
+        <span class="comment">// new objects being processed and the Weak in the PopupData becoming usable.</span>
+        <span class="kw">let</span> <span class="ident">freeze</span> <span class="op">=</span> <span class="ident">qh</span>.<span class="ident">freeze</span>();
 
-            <span class="kw">let</span> <span class="ident">xdg_toplevel</span> <span class="op">=</span> <span class="ident">xdg_surface</span>
-                .<span class="ident">xdg_surface</span>()
-                .<span class="ident">get_toplevel</span>(<span class="ident">qh</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()))
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">err</span> <span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">into</span>()))
-                .<span class="ident">ok</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">Window</span>(<span class="ident">Arc::new_cyclic</span>(<span class="op">|</span><span class="ident">weak</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span>
+                <span class="ident">wm_base</span>.<span class="ident">get_xdg_surface</span>(<span class="ident">surface</span>.<span class="ident">wl_surface</span>(), <span class="ident">qh</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()));
+            <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span> <span class="ident">XdgShellSurface</span> { <span class="ident">surface</span>, <span class="ident">xdg_surface</span> };
+
+            <span class="kw">let</span> <span class="ident">xdg_toplevel</span> <span class="op">=</span> <span class="ident">xdg_surface</span>.<span class="ident">xdg_surface</span>().<span class="ident">get_toplevel</span>(<span class="ident">qh</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()));
 
             <span class="comment">// If server side decorations are available, create the toplevel decoration.</span>
             <span class="kw">let</span> <span class="ident">toplevel_decoration</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">decoration_manager</span>) <span class="op">=</span> <span class="ident">decoration_manager</span> {
@@ -882,9 +873,11 @@
 
                     <span class="kw">_</span> =&gt; {
                         <span class="comment">// Create the toplevel decoration.</span>
-                        <span class="kw">let</span> <span class="ident">toplevel_decoration</span> <span class="op">=</span> <span class="ident">decoration_manager</span>
-                            .<span class="ident">get_toplevel_decoration</span>(<span class="kw-2">&amp;</span><span class="ident">xdg_toplevel</span>, <span class="ident">qh</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()))
-                            .<span class="ident">expect</span>(<span class="string">&quot;failed to create toplevel decoration&quot;</span>);
+                        <span class="kw">let</span> <span class="ident">toplevel_decoration</span> <span class="op">=</span> <span class="ident">decoration_manager</span>.<span class="ident">get_toplevel_decoration</span>(
+                            <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel</span>,
+                            <span class="ident">qh</span>,
+                            <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()),
+                        );
 
                         <span class="comment">// Tell the compositor we would like a specific mode.</span>
                         <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">decorations</span> {
@@ -904,7 +897,7 @@
                 <span class="prelude-val">None</span>
             };
 
-            <span class="prelude-val">Some</span>(<span class="ident">WindowInner</span> {
+            <span class="ident">WindowInner</span> {
                 <span class="ident">xdg_surface</span>,
                 <span class="ident">xdg_toplevel</span>,
                 <span class="ident">toplevel_decoration</span>,
@@ -915,14 +908,9 @@
                     <span class="ident">decoration_mode</span>: <span class="ident">DecorationMode::Client</span>,
                     <span class="ident">states</span>: <span class="ident">Vec::new</span>(),
                 }),
-            })
-        });
-
-        <span class="comment">// This assert checks that err was set properly above; it should be impossible to trigger,</span>
-        <span class="comment">// so it&#39;s not a run-time assert.</span>
-        <span class="macro">debug_assert!</span>(<span class="ident">inner</span>.<span class="ident">is_some</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">err</span>.<span class="ident">is_err</span>());
-
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">err</span>.<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> <span class="ident">Window</span>(<span class="ident">inner</span>))<span class="question-mark">?</span>;
+            }
+        }));
+        <span class="ident">drop</span>(<span class="ident">freeze</span>);
 
         <span class="comment">// Apply state from builder</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">title</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">title</span> {
@@ -961,7 +949,7 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Window</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Window</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">Window</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_xdg_toplevel</span>(<span class="ident">toplevel</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&gt;</span> {
@@ -992,39 +980,39 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">show_window_menu</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">serial</span>: <span class="ident">u32</span>, <span class="ident">position</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>)) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">show_window_menu</span>(<span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">position</span>.<span class="number">0</span>, <span class="ident">position</span>.<span class="number">1</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">show_window_menu</span>(<span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">position</span>.<span class="number">0</span>, <span class="ident">position</span>.<span class="number">1</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_title</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">title</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_title</span>(<span class="ident">title</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_title</span>(<span class="ident">title</span>.<span class="ident">into</span>())
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_app_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">app_id</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_app_id</span>(<span class="ident">app_id</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_app_id</span>(<span class="ident">app_id</span>.<span class="ident">into</span>())
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Window</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_parent</span>(<span class="ident">parent</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_parent</span>(<span class="ident">parent</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_maximized</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_maximized</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unset_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">unset_maximized</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">unset_maximized</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mimimized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_minmized</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_minmized</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">output</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_fullscreen</span>(<span class="ident">output</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_fullscreen</span>(<span class="ident">output</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unset_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">unset_fullscreen</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">unset_fullscreen</span>()
     }
 
     <span class="doccomment">/// Requests the window should use the specified decoration mode.</span>
@@ -1038,7 +1026,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">request_decoration_mode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mode</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DecorationMode</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">request_decoration_mode</span>(<span class="ident">mode</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">request_decoration_mode</span>(<span class="ident">mode</span>)
     }
 
     <span class="comment">// TODO: Move</span>
@@ -1048,14 +1036,14 @@
     <span class="comment">// Double buffered window state</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_min_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">min_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_min_size</span>(<span class="ident">min_size</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_min_size</span>(<span class="ident">min_size</span>)
     }
 
     <span class="doccomment">/// # Protocol errors</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The maximum size of the window may not be smaller than the minimum size.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_max_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">max_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">set_max_size</span>(<span class="ident">max_size</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_max_size</span>(<span class="ident">max_size</span>)
     }
 
     <span class="comment">// TODO: Window geometry</span>
@@ -1066,17 +1054,17 @@
 
     <span class="doccomment">/// Returns the underlying surface wrapped by this window.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wl_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">xdg_surface</span>.<span class="ident">wl_surface</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">xdg_surface</span>.<span class="ident">wl_surface</span>()
     }
 
     <span class="doccomment">/// Returns the underlying xdg surface wrapped by this window.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">xdg_surface</span>.<span class="ident">xdg_surface</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">xdg_surface</span>.<span class="ident">xdg_surface</span>()
     }
 
     <span class="doccomment">/// Returns the underlying xdg toplevel wrapped by this window.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_toplevel</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>().<span class="ident">xdg_toplevel</span>
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">xdg_toplevel</span>
     }
 }
 
@@ -1087,24 +1075,24 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WindowData</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Weak</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WindowData</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&gt;</span>);
 
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules!</span> <span class="ident">delegate_xdg_window</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>,
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>
+        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>
+        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
+        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>
         ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
     };
-}
-
-<span class="kw">impl</span> <span class="ident">Window</span> {
-    <span class="kw">fn</span> <span class="ident">inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">WindowInner</span> {
-        <span class="ident">Option::as_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>).<span class="ident">expect</span>(<span class="string">&quot;The contents of an initialized Window cannot be None&quot;</span>)
-    }
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0 (4b91a6ea7 2022-08-08)" ></div>

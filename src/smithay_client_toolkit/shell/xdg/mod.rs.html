@@ -153,6 +153,11 @@
 <span id="147">147</span>
 <span id="148">148</span>
 <span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ## Cross desktop group (XDG) shell</span>
 <span class="comment">// TODO: Examples</span>
 
@@ -196,10 +201,16 @@
         <span class="ident">wm_base</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">xdg_wm_base::XdgWmBase</span>, <span class="number">4</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
         <span class="ident">wm_base</span>
-            .<span class="ident">bound_global</span>()<span class="question-mark">?</span>
-            .<span class="ident">send_constructor</span>(<span class="ident">xdg_wm_base::Request::CreatePositioner</span> {}, <span class="ident">Arc::new</span>(<span class="ident">PositionerData</span>))
+            .<span class="ident">bound_global</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">wm_base</span><span class="op">|</span> {
+                <span class="ident">wm_base</span>
+                    .<span class="ident">send_constructor</span>(
+                        <span class="ident">xdg_wm_base::Request::CreatePositioner</span> {},
+                        <span class="ident">Arc::new</span>(<span class="ident">PositionerData</span>),
+                    )
+                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Proxy::inert</span>(<span class="ident">wm_base</span>.<span class="ident">backend</span>().<span class="ident">clone</span>()))
+            })
             .<span class="ident">map</span>(<span class="ident">XdgPositioner</span>)
-            .<span class="ident">map_err</span>(<span class="ident">From::from</span>)
     }
 }
 
@@ -268,8 +279,7 @@
         <span class="ident">U</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">surface</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span>
-            <span class="ident">wm_base</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>.<span class="ident">get_xdg_surface</span>(<span class="ident">surface</span>.<span class="ident">wl_surface</span>(), <span class="ident">qh</span>, <span class="ident">udata</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span> <span class="ident">wm_base</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>.<span class="ident">get_xdg_surface</span>(<span class="ident">surface</span>.<span class="ident">wl_surface</span>(), <span class="ident">qh</span>, <span class="ident">udata</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">XdgShellSurface</span> { <span class="ident">xdg_surface</span>, <span class="ident">surface</span> })
     }
@@ -291,7 +301,7 @@
 <span class="macro">macro_rules!</span> <span class="ident">delegate_xdg_shell</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>,
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
         ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::XdgShellState</span>);
     };
 }

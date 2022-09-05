@@ -724,7 +724,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SeatError::UnsupportedCapability</span>(<span class="ident">Capability::Keyboard</span>).<span class="ident">into</span>());
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">seat</span>.<span class="ident">get_keyboard</span>(<span class="ident">qh</span>, <span class="ident">udata</span>).<span class="ident">map_err</span>(<span class="ident">Into</span>::<span class="op">&lt;</span><span class="ident">SeatError</span><span class="op">&gt;</span><span class="ident">::into</span>)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">seat</span>.<span class="ident">get_keyboard</span>(<span class="ident">qh</span>, <span class="ident">udata</span>))
     }
 }
 

@@ -432,11 +432,6 @@
 <span id="426">426</span>
 <span id="427">427</span>
 <span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;xkbcommon&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">keyboard</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">pointer</span>;
@@ -450,7 +445,6 @@
     },
 };
 
-<span class="kw">use</span> <span class="ident">wayland_backend::client::InvalidId</span>;
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
     <span class="ident">protocol</span>::{<span class="ident">wl_pointer</span>, <span class="ident">wl_seat</span>, <span class="ident">wl_touch</span>},
     <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
@@ -492,10 +486,6 @@
     <span class="doccomment">/// The seat is dead.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the seat is dead&quot;</span>)]</span>
     <span class="ident">DeadObject</span>,
-
-    <span class="doccomment">/// Protocol error.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Protocol</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">InvalidId</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -568,7 +558,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SeatError::UnsupportedCapability</span>(<span class="ident">Capability::Pointer</span>));
         }
 
-        <span class="kw">let</span> <span class="ident">pointer</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">get_pointer</span>(<span class="ident">qh</span>, <span class="ident">pointer_data</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">pointer</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">get_pointer</span>(<span class="ident">qh</span>, <span class="ident">pointer_data</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">pointer</span>)
     }
 
@@ -610,7 +600,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SeatError::UnsupportedCapability</span>(<span class="ident">Capability::Touch</span>));
         }
 
-        <span class="kw">let</span> <span class="ident">touch</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">get_touch</span>(<span class="ident">qh</span>, <span class="ident">udata</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">touch</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">get_touch</span>(<span class="ident">qh</span>, <span class="ident">udata</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">touch</span>)
     }
 }
@@ -719,7 +709,7 @@
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_seat::WlSeat</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatData</span>,
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_seat::WlSeat</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatData</span>
             ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
         );
     };

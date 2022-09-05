@@ -759,6 +759,10 @@
 <span id="753">753</span>
 <span id="754">754</span>
 <span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">any::Any</span>,
     <span class="ident">fmt</span>::{<span class="self">self</span>, <span class="ident">Display</span>, <span class="ident">Formatter</span>},
@@ -942,7 +946,7 @@
         <span class="kw">let</span> <span class="ident">xdg_output</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">pending_xdg</span> {
             <span class="kw">let</span> <span class="ident">xdg</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">xdg</span>.<span class="ident">get</span>().<span class="ident">unwrap</span>();
 
-            <span class="prelude-val">Some</span>(<span class="ident">xdg</span>.<span class="ident">get_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">wl_output</span>, <span class="ident">qh</span>, <span class="ident">data</span>).<span class="ident">unwrap</span>())
+            <span class="prelude-val">Some</span>(<span class="ident">xdg</span>.<span class="ident">get_xdg_output</span>(<span class="kw-2">&amp;</span><span class="ident">wl_output</span>, <span class="ident">qh</span>, <span class="ident">data</span>))
         } <span class="kw">else</span> {
             <span class="prelude-val">None</span>
         };
@@ -1105,9 +1109,13 @@
 <span class="macro">macro_rules!</span> <span class="ident">delegate_output</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_output::WlOutput</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputData</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputData</span>,
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_output::WlOutput</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputData</span>
+        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
+        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
+            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputData</span>
         ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::output::OutputState</span>);
     };
 }

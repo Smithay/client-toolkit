@@ -19,17 +19,7 @@
 <span id="13">13</span>
 <span id="14">14</span>
 <span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
-<span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
-<span id="23">23</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">wayland_backend::client::InvalidId</span>;
-
-<span class="doccomment">/// An error that may occur when creating objects using a global.</span>
+</pre><pre class="rust"><code><span class="doccomment">/// An error that may occur when creating objects using a global.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GlobalError</span> {
     <span class="doccomment">/// A compositor global was not available</span>
@@ -43,12 +33,6 @@
     <span class="doccomment">/// This is likely a programming error due to a missing entry in the registry_handlers! macro.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;global enumeration is not finished or missing ProvidesRegistryState delegation&quot;</span>)]</span>
     <span class="ident">NotReady</span>,
-
-    <span class="doccomment">/// An invalid id was acted upon</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This likely means a request was sent to a dead protocol object.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Id</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">InvalidId</span>),
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0 (4b91a6ea7 2022-08-08)" ></div>
