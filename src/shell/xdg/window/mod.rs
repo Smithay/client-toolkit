@@ -429,39 +429,39 @@ impl Window {
     }
 
     pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, position: (u32, u32)) {
-        self.inner().show_window_menu(seat, serial, position.0, position.1)
+        self.0.show_window_menu(seat, serial, position.0, position.1)
     }
 
     pub fn set_title(&self, title: impl Into<String>) {
-        self.inner().set_title(title.into())
+        self.0.set_title(title.into())
     }
 
     pub fn set_app_id(&self, app_id: impl Into<String>) {
-        self.inner().set_app_id(app_id.into())
+        self.0.set_app_id(app_id.into())
     }
 
     pub fn set_parent(&self, parent: Option<&Window>) {
-        self.inner().set_parent(parent)
+        self.0.set_parent(parent)
     }
 
     pub fn set_maximized(&self) {
-        self.inner().set_maximized()
+        self.0.set_maximized()
     }
 
     pub fn unset_maximized(&self) {
-        self.inner().unset_maximized()
+        self.0.unset_maximized()
     }
 
     pub fn set_mimimized(&self) {
-        self.inner().set_minmized()
+        self.0.set_minmized()
     }
 
     pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
-        self.inner().set_fullscreen(output)
+        self.0.set_fullscreen(output)
     }
 
     pub fn unset_fullscreen(&self) {
-        self.inner().unset_fullscreen()
+        self.0.unset_fullscreen()
     }
 
     /// Requests the window should use the specified decoration mode.
@@ -475,7 +475,7 @@ impl Window {
     ///
     /// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.
     pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
-        self.inner().request_decoration_mode(mode)
+        self.0.request_decoration_mode(mode)
     }
 
     // TODO: Move
@@ -485,14 +485,14 @@ impl Window {
     // Double buffered window state
 
     pub fn set_min_size(&self, min_size: Option<(u32, u32)>) {
-        self.inner().set_min_size(min_size)
+        self.0.set_min_size(min_size)
     }
 
     /// # Protocol errors
     ///
     /// The maximum size of the window may not be smaller than the minimum size.
     pub fn set_max_size(&self, max_size: Option<(u32, u32)>) {
-        self.inner().set_max_size(max_size)
+        self.0.set_max_size(max_size)
     }
 
     // TODO: Window geometry
@@ -503,17 +503,17 @@ impl Window {
 
     /// Returns the underlying surface wrapped by this window.
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.inner().xdg_surface.wl_surface()
+        self.0.xdg_surface.wl_surface()
     }
 
     /// Returns the underlying xdg surface wrapped by this window.
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.inner().xdg_surface.xdg_surface()
+        self.0.xdg_surface.xdg_surface()
     }
 
     /// Returns the underlying xdg toplevel wrapped by this window.
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
-        &self.inner().xdg_toplevel
+        &self.0.xdg_toplevel
     }
 }
 
@@ -542,10 +542,4 @@ macro_rules! delegate_xdg_window {
             $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData
         ] => $crate::shell::xdg::window::XdgWindowState);
     };
-}
-
-impl Window {
-    fn inner(&self) -> &WindowInner {
-        &self.0
-    }
 }

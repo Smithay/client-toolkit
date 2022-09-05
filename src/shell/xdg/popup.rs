@@ -117,24 +117,20 @@ impl Popup {
         Ok(Popup { inner })
     }
 
-    fn inner(&self) -> &PopupInner {
-        &self.inner
-    }
-
     pub fn xdg_popup(&self) -> &xdg_popup::XdgPopup {
-        &self.inner().xdg_popup
+        &self.inner.xdg_popup
     }
 
     pub fn xdg_shell_surface(&self) -> &XdgShellSurface {
-        &self.inner().surface
+        &self.inner.surface
     }
 
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.inner().surface.xdg_surface()
+        self.inner.surface.xdg_surface()
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.inner().surface.wl_surface()
+        self.inner.surface.wl_surface()
     }
 
     pub fn reposition(&self, position: &xdg_positioner::XdgPositioner, token: u32) {
@@ -216,7 +212,7 @@ where
             Some(popup) => popup,
             None => return,
         };
-        let inner = popup.inner();
+        let inner = &popup.inner;
         match event {
             xdg_surface::Event::Configure { serial } => {
                 xdg_surface.ack_configure(serial);
@@ -259,7 +255,7 @@ where
             Some(popup) => popup,
             None => return,
         };
-        let inner = popup.inner();
+        let inner = &popup.inner;
         match event {
             xdg_popup::Event::Configure { x, y, width, height } => {
                 inner.pending_position.0.store(x, Relaxed);
