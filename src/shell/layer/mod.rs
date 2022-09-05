@@ -370,8 +370,10 @@ impl LayerSurfaceData {
 macro_rules! delegate_layer {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty: [
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData,
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData,
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData
+        ] => $crate::shell::layer::LayerState);
+        $crate::reexports::client::delegate_dispatch!($ty: [
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData
         ] => $crate::shell::layer::LayerState);
     };
 }

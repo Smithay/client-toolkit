@@ -420,9 +420,13 @@ macro_rules! delegate_registry {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData,
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::registry::RegistryReady,
-            ]  => $crate::registry::RegistryState
+                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData
+            ] => $crate::registry::RegistryState
+        );
+        $crate::reexports::client::delegate_dispatch!($ty:
+            [
+                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::registry::RegistryReady
+            ] => $crate::registry::RegistryState
         );
     };
 }

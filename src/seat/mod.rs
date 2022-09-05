@@ -275,7 +275,7 @@ macro_rules! delegate_seat {
     ($ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($ty:
             [
-                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData,
+                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData
             ] => $crate::seat::SeatState
         );
     };
