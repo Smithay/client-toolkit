@@ -18,6 +18,8 @@ use crate::{
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
+/// Simplified event handler for [`wl_output::WlOutput`].
+/// See [`OutputState`].
 pub trait OutputHandler: Sized {
     fn output_state(&mut self) -> &mut OutputState;
 
@@ -51,6 +53,58 @@ pub trait OutputHandler: Sized {
 type ScaleWatcherFn =
     dyn Fn(&mut dyn Any, &Connection, &dyn Any, &wl_output::WlOutput) + Send + Sync;
 
+/// A handler for delegating [`wl_output::WlOutput`](wayland_client::protocol::wl_output::WlOutput).
+///
+/// When implementing [`ProvidesRegistryState`],
+/// [`registry_handlers!`](crate::registry_handlers) may be used to delegate all
+/// output events to an instance of this type. It will internally store the internal state of all
+/// outputs and allow querying them via the `OutputState::outputs` and `OutputState::info` methods.
+///
+/// ## Example
+///
+/// ```
+/// use smithay_client_toolkit::output::{OutputHandler,OutputState};
+/// use smithay_client_toolkit::registry::{ProvidesRegistryState,RegistryHandler};
+/// # use smithay_client_toolkit::registry::RegistryState;
+/// use smithay_client_toolkit::{registry_handlers,delegate_output, delegate_registry};
+/// use wayland_client::{Connection,QueueHandle,protocol::wl_output};
+///
+/// struct ExampleState {
+/// #    registry_state: RegistryState,
+///     // The state is usually kept as an attribute of the application state.
+///     output_state: OutputState,
+/// }
+///
+/// // When using `OutputState`, an implementation of `OutputHandler` should be supplied:
+/// impl OutputHandler for ExampleState {
+///      // Custom implementation handling output events here ...
+/// #    fn output_state(&mut self) -> &mut OutputState {
+/// #        &mut self.output_state
+/// #    }
+/// #
+/// #    fn new_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {
+/// #    }
+/// #
+/// #    fn update_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {
+/// #    }
+/// #
+/// #    fn output_destroyed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {
+/// #    }
+/// }
+///
+/// // Delegating to the registry is required to use `OutputState`.
+/// delegate_registry!(ExampleState);
+/// delegate_output!(ExampleState);
+///
+/// impl ProvidesRegistryState for ExampleState {
+/// #    fn registry(&mut self) -> &mut RegistryState {
+/// #        &mut self.registry_state
+/// #    }
+///     // ...
+///
+///     registry_handlers!(OutputState);
+/// }
+/// ```
 pub struct OutputState {
     xdg: GlobalProxy<ZxdgOutputManagerV1>,
     outputs: Vec<OutputInner>,

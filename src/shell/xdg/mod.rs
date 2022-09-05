@@ -85,7 +85,7 @@ impl XdgShellSurface {
     /// Creates an [`XdgShellSurface`].
     ///
     /// This function is generally intended to be called in a higher level abstraction, such as
-    /// [`XdgWindowState::create_window`](self::window::XdgWindowState::create_window).
+    /// [`Window::builder`](self::window::Window::builder).
     ///
     /// The created [`XdgShellSurface`] will destroy the underlying [`XdgSurface`] or [`WlSurface`] when
     /// dropped. Higher level abstractions are responsible for ensuring the destruction order of protocol
