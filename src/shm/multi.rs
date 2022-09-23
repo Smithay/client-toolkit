@@ -396,7 +396,10 @@ impl wayland_client::backend::ObjectData for BufferObjectData {
     fn event(
         self: Arc<Self>,
         _backend: &wayland_backend::client::Backend,
-        msg: wayland_backend::protocol::Message<wayland_backend::client::ObjectId>,
+        msg: wayland_backend::protocol::Message<
+            wayland_backend::client::ObjectId,
+            wayland_backend::io_lifetimes::OwnedFd,
+        >,
     ) -> Option<Arc<dyn wayland_backend::client::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),

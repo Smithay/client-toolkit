@@ -272,7 +272,10 @@ impl ObjectData for ShmPoolData {
     fn event(
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
-        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId>,
+        _: wayland_client::backend::protocol::Message<
+            wayland_client::backend::ObjectId,
+            wayland_backend::io_lifetimes::OwnedFd,
+        >,
     ) -> Option<Arc<(dyn ObjectData + 'static)>> {
         unreachable!("wl_shm_pool has no events")
     }

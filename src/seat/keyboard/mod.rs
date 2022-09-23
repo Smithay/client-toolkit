@@ -6,6 +6,7 @@ use std::{
     env,
     fmt::Debug,
     num::NonZeroU32,
+    os::unix::io::AsRawFd,
     sync::{
         atomic::{AtomicBool, Ordering},
         Mutex,
@@ -469,7 +470,7 @@ where
                             match unsafe {
                                 xkb::Keymap::new_from_fd(
                                     &context,
-                                    fd,
+                                    fd.as_raw_fd(),
                                     size as usize,
                                     xkb::KEYMAP_FORMAT_TEXT_V1,
                                     xkb::COMPILE_NO_FLAGS,
