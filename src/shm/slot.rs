@@ -1,9 +1,12 @@
 //! A pool implementation based on buffer slots
 
 use std::io;
-use std::sync::{
-    atomic::{AtomicU8, AtomicUsize, Ordering},
-    Arc, Mutex, Weak,
+use std::{
+    os::unix::io::AsRawFd,
+    sync::{
+        atomic::{AtomicU8, AtomicUsize, Ordering},
+        Arc, Mutex, Weak,
+    },
 };
 
 use wayland_client::{
@@ -502,7 +505,10 @@ impl wayland_client::backend::ObjectData for BufferData {
     fn event(
         self: Arc<Self>,
         handle: &wayland_client::backend::Backend,
-        msg: wayland_backend::protocol::Message<wayland_backend::client::ObjectId>,
+        msg: wayland_backend::protocol::Message<
+            wayland_backend::client::ObjectId,
+            wayland_backend::io_lifetimes::OwnedFd,
+        >,
     ) -> Option<Arc<dyn wayland_backend::client::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),
@@ -523,7 +529,9 @@ impl wayland_client::backend::ObjectData for BufferData {
                 self.inner.active_buffers.fetch_sub(1, Ordering::Relaxed);
 
                 // The Destroy message is identical to Release message (no args, same ID), so just reply
-                handle.send_request(msg, None, None).expect("Unexpected invalid ID");
+                handle
+                    .send_request(msg.map_fd(|x| x.as_raw_fd()), None, None)
+                    .expect("Unexpected invalid ID");
             }
             BufferData::DEAD => {
                 // no-op, this object is already unusable

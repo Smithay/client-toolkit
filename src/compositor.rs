@@ -347,7 +347,10 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn event(
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
-        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId>,
+        _: wayland_client::backend::protocol::Message<
+            wayland_client::backend::ObjectId,
+            wayland_backend::io_lifetimes::OwnedFd,
+        >,
     ) -> Option<Arc<(dyn wayland_client::backend::ObjectData + 'static)>> {
         unreachable!("wl_region has no events");
     }
