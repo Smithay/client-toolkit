@@ -142,8 +142,8 @@ pub trait XdgShellHandler: Sized {
 
 #[macro_export]
 macro_rules! delegate_xdg_shell {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty: [
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase: $crate::globals::GlobalData
         ] => $crate::shell::xdg::XdgShellState);
     };

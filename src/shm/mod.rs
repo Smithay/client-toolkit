@@ -93,8 +93,8 @@ impl From<Errno> for CreatePoolError {
 /// }
 #[macro_export]
 macro_rules! delegate_shm {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_shm::WlShm: $crate::globals::GlobalData
             ] => $crate::shm::ShmState

@@ -417,16 +417,16 @@ impl RegistryState {
 /// ```
 #[macro_export]
 macro_rules! delegate_registry {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData
-            ] => $crate::registry::RegistryState
+            ]  => $crate::registry::RegistryState
         );
-        $crate::reexports::client::delegate_dispatch!($ty:
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::registry::RegistryReady
-            ] => $crate::registry::RegistryState
+            ]  => $crate::registry::RegistryState
         );
     };
 }
@@ -588,8 +588,8 @@ where
 
 #[macro_export]
 macro_rules! delegate_simple {
-    ($ty:ty, $iface:ty, $max:expr) => {
-        $crate::reexports::client::delegate_dispatch!($ty: [ $iface: () ]
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty:ty, $iface:ty, $max:expr) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [ $iface: () ]
             => $crate::registry::SimpleGlobal<$iface, $max>
         );
     };
@@ -600,7 +600,7 @@ macro_rules! delegate_simple {
 /// See [`delegate_registry`] for an example.
 #[macro_export]
 macro_rules! registry_handlers {
-    ($($ty:ty),* $(,)?) => {
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $($ty:ty),* $(,)?) => {
         fn global_enumeration_finished(
             &mut self,
             conn: &$crate::reexports::client::Connection,

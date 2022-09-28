@@ -342,14 +342,14 @@ pub struct OutputInfo {
 
 #[macro_export]
 macro_rules! delegate_output {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty: [
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData
         ] => $crate::output::OutputState);
-        $crate::reexports::client::delegate_dispatch!($ty: [
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: $crate::globals::GlobalData
         ] => $crate::output::OutputState);
-        $crate::reexports::client::delegate_dispatch!($ty: [
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData
         ] => $crate::output::OutputState);
     };

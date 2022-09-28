@@ -277,11 +277,11 @@ where
 
 #[macro_export]
 macro_rules! delegate_xdg_popup {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty: [
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::xdg::shell::client::xdg_popup::XdgPopup: $crate::shell::xdg::popup::PopupData
         ] => $crate::shell::xdg::popup::PopupData);
-        $crate::reexports::client::delegate_dispatch!($ty: [
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::popup::PopupData
         ] => $crate::shell::xdg::popup::PopupData);
     };
