@@ -43,9 +43,15 @@ pkg-config = "0.3"
 image = "0.23"
 env_logger = "0.9"
 wgpu = "0.13.1"
-raw-window-handle = "0.4.3"
+raw-window-handle = "0.5.0"
 pollster = "0.2.5"
+glutin = "0.30.0-beta.2"
+glow = "0.11.2"
 
 [[example]]
 name = "wgpu"
+required-features = ["wayland-backend/client_system"]
+
+[[example]]
+name = "egl"
 required-features = ["wayland-backend/client_system"]
