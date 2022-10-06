@@ -180,41 +180,41 @@ impl Drop for Surface {
 
 #[macro_export]
 macro_rules! delegate_compositor {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
             ] => $crate::compositor::CompositorState
         );
-        $crate::reexports::client::delegate_dispatch!($ty:
-            [
-                $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData
-            ] => $crate::compositor::CompositorState
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        [
+            $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData
+        ] => $crate::compositor::CompositorState
         );
-        $crate::reexports::client::delegate_dispatch!($ty:
-            [
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
-            ] => $crate::compositor::CompositorState
-        );
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        [
+            $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
+        ] => $crate::compositor::CompositorState
+);
     };
-    ($ty: ty, surface: [$($surface: ty),*$(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, surface: [$($surface: ty),*$(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
             ] => $crate::compositor::CompositorState
         );
         $(
-            $crate::reexports::client::delegate_dispatch!($ty:
-                [
+            $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
                     $crate::reexports::client::protocol::wl_surface::WlSurface: $surface
-                ] => $crate::compositor::CompositorState
+            ] => $crate::compositor::CompositorState
             );
         )*
-        $crate::reexports::client::delegate_dispatch!($ty:
-            [
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
-            ] => $crate::compositor::CompositorState
-        );
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        [
+            $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
+        ] => $crate::compositor::CompositorState
+    );
     };
 }
 

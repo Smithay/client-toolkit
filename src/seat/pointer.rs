@@ -124,15 +124,15 @@ impl PointerDataExt for PointerData {
 
 #[macro_export]
 macro_rules! delegate_pointer {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_pointer::WlPointer: $crate::seat::pointer::PointerData
             ] => $crate::seat::SeatState
         );
     };
-    ($ty: ty, pointer: [$($pointer_data:ty),* $(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, pointer: [$($pointer_data:ty),* $(,)?]) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $(
                     $crate::reexports::client::protocol::wl_pointer::WlPointer: $pointer_data,

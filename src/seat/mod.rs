@@ -124,8 +124,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        let pointer = seat.get_pointer(qh, pointer_data);
-        Ok(pointer)
+        Ok(seat.get_pointer(qh, pointer_data))
     }
 
     /// Creates a touch handle from a seat.
@@ -166,8 +165,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        let touch = seat.get_touch(qh, udata);
-        Ok(touch)
+        Ok(seat.get_touch(qh, udata))
     }
 }
 
@@ -272,8 +270,8 @@ pub struct SeatData {
 
 #[macro_export]
 macro_rules! delegate_seat {
-    ($ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($ty:
+    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData
             ] => $crate::seat::SeatState
