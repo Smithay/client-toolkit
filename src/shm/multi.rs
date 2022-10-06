@@ -251,7 +251,11 @@ impl<K> MultiPool<K> {
         let size = (stride * height) as usize;
         let buf_slot =
             self.buffer_list.iter_mut().find(|buf_slot| buf_slot.key.borrow().eq(key))?;
-        buf_slot.size.ge(&size).then(|| {})?;
+
+        if buf_slot.size >= size {
+            return None;
+        }
+
         buf_slot.used = size;
         let offset = buf_slot.offset;
         if buf_slot.buffer.is_none() {
@@ -316,7 +320,11 @@ impl<K> MultiPool<K> {
         let len = self.inner.len();
         let size = (stride * height) as usize;
         let buf_slot = self.buffer_list.get_mut(index)?;
-        buf_slot.size.ge(&size).then(|| {})?;
+
+        if buf_slot.size >= size {
+            return None;
+        }
+
         buf_slot.used = size;
         let offset = buf_slot.offset;
         if buf_slot.buffer.is_none() {
