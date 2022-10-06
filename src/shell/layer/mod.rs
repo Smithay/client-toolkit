@@ -10,6 +10,7 @@ use wayland_client::{
     protocol::{wl_output, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle,
 };
+use wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup;
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::registry::GlobalProxy;
@@ -207,7 +208,11 @@ impl LayerSurface {
         }
     }
 
-    // TODO: get_popup
+    pub fn get_popup(&self, popup: &XdgPopup) {
+        match self.0.kind {
+            SurfaceKind::Wlr(ref s) => s.get_popup(popup),
+        }
+    }
 
     // Double buffered state
 
