@@ -42,7 +42,7 @@ pkg-config = "0.3"
 [dev-dependencies]
 image = "0.23"
 env_logger = "0.9"
-wgpu = "0.13.1"
+wgpu = "0.14.0"
 raw-window-handle = "0.5.0"
 pollster = "0.2.5"
 glutin = "0.30.0-beta.2"

@@ -1,4 +1,7 @@
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, WaylandHandle};
+use raw_window_handle::{
+    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
+    WaylandDisplayHandle, WaylandWindowHandle,
+};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_output, delegate_registry, delegate_seat, delegate_xdg_shell,
@@ -16,14 +19,16 @@ use wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
     Connection, Proxy, QueueHandle,
 };
+use wgpu::util::{initialize_adapter_from_env_or_default, backend_bits_from_env};
 
 fn main() {
     env_logger::init();
 
     let conn = Connection::connect_to_env().unwrap();
 
+    let backends = backend_bits_from_env().unwrap_or(wgpu::Backends::all());
     // Initialize wgpu
-    let instance = wgpu::Instance::new(wgpu::Backends::all());
+    let instance = wgpu::Instance::new(backends);
 
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
@@ -65,31 +70,45 @@ fn main() {
 
     // Initialize wgpu's device and surface
     let handle = {
-        let mut handle = WaylandHandle::empty();
-        handle.display = conn.backend().display_ptr() as *mut _;
-        handle.surface = wgpu.window.as_ref().unwrap().wl_surface().id().as_ptr() as *mut _;
-        let window_handle = RawWindowHandle::Wayland(handle);
+        let mut display_handle = WaylandDisplayHandle::empty();
+        display_handle.display = conn.backend().display_ptr() as *mut _;
+        let display_handle = RawDisplayHandle::Wayland(display_handle);
+
+        let mut window_handle = WaylandWindowHandle::empty();
+        window_handle.surface = wgpu.window.as_ref().unwrap().wl_surface().id().as_ptr() as *mut _;
+        let window_handle = RawWindowHandle::Wayland(window_handle);
 
         /// https://github.com/rust-windowing/raw-window-handle/issues/49
-        struct YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(RawWindowHandle);
+        struct YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(
+            RawDisplayHandle,
+            RawWindowHandle,
+        );
 
-        unsafe impl HasRawWindowHandle for YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound {
-            fn raw_window_handle(&self) -> RawWindowHandle {
+        unsafe impl HasRawDisplayHandle for YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound {
+            fn raw_display_handle(&self) -> RawDisplayHandle {
                 self.0
             }
         }
 
-        YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(window_handle)
+        unsafe impl HasRawWindowHandle for YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound {
+            fn raw_window_handle(&self) -> RawWindowHandle {
+                self.1
+            }
+        }
+
+        YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(display_handle, window_handle)
     };
 
     wgpu.surface = Some(unsafe { wgpu.instance.create_surface(&handle) });
 
     // Pick the first supported adapter for the surface.
-    let adapter = pollster::block_on(wgpu.instance.request_adapter(&wgpu::RequestAdapterOptions {
-        compatible_surface: wgpu.surface.as_ref(),
-        ..Default::default()
-    }))
+    let adapter = pollster::block_on(initialize_adapter_from_env_or_default(
+        &wgpu.instance,
+        backends,
+        wgpu.surface.as_ref(),
+    ))
     .expect("Failed to find suitable adapter");
+    dbg!(adapter.get_info());
 
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default(), None))
         .expect("Failed to request device");
@@ -229,13 +248,23 @@ impl WindowHandler for Wgpu {
         let device = self.device.as_ref().unwrap();
         let queue = self.queue.as_ref().unwrap();
 
+        // Mailbox will be available if a Vulkan driver is available. Otherwise let wgpu pick the best
+        // presentation mode for no tearing.
+        let present_mode = surface
+            .get_supported_present_modes(&adapter)
+            .iter()
+            .find(|&&mode| mode == wgpu::PresentMode::Mailbox)
+            .copied()
+            .unwrap_or(wgpu::PresentMode::AutoNoVsync);
+
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(adapter)[0],
             width: self.width,
             height: self.height,
             // Wayland is inherently a mailbox system.
-            present_mode: wgpu::PresentMode::Mailbox,
+            present_mode,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
 
         surface.configure(self.device.as_ref().unwrap(), &surface_config);
