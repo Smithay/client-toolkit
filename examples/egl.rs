@@ -18,11 +18,7 @@ use wayland_client::{
     Connection, Proxy, QueueHandle,
 };
 
-use glutin::{
-    api::egl,
-    prelude::*,
-    surface::WindowSurface, config::ConfigSurfaceTypes,
-};
+use glutin::{api::egl, config::ConfigSurfaceTypes, prelude::*, surface::WindowSurface};
 
 fn main() {
     env_logger::init();
@@ -37,7 +33,6 @@ fn main() {
         output_state: OutputState::new(),
         xdg_shell_state: XdgShellState::new(),
         xdg_window_state: XdgWindowState::new(),
-        first_configure: true,
         exit: false,
         width: 1280,
         height: 720,
@@ -91,7 +86,6 @@ struct EglExample {
     xdg_shell_state: XdgShellState,
     xdg_window_state: XdgWindowState,
 
-    first_configure: bool,
     exit: bool,
     width: i32,
     height: i32,
@@ -121,7 +115,6 @@ impl EglExample {
             glow.viewport(0, 0, self.width, self.height);
             glow.clear(glow::COLOR_BUFFER_BIT);
             glow.clear_color(0.1, 0.2, 0.3, 1.0);
-            glow.flush();
         }
 
         surface.swap_buffers(context).unwrap();
@@ -197,11 +190,10 @@ impl CompositorHandler for EglExample {
     fn frame(
         &mut self,
         _conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.draw();
     }
 }
 
@@ -263,16 +255,7 @@ impl WindowHandler for EglExample {
         self.width = width as i32;
         self.height = height as i32;
         self.resize();
-
-        if self.first_configure {
-            self.first_configure = false;
-            self.draw();
-        } else {
-            // Schedule the next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone());
-            // Commit to schedule the next frame.
-            window.wl_surface().commit();
-        }
+        self.draw();
     }
 }
 
