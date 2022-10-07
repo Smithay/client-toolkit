@@ -1,4 +1,4 @@
-use std::{io, time::Duration};
+use std::time::Duration;
 
 use calloop::{
     channel::{self, Channel},
@@ -113,14 +113,14 @@ impl EventSource for KeyRepeatSource {
     type Event = KeyEvent;
     type Metadata = ();
     type Ret = ();
-    type Error = io::Error;
+    type Error = calloop::Error;
 
     fn process_events<F>(
         &mut self,
         readiness: Readiness,
         token: Token,
         mut callback: F,
-    ) -> io::Result<PostAction>
+    ) -> calloop::Result<PostAction>
     where
         F: FnMut(Self::Event, &mut Self::Metadata) -> Self::Ret,
     {
@@ -130,9 +130,13 @@ impl EventSource for KeyRepeatSource {
         let gap = &mut self.gap;
         let delay_mut = &mut self.delay;
         let key = &mut self.key;
+        let disabled = &mut self.disabled;
+
+        let mut reregister = false;
 
         // Check if the key repeat should stop
-        self.channel
+        let channel_pa = self
+            .channel
             .process_events(readiness, token, |event, _| {
                 match event {
                     channel::Event::Msg(message) => {
@@ -145,6 +149,7 @@ impl EventSource for KeyRepeatSource {
                                 // Update time for next event
                                 event.time += *delay_mut as u32;
                                 key.replace(event);
+                                reregister = true;
 
                                 // Schedule a new press event in the timer.
                                 timer.set_duration(Duration::from_millis(*delay_mut));
@@ -157,14 +162,14 @@ impl EventSource for KeyRepeatSource {
                                         // Number of repetitions per second / 1000 ms
                                         *gap = (rate.get() / 1000) as u64;
                                         *delay_mut = delay as u64;
-                                        self.disabled = false;
+                                        *disabled = false;
                                         timer.set_duration(Duration::from_millis(*delay_mut));
                                     }
 
                                     RepeatInfo::Disable => {
                                         // Compositor will send repeat events manually, cancel all repeating events
                                         key.take();
-                                        self.disabled = true;
+                                        *disabled = true;
                                     }
                                 }
                             }
@@ -176,17 +181,23 @@ impl EventSource for KeyRepeatSource {
                     }
                 }
             })
-            .unwrap();
+            .map_err(|err| calloop::Error::OtherError(Box::new(err)))?;
 
         // Keyboard was destroyed
         if removed {
             return Ok(PostAction::Remove);
         }
 
-        timer.process_events(readiness, token, |mut event, _| {
+        // Re-register the timer to start it again
+        if reregister {
+            return Ok(PostAction::Reregister);
+        }
+
+        let timer_pa = timer.process_events(readiness, token, |mut event, _| {
             if self.disabled || key.is_none() {
                 // TODO How to pause the timer without dropping it?
-                return TimeoutAction::ToDuration(Duration::from_millis(*delay_mut));
+                // return TimeoutAction::ToDuration(Duration::from_millis(*delay_mut));
+                return TimeoutAction::Drop;
             }
             // Invoke the event
             callback(key.clone().unwrap(), &mut ());
@@ -195,6 +206,14 @@ impl EventSource for KeyRepeatSource {
             event += Duration::from_millis(*gap);
             // Schedule the next key press
             TimeoutAction::ToDuration(Duration::from_micros(*gap))
+        })?;
+
+        // Only disable or remove if both want to, otherwise continue or re-register
+        Ok(match (timer_pa, channel_pa) {
+            (PostAction::Disable, PostAction::Disable) => PostAction::Disable,
+            (PostAction::Remove, PostAction::Remove) => PostAction::Remove,
+            (PostAction::Reregister, _) | (_, PostAction::Reregister) => PostAction::Reregister,
+            _ => PostAction::Continue,
         })
     }
 
