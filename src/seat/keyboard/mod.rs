@@ -21,6 +21,11 @@ use xkbcommon::xkb;
 
 use super::{Capability, SeatError, SeatHandler, SeatState};
 
+#[cfg(feature = "calloop")]
+pub mod repeat;
+#[cfg(feature = "calloop")]
+use repeat::RepeatMessage;
+
 /// Error when creating a keyboard.
 #[derive(Debug, thiserror::Error)]
 pub enum KeyboardError {
@@ -183,7 +188,7 @@ pub trait KeyboardHandler: Sized {
 }
 
 /// The rate at which a pressed key is repeated.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RepeatInfo {
     /// Keys will be repeated at the specified rate and delay.
     Repeat {
@@ -281,6 +286,8 @@ pub struct KeyboardData {
     user_specified_rmlvo: bool,
     xkb_state: Mutex<Option<xkb::State>>,
     xkb_compose: Mutex<Option<xkb::compose::State>>,
+    #[cfg(feature = "calloop")]
+    repeat_sender: Option<calloop::channel::Sender<RepeatMessage>>,
 }
 
 impl Debug for KeyboardData {
@@ -323,6 +330,7 @@ impl Default for KeyboardData {
             xkb_state: Mutex::new(None),
             user_specified_rmlvo: false,
             xkb_compose: Mutex::new(None),
+            repeat_sender: None,
         };
 
         udata.init_compose();
@@ -356,6 +364,7 @@ impl KeyboardData {
             xkb_state: Mutex::new(xkb_state),
             user_specified_rmlvo: true,
             xkb_compose: Mutex::new(None),
+            repeat_sender: None,
         };
 
         udata.init_compose();
@@ -405,10 +414,15 @@ impl KeyboardData {
 
 pub trait KeyboardDataExt: Send + Sync {
     fn keyboard_data(&self) -> &KeyboardData;
+    fn keyboard_data_mut(&mut self) -> &mut KeyboardData;
 }
 
 impl KeyboardDataExt for KeyboardData {
     fn keyboard_data(&self) -> &KeyboardData {
+        self
+    }
+
+    fn keyboard_data_mut(&mut self) -> &mut KeyboardData {
         self
     }
 }
@@ -530,6 +544,13 @@ where
             wl_keyboard::Event::Leave { serial, surface } => {
                 // We can send this event without any other checks in the protocol will guarantee a leave is
                 // sent before entering a new surface.
+                #[cfg(feature = "calloop")]
+                {
+                    if let Some(repeat_sender) = &udata.repeat_sender {
+                        let _ = repeat_sender.send(RepeatMessage::StopRepeat);
+                    }
+                }
+
                 data.leave(conn, qh, keyboard, &surface, serial);
             }
 
@@ -568,10 +589,23 @@ where
 
                         match state {
                             wl_keyboard::KeyState::Released => {
+                                #[cfg(feature = "calloop")]
+                                {
+                                    if let Some(repeat_sender) = &udata.repeat_sender {
+                                        let _ = repeat_sender.send(RepeatMessage::StopRepeat);
+                                    }
+                                }
                                 data.release_key(conn, qh, keyboard, serial, event);
                             }
 
                             wl_keyboard::KeyState::Pressed => {
+                                #[cfg(feature = "calloop")]
+                                {
+                                    if let Some(repeat_sender) = &udata.repeat_sender {
+                                        let _ = repeat_sender
+                                            .send(RepeatMessage::StartRepeat(event.clone()));
+                                    }
+                                }
                                 data.press_key(conn, qh, keyboard, serial, event);
                             }
 
@@ -619,6 +653,13 @@ where
                 } else {
                     RepeatInfo::Disable
                 };
+
+                #[cfg(feature = "calloop")]
+                {
+                    if let Some(repeat_sender) = &udata.repeat_sender {
+                        let _ = repeat_sender.send(RepeatMessage::RepeatInfo(info));
+                    }
+                }
 
                 data.update_repeat_info(conn, qh, keyboard, info);
             }
