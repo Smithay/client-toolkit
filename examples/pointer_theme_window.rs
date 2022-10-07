@@ -18,7 +18,7 @@ use smithay_client_toolkit::{
     },
     shm::{
         slot::{Buffer, SlotPool},
-        ShmHandler, ShmState,
+        ShmHandler, ShmState, ThemeSpec, ThemedPointer,
     },
 };
 use wayland_client::{
@@ -39,7 +39,7 @@ fn main() {
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::new(),
-        shm_state: ShmState::new(),
+        shm_state: ShmState::with_pointer_theme(ThemeSpec::Named { name: "Pop", size: 128 }),
         xdg_shell_state: XdgShellState::new(),
         xdg_window_state: XdgWindowState::new(),
 
@@ -51,9 +51,11 @@ fn main() {
         shift: None,
         buffer: None,
         window: None,
+        pointer_surface: None,
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
+        themed_pointer: None,
     };
 
     while !simple_window.registry_state.ready() {
@@ -67,16 +69,23 @@ fn main() {
     .expect("Failed to create pool");
     simple_window.pool = Some(pool);
 
-    let surface = simple_window.compositor_state.create_surface(&qh).unwrap();
+    let window_surface = simple_window.compositor_state.create_surface(&qh).unwrap();
+    let pointer_surface = simple_window.compositor_state.create_surface(&qh).unwrap();
 
     let window = Window::builder()
         .title("A wayland window")
         // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
         .app_id("io.github.smithay.client-toolkit.SimpleWindow")
         .min_size((256, 256))
-        .map(&qh, &simple_window.xdg_shell_state, &mut simple_window.xdg_window_state, surface)
+        .map(
+            &qh,
+            &simple_window.xdg_shell_state,
+            &mut simple_window.xdg_window_state,
+            window_surface,
+        )
         .expect("window creation");
 
+    simple_window.pointer_surface.replace(pointer_surface);
     simple_window.window = Some(window);
 
     // We don't draw immediately, the configure will notify us when to first draw.
@@ -108,9 +117,11 @@ struct SimpleWindow {
     shift: Option<u32>,
     buffer: Option<Buffer>,
     window: Option<Window>,
+    pointer_surface: Option<wl_surface::WlSurface>,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     pointer: Option<wl_pointer::WlPointer>,
+    themed_pointer: Option<ThemedPointer>,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -341,7 +352,6 @@ impl PointerHandler for SimpleWindow {
             if Some(&event.surface) != self.window.as_ref().map(Window::wl_surface) {
                 continue;
             }
-
             match event.kind {
                 Enter { .. } => {
                     println!("Pointer entered @{:?}", event.position);
@@ -372,8 +382,24 @@ impl ShmHandler for SimpleWindow {
 }
 
 impl SimpleWindow {
-    pub fn draw(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
+    pub fn draw(&mut self, conn: &Connection, qh: &QueueHandle<Self>) {
         if let Some(window) = self.window.as_ref() {
+            if self.themed_pointer.is_none() {
+                let themed_pointer = self
+                    .shm_state
+                    .theme_pointer(
+                        self.pointer_surface.clone().unwrap(),
+                        self.pointer.clone().unwrap(),
+                    )
+                    .unwrap();
+                self.themed_pointer.replace(themed_pointer);
+            }
+            self.themed_pointer
+                .as_mut()
+                .unwrap()
+                .set_cursor(conn, "diamond_cross", Some(0))
+                .unwrap();
+
             let width = self.width;
             let height = self.height;
             let stride = self.width as i32 * 4;
