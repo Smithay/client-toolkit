@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex, Weak};
 
 use wayland_client::{
+    globals::GlobalList,
     protocol::{wl_output, wl_seat, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -16,14 +17,14 @@ use wayland_protocols::{
     },
 };
 
-use crate::compositor::Surface;
 use crate::error::GlobalError;
 use crate::globals::ProvidesBoundGlobal;
 use crate::registry::GlobalProxy;
+use crate::{compositor::Surface, globals::GlobalData};
 
 use self::inner::WindowInner;
 
-use super::{XdgShellHandler, XdgShellSurface};
+use super::XdgShellSurface;
 
 pub(super) mod inner;
 
@@ -33,15 +34,18 @@ pub struct XdgWindowState {
 }
 
 impl XdgWindowState {
-    pub fn new() -> XdgWindowState {
-        XdgWindowState { xdg_decoration_manager: GlobalProxy::NotReady }
+    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> XdgWindowState
+    where
+        State: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State>
+            + 'static,
+    {
+        let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        XdgWindowState { xdg_decoration_manager }
     }
 }
 
 /// Handler for toplevel operations on a [`Window`].
-pub trait WindowHandler: XdgShellHandler + Sized {
-    fn xdg_window_state(&mut self) -> &mut XdgWindowState;
-
+pub trait WindowHandler: Sized {
     /// Request to close a window.
     ///
     /// This request does not destroy the window. You must drop all [`Window`] handles to destroy the window.

@@ -4,6 +4,7 @@ use std::sync::{
 };
 
 use wayland_client::{
+    globals::{BindError, GlobalList},
     protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -12,12 +13,9 @@ use crate::{
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
-    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
 pub trait CompositorHandler: Sized {
-    fn compositor_state(&mut self) -> &mut CompositorState;
-
     /// The surface has either been moved into or out of an output and the output has a different scale factor.
     fn scale_factor_changed(
         &mut self,
@@ -52,16 +50,23 @@ impl SurfaceDataExt for SurfaceData {
 
 #[derive(Debug)]
 pub struct CompositorState {
-    wl_compositor: GlobalProxy<wl_compositor::WlCompositor>,
+    wl_compositor: wl_compositor::WlCompositor,
 }
 
 impl CompositorState {
-    pub fn new() -> CompositorState {
-        CompositorState { wl_compositor: GlobalProxy::new() }
+    pub fn bind<State>(
+        globals: &GlobalList,
+        qh: &QueueHandle<State>,
+    ) -> Result<CompositorState, BindError>
+    where
+        State: Dispatch<wl_compositor::WlCompositor, GlobalData, State> + 'static,
+    {
+        let wl_compositor = globals.bind(qh, 1..=5, GlobalData)?;
+        Ok(CompositorState { wl_compositor })
     }
 
-    pub fn wl_compositor(&self) -> Result<&wl_compositor::WlCompositor, GlobalError> {
-        self.wl_compositor.get()
+    pub fn wl_compositor(&self) -> &wl_compositor::WlCompositor {
+        &self.wl_compositor
     }
 
     pub fn create_surface<D>(
@@ -83,9 +88,7 @@ impl CompositorState {
         D: Dispatch<wl_surface::WlSurface, U> + 'static,
         U: SurfaceDataExt + 'static,
     {
-        let compositor = self.wl_compositor.get()?;
-
-        let surface = compositor.create_surface(qh, data);
+        let surface = self.wl_compositor.create_surface(qh, data);
 
         Ok(surface)
     }
@@ -195,7 +198,7 @@ macro_rules! delegate_compositor {
         [
             $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
         ] => $crate::compositor::CompositorState
-);
+        );
     };
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, surface: [$($surface: ty),*$(,)?]) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
@@ -214,7 +217,7 @@ macro_rules! delegate_compositor {
         [
             $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
         ] => $crate::compositor::CompositorState
-    );
+        );
     };
 }
 
@@ -375,7 +378,7 @@ where
 
 impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5> for CompositorState {
     fn bound_global(&self) -> Result<wl_compositor::WlCompositor, GlobalError> {
-        self.wl_compositor().cloned()
+        Ok(self.wl_compositor.clone())
     }
 }
 
@@ -398,19 +401,5 @@ where
 
             _ => unreachable!(),
         }
-    }
-}
-
-impl<D> RegistryHandler<D> for CompositorState
-where
-    D: Dispatch<wl_compositor::WlCompositor, GlobalData>
-        + CompositorHandler
-        + ProvidesRegistryState
-        + 'static,
-{
-    fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        let compositor = state.registry().bind_one(qh, 1..=5, GlobalData);
-
-        state.compositor_state().wl_compositor = compositor.into();
     }
 }

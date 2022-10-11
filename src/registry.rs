@@ -72,6 +72,7 @@ use crate::{
     globals::{GlobalData, ProvidesBoundGlobal},
 };
 use wayland_client::{
+    globals::{BindError, GlobalList},
     protocol::{wl_callback, wl_registry},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -159,18 +160,6 @@ pub trait ProvidesRegistryState: Sized {
         name: u32,
         interface: &str,
     );
-}
-
-/// An error when binding a global.
-#[derive(Debug, thiserror::Error)]
-pub enum BindError {
-    /// The requested version of the global is not supported.
-    #[error("the requested version of the global is not supported")]
-    UnsupportedVersion,
-
-    /// The requested global was not found in the registry.
-    #[error("the requested global was not found in the registry")]
-    NotPresent,
 }
 
 /// State object associated with the registry handling for smithay's client toolkit.
@@ -385,25 +374,10 @@ impl RegistryState {
 /// use smithay_client_toolkit::{
 ///     delegate_registry, delegate_shm, registry_handlers,
 ///     shm::{ShmHandler, ShmState},
-///     registry::{RegistryState, ProvidesRegistryState}
 /// };
 ///
 /// struct ExampleApp {
-///     registry_state: RegistryState,
 ///     shm_state: ShmState,
-/// }
-///
-/// // In order to use the registry, we need to delegate handling of WlRegistry to it.
-/// delegate_registry!(ExampleApp);
-///
-/// // In order to use the registry delegate, we need to provide a way to access the registry state
-/// // from your data type and provide a list of types that will bind to the registry.
-/// impl ProvidesRegistryState for ExampleApp {
-///     fn registry(&mut self) -> &mut RegistryState {
-///         &mut self.registry_state
-///     }
-///     // Here we specify the types of the delegates which should handle registry events.
-///     registry_handlers!(ShmState);
 /// }
 ///
 /// // Here is the implementation of wl_shm to compile:
@@ -544,9 +518,17 @@ pub struct SimpleGlobal<I, const MAX_VERSION: u32> {
     proxy: GlobalProxy<I>,
 }
 
-impl<I: Proxy, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
-    pub fn new() -> Self {
+impl<I: Proxy + 'static, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
+    pub fn not_ready() -> Self {
         Self { proxy: GlobalProxy::NotReady }
+    }
+
+    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
+    where
+        State: Dispatch<I, (), State> + 'static,
+    {
+        let proxy = globals.bind(qh, 0..=MAX_VERSION, ())?;
+        Ok(Self { proxy: GlobalProxy::Bound(proxy) })
     }
 
     pub fn get(&self) -> Result<&I, GlobalError> {
