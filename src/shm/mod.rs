@@ -5,12 +5,15 @@ pub mod slot;
 use std::io;
 
 use nix::errno::Errno;
-use wayland_client::{protocol::wl_shm, Connection, Dispatch, QueueHandle, WEnum};
+use wayland_client::{
+    globals::{BindError, GlobalList},
+    protocol::wl_shm,
+    Connection, Dispatch, QueueHandle, WEnum,
+};
 
 use crate::{
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
-    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
 
 pub trait ShmHandler {
@@ -19,23 +22,28 @@ pub trait ShmHandler {
 
 #[derive(Debug)]
 pub struct ShmState {
-    wl_shm: GlobalProxy<wl_shm::WlShm>,
+    wl_shm: wl_shm::WlShm,
     formats: Vec<wl_shm::Format>,
 }
 
 impl From<wl_shm::WlShm> for ShmState {
     fn from(wl_shm: wl_shm::WlShm) -> Self {
-        Self { wl_shm: GlobalProxy::Bound(wl_shm), formats: Vec::new() }
+        Self { wl_shm, formats: Vec::new() }
     }
 }
 
 impl ShmState {
-    pub fn new() -> ShmState {
-        ShmState { wl_shm: GlobalProxy::NotReady, formats: vec![] }
+    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<ShmState, BindError>
+    where
+        State: Dispatch<wl_shm::WlShm, GlobalData, State> + ShmHandler + 'static,
+    {
+        let wl_shm = globals.bind(qh, 1..=1, GlobalData)?;
+        // Compositors must advertise Argb8888 and Xrgb8888, so let's reserve space for those formats.
+        Ok(ShmState { wl_shm, formats: Vec::with_capacity(2) })
     }
 
-    pub fn wl_shm(&self) -> Result<&wl_shm::WlShm, GlobalError> {
-        self.wl_shm.get()
+    pub fn wl_shm(&self) -> &wl_shm::WlShm {
+        &self.wl_shm
     }
 
     /// Returns the formats supported in memory pools.
@@ -46,7 +54,7 @@ impl ShmState {
 
 impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for ShmState {
     fn bound_global(&self) -> Result<wl_shm::WlShm, GlobalError> {
-        self.wl_shm().cloned()
+        Ok(self.wl_shm.clone())
     }
 }
 
@@ -131,14 +139,5 @@ where
 
             _ => unreachable!(),
         }
-    }
-}
-
-impl<D> RegistryHandler<D> for ShmState
-where
-    D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler + ProvidesRegistryState + 'static,
-{
-    fn ready(state: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        state.shm_state().wl_shm = state.registry().bind_one(qh, 1..=1, GlobalData).into();
     }
 }

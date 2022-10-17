@@ -1,31 +1,36 @@
+/// Example app showing how to use delegate types from Smithay's client toolkit and initializing state.
 use smithay_client_toolkit::{
-    delegate_registry, delegate_shm,
-    registry::{ProvidesRegistryState, RegistryState},
-    registry_handlers,
+    delegate_shm,
     shm::{ShmHandler, ShmState},
 };
-use wayland_client::Connection;
+use wayland_client::{
+    globals::{registry_queue_init, GlobalListContents},
+    protocol::wl_registry,
+    Connection, Dispatch, QueueHandle,
+};
 
 struct ListShmFormats {
-    registry_state: RegistryState,
     shm_state: ShmState,
 }
 
 fn main() {
+    // Initialize logging for Rust backend.
     env_logger::init();
+
+    // Connect to the compositor.
     let conn = Connection::connect_to_env().unwrap();
 
-    let mut event_queue = conn.new_event_queue();
+    // Create an event queue and get the initial global list.
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
+    // Create the state to dispatch.
     let mut list_formats = ListShmFormats {
-        registry_state: RegistryState::new(&conn, &qh),
-        shm_state: ShmState::new(),
+        // Bind ShmState to implement wl_shm handling.
+        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm is not available"),
     };
 
-    while !list_formats.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut list_formats).unwrap();
-    }
+    // Roundtrip to get the supported wl_shm formats.
     event_queue.roundtrip(&mut list_formats).unwrap();
     println!("Supported formats:");
 
@@ -40,14 +45,18 @@ impl ShmHandler for ListShmFormats {
     }
 }
 
+// Delegate handling of the wl_shm protocol to our state object.
 delegate_shm!(ListShmFormats);
 
-delegate_registry!(ListShmFormats);
-
-impl ProvidesRegistryState for ListShmFormats {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for ListShmFormats {
+    fn event(
+        _state: &mut Self,
+        _registry: &wl_registry::WlRegistry,
+        _event: wl_registry::Event,
+        _data: &GlobalListContents,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        // We don't need any other globals.
     }
-
-    registry_handlers!(ShmState);
 }

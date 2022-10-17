@@ -9,7 +9,7 @@ use smithay_client_toolkit::{
     registry_handlers,
     shell::xdg::{
         window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellHandler, XdgShellState,
+        XdgShellState,
     },
     shm::{
         slot::{Buffer, SlotPool},
@@ -17,8 +17,9 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    protocol::{wl_output, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    globals::{registry_queue_init, GlobalListContents},
+    protocol::{wl_output, wl_registry, wl_shm, wl_surface},
+    Connection, Dispatch, QueueHandle,
 };
 
 fn main() {
@@ -26,16 +27,17 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let mut event_queue = conn.new_event_queue();
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
     let mut state = State {
         registry_state: RegistryState::new(&conn, &qh),
         output_state: OutputState::new(),
-        compositor_state: CompositorState::new(),
-        shm_state: ShmState::new(),
-        xdg_shell_state: XdgShellState::new(),
-        xdg_window_state: XdgWindowState::new(),
+        compositor_state: CompositorState::bind(&globals, &qh)
+            .expect("wl_compositor not available"),
+        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
+        xdg_shell_state: XdgShellState::bind(&globals, &qh).expect("xdg shell not available"),
+        xdg_window_state: XdgWindowState::bind(&globals, &qh),
 
         pool: None,
         windows: Vec::new(),
@@ -125,10 +127,6 @@ struct ImageViewer {
 }
 
 impl CompositorHandler for State {
-    fn compositor_state(&mut self) -> &mut CompositorState {
-        &mut self.compositor_state
-    }
-
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -180,17 +178,7 @@ impl OutputHandler for State {
     }
 }
 
-impl XdgShellHandler for State {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
-        &mut self.xdg_shell_state
-    }
-}
-
 impl WindowHandler for State {
-    fn xdg_window_state(&mut self) -> &mut XdgWindowState {
-        &mut self.xdg_window_state
-    }
-
     fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, window: &Window) {
         self.windows.retain(|v| v.window != *window);
     }
@@ -312,5 +300,18 @@ impl ProvidesRegistryState for State {
         &mut self.registry_state
     }
 
-    registry_handlers!(CompositorState, OutputState, ShmState, XdgShellState, XdgWindowState,);
+    registry_handlers!(OutputState);
+}
+
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for State {
+    fn event(
+        _state: &mut Self,
+        _registry: &wl_registry::WlRegistry,
+        _event: wl_registry::Event,
+        _data: &GlobalListContents,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        // We don't need any other globals.
+    }
 }
