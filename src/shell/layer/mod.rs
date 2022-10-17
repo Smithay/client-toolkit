@@ -7,38 +7,40 @@ use std::{
 
 use bitflags::bitflags;
 use wayland_client::{
+    globals::{BindError, GlobalList},
     protocol::{wl_output, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup;
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
-use crate::registry::GlobalProxy;
-use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
+use crate::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
+};
 
 #[derive(Debug)]
-pub struct LayerState {
-    wlr_layer_shell: GlobalProxy<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
+pub struct LayerShell {
+    wlr_layer_shell: zwlr_layer_shell_v1::ZwlrLayerShellV1,
 }
 
-impl LayerState {
-    pub fn new() -> LayerState {
-        LayerState { wlr_layer_shell: GlobalProxy::NotReady }
-    }
-
-    /// Returns whether the layer shell is available.
-    ///
-    /// The layer shell is not supported by all compositors and this function may be used to determine if
-    /// compositor support is available.
-    pub fn is_available(&self) -> bool {
-        self.wlr_layer_shell.get().is_ok()
+impl LayerShell {
+    pub fn bind<State>(
+        globals: &GlobalList,
+        qh: &QueueHandle<State>,
+    ) -> Result<LayerShell, BindError>
+    where
+        State: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, State>
+            + LayerShellHandler
+            + 'static,
+    {
+        let wlr_layer_shell = globals.bind(qh, 1..=4, GlobalData)?;
+        Ok(LayerShell { wlr_layer_shell })
     }
 }
 
 /// Handler for operations on a [`LayerSurface`]
-pub trait LayerHandler: Sized {
-    fn layer_state(&mut self) -> &mut LayerState;
-
+pub trait LayerShellHandler: Sized {
     /// The layer surface has been closed.
     ///
     /// When this requested is called, the layer surface is no longer shown and all handles of the [`LayerSurface`]
@@ -376,10 +378,10 @@ macro_rules! delegate_layer {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData
-        ] => $crate::shell::layer::LayerState);
+        ] => $crate::shell::layer::LayerShell);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData
-        ] => $crate::shell::layer::LayerState);
+        ] => $crate::shell::layer::LayerShell);
     };
 }
 
