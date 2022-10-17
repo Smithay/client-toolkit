@@ -305,7 +305,7 @@ impl<K> MultiPool<K> {
         Q: PartialEq + ToOwned<Owned = K>,
     {
         let index = self.insert(width, stride, height, key, format)?;
-        self.get_at(index, width, stride, height, format).ok_or(PoolError::NotFound)
+        self.get_at(index, width, stride, height, format)
     }
 
     /// Retreives the buffer at the given index.
@@ -316,20 +316,20 @@ impl<K> MultiPool<K> {
         stride: i32,
         height: i32,
         format: wl_shm::Format,
-    ) -> Option<(usize, &wl_buffer::WlBuffer, &mut [u8])> {
+    ) -> Result<(usize, &wl_buffer::WlBuffer, &mut [u8]), PoolError> {
         let len = self.inner.len();
         let size = (stride * height) as usize;
-        let buf_slot = self.buffer_list.get_mut(index)?;
+        let buf_slot = self.buffer_list.get_mut(index).ok_or(PoolError::NotFound)?;
 
-        if buf_slot.size >= size {
-            return None;
+        if buf_slot.size > size {
+            return Err(PoolError::Overlap);
         }
 
         buf_slot.used = size;
         let offset = buf_slot.offset;
         if buf_slot.buffer.is_none() {
             if offset + size > len {
-                self.inner.resize(offset + size + size / 20).ok()?;
+                self.inner.resize(offset + size + size / 20).map_err(|_| PoolError::Overlap)?;
             }
             let free = Arc::new(AtomicBool::new(true));
             let data = BufferObjectData { free: free.clone() };
@@ -346,7 +346,7 @@ impl<K> MultiPool<K> {
         }
         buf_slot.free.store(false, Ordering::Relaxed);
         let buf = buf_slot.buffer.as_ref().unwrap();
-        Some((offset, buf, &mut self.inner.mmap()[offset..][..size]))
+        Ok((offset, buf, &mut self.inner.mmap()[offset..][..size]))
     }
 
     /// Calcule the offet and size of a buffer based on its stride.
