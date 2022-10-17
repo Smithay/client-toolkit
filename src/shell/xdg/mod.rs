@@ -2,30 +2,34 @@
 // TODO: Examples
 
 use std::sync::Arc;
+use wayland_client::globals::{BindError, GlobalList};
+use wayland_client::Connection;
 use wayland_client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::xdg::shell::client::{xdg_positioner, xdg_surface, xdg_wm_base};
 
 use crate::compositor::Surface;
 use crate::error::GlobalError;
-use crate::globals::ProvidesBoundGlobal;
-use crate::registry::GlobalProxy;
+use crate::globals::{GlobalData, ProvidesBoundGlobal};
 
-mod inner;
 pub mod popup;
 pub mod window;
 
 #[derive(Debug)]
 pub struct XdgShellState {
-    xdg_wm_base: GlobalProxy<xdg_wm_base::XdgWmBase>,
+    xdg_wm_base: xdg_wm_base::XdgWmBase,
 }
 
 impl XdgShellState {
-    pub fn new() -> Self {
-        Self { xdg_wm_base: GlobalProxy::NotReady }
+    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
+    where
+        State: Dispatch<xdg_wm_base::XdgWmBase, GlobalData, State> + 'static,
+    {
+        let xdg_wm_base = globals.bind(qh, 1..=4, GlobalData)?;
+        Ok(Self { xdg_wm_base })
     }
 
-    pub fn xdg_wm_base(&self) -> Result<&xdg_wm_base::XdgWmBase, GlobalError> {
-        self.xdg_wm_base.get()
+    pub fn xdg_wm_base(&self) -> &xdg_wm_base::XdgWmBase {
+        &self.xdg_wm_base
     }
 }
 
@@ -136,10 +140,6 @@ impl XdgShellSurface {
     }
 }
 
-pub trait XdgShellHandler: Sized {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState;
-}
-
 #[macro_export]
 macro_rules! delegate_xdg_shell {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
@@ -153,5 +153,34 @@ impl Drop for XdgShellSurface {
     fn drop(&mut self) {
         // Surface role must be destroyed before the wl_surface
         self.xdg_surface.destroy();
+    }
+}
+
+// Version 4 adds the configure_bounds event, which is a break
+impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4> for XdgShellState {
+    fn bound_global(&self) -> Result<xdg_wm_base::XdgWmBase, GlobalError> {
+        Ok(self.xdg_wm_base.clone())
+    }
+}
+
+impl<D> Dispatch<xdg_wm_base::XdgWmBase, GlobalData, D> for XdgShellState
+where
+    D: Dispatch<xdg_wm_base::XdgWmBase, GlobalData>,
+{
+    fn event(
+        _state: &mut D,
+        xdg_wm_base: &xdg_wm_base::XdgWmBase,
+        event: xdg_wm_base::Event,
+        _data: &GlobalData,
+        _conn: &Connection,
+        _qh: &QueueHandle<D>,
+    ) {
+        match event {
+            xdg_wm_base::Event::Ping { serial } => {
+                xdg_wm_base.pong(serial);
+            }
+
+            _ => unreachable!(),
+        }
     }
 }

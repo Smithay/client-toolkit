@@ -19,7 +19,7 @@ use wayland_client::{
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    pointer::{PointerData, PointerDataExt, PointerHandler},
+    pointer::{PointerData, PointerDataExt, PointerDataInner, PointerHandler, ThemeSpec, Themes},
     touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
@@ -100,6 +100,32 @@ impl SeatState {
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
         self.get_pointer_with_data(qh, seat, PointerData::default())
+    }
+
+    /// Creates a pointer from a seat with the provided theme.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    pub fn get_pointer_with_theme<D>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        theme: ThemeSpec,
+    ) -> Result<wl_pointer::WlPointer, SeatError>
+    where
+        D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
+    {
+        self.get_pointer_with_data(
+            qh,
+            seat,
+            PointerData {
+                inner: Mutex::new(PointerDataInner {
+                    pointer_themes: Arc::new(Mutex::new(Themes::new(theme))),
+                    ..Default::default()
+                }),
+            },
+        )
     }
 
     /// Creates a pointer from a seat.

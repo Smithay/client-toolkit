@@ -15,14 +15,15 @@ use smithay_client_toolkit::{
         Capability, SeatHandler, SeatState,
     },
     shell::layer::{
-        Anchor, KeyboardInteractivity, Layer, LayerHandler, LayerState, LayerSurface,
+        Anchor, KeyboardInteractivity, Layer, LayerShell, LayerShellHandler, LayerSurface,
         LayerSurfaceConfigure,
     },
     shm::{slot::SlotPool, ShmHandler, ShmState},
 };
 use wayland_client::{
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    globals::{registry_queue_init, GlobalListContents},
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm, wl_surface},
+    Connection, Dispatch, QueueHandle,
 };
 
 fn main() {
@@ -30,16 +31,17 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let mut event_queue = conn.new_event_queue();
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
     let mut simple_layer = SimpleLayer {
         registry_state: RegistryState::new(&conn, &qh),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
-        compositor_state: CompositorState::new(),
-        shm_state: ShmState::new(),
-        layer_state: LayerState::new(),
+        compositor_state: CompositorState::bind(&globals, &qh)
+            .expect("wl_compositor is not available"),
+        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm is not available"),
+        layer_state: LayerShell::bind(&globals, &qh).expect("layer shell is not available"),
 
         exit: false,
         first_configure: true,
@@ -94,7 +96,7 @@ struct SimpleLayer {
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: ShmState,
-    layer_state: LayerState,
+    layer_state: LayerShell,
 
     exit: bool,
     first_configure: bool,
@@ -109,10 +111,6 @@ struct SimpleLayer {
 }
 
 impl CompositorHandler for SimpleLayer {
-    fn compositor_state(&mut self) -> &mut CompositorState {
-        &mut self.compositor_state
-    }
-
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -164,11 +162,7 @@ impl OutputHandler for SimpleLayer {
     }
 }
 
-impl LayerHandler for SimpleLayer {
-    fn layer_state(&mut self) -> &mut LayerState {
-        &mut self.layer_state
-    }
-
+impl LayerShellHandler for SimpleLayer {
     fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
         self.exit = true;
     }
@@ -421,5 +415,18 @@ impl ProvidesRegistryState for SimpleLayer {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
-    registry_handlers![CompositorState, OutputState, ShmState, SeatState, LayerState,];
+    registry_handlers![OutputState, SeatState];
+}
+
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for SimpleLayer {
+    fn event(
+        _state: &mut Self,
+        _registry: &wl_registry::WlRegistry,
+        _event: wl_registry::Event,
+        _data: &GlobalListContents,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        // We don't need any other globals.
+    }
 }

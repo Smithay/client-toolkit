@@ -14,7 +14,7 @@ use smithay_client_toolkit::{
     },
     shell::xdg::{
         window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellHandler, XdgShellState,
+        XdgShellState,
     },
     shm::{
         slot::{Buffer, SlotPool},
@@ -22,8 +22,9 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    globals::{registry_queue_init, GlobalListContents},
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm, wl_surface},
+    Connection, Dispatch, QueueHandle,
 };
 
 fn main() {
@@ -31,17 +32,18 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let mut event_queue = conn.new_event_queue();
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
     let mut simple_window = SimpleWindow {
         registry_state: RegistryState::new(&conn, &qh),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
-        compositor_state: CompositorState::new(),
-        shm_state: ShmState::new(),
-        xdg_shell_state: XdgShellState::new(),
-        xdg_window_state: XdgWindowState::new(),
+        compositor_state: CompositorState::bind(&globals, &qh)
+            .expect("wl_compositor not available"),
+        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
+        xdg_shell_state: XdgShellState::bind(&globals, &qh).expect("xdg shell not available"),
+        xdg_window_state: XdgWindowState::bind(&globals, &qh),
 
         exit: false,
         first_configure: true,
@@ -114,10 +116,6 @@ struct SimpleWindow {
 }
 
 impl CompositorHandler for SimpleWindow {
-    fn compositor_state(&mut self) -> &mut CompositorState {
-        &mut self.compositor_state
-    }
-
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -169,17 +167,7 @@ impl OutputHandler for SimpleWindow {
     }
 }
 
-impl XdgShellHandler for SimpleWindow {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
-        &mut self.xdg_shell_state
-    }
-}
-
 impl WindowHandler for SimpleWindow {
-    fn xdg_window_state(&mut self) -> &mut XdgWindowState {
-        &mut self.xdg_window_state
-    }
-
     fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &Window) {
         self.exit = true;
     }
@@ -455,12 +443,18 @@ impl ProvidesRegistryState for SimpleWindow {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
-    registry_handlers![
-        CompositorState,
-        OutputState,
-        ShmState,
-        SeatState,
-        XdgShellState,
-        XdgWindowState,
-    ];
+    registry_handlers![OutputState, SeatState,];
+}
+
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for SimpleWindow {
+    fn event(
+        _state: &mut Self,
+        _registry: &wl_registry::WlRegistry,
+        _event: wl_registry::Event,
+        _data: &GlobalListContents,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        // We don't need any other globals.
+    }
 }

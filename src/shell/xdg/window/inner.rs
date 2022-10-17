@@ -21,7 +21,6 @@ use wayland_protocols::{
 use crate::{
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
-    registry::{ProvidesRegistryState, RegistryHandler},
     shell::xdg::XdgShellSurface,
 };
 
@@ -105,23 +104,6 @@ impl WindowInner {
                 None => toplevel_decoration.unset_mode(),
             }
         }
-    }
-}
-
-const DECORATION_MANAGER_VERSION: u32 = 1;
-
-impl<D> RegistryHandler<D> for XdgWindowState
-where
-    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData>
-        // Lateinit for decorations
-        + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData>
-        + WindowHandler
-        + ProvidesRegistryState
-        + 'static,
-{
-    fn ready(data: &mut D, _conn: &Connection, qh: &QueueHandle<D>) {
-        data.xdg_window_state().xdg_decoration_manager =
-            data.registry().bind_one(qh, 1..=DECORATION_MANAGER_VERSION, GlobalData).into();
     }
 }
 

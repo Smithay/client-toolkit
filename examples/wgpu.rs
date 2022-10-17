@@ -9,65 +9,46 @@ use smithay_client_toolkit::{
     seat::{Capability, SeatHandler, SeatState},
     shell::xdg::{
         window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellHandler, XdgShellState,
+        XdgShellState,
     },
 };
 use wayland_client::{
-    protocol::{wl_output, wl_seat, wl_surface},
-    Connection, Proxy, QueueHandle,
+    globals::{registry_queue_init, GlobalListContents},
+    protocol::{wl_output, wl_registry, wl_seat, wl_surface},
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 fn main() {
     env_logger::init();
 
     let conn = Connection::connect_to_env().unwrap();
-
-    // Initialize wgpu
-    let instance = wgpu::Instance::new(wgpu::Backends::all());
-
-    let mut event_queue = conn.new_event_queue();
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    let mut wgpu = Wgpu {
-        registry_state: RegistryState::new(&conn, &qh),
-        seat_state: SeatState::new(),
-        output_state: OutputState::new(),
-        compositor_state: CompositorState::new(),
-        xdg_shell_state: XdgShellState::new(),
-        xdg_window_state: XdgWindowState::new(),
+    // Initialize xdg_shell handlers so we can select the correct adapter
+    let compositor_state =
+        CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
+    let xdg_shell_state = XdgShellState::bind(&globals, &qh).expect("xdg shell not available");
+    let mut xdg_window_state = XdgWindowState::bind(&globals, &qh);
 
-        exit: false,
-        width: 256,
-        height: 256,
-        window: None,
-        instance,
-        device: None,
-        surface: None,
-        adapter: None,
-        queue: None,
-    };
-
-    while !wgpu.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut wgpu).unwrap();
-    }
-
-    let surface = wgpu.compositor_state.create_surface(&qh).unwrap();
-
+    let surface = compositor_state.create_surface(&qh).expect("Failed to create surface");
+    // Create the window for adapter selection
     let window = Window::builder()
         .title("wgpu wayland window")
         // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
         .app_id("io.github.smithay.client-toolkit.WgpuExample")
         .min_size((256, 256))
-        .map(&qh, &wgpu.xdg_shell_state, &mut wgpu.xdg_window_state, surface)
+        .map(&qh, &xdg_shell_state, &mut xdg_window_state, surface)
         .expect("window creation");
 
-    wgpu.window = Some(window);
+    // Initialize wgpu
+    let instance = wgpu::Instance::new(wgpu::Backends::all());
 
-    // Initialize wgpu's device and surface
+    // Create the raw window handle for the surface.
     let handle = {
         let mut handle = WaylandHandle::empty();
         handle.display = conn.backend().display_ptr() as *mut _;
-        handle.surface = wgpu.window.as_ref().unwrap().wl_surface().id().as_ptr() as *mut _;
+        handle.surface = window.wl_surface().id().as_ptr() as *mut _;
         let window_handle = RawWindowHandle::Wayland(handle);
 
         /// https://github.com/rust-windowing/raw-window-handle/issues/49
@@ -82,20 +63,36 @@ fn main() {
         YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(window_handle)
     };
 
-    wgpu.surface = Some(unsafe { wgpu.instance.create_surface(&handle) });
+    let surface = unsafe { instance.create_surface(&handle) };
 
-    // Pick the first supported adapter for the surface.
-    let adapter = pollster::block_on(wgpu.instance.request_adapter(&wgpu::RequestAdapterOptions {
-        compatible_surface: wgpu.surface.as_ref(),
+    // Pick a supported adapter
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        compatible_surface: Some(&surface),
         ..Default::default()
     }))
     .expect("Failed to find suitable adapter");
 
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default(), None))
         .expect("Failed to request device");
-    wgpu.adapter = Some(adapter);
-    wgpu.device = Some(device);
-    wgpu.queue = Some(queue);
+
+    let mut wgpu = Wgpu {
+        registry_state: RegistryState::new(&conn, &qh),
+        seat_state: SeatState::new(),
+        output_state: OutputState::new(),
+
+        exit: false,
+        width: 256,
+        height: 256,
+        window,
+        device,
+        surface,
+        adapter,
+        queue,
+    };
+
+    while !wgpu.registry_state.ready() {
+        event_queue.blocking_dispatch(&mut wgpu).unwrap();
+    }
 
     // We don't draw immediately, the configure will notify us when to first draw.
     loop {
@@ -107,39 +104,28 @@ fn main() {
         }
     }
 
-    // On exit we must destroy the surface before the connection is dropped.
-    wgpu.surface.take();
+    // On exit we must destroy the surface before the window is destroyed.
+    drop(wgpu.surface);
+    drop(wgpu.window);
 }
 
 struct Wgpu {
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
-    compositor_state: CompositorState,
-    xdg_shell_state: XdgShellState,
-    xdg_window_state: XdgWindowState,
 
     exit: bool,
     width: u32,
     height: u32,
-    window: Option<Window>,
+    window: Window,
 
-    instance: wgpu::Instance,
-    /// Can't initialize the adapter until we have a window.
-    adapter: Option<wgpu::Adapter>,
-    /// Can't initialize the device until we have a window.
-    device: Option<wgpu::Device>,
-    /// Can't initialize the queue until we have a window.
-    queue: Option<wgpu::Queue>,
-    /// Can't initialize the surface until we have a window.
-    surface: Option<wgpu::Surface>,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    surface: wgpu::Surface,
 }
 
 impl CompositorHandler for Wgpu {
-    fn compositor_state(&mut self) -> &mut CompositorState {
-        &mut self.compositor_state
-    }
-
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -190,17 +176,7 @@ impl OutputHandler for Wgpu {
     }
 }
 
-impl XdgShellHandler for Wgpu {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
-        &mut self.xdg_shell_state
-    }
-}
-
 impl WindowHandler for Wgpu {
-    fn xdg_window_state(&mut self) -> &mut XdgWindowState {
-        &mut self.xdg_window_state
-    }
-
     fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &Window) {
         self.exit = true;
     }
@@ -224,10 +200,10 @@ impl WindowHandler for Wgpu {
             }
         }
 
-        let adapter = self.adapter.as_ref().unwrap();
-        let surface = self.surface.as_ref().unwrap();
-        let device = self.device.as_ref().unwrap();
-        let queue = self.queue.as_ref().unwrap();
+        let adapter = &self.adapter;
+        let surface = &self.surface;
+        let device = &self.device;
+        let queue = &self.queue;
 
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -238,7 +214,7 @@ impl WindowHandler for Wgpu {
             present_mode: wgpu::PresentMode::Mailbox,
         };
 
-        surface.configure(self.device.as_ref().unwrap(), &surface_config);
+        surface.configure(&self.device, &surface_config);
 
         // We don't plan to render much in this example, just clear the surface.
         let surface_texture =
@@ -310,5 +286,18 @@ impl ProvidesRegistryState for Wgpu {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
-    registry_handlers![CompositorState, OutputState, SeatState, XdgShellState, XdgWindowState,];
+    registry_handlers![OutputState];
+}
+
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for Wgpu {
+    fn event(
+        _state: &mut Self,
+        _registry: &wl_registry::WlRegistry,
+        _event: wl_registry::Event,
+        _data: &GlobalListContents,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        // We don't need any other globals.
+    }
 }

@@ -150,6 +150,12 @@ fn print_output(info: &OutputInfo) {
     println!("\tx: {}, y: {}", info.location.0, info.location.1);
     println!("\tsubpixel: {:?}", info.subpixel);
     println!("\tphysical_size: {}×{}mm", info.physical_size.0, info.physical_size.1);
+    if let Some((x, y)) = info.logical_position.as_ref() {
+        println!("\tlogical x: {}, y: {}", x, y);
+    }
+    if let Some((width, height)) = info.logical_size.as_ref() {
+        println!("\tlogical width: {}, height: {}", width, height);
+    }
     println!("\tmodes:");
 
     for mode in &info.modes {

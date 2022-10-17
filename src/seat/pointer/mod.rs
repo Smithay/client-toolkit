@@ -1,10 +1,17 @@
-use std::{mem, sync::Mutex};
-use wayland_backend::smallvec::SmallVec;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    env, mem,
+    sync::{Arc, Mutex},
+};
+use wayland_backend::{client::InvalidId, smallvec::SmallVec};
 
 use wayland_client::{
-    protocol::{wl_pointer, wl_surface},
+    protocol::{wl_pointer, wl_shm, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
+use wayland_cursor::{Cursor, CursorTheme};
+
+use crate::error::GlobalError;
 
 use super::SeatState;
 
@@ -109,16 +116,45 @@ pub trait PointerHandler: Sized {
 
 #[derive(Debug, Default)]
 pub struct PointerData {
-    inner: Mutex<PointerDataInner>,
+    pub(crate) inner: Mutex<PointerDataInner>,
 }
 
 pub trait PointerDataExt: Send + Sync {
     fn pointer_data(&self) -> &PointerData;
+
+    fn themed_pointer(
+        &self,
+        pointer: wl_pointer::WlPointer,
+        surface: wl_surface::WlSurface,
+        shm: wl_shm::WlShm,
+        scale: i32,
+        serial: Option<u32>,
+    ) -> ThemedPointer;
 }
 
 impl PointerDataExt for PointerData {
     fn pointer_data(&self) -> &PointerData {
         self
+    }
+
+    fn themed_pointer(
+        &self,
+        pointer: wl_pointer::WlPointer,
+        surface: wl_surface::WlSurface,
+        shm: wl_shm::WlShm,
+        scale: i32,
+        serial: Option<u32>,
+    ) -> ThemedPointer {
+        let ptr_data_inner = self.inner.lock().unwrap();
+        ThemedPointer {
+            shm,
+            themes: ptr_data_inner.pointer_themes.clone(),
+            surface,
+            pointer,
+            current_ptr: "left_ptr".to_string(),
+            scale,
+            last_serial: serial.unwrap_or_default(),
+        }
     }
 }
 
@@ -145,12 +181,15 @@ macro_rules! delegate_pointer {
 #[derive(Debug, Default)]
 pub(crate) struct PointerDataInner {
     /// Surface the pointer most recently entered
-    surface: Option<wl_surface::WlSurface>,
+    pub(crate) surface: Option<wl_surface::WlSurface>,
     /// Position relative to the surface
-    position: (f64, f64),
+    pub(crate) position: (f64, f64),
 
     /// List of pending events.  Only used for version >= 5.
-    pending: SmallVec<[PointerEvent; 3]>,
+    pub(crate) pending: SmallVec<[PointerEvent; 3]>,
+
+    /// pointer themes
+    pub(crate) pointer_themes: Arc<Mutex<Themes>>,
 }
 
 impl<D, U> Dispatch<wl_pointer::WlPointer, U, D> for SeatState
@@ -339,5 +378,166 @@ where
 
             guard.pending.push(event);
         }
+    }
+}
+
+/// Pointer themeing
+#[derive(Debug)]
+pub struct ThemedPointer {
+    shm: wl_shm::WlShm,
+    themes: Arc<Mutex<Themes>>,
+    surface: wl_surface::WlSurface,
+    pointer: wl_pointer::WlPointer,
+    current_ptr: String,
+    scale: i32,
+    last_serial: u32,
+}
+
+impl ThemedPointer {
+    pub fn set_cursor(
+        &mut self,
+        conn: &Connection,
+        name: &str,
+        serial: Option<u32>,
+    ) -> Result<(), PointerThemeError> {
+        self.current_ptr = name.into();
+
+        if let Some(serial) = serial {
+            self.last_serial = serial;
+        }
+
+        self.update_cursor(conn)
+    }
+
+    pub fn pointer(&self) -> &wl_pointer::WlPointer {
+        &self.pointer
+    }
+}
+
+/// Specifies which cursor theme should be used by the theme manager.
+#[derive(Debug)]
+pub enum ThemeSpec<'a> {
+    /// Use this specific theme with the given base size.
+    Named {
+        /// Name of the cursor theme.
+        name: &'a str,
+
+        /// Base size of the cursor names.
+        ///
+        /// Note this size assumes a scale factor of 1. Cursor image sizes may be multiplied by the base size
+        /// for HiDPI outputs.
+        size: u32,
+    },
+
+    /// Use the system provided theme
+    ///
+    /// In this case SCTK will read the `XCURSOR_THEME` and
+    /// `XCURSOR_SIZE` environment variables to figure out the
+    /// theme to use.
+    System,
+}
+
+/// An error indicating that the cursor was not found.
+#[derive(Debug, thiserror::Error)]
+pub enum PointerThemeError {
+    /// An invalid ObjectId was used.
+    #[error("Invalid ObjectId")]
+    InvalidId(InvalidId),
+
+    /// A global error occurred.
+    #[error("A Global Error occured")]
+    GlobalError(GlobalError),
+
+    /// The requested cursor was not found.
+    #[error("Cursor not found")]
+    CursorNotFound,
+}
+
+#[derive(Debug)]
+pub(crate) struct Themes {
+    name: String,
+    size: u32,
+    // Scale -> CursorTheme
+    themes: HashMap<u32, CursorTheme>,
+}
+
+impl Default for Themes {
+    fn default() -> Self {
+        Themes::new(ThemeSpec::System)
+    }
+}
+
+impl Themes {
+    pub(crate) fn new(spec: ThemeSpec) -> Themes {
+        let (name, size) = match spec {
+            ThemeSpec::Named { name, size } => (name.into(), size),
+            ThemeSpec::System => {
+                let name = env::var("XCURSOR_THEME").ok().unwrap_or_else(|| "default".into());
+                let size = env::var("XCURSOR_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or(24);
+                (name, size)
+            }
+        };
+
+        Themes { name, size, themes: HashMap::new() }
+    }
+
+    fn get_cursor(
+        &mut self,
+        conn: &Connection,
+        name: &str,
+        scale: u32,
+        shm: &wl_shm::WlShm,
+    ) -> Result<Option<&Cursor>, InvalidId> {
+        // Check if the theme has been initialized at the specified scale.
+        if let Entry::Vacant(e) = self.themes.entry(scale) {
+            // Initialize the theme for the specified scale
+            let theme = CursorTheme::load_from_name(
+                conn,
+                shm.clone(), // TODO: Does the cursor theme need to clone wl_shm?
+                &self.name,
+                self.size * scale,
+            )?;
+
+            e.insert(theme);
+        }
+
+        let theme = self.themes.get_mut(&scale).unwrap();
+
+        Ok(theme.get_cursor(name))
+    }
+}
+
+impl ThemedPointer {
+    fn update_cursor(&self, conn: &Connection) -> Result<(), PointerThemeError> {
+        let mut themes = self.themes.lock().unwrap();
+
+        let cursor = themes
+            .get_cursor(conn, &self.current_ptr, self.scale as u32, &self.shm)
+            .map_err(PointerThemeError::InvalidId)?
+            .ok_or(PointerThemeError::CursorNotFound)?;
+
+        let image = &cursor[0];
+        let (w, h) = image.dimensions();
+        let (hx, hy) = image.hotspot();
+
+        self.surface.set_buffer_scale(self.scale);
+        self.surface.attach(Some(image), 0, 0);
+
+        if self.surface.version() >= 4 {
+            self.surface.damage_buffer(0, 0, w as i32, h as i32);
+        } else {
+            let scale = self.scale;
+
+            // surface is old and does not support damage_buffer, so we damage
+            // in surface coordinates and hope it is not rescaled
+            self.surface.damage(0, 0, w as i32 / scale as i32, h as i32 / scale as i32);
+        }
+
+        // Commit the surface to place the cursor image in the compositor's memory.
+        self.surface.commit();
+        // Set the pointer surface to change the pointer.
+        self.pointer.set_cursor(self.last_serial, Some(&self.surface), hx as i32, hy as i32);
+
+        Ok(())
     }
 }

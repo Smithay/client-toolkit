@@ -176,7 +176,7 @@ impl OutputState {
         let name = pending_info.id;
 
         let version = wl_output.version();
-        let pending_xdg = version < 4 && self.xdg.get().is_ok();
+        let pending_xdg = self.xdg.get().is_ok();
 
         let xdg_output = if pending_xdg {
             let xdg = self.xdg.get().unwrap();
@@ -315,6 +315,12 @@ pub struct OutputInfo {
 
     /// Possible modes for an output.
     pub modes: Vec<Mode>,
+
+    /// Logical position in global compositor space
+    pub logical_position: Option<(i32, i32)>,
+
+    /// Logical size in global compositor space
+    pub logical_size: Option<(i32, i32)>,
 
     /// The name of the this output as advertised by the surface.
     ///
@@ -567,45 +573,39 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let inner = state
+            .output_state()
+            .outputs
+            .iter_mut()
+            .find(|inner| inner.xdg_output.as_ref() == Some(output))
+            .expect("Received event for dead output");
+
         match event {
-            // Already provided by wl_output
-            zxdg_output_v1::Event::LogicalPosition { x: _, y: _ } => (),
-            zxdg_output_v1::Event::LogicalSize { width: _, height: _ } => (),
-
+            zxdg_output_v1::Event::LogicalPosition { x, y } => {
+                inner.pending_info.logical_position = Some((x, y));
+                inner.pending_xdg = true;
+            }
+            zxdg_output_v1::Event::LogicalSize { width, height } => {
+                inner.pending_info.logical_size = Some((width, height));
+                inner.pending_xdg = true;
+            }
             zxdg_output_v1::Event::Name { name } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| inner.xdg_output.as_ref() == Some(output))
-                    .expect("Received event for dead output");
-
-                inner.pending_info.name = Some(name);
+                if inner.wl_output.version() < 4 {
+                    inner.pending_info.name = Some(name);
+                }
                 inner.pending_xdg = true;
             }
 
             zxdg_output_v1::Event::Description { description } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| inner.xdg_output.as_ref() == Some(output))
-                    .expect("Received event for dead output");
-
-                inner.pending_info.description = Some(description);
+                if inner.wl_output.version() < 4 {
+                    inner.pending_info.description = Some(description);
+                }
                 inner.pending_xdg = true;
             }
 
             zxdg_output_v1::Event::Done => {
                 // This event is deprecated starting in version 3, wl_output::done should be sent instead.
                 if output.version() < 3 {
-                    let inner = state
-                        .output_state()
-                        .outputs
-                        .iter_mut()
-                        .find(|inner| inner.xdg_output.as_ref() == Some(output))
-                        .expect("Received event for dead output");
-
                     let info = inner.pending_info.clone();
                     inner.current_info = Some(info.clone());
                     inner.pending_xdg = false;
@@ -650,11 +650,7 @@ where
             data.registry().bind_all(qh, 1..=4, OutputData::new).expect("Failed to bind global");
 
         // Only bind xdg output manager if it's needed
-        let xdg = if outputs.iter().any(|o| o.version() < 4) {
-            data.registry().bind_one(qh, 1..=3, GlobalData).into()
-        } else {
-            GlobalProxy::NotReady
-        };
+        let xdg = data.registry().bind_one(qh, 1..=3, GlobalData).into();
 
         let output_state = data.output_state();
         output_state.xdg = xdg;
@@ -725,6 +721,8 @@ impl OutputInfo {
             transform: Transform::Normal,
             scale_factor: 1,
             modes: vec![],
+            logical_position: None,
+            logical_size: None,
             name: None,
             description: None,
         }
