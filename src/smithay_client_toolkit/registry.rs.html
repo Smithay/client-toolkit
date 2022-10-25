@@ -619,24 +619,6 @@
 <span id="619">619</span>
 <span id="620">620</span>
 <span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].</span>
@@ -711,6 +693,7 @@
     <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
 };
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
+    <span class="ident">globals</span>::{<span class="ident">BindError</span>, <span class="ident">GlobalList</span>},
     <span class="ident">protocol</span>::{<span class="ident">wl_callback</span>, <span class="ident">wl_registry</span>},
     <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
 };
@@ -798,18 +781,6 @@
         <span class="ident">name</span>: <span class="ident">u32</span>,
         <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     );
-}
-
-<span class="doccomment">/// An error when binding a global.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BindError</span> {
-    <span class="doccomment">/// The requested version of the global is not supported.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the requested version of the global is not supported&quot;</span>)]</span>
-    <span class="ident">UnsupportedVersion</span>,
-
-    <span class="doccomment">/// The requested global was not found in the registry.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the requested global was not found in the registry&quot;</span>)]</span>
-    <span class="ident">NotPresent</span>,
 }
 
 <span class="doccomment">/// State object associated with the registry handling for smithay&#39;s client toolkit.</span>
@@ -1024,25 +995,10 @@
 <span class="doccomment">/// use smithay_client_toolkit::{</span>
 <span class="doccomment">///     delegate_registry, delegate_shm, registry_handlers,</span>
 <span class="doccomment">///     shm::{ShmHandler, ShmState},</span>
-<span class="doccomment">///     registry::{RegistryState, ProvidesRegistryState}</span>
 <span class="doccomment">/// };</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// struct ExampleApp {</span>
-<span class="doccomment">///     registry_state: RegistryState,</span>
 <span class="doccomment">///     shm_state: ShmState,</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // In order to use the registry, we need to delegate handling of WlRegistry to it.</span>
-<span class="doccomment">/// delegate_registry!(ExampleApp);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // In order to use the registry delegate, we need to provide a way to access the registry state</span>
-<span class="doccomment">/// // from your data type and provide a list of types that will bind to the registry.</span>
-<span class="doccomment">/// impl ProvidesRegistryState for ExampleApp {</span>
-<span class="doccomment">///     fn registry(&amp;mut self) -&gt; &amp;mut RegistryState {</span>
-<span class="doccomment">///         &amp;mut self.registry_state</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">///     // Here we specify the types of the delegates which should handle registry events.</span>
-<span class="doccomment">///     registry_handlers!(ShmState);</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// // Here is the implementation of wl_shm to compile:</span>
@@ -1183,9 +1139,17 @@
     <span class="ident">proxy</span>: <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Proxy</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">not_ready</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">proxy</span>: <span class="ident">GlobalProxy::NotReady</span> }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>(<span class="ident">globals</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalList</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">State</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, (), <span class="ident">State</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="ident">globals</span>.<span class="ident">bind</span>(<span class="ident">qh</span>, <span class="number">0</span>..<span class="op">=</span><span class="ident">MAX_VERSION</span>, ())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">proxy</span>: <span class="ident">GlobalProxy::Bound</span>(<span class="ident">proxy</span>) })
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {

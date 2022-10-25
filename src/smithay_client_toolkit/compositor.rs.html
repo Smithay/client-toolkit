@@ -403,23 +403,13 @@
 <span id="403">403</span>
 <span id="404">404</span>
 <span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::sync</span>::{
     <span class="ident">atomic</span>::{<span class="ident">AtomicI32</span>, <span class="ident">Ordering</span>},
     <span class="ident">Arc</span>, <span class="ident">Mutex</span>,
 };
 
 <span class="kw">use</span> <span class="ident">wayland_client</span>::{
+    <span class="ident">globals</span>::{<span class="ident">BindError</span>, <span class="ident">GlobalList</span>},
     <span class="ident">protocol</span>::{<span class="ident">wl_callback</span>, <span class="ident">wl_compositor</span>, <span class="ident">wl_output</span>, <span class="ident">wl_region</span>, <span class="ident">wl_surface</span>},
     <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
 };
@@ -428,12 +418,9 @@
     <span class="ident">error::GlobalError</span>,
     <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
     <span class="ident">output</span>::{<span class="ident">OutputData</span>, <span class="ident">OutputHandler</span>, <span class="ident">OutputState</span>, <span class="ident">ScaleWatcherHandle</span>},
-    <span class="ident">registry</span>::{<span class="ident">GlobalProxy</span>, <span class="ident">ProvidesRegistryState</span>, <span class="ident">RegistryHandler</span>},
 };
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CompositorHandler</span>: <span class="ident">Sized</span> {
-    <span class="kw">fn</span> <span class="ident">compositor_state</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">CompositorState</span>;
-
     <span class="doccomment">/// The surface has either been moved into or out of an output and the output has a different scale factor.</span>
     <span class="kw">fn</span> <span class="ident">scale_factor_changed</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
@@ -468,16 +455,23 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompositorState</span> {
-    <span class="ident">wl_compositor</span>: <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span><span class="op">&gt;</span>,
+    <span class="ident">wl_compositor</span>: <span class="ident">wl_compositor::WlCompositor</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">CompositorState</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">CompositorState</span> {
-        <span class="ident">CompositorState</span> { <span class="ident">wl_compositor</span>: <span class="ident">GlobalProxy::new</span>() }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>(
+        <span class="ident">globals</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalList</span>,
+        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CompositorState</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">State</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span>, <span class="ident">GlobalData</span>, <span class="ident">State</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let</span> <span class="ident">wl_compositor</span> <span class="op">=</span> <span class="ident">globals</span>.<span class="ident">bind</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">5</span>, <span class="ident">GlobalData</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">CompositorState</span> { <span class="ident">wl_compositor</span> })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wl_compositor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">wl_compositor::WlCompositor</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">wl_compositor</span>.<span class="ident">get</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wl_compositor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_compositor::WlCompositor</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">wl_compositor</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_surface</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
@@ -499,9 +493,7 @@
         <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_surface::WlSurface</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
         <span class="ident">U</span>: <span class="ident">SurfaceDataExt</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">compositor</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wl_compositor</span>.<span class="ident">get</span>()<span class="question-mark">?</span>;
-
-        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">compositor</span>.<span class="ident">create_surface</span>(<span class="ident">qh</span>, <span class="ident">data</span>);
+        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wl_compositor</span>.<span class="ident">create_surface</span>(<span class="ident">qh</span>, <span class="ident">data</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">surface</span>)
     }
@@ -611,7 +603,7 @@
         [
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_surface::WlSurface</span>
         ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::compositor::CompositorState</span>
-);
+        );
     };
     ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>, <span class="ident">surface</span>: [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">surface</span>: <span class="ident">ty</span>),<span class="kw-2">*</span>$(,)<span class="question-mark">?</span>]) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
@@ -630,7 +622,7 @@
         [
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_surface::WlSurface</span>
         ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::compositor::CompositorState</span>
-    );
+        );
     };
 }
 
@@ -791,7 +783,7 @@
 
 <span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span>, <span class="number">5</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CompositorState</span> {
     <span class="kw">fn</span> <span class="ident">bound_global</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">wl_compositor</span>().<span class="ident">cloned</span>()
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">wl_compositor</span>.<span class="ident">clone</span>())
     }
 }
 
@@ -814,20 +806,6 @@
 
             <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
         }
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CompositorState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_compositor::WlCompositor</span>, <span class="ident">GlobalData</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">CompositorHandler</span>
-        <span class="op">+</span> <span class="ident">ProvidesRegistryState</span>
-        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-{
-    <span class="kw">fn</span> <span class="ident">ready</span>(<span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="ident">_conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">compositor</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">bind_one</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">5</span>, <span class="ident">GlobalData</span>);
-
-        <span class="ident">state</span>.<span class="ident">compositor_state</span>().<span class="ident">wl_compositor</span> <span class="op">=</span> <span class="ident">compositor</span>.<span class="ident">into</span>();
     }
 }
 </code></pre></div>
