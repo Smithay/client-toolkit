@@ -8,7 +8,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
-use wayland_client::{protocol::wl_output, Connection, QueueHandle};
+use wayland_client::{globals::registry_queue_init, protocol::wl_output, Connection, QueueHandle};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // We initialize the logger for the purpose of debugging.
@@ -19,12 +19,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let conn = Connection::connect_to_env()?;
 
     // Now create an event queue and a handle to the queue so we can create objects.
-    let mut event_queue = conn.new_event_queue();
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
     // Initialize the registry handling so other parts of Smithay's client toolkit may bind
     // globals.
-    let registry_state = RegistryState::new(&conn, &qh);
+    let registry_state = RegistryState::new(&globals, &conn, &qh);
 
     // Initialize the delegate we will use for outputs.
     let output_delegate = OutputState::new();

@@ -67,12 +67,9 @@
 //! }
 //! ```
 
-use crate::{
-    error::GlobalError,
-    globals::{GlobalData, ProvidesBoundGlobal},
-};
+use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 use wayland_client::{
-    globals::{BindError, GlobalList},
+    globals::{BindError, Global, GlobalList, GlobalListContents},
     protocol::{wl_callback, wl_registry},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -172,37 +169,22 @@ pub struct RegistryState {
     ready: bool,
 }
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Global {
-    /// The numeric name for this global, usable in [RegistryState::bind_specific].
-    pub name: u32,
-    /// The maximum version supported by the compositor for this global.
-    pub version: u32,
-    interface: String,
-}
-
-impl Global {
-    /// The interface name for this global.
-    pub fn interface(&self) -> &str {
-        &self.interface
-    }
-}
-
 impl RegistryState {
     /// Creates a new registry handle.
     ///
     /// This type may be used to bind globals as they are advertised.
-    pub fn new<D>(conn: &Connection, qh: &QueueHandle<D>) -> Self
+    pub fn new<D>(global_list: &GlobalList, conn: &Connection, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<wl_registry::WlRegistry, GlobalData>
+        D: Dispatch<wl_registry::WlRegistry, GlobalListContents>
             + Dispatch<wl_callback::WlCallback, RegistryReady>
             + ProvidesRegistryState
             + 'static,
     {
-        let display = conn.display();
-        let registry = display.get_registry(qh, GlobalData);
-        display.sync(qh, RegistryReady);
-        RegistryState { registry, globals: Vec::new(), ready: false }
+        let registry = global_list.registry().clone();
+        let globals = global_list.contents().clone_list();
+        conn.display().sync(qh, RegistryReady);
+
+        RegistryState { registry, globals, ready: false }
     }
 
     /// Uses an existing WlRegistry for handling registry state.
@@ -394,7 +376,7 @@ macro_rules! delegate_registry {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
-                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::globals::GlobalData
+                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::reexports::client::globals::GlobalListContents
             ]  => $crate::registry::RegistryState
         );
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
@@ -405,15 +387,15 @@ macro_rules! delegate_registry {
     };
 }
 
-impl<D> Dispatch<wl_registry::WlRegistry, GlobalData, D> for RegistryState
+impl<D> Dispatch<wl_registry::WlRegistry, GlobalListContents, D> for RegistryState
 where
-    D: Dispatch<wl_registry::WlRegistry, GlobalData> + ProvidesRegistryState,
+    D: Dispatch<wl_registry::WlRegistry, GlobalListContents> + ProvidesRegistryState,
 {
     fn event(
         state: &mut D,
         _: &wl_registry::WlRegistry,
         event: wl_registry::Event,
-        _: &GlobalData,
+        _: &GlobalListContents,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {

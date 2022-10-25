@@ -22,9 +22,9 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    globals::registry_queue_init,
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, QueueHandle,
 };
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&conn, &qh),
+        registry_state: RegistryState::new(&globals, &conn, &qh),
         seat_state: SeatState::new(),
         output_state: OutputState::new(),
         compositor_state: CompositorState::bind(&globals, &qh)
@@ -443,17 +443,4 @@ impl ProvidesRegistryState for SimpleWindow {
         &mut self.registry_state
     }
     registry_handlers![OutputState, SeatState,];
-}
-
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for SimpleWindow {
-    fn event(
-        _state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
-        _event: wl_registry::Event,
-        _data: &GlobalListContents,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-        // We don't need any other globals.
-    }
 }

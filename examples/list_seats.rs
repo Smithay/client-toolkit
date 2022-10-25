@@ -4,18 +4,20 @@ use smithay_client_toolkit::{
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
 };
-use wayland_client::{protocol::wl_seat, Connection, QueueHandle};
+use wayland_client::{globals::registry_queue_init, protocol::wl_seat, Connection, QueueHandle};
 
 fn main() {
     env_logger::init();
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let mut event_queue = conn.new_event_queue();
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    let mut list_seats =
-        ListSeats { registry_state: RegistryState::new(&conn, &qh), seat_state: SeatState::new() };
+    let mut list_seats = ListSeats {
+        registry_state: RegistryState::new(&globals, &conn, &qh),
+        seat_state: SeatState::new(),
+    };
 
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
