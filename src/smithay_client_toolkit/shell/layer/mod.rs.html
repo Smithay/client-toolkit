@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/layer/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/layer/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -440,447 +440,447 @@
 <span id="440">440</span>
 <span id="441">441</span>
 <span id="442">442</span>
-</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">dispatch</span>;
+</pre><pre class="rust"><code><span class="kw">mod </span>dispatch;
 
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert::TryFrom</span>,
-    <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Weak</span>},
+<span class="kw">use </span>std::{
+    convert::TryFrom,
+    sync::{Arc, Weak},
 };
 
-<span class="kw">use</span> <span class="ident">bitflags::bitflags</span>;
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">globals</span>::{<span class="ident">BindError</span>, <span class="ident">GlobalList</span>},
-    <span class="ident">protocol</span>::{<span class="ident">wl_output</span>, <span class="ident">wl_surface</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
+<span class="kw">use </span>bitflags::bitflags;
+<span class="kw">use </span>wayland_client::{
+    globals::{BindError, GlobalList},
+    protocol::{wl_output, wl_surface},
+    Connection, Dispatch, Proxy, QueueHandle,
 };
-<span class="kw">use</span> <span class="ident">wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup</span>;
-<span class="kw">use</span> <span class="ident">wayland_protocols_wlr::layer_shell::v1::client</span>::{<span class="ident">zwlr_layer_shell_v1</span>, <span class="ident">zwlr_layer_surface_v1</span>};
+<span class="kw">use </span>wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup;
+<span class="kw">use </span>wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error::GlobalError</span>,
-    <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
+<span class="kw">use crate</span>::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
 };
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LayerShell</span> {
-    <span class="ident">wlr_layer_shell</span>: <span class="ident">zwlr_layer_shell_v1::ZwlrLayerShellV1</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>LayerShell {
+    wlr_layer_shell: zwlr_layer_shell_v1::ZwlrLayerShellV1,
 }
 
-<span class="kw">impl</span> <span class="ident">LayerShell</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>(
-        <span class="ident">globals</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalList</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LayerShell</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">State</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zwlr_layer_shell_v1::ZwlrLayerShellV1</span>, <span class="ident">GlobalData</span>, <span class="ident">State</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">LayerShellHandler</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl </span>LayerShell {
+    <span class="kw">pub fn </span>bind&lt;State&gt;(
+        globals: <span class="kw-2">&amp;</span>GlobalList,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LayerShell, BindError&gt;
+    <span class="kw">where
+        </span>State: Dispatch&lt;zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, State&gt;
+            + LayerShellHandler
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">wlr_layer_shell</span> <span class="op">=</span> <span class="ident">globals</span>.<span class="ident">bind</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">4</span>, <span class="ident">GlobalData</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">LayerShell</span> { <span class="ident">wlr_layer_shell</span> })
+        <span class="kw">let </span>wlr_layer_shell = globals.bind(qh, <span class="number">1</span>..=<span class="number">4</span>, GlobalData)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(LayerShell { wlr_layer_shell })
     }
 }
 
-<span class="doccomment">/// Handler for operations on a [`LayerSurface`]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">LayerShellHandler</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// The layer surface has been closed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When this requested is called, the layer surface is no longer shown and all handles of the [`LayerSurface`]</span>
-    <span class="doccomment">/// should be dropped.</span>
-    <span class="kw">fn</span> <span class="ident">closed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">layer</span>: <span class="kw-2">&amp;</span><span class="ident">LayerSurface</span>);
+<span class="doccomment">/// Handler for operations on a [`LayerSurface`]
+</span><span class="kw">pub trait </span>LayerShellHandler: Sized {
+    <span class="doccomment">/// The layer surface has been closed.
+    ///
+    /// When this requested is called, the layer surface is no longer shown and all handles of the [`LayerSurface`]
+    /// should be dropped.
+    </span><span class="kw">fn </span>closed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, layer: <span class="kw-2">&amp;</span>LayerSurface);
 
-    <span class="doccomment">/// Apply a suggested surface change.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When this function is called, the compositor is requesting the layer surfaces&#39;s size or state to change.</span>
-    <span class="kw">fn</span> <span class="ident">configure</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">layer</span>: <span class="kw-2">&amp;</span><span class="ident">LayerSurface</span>,
-        <span class="ident">configure</span>: <span class="ident">LayerSurfaceConfigure</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// Apply a suggested surface change.
+    ///
+    /// When this function is called, the compositor is requesting the layer surfaces&#39;s size or state to change.
+    </span><span class="kw">fn </span>configure(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        layer: <span class="kw-2">&amp;</span>LayerSurface,
+        configure: LayerSurfaceConfigure,
+        serial: u32,
     );
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LayerSurfaceBuilder</span> {
-    <span class="ident">output</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span>,
-    <span class="ident">namespace</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
-    <span class="ident">anchor</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Anchor</span><span class="op">&gt;</span>,
-    <span class="ident">zone</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span>,
-    <span class="comment">// top, right, bottom, left</span>
-    <span class="ident">margin</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">i32</span>, <span class="ident">i32</span>, <span class="ident">i32</span>, <span class="ident">i32</span>)<span class="op">&gt;</span>,
-    <span class="ident">interactivity</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyboardInteractivity</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>LayerSurfaceBuilder {
+    output: <span class="prelude-ty">Option</span>&lt;wl_output::WlOutput&gt;,
+    namespace: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+    anchor: <span class="prelude-ty">Option</span>&lt;Anchor&gt;,
+    zone: <span class="prelude-ty">Option</span>&lt;i32&gt;,
+    <span class="comment">// top, right, bottom, left
+    </span>margin: <span class="prelude-ty">Option</span>&lt;(i32, i32, i32, i32)&gt;,
+    interactivity: <span class="prelude-ty">Option</span>&lt;KeyboardInteractivity&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">LayerSurfaceBuilder</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">namespace</span>(<span class="self">self</span>, <span class="ident">namespace</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">namespace</span>: <span class="prelude-val">Some</span>(<span class="ident">namespace</span>.<span class="ident">into</span>()), ..<span class="self">self</span> }
+<span class="kw">impl </span>LayerSurfaceBuilder {
+    <span class="kw">pub fn </span>namespace(<span class="self">self</span>, namespace: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ namespace: <span class="prelude-val">Some</span>(namespace.into()), ..<span class="self">self </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output</span>(<span class="self">self</span>, <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">output</span>: <span class="prelude-val">Some</span>(<span class="ident">output</span>.<span class="ident">clone</span>()), ..<span class="self">self</span> }
+    <span class="kw">pub fn </span>output(<span class="self">self</span>, output: <span class="kw-2">&amp;</span>wl_output::WlOutput) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ output: <span class="prelude-val">Some</span>(output.clone()), ..<span class="self">self </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">size</span>(<span class="self">self</span>, <span class="ident">size</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>)) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">size</span>: <span class="prelude-val">Some</span>(<span class="ident">size</span>), ..<span class="self">self</span> }
+    <span class="kw">pub fn </span>size(<span class="self">self</span>, size: (u32, u32)) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ size: <span class="prelude-val">Some</span>(size), ..<span class="self">self </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">anchor</span>(<span class="self">self</span>, <span class="ident">anchor</span>: <span class="ident">Anchor</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">anchor</span>: <span class="prelude-val">Some</span>(<span class="ident">anchor</span>), ..<span class="self">self</span> }
+    <span class="kw">pub fn </span>anchor(<span class="self">self</span>, anchor: Anchor) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ anchor: <span class="prelude-val">Some</span>(anchor), ..<span class="self">self </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exclusive_zone</span>(<span class="self">self</span>, <span class="ident">zone</span>: <span class="ident">i32</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">zone</span>: <span class="prelude-val">Some</span>(<span class="ident">zone</span>), ..<span class="self">self</span> }
+    <span class="kw">pub fn </span>exclusive_zone(<span class="self">self</span>, zone: i32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ zone: <span class="prelude-val">Some</span>(zone), ..<span class="self">self </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">margin</span>(<span class="self">self</span>, <span class="ident">top</span>: <span class="ident">i32</span>, <span class="ident">right</span>: <span class="ident">i32</span>, <span class="ident">bottom</span>: <span class="ident">i32</span>, <span class="ident">left</span>: <span class="ident">i32</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">margin</span>: <span class="prelude-val">Some</span>((<span class="ident">top</span>, <span class="ident">right</span>, <span class="ident">bottom</span>, <span class="ident">left</span>)), ..<span class="self">self</span> }
+    <span class="kw">pub fn </span>margin(<span class="self">self</span>, top: i32, right: i32, bottom: i32, left: i32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ margin: <span class="prelude-val">Some</span>((top, right, bottom, left)), ..<span class="self">self </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">keyboard_interactivity</span>(<span class="self">self</span>, <span class="ident">interactivity</span>: <span class="ident">KeyboardInteractivity</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">interactivity</span>: <span class="prelude-val">Some</span>(<span class="ident">interactivity</span>), ..<span class="self">self</span> }
+    <span class="kw">pub fn </span>keyboard_interactivity(<span class="self">self</span>, interactivity: KeyboardInteractivity) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ interactivity: <span class="prelude-val">Some</span>(interactivity), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Build and map the layer</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function will create the layer and send the initial commit.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Protocol errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the surface already has a role object, the compositor will raise a protocol error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A surface is considered to have a role object if some other type of surface was created using the</span>
-    <span class="doccomment">/// surface. For example, creating a window, popup, layer or subsurface all assign a role object to a</span>
-    <span class="doccomment">/// surface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The function here takes an owned reference to the surface to hint the surface will be consumed by the</span>
-    <span class="doccomment">/// layer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// [`WlSurface`]: wl_surface::WlSurface</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;The layer is destroyed if dropped&quot;</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Build and map the layer
+    ///
+    /// This function will create the layer and send the initial commit.
+    ///
+    /// # Protocol errors
+    ///
+    /// If the surface already has a role object, the compositor will raise a protocol error.
+    ///
+    /// A surface is considered to have a role object if some other type of surface was created using the
+    /// surface. For example, creating a window, popup, layer or subsurface all assign a role object to a
+    /// surface.
+    ///
+    /// The function here takes an owned reference to the surface to hint the surface will be consumed by the
+    /// layer.
+    ///
+    /// [`WlSurface`]: wl_surface::WlSurface
+    </span><span class="attribute">#[must_use = <span class="string">&quot;The layer is destroyed if dropped&quot;</span>]
+    </span><span class="kw">pub fn </span>map&lt;D&gt;(
         <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">shell</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">zwlr_layer_shell_v1::ZwlrLayerShellV1</span>, <span class="number">4</span><span class="op">&gt;</span>,
-        <span class="ident">surface</span>: <span class="ident">wl_surface::WlSurface</span>,
-        <span class="ident">layer</span>: <span class="ident">Layer</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LayerSurface</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zwlr_layer_surface_v1::ZwlrLayerSurfaceV1</span>, <span class="ident">LayerSurfaceData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        shell: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;zwlr_layer_shell_v1::ZwlrLayerShellV1, <span class="number">4</span>&gt;,
+        surface: wl_surface::WlSurface,
+        layer: Layer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LayerSurface, GlobalError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="comment">// The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param</span>
-        <span class="comment">// will stay for ext-layer-shell-v1 support.</span>
-        <span class="kw">let</span> <span class="ident">layer_shell</span> <span class="op">=</span> <span class="ident">shell</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>;
-        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the</span>
-        <span class="comment">// new objects being processed and the Weak in the PopupData becoming usable.</span>
-        <span class="kw">let</span> <span class="ident">freeze</span> <span class="op">=</span> <span class="ident">qh</span>.<span class="ident">freeze</span>();
+        <span class="comment">// The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
+        // will stay for ext-layer-shell-v1 support.
+        </span><span class="kw">let </span>layer_shell = shell.bound_global()<span class="question-mark">?</span>;
+        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        </span><span class="kw">let </span>freeze = qh.freeze();
 
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new_cyclic</span>(<span class="op">|</span><span class="ident">weak</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">layer_surface</span> <span class="op">=</span> <span class="ident">layer_shell</span>.<span class="ident">get_layer_surface</span>(
-                <span class="kw-2">&amp;</span><span class="ident">surface</span>,
-                <span class="self">self</span>.<span class="ident">output</span>.<span class="ident">as_ref</span>(),
-                <span class="ident">layer</span>.<span class="ident">into</span>(),
-                <span class="self">self</span>.<span class="ident">namespace</span>.<span class="ident">unwrap_or_default</span>(),
-                <span class="ident">qh</span>,
-                <span class="ident">LayerSurfaceData</span> { <span class="ident">inner</span>: <span class="ident">weak</span>.<span class="ident">clone</span>() },
+        <span class="kw">let </span>inner = Arc::new_cyclic(|weak| {
+            <span class="kw">let </span>layer_surface = layer_shell.get_layer_surface(
+                <span class="kw-2">&amp;</span>surface,
+                <span class="self">self</span>.output.as_ref(),
+                layer.into(),
+                <span class="self">self</span>.namespace.unwrap_or_default(),
+                qh,
+                LayerSurfaceData { inner: weak.clone() },
             );
 
-            <span class="ident">LayerSurfaceInner</span> { <span class="ident">wl_surface</span>: <span class="ident">surface</span>.<span class="ident">clone</span>(), <span class="ident">kind</span>: <span class="ident">SurfaceKind::Wlr</span>(<span class="ident">layer_surface</span>) }
+            LayerSurfaceInner { wl_surface: surface.clone(), kind: SurfaceKind::Wlr(layer_surface) }
         });
-        <span class="ident">drop</span>(<span class="ident">freeze</span>);
+        drop(freeze);
 
-        <span class="kw">let</span> <span class="ident">layer_surface</span> <span class="op">=</span> <span class="ident">LayerSurface</span>(<span class="ident">inner</span>);
+        <span class="kw">let </span>layer_surface = LayerSurface(inner);
 
-        <span class="comment">// Set data for initial commit</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">size</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">size</span> {
-            <span class="ident">layer_surface</span>.<span class="ident">set_size</span>(<span class="ident">size</span>.<span class="number">0</span>, <span class="ident">size</span>.<span class="number">1</span>);
+        <span class="comment">// Set data for initial commit
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(size) = <span class="self">self</span>.size {
+            layer_surface.set_size(size.<span class="number">0</span>, size.<span class="number">1</span>);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">anchor</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">anchor</span> {
-            <span class="comment">// We currently rely on the bitsets matching</span>
-            <span class="ident">layer_surface</span>.<span class="ident">set_anchor</span>(<span class="ident">anchor</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(anchor) = <span class="self">self</span>.anchor {
+            <span class="comment">// We currently rely on the bitsets matching
+            </span>layer_surface.set_anchor(anchor);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">zone</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">zone</span> {
-            <span class="ident">layer_surface</span>.<span class="ident">set_exclusive_zone</span>(<span class="ident">zone</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(zone) = <span class="self">self</span>.zone {
+            layer_surface.set_exclusive_zone(zone);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">margin</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">margin</span> {
-            <span class="ident">layer_surface</span>.<span class="ident">set_margin</span>(<span class="ident">margin</span>.<span class="number">0</span>, <span class="ident">margin</span>.<span class="number">1</span>, <span class="ident">margin</span>.<span class="number">2</span>, <span class="ident">margin</span>.<span class="number">3</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(margin) = <span class="self">self</span>.margin {
+            layer_surface.set_margin(margin.<span class="number">0</span>, margin.<span class="number">1</span>, margin.<span class="number">2</span>, margin.<span class="number">3</span>);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">interactivity</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">interactivity</span> {
-            <span class="ident">layer_surface</span>.<span class="ident">set_keyboard_interactivity</span>(<span class="ident">interactivity</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(interactivity) = <span class="self">self</span>.interactivity {
+            layer_surface.set_keyboard_interactivity(interactivity);
         }
 
-        <span class="comment">// Initial commit</span>
-        <span class="ident">surface</span>.<span class="ident">commit</span>();
+        <span class="comment">// Initial commit
+        </span>surface.commit();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">layer_surface</span>)
+        <span class="prelude-val">Ok</span>(layer_surface)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LayerSurface</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">LayerSurfaceInner</span><span class="op">&gt;</span>);
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>LayerSurface(Arc&lt;LayerSurfaceInner&gt;);
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">LayerSurface</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">Arc::ptr_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="number">0</span>)
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>LayerSurface {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        Arc::ptr_eq(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span>other.<span class="number">0</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">LayerSurface</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_wlr_surface</span>(
-        <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">zwlr_layer_surface_v1::ZwlrLayerSurfaceV1</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LayerSurface</span><span class="op">&gt;</span> {
-        <span class="ident">surface</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">LayerSurfaceData</span><span class="op">&gt;</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> <span class="ident">data</span>.<span class="ident">inner</span>.<span class="ident">upgrade</span>()).<span class="ident">map</span>(<span class="ident">LayerSurface</span>)
+<span class="kw">impl </span>LayerSurface {
+    <span class="kw">pub fn </span>from_wlr_surface(
+        surface: <span class="kw-2">&amp;</span>zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;LayerSurface&gt; {
+        surface.data::&lt;LayerSurfaceData&gt;().and_then(|data| data.inner.upgrade()).map(LayerSurface)
     }
 
-    <span class="comment">// TODO(from_wl_surface): This will require us to initialize the surface.</span>
+    <span class="comment">// TODO(from_wl_surface): This will require us to initialize the surface.
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() -&gt; <span class="ident">LayerSurfaceBuilder</span> {
-        <span class="ident">LayerSurfaceBuilder</span> {
-            <span class="ident">output</span>: <span class="prelude-val">None</span>,
-            <span class="ident">namespace</span>: <span class="prelude-val">None</span>,
-            <span class="ident">size</span>: <span class="prelude-val">None</span>,
-            <span class="ident">anchor</span>: <span class="prelude-val">None</span>,
-            <span class="ident">zone</span>: <span class="prelude-val">None</span>,
-            <span class="ident">margin</span>: <span class="prelude-val">None</span>,
-            <span class="ident">interactivity</span>: <span class="prelude-val">None</span>,
+    </span><span class="kw">pub fn </span>builder() -&gt; LayerSurfaceBuilder {
+        LayerSurfaceBuilder {
+            output: <span class="prelude-val">None</span>,
+            namespace: <span class="prelude-val">None</span>,
+            size: <span class="prelude-val">None</span>,
+            anchor: <span class="prelude-val">None</span>,
+            zone: <span class="prelude-val">None</span>,
+            margin: <span class="prelude-val">None</span>,
+            interactivity: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_popup</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">popup</span>: <span class="kw-2">&amp;</span><span class="ident">XdgPopup</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">get_popup</span>(<span class="ident">popup</span>),
+    <span class="kw">pub fn </span>get_popup(<span class="kw-2">&amp;</span><span class="self">self</span>, popup: <span class="kw-2">&amp;</span>XdgPopup) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>s) =&gt; s.get_popup(popup),
         }
     }
 
-    <span class="comment">// Double buffered state</span>
+    <span class="comment">// Double buffered state
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">width</span>: <span class="ident">u32</span>, <span class="ident">height</span>: <span class="ident">u32</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; <span class="ident">wlr</span>.<span class="ident">set_size</span>(<span class="ident">width</span>, <span class="ident">height</span>),
+    </span><span class="kw">pub fn </span>set_size(<span class="kw-2">&amp;</span><span class="self">self</span>, width: u32, height: u32) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; wlr.set_size(width, height),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_anchor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">anchor</span>: <span class="ident">Anchor</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="comment">// We currently rely on the bitsets being the same</span>
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; {
-                <span class="ident">wlr</span>.<span class="ident">set_anchor</span>(<span class="ident">zwlr_layer_surface_v1::Anchor::from_bits_truncate</span>(<span class="ident">anchor</span>.<span class="ident">bits</span>()))
+    <span class="kw">pub fn </span>set_anchor(<span class="kw-2">&amp;</span><span class="self">self</span>, anchor: Anchor) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            <span class="comment">// We currently rely on the bitsets being the same
+            </span>SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; {
+                wlr.set_anchor(zwlr_layer_surface_v1::Anchor::from_bits_truncate(anchor.bits()))
             }
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_exclusive_zone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zone</span>: <span class="ident">i32</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; <span class="ident">wlr</span>.<span class="ident">set_exclusive_zone</span>(<span class="ident">zone</span>),
+    <span class="kw">pub fn </span>set_exclusive_zone(<span class="kw-2">&amp;</span><span class="self">self</span>, zone: i32) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; wlr.set_exclusive_zone(zone),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_margin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">top</span>: <span class="ident">i32</span>, <span class="ident">right</span>: <span class="ident">i32</span>, <span class="ident">bottom</span>: <span class="ident">i32</span>, <span class="ident">left</span>: <span class="ident">i32</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; <span class="ident">wlr</span>.<span class="ident">set_margin</span>(<span class="ident">top</span>, <span class="ident">right</span>, <span class="ident">bottom</span>, <span class="ident">left</span>),
+    <span class="kw">pub fn </span>set_margin(<span class="kw-2">&amp;</span><span class="self">self</span>, top: i32, right: i32, bottom: i32, left: i32) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; wlr.set_margin(top, right, bottom, left),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_keyboard_interactivity</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="ident">KeyboardInteractivity</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; <span class="ident">wlr</span>.<span class="ident">set_keyboard_interactivity</span>(<span class="ident">value</span>.<span class="ident">into</span>()),
+    <span class="kw">pub fn </span>set_keyboard_interactivity(<span class="kw-2">&amp;</span><span class="self">self</span>, value: KeyboardInteractivity) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; wlr.set_keyboard_interactivity(value.into()),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_layer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">layer</span>: <span class="ident">Layer</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; <span class="ident">wlr</span>.<span class="ident">set_layer</span>(<span class="ident">layer</span>.<span class="ident">into</span>()),
+    <span class="kw">pub fn </span>set_layer(<span class="kw-2">&amp;</span><span class="self">self</span>, layer: Layer) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; wlr.set_layer(layer.into()),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">SurfaceKind</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span>
+    <span class="kw">pub fn </span>kind(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SurfaceKind {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.kind
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wl_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">wl_surface</span>
-    }
-}
-
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SurfaceKind</span> {
-    <span class="ident">Wlr</span>(<span class="ident">zwlr_layer_surface_v1::ZwlrLayerSurfaceV1</span>),
-}
-
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyboardInteractivity</span> {
-    <span class="doccomment">/// No keyboard focus is possible.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is the default value for all newly created layer shells.</span>
-    <span class="prelude-val">None</span>,
-
-    <span class="doccomment">/// Request exclusive keyboard focus if the layer is above shell surfaces.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// For [`Layer::Top`] and [`Layer::Overlay`], the seat will always give exclusive access to the layer</span>
-    <span class="doccomment">/// which has this interactivity mode set.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This setting is intended for applications that need to ensure they receive all keyboard events, such</span>
-    <span class="doccomment">/// as a lock screen or a password prompt.</span>
-    <span class="ident">Exclusive</span>,
-
-    <span class="doccomment">/// The compositor should focus and unfocus this surface by the user in an implementation specific manner.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Compositors may use their normal mechanisms to manage keyboard focus between layers and regular</span>
-    <span class="doccomment">/// desktop surfaces.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This setting is intended for applications which allow keyboard interaction.  </span>
-    <span class="ident">OnDemand</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">KeyboardInteractivity</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::None</span>
+    <span class="kw">pub fn </span>wl_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_surface::WlSurface {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.wl_surface
     }
 }
 
-<span class="doccomment">/// The z-depth of a layer.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// These values indicate which order in which layer surfaces are rendered.</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Layer</span> {
-    <span class="ident">Background</span>,
-
-    <span class="ident">Bottom</span>,
-
-    <span class="ident">Top</span>,
-
-    <span class="ident">Overlay</span>,
+<span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>SurfaceKind {
+    Wlr(zwlr_layer_surface_v1::ZwlrLayerSurfaceV1),
 }
 
-<span class="doccomment">/// Error when converting a [`zwlr_layer_shell_v1::Layer`] to a [`Layer`]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;unknown layer&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnknownLayer</span>;
+<span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="kw">pub enum </span>KeyboardInteractivity {
+    <span class="doccomment">/// No keyboard focus is possible.
+    ///
+    /// This is the default value for all newly created layer shells.
+    </span><span class="prelude-val">None</span>,
 
-<span class="macro">bitflags!</span> {
-    <span class="doccomment">/// Specifies which edges and corners a layer should be placed at in the anchor rectangle.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A combination of two orthogonal edges will cause the layer&#39;s anchor point to be the intersection of</span>
-    <span class="doccomment">/// the edges. For example [`Anchor::TOP`] and [`Anchor::LEFT`] will result in an anchor point in the top</span>
-    <span class="doccomment">/// left of the anchor rectangle.</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Anchor</span>: <span class="ident">u32</span> {
-        <span class="doccomment">/// Top edge of the anchor rectangle.</span>
-        <span class="kw">const</span> <span class="ident">TOP</span> <span class="op">=</span> <span class="number">1</span>;
+    <span class="doccomment">/// Request exclusive keyboard focus if the layer is above shell surfaces.
+    ///
+    /// For [`Layer::Top`] and [`Layer::Overlay`], the seat will always give exclusive access to the layer
+    /// which has this interactivity mode set.
+    ///
+    /// This setting is intended for applications that need to ensure they receive all keyboard events, such
+    /// as a lock screen or a password prompt.
+    </span>Exclusive,
 
-        <span class="doccomment">/// The bottom edge of the anchor rectangle.</span>
-        <span class="kw">const</span> <span class="ident">BOTTOM</span> <span class="op">=</span> <span class="number">2</span>;
+    <span class="doccomment">/// The compositor should focus and unfocus this surface by the user in an implementation specific manner.
+    ///
+    /// Compositors may use their normal mechanisms to manage keyboard focus between layers and regular
+    /// desktop surfaces.
+    ///
+    /// This setting is intended for applications which allow keyboard interaction.  
+    </span>OnDemand,
+}
 
-        <span class="doccomment">/// The left edge of the anchor rectangle.</span>
-        <span class="kw">const</span> <span class="ident">LEFT</span> <span class="op">=</span> <span class="number">4</span>;
-
-        <span class="doccomment">/// The right edge of the anchor rectangle.</span>
-        <span class="kw">const</span> <span class="ident">RIGHT</span> <span class="op">=</span> <span class="number">8</span>;
+<span class="kw">impl </span>Default <span class="kw">for </span>KeyboardInteractivity {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::None
     }
 }
 
-<span class="doccomment">/// A layer surface configure.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A configure describes a compositor request to resize the layer surface or change it&#39;s state.</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LayerSurfaceConfigure</span> {
-    <span class="doccomment">/// The compositor suggested new size of the layer in surface-local coordinates.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The size is a hint, meaning the new size can be ignored. A smaller size could be picked to satisfy</span>
-    <span class="doccomment">/// some aspect ratio or resize in steps. If the size is smaller than suggested and the layer surface is</span>
-    <span class="doccomment">/// anchored to two opposite anchors then the layer surface will be centered on that axis.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the width is zero, you may choose any width you want. If the height is zero, you may choose any</span>
-    <span class="doccomment">/// height you want.</span>
-    <span class="kw">pub</span> <span class="ident">new_size</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>),
+<span class="doccomment">/// The z-depth of a layer.
+///
+/// These values indicate which order in which layer surfaces are rendered.
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="kw">pub enum </span>Layer {
+    Background,
+
+    Bottom,
+
+    Top,
+
+    Overlay,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LayerSurfaceData</span> {
-    <span class="ident">inner</span>: <span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">LayerSurfaceInner</span><span class="op">&gt;</span>,
-}
+<span class="doccomment">/// Error when converting a [`zwlr_layer_shell_v1::Layer`] to a [`Layer`]
+</span><span class="attribute">#[derive(Debug, thiserror::Error)]
+#[error(<span class="string">&quot;unknown layer&quot;</span>)]
+</span><span class="kw">pub struct </span>UnknownLayer;
 
-<span class="kw">impl</span> <span class="ident">LayerSurfaceData</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">layer_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LayerSurface</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upgrade</span>().<span class="ident">map</span>(<span class="ident">LayerSurface</span>)
+<span class="macro">bitflags! </span>{
+    <span class="doccomment">/// Specifies which edges and corners a layer should be placed at in the anchor rectangle.
+    ///
+    /// A combination of two orthogonal edges will cause the layer&#39;s anchor point to be the intersection of
+    /// the edges. For example [`Anchor::TOP`] and [`Anchor::LEFT`] will result in an anchor point in the top
+    /// left of the anchor rectangle.
+    </span><span class="kw">pub struct </span>Anchor: u32 {
+        <span class="doccomment">/// Top edge of the anchor rectangle.
+        </span><span class="kw">const </span>TOP = <span class="number">1</span>;
+
+        <span class="doccomment">/// The bottom edge of the anchor rectangle.
+        </span><span class="kw">const </span>BOTTOM = <span class="number">2</span>;
+
+        <span class="doccomment">/// The left edge of the anchor rectangle.
+        </span><span class="kw">const </span>LEFT = <span class="number">4</span>;
+
+        <span class="doccomment">/// The right edge of the anchor rectangle.
+        </span><span class="kw">const </span>RIGHT = <span class="number">8</span>;
     }
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_layer</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::layer::LayerShell</span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::layer::LayerSurfaceData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::layer::LayerShell</span>);
+<span class="doccomment">/// A layer surface configure.
+///
+/// A configure describes a compositor request to resize the layer surface or change it&#39;s state.
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>LayerSurfaceConfigure {
+    <span class="doccomment">/// The compositor suggested new size of the layer in surface-local coordinates.
+    ///
+    /// The size is a hint, meaning the new size can be ignored. A smaller size could be picked to satisfy
+    /// some aspect ratio or resize in steps. If the size is smaller than suggested and the layer surface is
+    /// anchored to two opposite anchors then the layer surface will be centered on that axis.
+    ///
+    /// If the width is zero, you may choose any width you want. If the height is zero, you may choose any
+    /// height you want.
+    </span><span class="kw">pub </span>new_size: (u32, u32),
+}
+
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>LayerSurfaceData {
+    inner: Weak&lt;LayerSurfaceInner&gt;,
+}
+
+<span class="kw">impl </span>LayerSurfaceData {
+    <span class="kw">pub fn </span>layer_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;LayerSurface&gt; {
+        <span class="self">self</span>.inner.upgrade().map(LayerSurface)
+    }
+}
+
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_layer {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::layer::LayerShell</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1</span>: <span class="macro-nonterminal">$crate::shell::layer::LayerSurfaceData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::layer::LayerShell</span>);
     };
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">LayerSurfaceInner</span> {
-    <span class="ident">wl_surface</span>: <span class="ident">wl_surface::WlSurface</span>,
-    <span class="ident">kind</span>: <span class="ident">SurfaceKind</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>LayerSurfaceInner {
+    wl_surface: wl_surface::WlSurface,
+    kind: SurfaceKind,
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">zwlr_layer_shell_v1::Layer</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Layer</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">UnknownLayer</span>;
+<span class="kw">impl </span>TryFrom&lt;zwlr_layer_shell_v1::Layer&gt; <span class="kw">for </span>Layer {
+    <span class="kw">type </span>Error = UnknownLayer;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">layer</span>: <span class="ident">zwlr_layer_shell_v1::Layer</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">layer</span> {
-            <span class="ident">zwlr_layer_shell_v1::Layer::Background</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Background</span>),
-            <span class="ident">zwlr_layer_shell_v1::Layer::Bottom</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Bottom</span>),
-            <span class="ident">zwlr_layer_shell_v1::Layer::Top</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Top</span>),
-            <span class="ident">zwlr_layer_shell_v1::Layer::Overlay</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Overlay</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">UnknownLayer</span>),
+    <span class="kw">fn </span>try_from(layer: zwlr_layer_shell_v1::Layer) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">match </span>layer {
+            zwlr_layer_shell_v1::Layer::Background =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Background),
+            zwlr_layer_shell_v1::Layer::Bottom =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Bottom),
+            zwlr_layer_shell_v1::Layer::Top =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Top),
+            zwlr_layer_shell_v1::Layer::Overlay =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Overlay),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(UnknownLayer),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Layer</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">zwlr_layer_shell_v1::Layer</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">depth</span>: <span class="ident">Layer</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">match</span> <span class="ident">depth</span> {
-            <span class="ident">Layer::Background</span> =&gt; <span class="ident"><span class="self">Self</span>::Background</span>,
-            <span class="ident">Layer::Bottom</span> =&gt; <span class="ident"><span class="self">Self</span>::Bottom</span>,
-            <span class="ident">Layer::Top</span> =&gt; <span class="ident"><span class="self">Self</span>::Top</span>,
-            <span class="ident">Layer::Overlay</span> =&gt; <span class="ident"><span class="self">Self</span>::Overlay</span>,
+<span class="kw">impl </span>From&lt;Layer&gt; <span class="kw">for </span>zwlr_layer_shell_v1::Layer {
+    <span class="kw">fn </span>from(depth: Layer) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>depth {
+            Layer::Background =&gt; <span class="self">Self</span>::Background,
+            Layer::Bottom =&gt; <span class="self">Self</span>::Bottom,
+            Layer::Top =&gt; <span class="self">Self</span>::Top,
+            Layer::Overlay =&gt; <span class="self">Self</span>::Overlay,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">KeyboardInteractivity</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">zwlr_layer_surface_v1::KeyboardInteractivity</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">interactivity</span>: <span class="ident">KeyboardInteractivity</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">match</span> <span class="ident">interactivity</span> {
-            <span class="ident">KeyboardInteractivity::None</span> =&gt; <span class="ident">zwlr_layer_surface_v1::KeyboardInteractivity::None</span>,
-            <span class="ident">KeyboardInteractivity::Exclusive</span> =&gt; {
-                <span class="ident">zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive</span>
+<span class="kw">impl </span>From&lt;KeyboardInteractivity&gt; <span class="kw">for </span>zwlr_layer_surface_v1::KeyboardInteractivity {
+    <span class="kw">fn </span>from(interactivity: KeyboardInteractivity) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>interactivity {
+            KeyboardInteractivity::None =&gt; zwlr_layer_surface_v1::KeyboardInteractivity::None,
+            KeyboardInteractivity::Exclusive =&gt; {
+                zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive
             }
-            <span class="ident">KeyboardInteractivity::OnDemand</span> =&gt; {
-                <span class="ident">zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand</span>
+            KeyboardInteractivity::OnDemand =&gt; {
+                zwlr_layer_surface_v1::KeyboardInteractivity::OnDemand
             }
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">LayerSurfaceInner</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// Layer shell protocol dictates we must destroy the role object before the surface.</span>
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span> {
-            <span class="ident">SurfaceKind::Wlr</span>(<span class="kw-2">ref</span> <span class="ident">wlr</span>) =&gt; <span class="ident">wlr</span>.<span class="ident">destroy</span>(),
+<span class="kw">impl </span>Drop <span class="kw">for </span>LayerSurfaceInner {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// Layer shell protocol dictates we must destroy the role object before the surface.
+        </span><span class="kw">match </span><span class="self">self</span>.kind {
+            SurfaceKind::Wlr(<span class="kw-2">ref </span>wlr) =&gt; wlr.destroy(),
         }
 
-        <span class="self">self</span>.<span class="ident">wl_surface</span>.<span class="ident">destroy</span>();
+        <span class="self">self</span>.wl_surface.destroy();
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

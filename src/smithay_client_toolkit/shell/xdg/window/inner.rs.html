@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/xdg/window/inner.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>inner.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/xdg/window/inner.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>inner.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -255,262 +255,262 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>},
-    <span class="ident">sync::Mutex</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    convert::{TryFrom, TryInto},
+    sync::Mutex,
 };
 
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{<span class="ident">wl_output</span>, <span class="ident">wl_seat</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">QueueHandle</span>,
+<span class="kw">use </span>wayland_client::{
+    protocol::{wl_output, wl_seat},
+    Connection, Dispatch, QueueHandle,
 };
-<span class="kw">use</span> <span class="ident">wayland_protocols</span>::{
-    <span class="ident">xdg::decoration::zv1::client</span>::{
-        <span class="ident">zxdg_decoration_manager_v1</span>,
-        <span class="ident">zxdg_toplevel_decoration_v1</span>::{<span class="self">self</span>, <span class="ident">Mode</span>},
+<span class="kw">use </span>wayland_protocols::{
+    xdg::decoration::zv1::client::{
+        zxdg_decoration_manager_v1,
+        zxdg_toplevel_decoration_v1::{<span class="self">self</span>, Mode},
     },
-    <span class="ident">xdg::shell::client</span>::{
-        <span class="ident">xdg_surface</span>,
-        <span class="ident">xdg_toplevel</span>::{<span class="self">self</span>, <span class="ident">State</span>},
+    xdg::shell::client::{
+        xdg_surface,
+        xdg_toplevel::{<span class="self">self</span>, State},
     },
 };
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error::GlobalError</span>,
-    <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
-    <span class="ident">shell::xdg::XdgShellSurface</span>,
+<span class="kw">use crate</span>::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
+    shell::xdg::XdgShellSurface,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">DecorationMode</span>, <span class="ident">Window</span>, <span class="ident">WindowConfigure</span>, <span class="ident">WindowData</span>, <span class="ident">WindowHandler</span>, <span class="ident">XdgWindowState</span>};
+<span class="kw">use super</span>::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, XdgWindowState};
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">WindowInner</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// XDG decoration says we must destroy the decoration object before the toplevel</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">toplevel_decoration</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">toplevel_decoration</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">toplevel_decoration</span>.<span class="ident">destroy</span>();
+<span class="kw">impl </span>Drop <span class="kw">for </span>WindowInner {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// XDG decoration says we must destroy the decoration object before the toplevel
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(toplevel_decoration) = <span class="self">self</span>.toplevel_decoration.as_ref() {
+            toplevel_decoration.destroy();
         }
 
-        <span class="comment">// XDG Shell protocol dictates we must destroy the role object before the xdg surface.</span>
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">destroy</span>();
-        <span class="comment">// XdgShellSurface will do it&#39;s own drop</span>
-        <span class="comment">// self.xdg_surface.destroy();</span>
-    }
+        <span class="comment">// XDG Shell protocol dictates we must destroy the role object before the xdg surface.
+        </span><span class="self">self</span>.xdg_toplevel.destroy();
+        <span class="comment">// XdgShellSurface will do it&#39;s own drop
+        // self.xdg_surface.destroy();
+    </span>}
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WindowInner</span> {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">xdg_surface</span>: <span class="ident">XdgShellSurface</span>,
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">xdg_toplevel</span>: <span class="ident">xdg_toplevel::XdgToplevel</span>,
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">toplevel_decoration</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">pending_configure</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">WindowConfigure</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>WindowInner {
+    <span class="kw">pub</span>(<span class="kw">super</span>) xdg_surface: XdgShellSurface,
+    <span class="kw">pub</span>(<span class="kw">super</span>) xdg_toplevel: xdg_toplevel::XdgToplevel,
+    <span class="kw">pub</span>(<span class="kw">super</span>) toplevel_decoration: <span class="prelude-ty">Option</span>&lt;zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) pending_configure: Mutex&lt;WindowConfigure&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">WindowInner</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_title</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">title</span>: <span class="ident">String</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_title</span>(<span class="ident">title</span>);
-        <span class="comment">// TODO: Store name for client side frame.</span>
+<span class="kw">impl </span>WindowInner {
+    <span class="kw">pub fn </span>set_title(<span class="kw-2">&amp;</span><span class="self">self</span>, title: String) {
+        <span class="self">self</span>.xdg_toplevel.set_title(title);
+        <span class="comment">// TODO: Store name for client side frame.
+    </span>}
+
+    <span class="kw">pub fn </span>set_app_id(<span class="kw-2">&amp;</span><span class="self">self</span>, app_id: String) {
+        <span class="self">self</span>.xdg_toplevel.set_app_id(app_id);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_app_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">app_id</span>: <span class="ident">String</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_app_id</span>(<span class="ident">app_id</span>);
+    <span class="kw">pub fn </span>set_min_size(<span class="kw-2">&amp;</span><span class="self">self</span>, min_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;) {
+        <span class="kw">let </span>min_size = min_size.unwrap_or((<span class="number">0</span>, <span class="number">0</span>));
+        <span class="self">self</span>.xdg_toplevel.set_min_size(min_size.<span class="number">0 </span><span class="kw">as </span>i32, min_size.<span class="number">1 </span><span class="kw">as </span>i32)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_min_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">min_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">min_size</span> <span class="op">=</span> <span class="ident">min_size</span>.<span class="ident">unwrap_or</span>((<span class="number">0</span>, <span class="number">0</span>));
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_min_size</span>(<span class="ident">min_size</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">min_size</span>.<span class="number">1</span> <span class="kw">as</span> <span class="ident">i32</span>)
+    <span class="kw">pub fn </span>set_max_size(<span class="kw-2">&amp;</span><span class="self">self</span>, max_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;) {
+        <span class="kw">let </span>max_size = max_size.unwrap_or((<span class="number">0</span>, <span class="number">0</span>));
+        <span class="self">self</span>.xdg_toplevel.set_max_size(max_size.<span class="number">0 </span><span class="kw">as </span>i32, max_size.<span class="number">1 </span><span class="kw">as </span>i32)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_max_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">max_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">max_size</span> <span class="op">=</span> <span class="ident">max_size</span>.<span class="ident">unwrap_or</span>((<span class="number">0</span>, <span class="number">0</span>));
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_max_size</span>(<span class="ident">max_size</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">max_size</span>.<span class="number">1</span> <span class="kw">as</span> <span class="ident">i32</span>)
+    <span class="kw">pub fn </span>set_parent(<span class="kw-2">&amp;</span><span class="self">self</span>, parent: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Window&gt;) {
+        <span class="self">self</span>.xdg_toplevel.set_parent(parent.map(Window::xdg_toplevel))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Window</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_parent</span>(<span class="ident">parent</span>.<span class="ident">map</span>(<span class="ident">Window::xdg_toplevel</span>))
+    <span class="kw">pub fn </span>show_window_menu(<span class="kw-2">&amp;</span><span class="self">self</span>, seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat, serial: u32, x: u32, y: u32) {
+        <span class="self">self</span>.xdg_toplevel.show_window_menu(seat, serial, x <span class="kw">as </span>i32, y <span class="kw">as </span>i32)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">show_window_menu</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">serial</span>: <span class="ident">u32</span>, <span class="ident">x</span>: <span class="ident">u32</span>, <span class="ident">y</span>: <span class="ident">u32</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">show_window_menu</span>(<span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">x</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">y</span> <span class="kw">as</span> <span class="ident">i32</span>)
+    <span class="kw">pub fn </span>set_maximized(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.xdg_toplevel.set_maximized()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_maximized</span>()
+    <span class="kw">pub fn </span>unset_maximized(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.xdg_toplevel.unset_maximized()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unset_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">unset_maximized</span>()
+    <span class="kw">pub fn </span>set_minmized(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.xdg_toplevel.set_minimized()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_minmized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_minimized</span>()
+    <span class="kw">pub fn </span>set_fullscreen(<span class="kw-2">&amp;</span><span class="self">self</span>, output: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>wl_output::WlOutput&gt;) {
+        <span class="self">self</span>.xdg_toplevel.set_fullscreen(output)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">output</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">set_fullscreen</span>(<span class="ident">output</span>)
+    <span class="kw">pub fn </span>unset_fullscreen(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.xdg_toplevel.unset_fullscreen()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unset_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_toplevel</span>.<span class="ident">unset_fullscreen</span>()
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">request_decoration_mode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mode</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DecorationMode</span><span class="op">&gt;</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">toplevel_decoration</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">toplevel_decoration</span> {
-            <span class="kw">match</span> <span class="ident">mode</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">DecorationMode::Client</span>) =&gt; <span class="ident">toplevel_decoration</span>.<span class="ident">set_mode</span>(<span class="ident">Mode::ClientSide</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">DecorationMode::Server</span>) =&gt; <span class="ident">toplevel_decoration</span>.<span class="ident">set_mode</span>(<span class="ident">Mode::ServerSide</span>),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">toplevel_decoration</span>.<span class="ident">unset_mode</span>(),
+    <span class="kw">pub fn </span>request_decoration_mode(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: <span class="prelude-ty">Option</span>&lt;DecorationMode&gt;) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(toplevel_decoration) = <span class="kw-2">&amp;</span><span class="self">self</span>.toplevel_decoration {
+            <span class="kw">match </span>mode {
+                <span class="prelude-val">Some</span>(DecorationMode::Client) =&gt; toplevel_decoration.set_mode(Mode::ClientSide),
+                <span class="prelude-val">Some</span>(DecorationMode::Server) =&gt; toplevel_decoration.set_mode(Mode::ServerSide),
+                <span class="prelude-val">None </span>=&gt; toplevel_decoration.unset_mode(),
             }
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>, <span class="number">1</span><span class="op">&gt;</span>
-    <span class="kw">for</span> <span class="ident">XdgWindowState</span>
+<span class="kw">impl </span>ProvidesBoundGlobal&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, <span class="number">1</span>&gt;
+    <span class="kw">for </span>XdgWindowState
 {
-    <span class="kw">fn</span> <span class="ident">bound_global</span>(
+    <span class="kw">fn </span>bound_global(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">xdg_decoration_manager</span>.<span class="ident">get</span>().<span class="ident">cloned</span>()
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalError&gt; {
+        <span class="self">self</span>.xdg_decoration_manager.get().cloned()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">WindowData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">XdgWindowState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">WindowData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WindowHandler</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;xdg_surface::XdgSurface, WindowData, D&gt; <span class="kw">for </span>XdgWindowState
+<span class="kw">where
+    </span>D: Dispatch&lt;xdg_surface::XdgSurface, WindowData&gt; + WindowHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">xdg_surface</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span>,
-        <span class="ident">event</span>: <span class="ident">xdg_surface::Event</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">WindowData</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        xdg_surface: <span class="kw-2">&amp;</span>xdg_surface::XdgSurface,
+        event: xdg_surface::Event,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>WindowData,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">window</span>) <span class="op">=</span> <span class="ident">Window::from_xdg_surface</span>(<span class="ident">xdg_surface</span>) {
-            <span class="kw">match</span> <span class="ident">event</span> {
-                <span class="ident">xdg_surface::Event::Configure</span> { <span class="ident">serial</span> } =&gt; {
-                    <span class="comment">// Acknowledge the configure per protocol requirements.</span>
-                    <span class="ident">xdg_surface</span>.<span class="ident">ack_configure</span>(<span class="ident">serial</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(window) = Window::from_xdg_surface(xdg_surface) {
+            <span class="kw">match </span>event {
+                xdg_surface::Event::Configure { serial } =&gt; {
+                    <span class="comment">// Acknowledge the configure per protocol requirements.
+                    </span>xdg_surface.ack_configure(serial);
 
-                    <span class="kw">let</span> <span class="ident">configure</span> <span class="op">=</span> { <span class="ident">window</span>.<span class="number">0</span>.<span class="ident">pending_configure</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>() };
-                    <span class="ident">WindowHandler::configure</span>(<span class="ident">data</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="kw-2">&amp;</span><span class="ident">window</span>, <span class="ident">configure</span>, <span class="ident">serial</span>);
+                    <span class="kw">let </span>configure = { window.<span class="number">0</span>.pending_configure.lock().unwrap().clone() };
+                    WindowHandler::configure(data, conn, qh, <span class="kw-2">&amp;</span>window, configure, serial);
                 }
 
-                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             }
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_toplevel::XdgToplevel</span>, <span class="ident">WindowData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">XdgWindowState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_toplevel::XdgToplevel</span>, <span class="ident">WindowData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WindowHandler</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;xdg_toplevel::XdgToplevel, WindowData, D&gt; <span class="kw">for </span>XdgWindowState
+<span class="kw">where
+    </span>D: Dispatch&lt;xdg_toplevel::XdgToplevel, WindowData&gt; + WindowHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">toplevel</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span>,
-        <span class="ident">event</span>: <span class="ident">xdg_toplevel::Event</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">WindowData</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        toplevel: <span class="kw-2">&amp;</span>xdg_toplevel::XdgToplevel,
+        event: xdg_toplevel::Event,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>WindowData,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">window</span>) <span class="op">=</span> <span class="ident">Window::from_xdg_toplevel</span>(<span class="ident">toplevel</span>) {
-            <span class="kw">match</span> <span class="ident">event</span> {
-                <span class="ident">xdg_toplevel::Event::Configure</span> { <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">states</span> } =&gt; {
-                    <span class="comment">// The states are encoded as a bunch of u32 of native endian, but are encoded in an array of</span>
-                    <span class="comment">// bytes.</span>
-                    <span class="kw">let</span> <span class="ident">states</span> <span class="op">=</span> <span class="ident">states</span>
-                        .<span class="ident">chunks_exact</span>(<span class="number">4</span>)
-                        .<span class="ident">flat_map</span>(<span class="ident">TryInto</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span><span class="ident">::try_into</span>)
-                        .<span class="ident">map</span>(<span class="ident">u32::from_ne_bytes</span>)
-                        .<span class="ident">flat_map</span>(<span class="ident">State::try_from</span>)
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(window) = Window::from_xdg_toplevel(toplevel) {
+            <span class="kw">match </span>event {
+                xdg_toplevel::Event::Configure { width, height, states } =&gt; {
+                    <span class="comment">// The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
+                    // bytes.
+                    </span><span class="kw">let </span>states = states
+                        .chunks_exact(<span class="number">4</span>)
+                        .flat_map(TryInto::&lt;[u8; <span class="number">4</span>]&gt;::try_into)
+                        .map(u32::from_ne_bytes)
+                        .flat_map(State::try_from)
+                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-                    <span class="kw">let</span> <span class="ident">new_size</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">width</span> <span class="op">==</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">height</span> <span class="op">==</span> <span class="number">0</span> {
-                        <span class="prelude-val">None</span>
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Some</span>((<span class="ident">width</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">height</span> <span class="kw">as</span> <span class="ident">u32</span>))
+                    <span class="kw">let </span>new_size = <span class="kw">if </span>width == <span class="number">0 </span>&amp;&amp; height == <span class="number">0 </span>{
+                        <span class="prelude-val">None
+                    </span>} <span class="kw">else </span>{
+                        <span class="prelude-val">Some</span>((width <span class="kw">as </span>u32, height <span class="kw">as </span>u32))
                     };
 
-                    <span class="kw">let</span> <span class="ident">pending_configure</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">window</span>.<span class="number">0</span>.<span class="ident">pending_configure</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                    <span class="ident">pending_configure</span>.<span class="ident">new_size</span> <span class="op">=</span> <span class="ident">new_size</span>;
-                    <span class="ident">pending_configure</span>.<span class="ident">states</span> <span class="op">=</span> <span class="ident">states</span>;
+                    <span class="kw">let </span>pending_configure = <span class="kw-2">&amp;mut </span>window.<span class="number">0</span>.pending_configure.lock().unwrap();
+                    pending_configure.new_size = new_size;
+                    pending_configure.states = states;
                 }
 
-                <span class="ident">xdg_toplevel::Event::Close</span> =&gt; {
-                    <span class="ident">data</span>.<span class="ident">request_close</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="kw-2">&amp;</span><span class="ident">window</span>);
+                xdg_toplevel::Event::Close =&gt; {
+                    data.request_close(conn, qh, <span class="kw-2">&amp;</span>window);
                 }
 
-                <span class="ident">xdg_toplevel::Event::ConfigureBounds</span> { <span class="ident">width</span>, <span class="ident">height</span> } =&gt; {
-                    <span class="kw">let</span> <span class="ident">pending_configure</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">window</span>.<span class="number">0</span>.<span class="ident">pending_configure</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                    <span class="kw">if</span> <span class="ident">width</span> <span class="op">==</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">height</span> <span class="op">==</span> <span class="number">0</span> {
-                        <span class="ident">pending_configure</span>.<span class="ident">suggested_bounds</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-                    } <span class="kw">else</span> {
-                        <span class="ident">pending_configure</span>.<span class="ident">suggested_bounds</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">width</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">height</span> <span class="kw">as</span> <span class="ident">u32</span>));
+                xdg_toplevel::Event::ConfigureBounds { width, height } =&gt; {
+                    <span class="kw">let </span>pending_configure = <span class="kw-2">&amp;mut </span>window.<span class="number">0</span>.pending_configure.lock().unwrap();
+                    <span class="kw">if </span>width == <span class="number">0 </span>&amp;&amp; height == <span class="number">0 </span>{
+                        pending_configure.suggested_bounds = <span class="prelude-val">None</span>;
+                    } <span class="kw">else </span>{
+                        pending_configure.suggested_bounds = <span class="prelude-val">Some</span>((width <span class="kw">as </span>u32, height <span class="kw">as </span>u32));
                     }
                 }
 
-                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             }
         }
     }
 }
 
-<span class="comment">// XDG decoration</span>
+<span class="comment">// XDG decoration
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>, <span class="ident">GlobalData</span>, <span class="ident">D</span><span class="op">&gt;</span>
-    <span class="kw">for</span> <span class="ident">XdgWindowState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>, <span class="ident">GlobalData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WindowHandler</span>,
+</span><span class="kw">impl</span>&lt;D&gt; Dispatch&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D&gt;
+    <span class="kw">for </span>XdgWindowState
+<span class="kw">where
+    </span>D: Dispatch&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData&gt; + WindowHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="kw">_</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>,
-        <span class="kw">_</span>: <span class="ident">zxdg_decoration_manager_v1::Event</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalData</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        <span class="kw">_</span>: <span class="kw-2">&amp;mut </span>D,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>zxdg_decoration_manager_v1::ZxdgDecorationManagerV1,
+        <span class="kw">_</span>: zxdg_decoration_manager_v1::Event,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>GlobalData,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
         <span class="macro">unreachable!</span>(<span class="string">&quot;zxdg_decoration_manager_v1 has no events&quot;</span>)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>, <span class="ident">WindowData</span>, <span class="ident">D</span><span class="op">&gt;</span>
-    <span class="kw">for</span> <span class="ident">XdgWindowState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>, <span class="ident">WindowData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">WindowHandler</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D&gt;
+    <span class="kw">for </span>XdgWindowState
+<span class="kw">where
+    </span>D: Dispatch&lt;zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData&gt; + WindowHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="kw">_</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">decoration</span>: <span class="kw-2">&amp;</span><span class="ident">zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>,
-        <span class="ident">event</span>: <span class="ident">zxdg_toplevel_decoration_v1::Event</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">WindowData</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        <span class="kw">_</span>: <span class="kw-2">&amp;mut </span>D,
+        decoration: <span class="kw-2">&amp;</span>zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
+        event: zxdg_toplevel_decoration_v1::Event,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>WindowData,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">window</span>) <span class="op">=</span> <span class="ident">Window::from_toplevel_decoration</span>(<span class="ident">decoration</span>) {
-            <span class="kw">match</span> <span class="ident">event</span> {
-                <span class="ident">zxdg_toplevel_decoration_v1::Event::Configure</span> { <span class="ident">mode</span> } =&gt; <span class="kw">match</span> <span class="ident">mode</span> {
-                    <span class="ident">wayland_client::WEnum::Value</span>(<span class="ident">mode</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mode</span> {
-                            <span class="ident">Mode::ClientSide</span> =&gt; <span class="ident">DecorationMode::Client</span>,
-                            <span class="ident">Mode::ServerSide</span> =&gt; <span class="ident">DecorationMode::Server</span>,
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(window) = Window::from_toplevel_decoration(decoration) {
+            <span class="kw">match </span>event {
+                zxdg_toplevel_decoration_v1::Event::Configure { mode } =&gt; <span class="kw">match </span>mode {
+                    wayland_client::WEnum::Value(mode) =&gt; {
+                        <span class="kw">let </span>mode = <span class="kw">match </span>mode {
+                            Mode::ClientSide =&gt; DecorationMode::Client,
+                            Mode::ServerSide =&gt; DecorationMode::Server,
 
-                            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                         };
 
-                        <span class="ident">window</span>.<span class="number">0</span>.<span class="ident">pending_configure</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">decoration_mode</span> <span class="op">=</span> <span class="ident">mode</span>;
+                        window.<span class="number">0</span>.pending_configure.lock().unwrap().decoration_mode = mode;
                     }
 
-                    <span class="ident">wayland_client::WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                        <span class="macro">log::error!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown decoration mode 0x{:x}&quot;</span>, <span class="ident">unknown</span>);
+                    wayland_client::WEnum::Unknown(unknown) =&gt; {
+                        <span class="macro">log::error!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown decoration mode 0x{:x}&quot;</span>, unknown);
                     }
                 },
 
-                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

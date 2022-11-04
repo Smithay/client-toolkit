@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/xdg/window/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/xdg/window/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -547,554 +547,554 @@
 <span id="547">547</span>
 <span id="548">548</span>
 <span id="549">549</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>, <span class="ident">Weak</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Mutex, Weak};
 
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">globals::GlobalList</span>,
-    <span class="ident">protocol</span>::{<span class="ident">wl_output</span>, <span class="ident">wl_seat</span>, <span class="ident">wl_surface</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
+<span class="kw">use </span>wayland_client::{
+    globals::GlobalList,
+    protocol::{wl_output, wl_seat, wl_surface},
+    Connection, Dispatch, Proxy, QueueHandle,
 };
-<span class="kw">use</span> <span class="ident">wayland_protocols</span>::{
-    <span class="ident">xdg::decoration::zv1::client</span>::{
-        <span class="ident">zxdg_decoration_manager_v1</span>,
-        <span class="ident">zxdg_toplevel_decoration_v1</span>::{<span class="self">self</span>, <span class="ident">Mode</span>},
+<span class="kw">use </span>wayland_protocols::{
+    xdg::decoration::zv1::client::{
+        zxdg_decoration_manager_v1,
+        zxdg_toplevel_decoration_v1::{<span class="self">self</span>, Mode},
     },
-    <span class="ident">xdg::shell::client</span>::{
-        <span class="ident">xdg_surface</span>,
-        <span class="ident">xdg_toplevel</span>::{<span class="self">self</span>, <span class="ident">State</span>},
-        <span class="ident">xdg_wm_base</span>,
+    xdg::shell::client::{
+        xdg_surface,
+        xdg_toplevel::{<span class="self">self</span>, State},
+        xdg_wm_base,
     },
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::GlobalError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::globals::ProvidesBoundGlobal</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::registry::GlobalProxy</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">compositor::Surface</span>, <span class="ident">globals::GlobalData</span>};
+<span class="kw">use </span><span class="kw">crate</span>::error::GlobalError;
+<span class="kw">use </span><span class="kw">crate</span>::globals::ProvidesBoundGlobal;
+<span class="kw">use </span><span class="kw">crate</span>::registry::GlobalProxy;
+<span class="kw">use crate</span>::{compositor::Surface, globals::GlobalData};
 
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::inner::WindowInner</span>;
+<span class="kw">use </span><span class="self">self</span>::inner::WindowInner;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::XdgShellSurface</span>;
+<span class="kw">use </span><span class="kw">super</span>::XdgShellSurface;
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">mod</span> <span class="ident">inner</span>;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">mod </span>inner;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">XdgWindowState</span> {
-    <span class="ident">xdg_decoration_manager</span>: <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>XdgWindowState {
+    xdg_decoration_manager: GlobalProxy&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">XdgWindowState</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>(<span class="ident">globals</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalList</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">XdgWindowState</span>
-    <span class="kw">where</span>
-        <span class="ident">State</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>, <span class="ident">GlobalData</span>, <span class="ident">State</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl </span>XdgWindowState {
+    <span class="kw">pub fn </span>bind&lt;State&gt;(globals: <span class="kw-2">&amp;</span>GlobalList, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;) -&gt; XdgWindowState
+    <span class="kw">where
+        </span>State: Dispatch&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State&gt;
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">xdg_decoration_manager</span> <span class="op">=</span> <span class="ident">GlobalProxy::from</span>(<span class="ident">globals</span>.<span class="ident">bind</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">1</span>, <span class="ident">GlobalData</span>));
-        <span class="ident">XdgWindowState</span> { <span class="ident">xdg_decoration_manager</span> }
+        <span class="kw">let </span>xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, <span class="number">1</span>..=<span class="number">1</span>, GlobalData));
+        XdgWindowState { xdg_decoration_manager }
     }
 }
 
-<span class="doccomment">/// Handler for toplevel operations on a [`Window`].</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">WindowHandler</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// Request to close a window.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This request does not destroy the window. You must drop all [`Window`] handles to destroy the window.</span>
-    <span class="doccomment">/// This request may be sent either by the compositor or by some other mechanism (such as client side decorations).</span>
-    <span class="kw">fn</span> <span class="ident">request_close</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">window</span>: <span class="kw-2">&amp;</span><span class="ident">Window</span>);
+<span class="doccomment">/// Handler for toplevel operations on a [`Window`].
+</span><span class="kw">pub trait </span>WindowHandler: Sized {
+    <span class="doccomment">/// Request to close a window.
+    ///
+    /// This request does not destroy the window. You must drop all [`Window`] handles to destroy the window.
+    /// This request may be sent either by the compositor or by some other mechanism (such as client side decorations).
+    </span><span class="kw">fn </span>request_close(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, window: <span class="kw-2">&amp;</span>Window);
 
-    <span class="doccomment">/// Apply a suggested surface change.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When this function is called, the compositor is requesting the window&#39;s size or state to change.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Internally this function is called when the underlying `xdg_surface` is configured. Any extension</span>
-    <span class="doccomment">/// protocols that interface with xdg-shell are able to be notified that the surface&#39;s configure sequence</span>
-    <span class="doccomment">/// is complete.</span>
-    <span class="kw">fn</span> <span class="ident">configure</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">window</span>: <span class="kw-2">&amp;</span><span class="ident">Window</span>,
-        <span class="ident">configure</span>: <span class="ident">WindowConfigure</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// Apply a suggested surface change.
+    ///
+    /// When this function is called, the compositor is requesting the window&#39;s size or state to change.
+    ///
+    /// Internally this function is called when the underlying `xdg_surface` is configured. Any extension
+    /// protocols that interface with xdg-shell are able to be notified that the surface&#39;s configure sequence
+    /// is complete.
+    </span><span class="kw">fn </span>configure(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        window: <span class="kw-2">&amp;</span>Window,
+        configure: WindowConfigure,
+        serial: u32,
     );
 }
 
-<span class="doccomment">/// Decoration mode of a window.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DecorationMode</span> {
-    <span class="doccomment">/// The window should draw client side decorations.</span>
-    <span class="ident">Client</span>,
+<span class="doccomment">/// Decoration mode of a window.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>DecorationMode {
+    <span class="doccomment">/// The window should draw client side decorations.
+    </span>Client,
 
-    <span class="doccomment">/// The server will draw window decorations.</span>
-    <span class="ident">Server</span>,
+    <span class="doccomment">/// The server will draw window decorations.
+    </span>Server,
 }
 
-<span class="doccomment">/// A window configure.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A configure describes a compositor request to resize the window or change it&#39;s state.</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WindowConfigure</span> {
-    <span class="doccomment">/// The compositor suggested new size of the window in window geometry coordinates.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If this value is [`None`], you may set the size of the window as you wish.</span>
-    <span class="kw">pub</span> <span class="ident">new_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
+<span class="doccomment">/// A window configure.
+///
+/// A configure describes a compositor request to resize the window or change it&#39;s state.
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>WindowConfigure {
+    <span class="doccomment">/// The compositor suggested new size of the window in window geometry coordinates.
+    ///
+    /// If this value is [`None`], you may set the size of the window as you wish.
+    </span><span class="kw">pub </span>new_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
 
-    <span class="doccomment">/// Compositor suggested maximum bounds for a window.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be used to ensure a window is not created in a way where it will not fit.</span>
-    <span class="kw">pub</span> <span class="ident">suggested_bounds</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
+    <span class="doccomment">/// Compositor suggested maximum bounds for a window.
+    ///
+    /// This may be used to ensure a window is not created in a way where it will not fit.
+    </span><span class="kw">pub </span>suggested_bounds: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
 
-    <span class="doccomment">/// The compositor set decoration mode of the window.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will always be [`DecorationMode::Client`] if server side decorations are not enabled or</span>
-    <span class="doccomment">/// supported.</span>
-    <span class="kw">pub</span> <span class="ident">decoration_mode</span>: <span class="ident">DecorationMode</span>,
+    <span class="doccomment">/// The compositor set decoration mode of the window.
+    ///
+    /// This will always be [`DecorationMode::Client`] if server side decorations are not enabled or
+    /// supported.
+    </span><span class="kw">pub </span>decoration_mode: DecorationMode,
 
-    <span class="doccomment">/// Window states.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Depending on which states are set, the allowed size of the window may change. States may also be</span>
-    <span class="doccomment">/// combined. For example, a window could be activated and maximized at the same time.</span>
-    <span class="doccomment">/// Along side this [`Vec`] of states, there are also helper functions that are part of [`WindowConfigure`]</span>
-    <span class="doccomment">/// to test if some particular state is set.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Below is a table explains the constraints a window needs to obey depending on the set states:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// | State(s) | Any size | Notes |</span>
-    <span class="doccomment">/// |-------|----------|-------|</span>
-    <span class="doccomment">/// | No states | yes ||</span>
-    <span class="doccomment">/// | [`Maximized`](State::Maximized) | no | The window geometry must be obeyed. Drop shadows should also been hidden. |</span>
-    <span class="doccomment">/// | [`Fullscreen`](State::Fullscreen) | no[^fullscreen] | The window geometry is the maximum allowed size. |</span>
-    <span class="doccomment">/// | [`Resizing`](State::Resizing) | no[^resizing] | The window geometry is the maximum allowed size. |</span>
-    <span class="doccomment">/// | [`Activated`](State::Activated) | yes | If the client provides window decorations, the decorations should be drawn as if the window is active. |</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// There are also states that indicate the sides of a window which are tiled. Tiling is a hint which</span>
-    <span class="doccomment">/// indicates what sides of a window should probably not be resized and may be used to hide shadows on tiled</span>
-    <span class="doccomment">/// edges.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Tiling values include:</span>
-    <span class="doccomment">/// - [`Left`](State::TiledLeft)</span>
-    <span class="doccomment">/// - [`Right`](State::TiledRight)</span>
-    <span class="doccomment">/// - [`Top`](State::TiledTop)</span>
-    <span class="doccomment">/// - [`Bottom`](State::TiledBottom)</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// [^fullscreen]: A smaller size buffer may be used, but letterboxing or cropping could occur.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// [^resizing]: If you have cell sizing or a fixed aspect ratio, a smaller size buffer may be used.</span>
-    <span class="kw">pub</span> <span class="ident">states</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
-    <span class="comment">// TODO: wm capabilities added in version 5.</span>
+    <span class="doccomment">/// Window states.
+    ///
+    /// Depending on which states are set, the allowed size of the window may change. States may also be
+    /// combined. For example, a window could be activated and maximized at the same time.
+    /// Along side this [`Vec`] of states, there are also helper functions that are part of [`WindowConfigure`]
+    /// to test if some particular state is set.
+    ///
+    /// Below is a table explains the constraints a window needs to obey depending on the set states:
+    ///
+    /// | State(s) | Any size | Notes |
+    /// |-------|----------|-------|
+    /// | No states | yes ||
+    /// | [`Maximized`](State::Maximized) | no | The window geometry must be obeyed. Drop shadows should also been hidden. |
+    /// | [`Fullscreen`](State::Fullscreen) | no[^fullscreen] | The window geometry is the maximum allowed size. |
+    /// | [`Resizing`](State::Resizing) | no[^resizing] | The window geometry is the maximum allowed size. |
+    /// | [`Activated`](State::Activated) | yes | If the client provides window decorations, the decorations should be drawn as if the window is active. |
+    ///
+    /// There are also states that indicate the sides of a window which are tiled. Tiling is a hint which
+    /// indicates what sides of a window should probably not be resized and may be used to hide shadows on tiled
+    /// edges.
+    ///
+    /// Tiling values include:
+    /// - [`Left`](State::TiledLeft)
+    /// - [`Right`](State::TiledRight)
+    /// - [`Top`](State::TiledTop)
+    /// - [`Bottom`](State::TiledBottom)
+    ///
+    /// [^fullscreen]: A smaller size buffer may be used, but letterboxing or cropping could occur.
+    ///
+    /// [^resizing]: If you have cell sizing or a fixed aspect ratio, a smaller size buffer may be used.
+    </span><span class="kw">pub </span>states: Vec&lt;State&gt;,
+    <span class="comment">// TODO: wm capabilities added in version 5.
+</span>}
+
+<span class="kw">impl </span>WindowConfigure {
+    <span class="doccomment">/// Is [`State::Maximized`] the state is set.
+    </span><span class="kw">pub fn </span>is_maximized(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Maximized)
+    }
+
+    <span class="doccomment">/// Is [`State::Fullscreen`] the state is set.
+    </span><span class="kw">pub fn </span>is_fullscreen(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Fullscreen)
+    }
+
+    <span class="doccomment">/// Is [`State::Resizing`] the state is set.
+    </span><span class="kw">pub fn </span>is_resizing(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Resizing)
+    }
+
+    <span class="doccomment">/// Is [`State::Activated`] the state is set.
+    </span><span class="kw">pub fn </span>is_activated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Activated)
+    }
+
+    <span class="doccomment">/// Is [`State::TiledLeft`] the state is set.
+    </span><span class="kw">pub fn </span>is_tiled_left(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledLeft)
+    }
+
+    <span class="doccomment">/// Is [`State::TiledRight`] the state is set.
+    </span><span class="kw">pub fn </span>is_tiled_right(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledRight)
+    }
+
+    <span class="doccomment">/// Is [`State::TiledTop`] the state is set.
+    </span><span class="kw">pub fn </span>is_tiled_top(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledTop)
+    }
+
+    <span class="doccomment">/// Is [`State::TiledBottom`] the state is set.
+    </span><span class="kw">pub fn </span>is_tiled_bottom(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledBottom)
+    }
 }
 
-<span class="kw">impl</span> <span class="ident">WindowConfigure</span> {
-    <span class="doccomment">/// Is [`State::Maximized`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::Maximized</span>)
-    }
+<span class="doccomment">/// Decorations a window is created with.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>WindowDecorations {
+    <span class="doccomment">/// The window should use the decoration mode the server asks for.
+    ///
+    /// The server may ask the client to render with or without client side decorations. If server side
+    /// decorations are not available, client side decorations are drawn instead.
+    </span>ServerDefault,
 
-    <span class="doccomment">/// Is [`State::Fullscreen`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::Fullscreen</span>)
-    }
+    <span class="doccomment">/// The window should request server side decorations.
+    ///
+    /// The server may ignore this request and ask the client to render with client side decorations. If
+    /// server side decorations are not available, client side decorations are drawn instead.
+    </span>RequestServer,
 
-    <span class="doccomment">/// Is [`State::Resizing`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_resizing</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::Resizing</span>)
-    }
+    <span class="doccomment">/// The window should request client side decorations.
+    ///
+    /// The server may ignore this request and render server side decorations. If server side decorations are
+    /// not available, client side decorations are drawn.
+    </span>RequestClient,
 
-    <span class="doccomment">/// Is [`State::Activated`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_activated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::Activated</span>)
-    }
+    <span class="doccomment">/// The window should always draw it&#39;s own client side decorations.
+    </span>ClientOnly,
 
-    <span class="doccomment">/// Is [`State::TiledLeft`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tiled_left</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::TiledLeft</span>)
-    }
-
-    <span class="doccomment">/// Is [`State::TiledRight`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tiled_right</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::TiledRight</span>)
-    }
-
-    <span class="doccomment">/// Is [`State::TiledTop`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tiled_top</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::TiledTop</span>)
-    }
-
-    <span class="doccomment">/// Is [`State::TiledBottom`] the state is set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tiled_bottom</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">states</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">state</span><span class="op">|</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">State::TiledBottom</span>)
-    }
+    <span class="doccomment">/// The window should use server side decorations or draw any client side decorations.
+    </span><span class="prelude-val">None</span>,
 }
 
-<span class="doccomment">/// Decorations a window is created with.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WindowDecorations</span> {
-    <span class="doccomment">/// The window should use the decoration mode the server asks for.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The server may ask the client to render with or without client side decorations. If server side</span>
-    <span class="doccomment">/// decorations are not available, client side decorations are drawn instead.</span>
-    <span class="ident">ServerDefault</span>,
-
-    <span class="doccomment">/// The window should request server side decorations.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The server may ignore this request and ask the client to render with client side decorations. If</span>
-    <span class="doccomment">/// server side decorations are not available, client side decorations are drawn instead.</span>
-    <span class="ident">RequestServer</span>,
-
-    <span class="doccomment">/// The window should request client side decorations.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The server may ignore this request and render server side decorations. If server side decorations are</span>
-    <span class="doccomment">/// not available, client side decorations are drawn.</span>
-    <span class="ident">RequestClient</span>,
-
-    <span class="doccomment">/// The window should always draw it&#39;s own client side decorations.</span>
-    <span class="ident">ClientOnly</span>,
-
-    <span class="doccomment">/// The window should use server side decorations or draw any client side decorations.</span>
-    <span class="prelude-val">None</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>WindowBuilder {
+    title: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    app_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    min_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+    max_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+    parent: <span class="prelude-ty">Option</span>&lt;xdg_toplevel::XdgToplevel&gt;,
+    fullscreen: <span class="prelude-ty">Option</span>&lt;wl_output::WlOutput&gt;,
+    maximized: bool,
+    decorations: WindowDecorations,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WindowBuilder</span> {
-    <span class="ident">title</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">app_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">min_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
-    <span class="ident">max_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
-    <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">xdg_toplevel::XdgToplevel</span><span class="op">&gt;</span>,
-    <span class="ident">fullscreen</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span>,
-    <span class="ident">maximized</span>: <span class="ident">bool</span>,
-    <span class="ident">decorations</span>: <span class="ident">WindowDecorations</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">WindowBuilder</span> {
-    <span class="doccomment">/// Set the title of the window being built.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">title</span>(<span class="self">self</span>, <span class="ident">title</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">title</span>: <span class="prelude-val">Some</span>(<span class="ident">title</span>.<span class="ident">into</span>()), ..<span class="self">self</span> }
+<span class="kw">impl </span>WindowBuilder {
+    <span class="doccomment">/// Set the title of the window being built.
+    </span><span class="kw">pub fn </span>title(<span class="self">self</span>, title: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ title: <span class="prelude-val">Some</span>(title.into()), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Set the app id of the window being built.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be used as a compositor hint to influence how the window is initially configured.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">app_id</span>(<span class="self">self</span>, <span class="ident">app_id</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">app_id</span>: <span class="prelude-val">Some</span>(<span class="ident">app_id</span>.<span class="ident">into</span>()), ..<span class="self">self</span> }
+    <span class="doccomment">/// Set the app id of the window being built.
+    ///
+    /// This may be used as a compositor hint to influence how the window is initially configured.
+    </span><span class="kw">pub fn </span>app_id(<span class="self">self</span>, app_id: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ app_id: <span class="prelude-val">Some</span>(app_id.into()), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Suggested the minimum size of the window being built.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be used as a compositor hint to send an initial configure with the specified minimum size.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">min_size</span>(<span class="self">self</span>, <span class="ident">min_size</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>)) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">min_size</span>: <span class="prelude-val">Some</span>(<span class="ident">min_size</span>), ..<span class="self">self</span> }
+    <span class="doccomment">/// Suggested the minimum size of the window being built.
+    ///
+    /// This may be used as a compositor hint to send an initial configure with the specified minimum size.
+    </span><span class="kw">pub fn </span>min_size(<span class="self">self</span>, min_size: (u32, u32)) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ min_size: <span class="prelude-val">Some</span>(min_size), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Suggest the maximum size of the window being built.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be used as a compositor hint to send an initial configure with the specified maximum size.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_size</span>(<span class="self">self</span>, <span class="ident">max_size</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>)) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">max_size</span>: <span class="prelude-val">Some</span>(<span class="ident">max_size</span>), ..<span class="self">self</span> }
+    <span class="doccomment">/// Suggest the maximum size of the window being built.
+    ///
+    /// This may be used as a compositor hint to send an initial configure with the specified maximum size.
+    </span><span class="kw">pub fn </span>max_size(<span class="self">self</span>, max_size: (u32, u32)) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ max_size: <span class="prelude-val">Some</span>(max_size), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Set the parent window of the window being built.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parent</span>(<span class="self">self</span>, <span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="ident">Window</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">parent</span>: <span class="prelude-val">Some</span>(<span class="ident">parent</span>.<span class="ident">xdg_toplevel</span>().<span class="ident">clone</span>()), ..<span class="self">self</span> }
+    <span class="doccomment">/// Set the parent window of the window being built.
+    </span><span class="kw">pub fn </span>parent(<span class="self">self</span>, parent: <span class="kw-2">&amp;</span>Window) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ parent: <span class="prelude-val">Some</span>(parent.xdg_toplevel().clone()), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Suggest the window should be created full screened.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be used as a compositor hint to send an initial configure with the window in a full screen</span>
-    <span class="doccomment">/// state.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fullscreen</span>(<span class="self">self</span>, <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">fullscreen</span>: <span class="prelude-val">Some</span>(<span class="ident">output</span>.<span class="ident">clone</span>()), ..<span class="self">self</span> }
+    <span class="doccomment">/// Suggest the window should be created full screened.
+    ///
+    /// This may be used as a compositor hint to send an initial configure with the window in a full screen
+    /// state.
+    </span><span class="kw">pub fn </span>fullscreen(<span class="self">self</span>, output: <span class="kw-2">&amp;</span>wl_output::WlOutput) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ fullscreen: <span class="prelude-val">Some</span>(output.clone()), ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Suggest the window should be created maximized.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be used as a compositor hint to send an initial configure with the window maximized.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maximized</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">maximized</span>: <span class="bool-val">true</span>, ..<span class="self">self</span> }
+    <span class="doccomment">/// Suggest the window should be created maximized.
+    ///
+    /// This may be used as a compositor hint to send an initial configure with the window maximized.
+    </span><span class="kw">pub fn </span>maximized(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ maximized: <span class="bool-val">true</span>, ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Sets the decoration mode the window should be created with.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default the decoration mode is set to [`DecorationMode::Server`] to use server provided</span>
-    <span class="doccomment">/// decorations where possible.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">decorations</span>(<span class="self">self</span>, <span class="ident">decorations</span>: <span class="ident">WindowDecorations</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">decorations</span>, ..<span class="self">self</span> }
+    <span class="doccomment">/// Sets the decoration mode the window should be created with.
+    ///
+    /// By default the decoration mode is set to [`DecorationMode::Server`] to use server provided
+    /// decorations where possible.
+    </span><span class="kw">pub fn </span>decorations(<span class="self">self</span>, decorations: WindowDecorations) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ decorations, ..<span class="self">self </span>}
     }
 
-    <span class="doccomment">/// Build and map the window</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function will create the window and send the initial commit.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Protocol errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the surface already has a role object, the compositor will raise a protocol error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A surface is considered to have a role object if some other type of surface was created using the</span>
-    <span class="doccomment">/// surface. For example, creating a window, popup, layer or subsurface all assign a role object to a</span>
-    <span class="doccomment">/// surface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The function here takes an owned reference to the surface to hint the surface will be consumed by the</span>
-    <span class="doccomment">/// window.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// [`WlSurface`]: wl_surface::WlSurface</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;The window is destroyed if dropped&quot;</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Build and map the window
+    ///
+    /// This function will create the window and send the initial commit.
+    ///
+    /// # Protocol errors
+    ///
+    /// If the surface already has a role object, the compositor will raise a protocol error.
+    ///
+    /// A surface is considered to have a role object if some other type of surface was created using the
+    /// surface. For example, creating a window, popup, layer or subsurface all assign a role object to a
+    /// surface.
+    ///
+    /// The function here takes an owned reference to the surface to hint the surface will be consumed by the
+    /// window.
+    ///
+    /// [`WlSurface`]: wl_surface::WlSurface
+    </span><span class="attribute">#[must_use = <span class="string">&quot;The window is destroyed if dropped&quot;</span>]
+    </span><span class="kw">pub fn </span>map&lt;D&gt;(
         <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">wm_base</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">xdg_wm_base::XdgWmBase</span>, <span class="number">4</span><span class="op">&gt;</span>,
-        <span class="ident">window_state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">XdgWindowState</span>,
-        <span class="ident">surface</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Surface</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Window</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">WindowData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_toplevel::XdgToplevel</span>, <span class="ident">WindowData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>, <span class="ident">WindowData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">WindowHandler</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+        window_state: <span class="kw-2">&amp;mut </span>XdgWindowState,
+        surface: <span class="kw">impl </span>Into&lt;Surface&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Window, GlobalError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;xdg_surface::XdgSurface, WindowData&gt;
+            + Dispatch&lt;xdg_toplevel::XdgToplevel, WindowData&gt;
+            + Dispatch&lt;zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData&gt;
+            + WindowHandler
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">decoration_manager</span> <span class="op">=</span> <span class="ident">window_state</span>.<span class="ident">xdg_decoration_manager</span>.<span class="ident">get</span>().<span class="ident">ok</span>();
+        <span class="kw">let </span>decoration_manager = window_state.xdg_decoration_manager.get().ok();
 
-        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">surface</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">wm_base</span> <span class="op">=</span> <span class="ident">wm_base</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>;
-        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the</span>
-        <span class="comment">// new objects being processed and the Weak in the PopupData becoming usable.</span>
-        <span class="kw">let</span> <span class="ident">freeze</span> <span class="op">=</span> <span class="ident">qh</span>.<span class="ident">freeze</span>();
+        <span class="kw">let </span>surface = surface.into();
+        <span class="kw">let </span>wm_base = wm_base.bound_global()<span class="question-mark">?</span>;
+        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        </span><span class="kw">let </span>freeze = qh.freeze();
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">Window</span>(<span class="ident">Arc::new_cyclic</span>(<span class="op">|</span><span class="ident">weak</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span>
-                <span class="ident">wm_base</span>.<span class="ident">get_xdg_surface</span>(<span class="ident">surface</span>.<span class="ident">wl_surface</span>(), <span class="ident">qh</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()));
-            <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span> <span class="ident">XdgShellSurface</span> { <span class="ident">surface</span>, <span class="ident">xdg_surface</span> };
+        <span class="kw">let </span>window = Window(Arc::new_cyclic(|weak| {
+            <span class="kw">let </span>xdg_surface =
+                wm_base.get_xdg_surface(surface.wl_surface(), qh, WindowData(weak.clone()));
+            <span class="kw">let </span>xdg_surface = XdgShellSurface { surface, xdg_surface };
 
-            <span class="kw">let</span> <span class="ident">xdg_toplevel</span> <span class="op">=</span> <span class="ident">xdg_surface</span>.<span class="ident">xdg_surface</span>().<span class="ident">get_toplevel</span>(<span class="ident">qh</span>, <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()));
+            <span class="kw">let </span>xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, WindowData(weak.clone()));
 
-            <span class="comment">// If server side decorations are available, create the toplevel decoration.</span>
-            <span class="kw">let</span> <span class="ident">toplevel_decoration</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">decoration_manager</span>) <span class="op">=</span> <span class="ident">decoration_manager</span> {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">decorations</span> {
-                    <span class="comment">// Window does not want any server side decorations.</span>
-                    <span class="ident">WindowDecorations::ClientOnly</span> <span class="op">|</span> <span class="ident">WindowDecorations::None</span> =&gt; <span class="prelude-val">None</span>,
+            <span class="comment">// If server side decorations are available, create the toplevel decoration.
+            </span><span class="kw">let </span>toplevel_decoration = <span class="kw">if let </span><span class="prelude-val">Some</span>(decoration_manager) = decoration_manager {
+                <span class="kw">match </span><span class="self">self</span>.decorations {
+                    <span class="comment">// Window does not want any server side decorations.
+                    </span>WindowDecorations::ClientOnly | WindowDecorations::None =&gt; <span class="prelude-val">None</span>,
 
-                    <span class="kw">_</span> =&gt; {
-                        <span class="comment">// Create the toplevel decoration.</span>
-                        <span class="kw">let</span> <span class="ident">toplevel_decoration</span> <span class="op">=</span> <span class="ident">decoration_manager</span>.<span class="ident">get_toplevel_decoration</span>(
-                            <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel</span>,
-                            <span class="ident">qh</span>,
-                            <span class="ident">WindowData</span>(<span class="ident">weak</span>.<span class="ident">clone</span>()),
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="comment">// Create the toplevel decoration.
+                        </span><span class="kw">let </span>toplevel_decoration = decoration_manager.get_toplevel_decoration(
+                            <span class="kw-2">&amp;</span>xdg_toplevel,
+                            qh,
+                            WindowData(weak.clone()),
                         );
 
-                        <span class="comment">// Tell the compositor we would like a specific mode.</span>
-                        <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">decorations</span> {
-                            <span class="ident">WindowDecorations::RequestServer</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">Mode::ServerSide</span>),
-                            <span class="ident">WindowDecorations::RequestClient</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">Mode::ClientSide</span>),
-                            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+                        <span class="comment">// Tell the compositor we would like a specific mode.
+                        </span><span class="kw">let </span>mode = <span class="kw">match </span><span class="self">self</span>.decorations {
+                            WindowDecorations::RequestServer =&gt; <span class="prelude-val">Some</span>(Mode::ServerSide),
+                            WindowDecorations::RequestClient =&gt; <span class="prelude-val">Some</span>(Mode::ClientSide),
+                            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                         };
 
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mode</span>) <span class="op">=</span> <span class="ident">mode</span> {
-                            <span class="ident">toplevel_decoration</span>.<span class="ident">set_mode</span>(<span class="ident">mode</span>);
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(mode) = mode {
+                            toplevel_decoration.set_mode(mode);
                         }
 
-                        <span class="prelude-val">Some</span>(<span class="ident">toplevel_decoration</span>)
+                        <span class="prelude-val">Some</span>(toplevel_decoration)
                     }
                 }
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            };
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>};
 
-            <span class="ident">WindowInner</span> {
-                <span class="ident">xdg_surface</span>,
-                <span class="ident">xdg_toplevel</span>,
-                <span class="ident">toplevel_decoration</span>,
-                <span class="ident">pending_configure</span>: <span class="ident">Mutex::new</span>(<span class="ident">WindowConfigure</span> {
-                    <span class="ident">new_size</span>: <span class="prelude-val">None</span>,
-                    <span class="ident">suggested_bounds</span>: <span class="prelude-val">None</span>,
-                    <span class="comment">// Initial configure will indicate whether there are server side decorations.</span>
-                    <span class="ident">decoration_mode</span>: <span class="ident">DecorationMode::Client</span>,
-                    <span class="ident">states</span>: <span class="ident">Vec::new</span>(),
+            WindowInner {
+                xdg_surface,
+                xdg_toplevel,
+                toplevel_decoration,
+                pending_configure: Mutex::new(WindowConfigure {
+                    new_size: <span class="prelude-val">None</span>,
+                    suggested_bounds: <span class="prelude-val">None</span>,
+                    <span class="comment">// Initial configure will indicate whether there are server side decorations.
+                    </span>decoration_mode: DecorationMode::Client,
+                    states: Vec::new(),
                 }),
             }
         }));
-        <span class="ident">drop</span>(<span class="ident">freeze</span>);
+        drop(freeze);
 
-        <span class="comment">// Apply state from builder</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">title</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">title</span> {
-            <span class="ident">window</span>.<span class="ident">set_title</span>(<span class="ident">title</span>);
+        <span class="comment">// Apply state from builder
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(title) = <span class="self">self</span>.title {
+            window.set_title(title);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">app_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">app_id</span> {
-            <span class="ident">window</span>.<span class="ident">set_app_id</span>(<span class="ident">app_id</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(app_id) = <span class="self">self</span>.app_id {
+            window.set_app_id(app_id);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">min_size</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">min_size</span> {
-            <span class="ident">window</span>.<span class="ident">set_min_size</span>(<span class="prelude-val">Some</span>(<span class="ident">min_size</span>));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(min_size) = <span class="self">self</span>.min_size {
+            window.set_min_size(<span class="prelude-val">Some</span>(min_size));
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">max_size</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_size</span> {
-            <span class="ident">window</span>.<span class="ident">set_max_size</span>(<span class="prelude-val">Some</span>(<span class="ident">max_size</span>));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(max_size) = <span class="self">self</span>.max_size {
+            window.set_max_size(<span class="prelude-val">Some</span>(max_size));
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">parent</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">parent</span> {
-            <span class="ident">window</span>.<span class="ident">xdg_toplevel</span>().<span class="ident">set_parent</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">parent</span>));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = <span class="self">self</span>.parent {
+            window.xdg_toplevel().set_parent(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>parent));
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">output</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">fullscreen</span> {
-            <span class="ident">window</span>.<span class="ident">set_fullscreen</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(output) = <span class="self">self</span>.fullscreen {
+            window.set_fullscreen(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>output));
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">maximized</span> {
-            <span class="ident">window</span>.<span class="ident">set_maximized</span>();
+        <span class="kw">if </span><span class="self">self</span>.maximized {
+            window.set_maximized();
         }
 
-        <span class="comment">// Initial commit</span>
-        <span class="ident">window</span>.<span class="ident">wl_surface</span>().<span class="ident">commit</span>();
+        <span class="comment">// Initial commit
+        </span>window.wl_surface().commit();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">window</span>)
+        <span class="prelude-val">Ok</span>(window)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Window</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&gt;</span>);
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>Window(Arc&lt;WindowInner&gt;);
 
-<span class="kw">impl</span> <span class="ident">Window</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_xdg_toplevel</span>(<span class="ident">toplevel</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&gt;</span> {
-        <span class="ident">toplevel</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">WindowData</span><span class="op">&gt;</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> <span class="ident">data</span>.<span class="number">0</span>.<span class="ident">upgrade</span>()).<span class="ident">map</span>(<span class="ident">Window</span>)
+<span class="kw">impl </span>Window {
+    <span class="kw">pub fn </span>from_xdg_toplevel(toplevel: <span class="kw-2">&amp;</span>xdg_toplevel::XdgToplevel) -&gt; <span class="prelude-ty">Option</span>&lt;Window&gt; {
+        toplevel.data::&lt;WindowData&gt;().and_then(|data| data.<span class="number">0</span>.upgrade()).map(Window)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_xdg_surface</span>(<span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&gt;</span> {
-        <span class="ident">surface</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">WindowData</span><span class="op">&gt;</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> <span class="ident">data</span>.<span class="number">0</span>.<span class="ident">upgrade</span>()).<span class="ident">map</span>(<span class="ident">Window</span>)
+    <span class="kw">pub fn </span>from_xdg_surface(surface: <span class="kw-2">&amp;</span>xdg_surface::XdgSurface) -&gt; <span class="prelude-ty">Option</span>&lt;Window&gt; {
+        surface.data::&lt;WindowData&gt;().and_then(|data| data.<span class="number">0</span>.upgrade()).map(Window)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_toplevel_decoration</span>(
-        <span class="ident">decoration</span>: <span class="kw-2">&amp;</span><span class="ident">zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Window</span><span class="op">&gt;</span> {
-        <span class="ident">decoration</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">WindowData</span><span class="op">&gt;</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> <span class="ident">data</span>.<span class="number">0</span>.<span class="ident">upgrade</span>()).<span class="ident">map</span>(<span class="ident">Window</span>)
+    <span class="kw">pub fn </span>from_toplevel_decoration(
+        decoration: <span class="kw-2">&amp;</span>zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Window&gt; {
+        decoration.data::&lt;WindowData&gt;().and_then(|data| data.<span class="number">0</span>.upgrade()).map(Window)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() -&gt; <span class="ident">WindowBuilder</span> {
-        <span class="ident">WindowBuilder</span> {
-            <span class="ident">title</span>: <span class="prelude-val">None</span>,
-            <span class="ident">app_id</span>: <span class="prelude-val">None</span>,
-            <span class="ident">min_size</span>: <span class="prelude-val">None</span>,
-            <span class="ident">max_size</span>: <span class="prelude-val">None</span>,
-            <span class="ident">parent</span>: <span class="prelude-val">None</span>,
-            <span class="ident">fullscreen</span>: <span class="prelude-val">None</span>,
-            <span class="ident">maximized</span>: <span class="bool-val">false</span>,
-            <span class="ident">decorations</span>: <span class="ident">WindowDecorations::RequestServer</span>,
+    <span class="kw">pub fn </span>builder() -&gt; WindowBuilder {
+        WindowBuilder {
+            title: <span class="prelude-val">None</span>,
+            app_id: <span class="prelude-val">None</span>,
+            min_size: <span class="prelude-val">None</span>,
+            max_size: <span class="prelude-val">None</span>,
+            parent: <span class="prelude-val">None</span>,
+            fullscreen: <span class="prelude-val">None</span>,
+            maximized: <span class="bool-val">false</span>,
+            decorations: WindowDecorations::RequestServer,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">show_window_menu</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">serial</span>: <span class="ident">u32</span>, <span class="ident">position</span>: (<span class="ident">u32</span>, <span class="ident">u32</span>)) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">show_window_menu</span>(<span class="ident">seat</span>, <span class="ident">serial</span>, <span class="ident">position</span>.<span class="number">0</span>, <span class="ident">position</span>.<span class="number">1</span>)
+    <span class="kw">pub fn </span>show_window_menu(<span class="kw-2">&amp;</span><span class="self">self</span>, seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat, serial: u32, position: (u32, u32)) {
+        <span class="self">self</span>.<span class="number">0</span>.show_window_menu(seat, serial, position.<span class="number">0</span>, position.<span class="number">1</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_title</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">title</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_title</span>(<span class="ident">title</span>.<span class="ident">into</span>())
+    <span class="kw">pub fn </span>set_title(<span class="kw-2">&amp;</span><span class="self">self</span>, title: <span class="kw">impl </span>Into&lt;String&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.set_title(title.into())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_app_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">app_id</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_app_id</span>(<span class="ident">app_id</span>.<span class="ident">into</span>())
+    <span class="kw">pub fn </span>set_app_id(<span class="kw-2">&amp;</span><span class="self">self</span>, app_id: <span class="kw">impl </span>Into&lt;String&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.set_app_id(app_id.into())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Window</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_parent</span>(<span class="ident">parent</span>)
+    <span class="kw">pub fn </span>set_parent(<span class="kw-2">&amp;</span><span class="self">self</span>, parent: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Window&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.set_parent(parent)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_maximized</span>()
+    <span class="kw">pub fn </span>set_maximized(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.set_maximized()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unset_maximized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">unset_maximized</span>()
+    <span class="kw">pub fn </span>unset_maximized(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.unset_maximized()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mimimized</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_minmized</span>()
+    <span class="kw">pub fn </span>set_mimimized(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.set_minmized()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">output</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">wl_output::WlOutput</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_fullscreen</span>(<span class="ident">output</span>)
+    <span class="kw">pub fn </span>set_fullscreen(<span class="kw-2">&amp;</span><span class="self">self</span>, output: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>wl_output::WlOutput&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.set_fullscreen(output)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unset_fullscreen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">unset_fullscreen</span>()
+    <span class="kw">pub fn </span>unset_fullscreen(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.unset_fullscreen()
     }
 
-    <span class="doccomment">/// Requests the window should use the specified decoration mode.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A mode of [`None`] indicates that the window does not care what type of decorations are used.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The compositor will respond with a [`configure`](WindowHandler::configure). The configure will</span>
-    <span class="doccomment">/// indicate whether the window&#39;s decoration mode has changed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Configure loops</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">request_decoration_mode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mode</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DecorationMode</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">request_decoration_mode</span>(<span class="ident">mode</span>)
+    <span class="doccomment">/// Requests the window should use the specified decoration mode.
+    ///
+    /// A mode of [`None`] indicates that the window does not care what type of decorations are used.
+    ///
+    /// The compositor will respond with a [`configure`](WindowHandler::configure). The configure will
+    /// indicate whether the window&#39;s decoration mode has changed.
+    ///
+    /// # Configure loops
+    ///
+    /// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.
+    </span><span class="kw">pub fn </span>request_decoration_mode(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: <span class="prelude-ty">Option</span>&lt;DecorationMode&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.request_decoration_mode(mode)
     }
 
-    <span class="comment">// TODO: Move</span>
+    <span class="comment">// TODO: Move
 
-    <span class="comment">// TODO: Resize</span>
+    // TODO: Resize
 
-    <span class="comment">// Double buffered window state</span>
+    // Double buffered window state
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_min_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">min_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_min_size</span>(<span class="ident">min_size</span>)
+    </span><span class="kw">pub fn </span>set_min_size(<span class="kw-2">&amp;</span><span class="self">self</span>, min_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.set_min_size(min_size)
     }
 
-    <span class="doccomment">/// # Protocol errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The maximum size of the window may not be smaller than the minimum size.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_max_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">max_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">set_max_size</span>(<span class="ident">max_size</span>)
+    <span class="doccomment">/// # Protocol errors
+    ///
+    /// The maximum size of the window may not be smaller than the minimum size.
+    </span><span class="kw">pub fn </span>set_max_size(<span class="kw-2">&amp;</span><span class="self">self</span>, max_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;) {
+        <span class="self">self</span>.<span class="number">0</span>.set_max_size(max_size)
     }
 
-    <span class="comment">// TODO: Window geometry</span>
+    <span class="comment">// TODO: Window geometry
 
-    <span class="comment">// TODO: WlSurface stuff</span>
+    // TODO: WlSurface stuff
 
-    <span class="comment">// Other</span>
+    // Other
 
-    <span class="doccomment">/// Returns the underlying surface wrapped by this window.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wl_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">xdg_surface</span>.<span class="ident">wl_surface</span>()
+    </span><span class="doccomment">/// Returns the underlying surface wrapped by this window.
+    </span><span class="kw">pub fn </span>wl_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_surface::WlSurface {
+        <span class="self">self</span>.<span class="number">0</span>.xdg_surface.wl_surface()
     }
 
-    <span class="doccomment">/// Returns the underlying xdg surface wrapped by this window.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">xdg_surface</span>.<span class="ident">xdg_surface</span>()
+    <span class="doccomment">/// Returns the underlying xdg surface wrapped by this window.
+    </span><span class="kw">pub fn </span>xdg_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>xdg_surface::XdgSurface {
+        <span class="self">self</span>.<span class="number">0</span>.xdg_surface.xdg_surface()
     }
 
-    <span class="doccomment">/// Returns the underlying xdg toplevel wrapped by this window.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_toplevel</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">xdg_toplevel::XdgToplevel</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">xdg_toplevel</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Window</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">Arc::ptr_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="number">0</span>)
+    <span class="doccomment">/// Returns the underlying xdg toplevel wrapped by this window.
+    </span><span class="kw">pub fn </span>xdg_toplevel(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>xdg_toplevel::XdgToplevel {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.xdg_toplevel
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WindowData</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">WindowInner</span><span class="op">&gt;</span>);
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>Window {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        Arc::ptr_eq(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span>other.<span class="number">0</span>)
+    }
+}
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_xdg_window</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::WindowData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::window::XdgWindowState</span>);
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>WindowData(<span class="kw">pub</span>(<span class="kw">crate</span>) Weak&lt;WindowInner&gt;);
+
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_xdg_window {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface</span>: <span class="macro-nonterminal">$crate::shell::xdg::window::WindowData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::xdg::window::XdgWindowState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel</span>: <span class="macro-nonterminal">$crate::shell::xdg::window::WindowData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::xdg::window::XdgWindowState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::xdg::window::XdgWindowState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1</span>: <span class="macro-nonterminal">$crate::shell::xdg::window::WindowData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::xdg::window::XdgWindowState</span>);
     };
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

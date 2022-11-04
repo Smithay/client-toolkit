@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shm/raw.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>raw.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shm/raw.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>raw.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -282,289 +282,289 @@
 <span id="282">282</span>
 <span id="283">283</span>
 <span id="284">284</span>
-</pre><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This is intended as a safe building block for higher level shared memory pool abstractions and is not</span>
-<span class="doccomment">//! encouraged for most library users.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.
+//!
+//! This is intended as a safe building block for higher level shared memory pool abstractions and is not
+//! encouraged for most library users.
 
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fs::File</span>,
-    <span class="ident">io</span>,
-    <span class="ident">os::unix::prelude</span>::{<span class="ident">FromRawFd</span>, <span class="ident">RawFd</span>},
-    <span class="ident">sync::Arc</span>,
-    <span class="ident">time</span>::{<span class="ident">SystemTime</span>, <span class="ident">UNIX_EPOCH</span>},
+</span><span class="kw">use </span>std::{
+    fs::File,
+    io,
+    os::unix::prelude::{FromRawFd, RawFd},
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
-<span class="kw">use</span> <span class="ident">memmap2::MmapMut</span>;
-<span class="kw">use</span> <span class="ident">nix</span>::{
-    <span class="ident">errno::Errno</span>,
-    <span class="ident">fcntl</span>,
-    <span class="ident">sys</span>::{<span class="ident">mman</span>, <span class="ident">stat</span>},
-    <span class="ident">unistd</span>,
+<span class="kw">use </span>memmap2::MmapMut;
+<span class="kw">use </span>nix::{
+    errno::Errno,
+    fcntl,
+    sys::{mman, stat},
+    unistd,
 };
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">backend::ObjectData</span>,
-    <span class="ident">protocol</span>::{<span class="ident">wl_buffer</span>, <span class="ident">wl_shm</span>, <span class="ident">wl_shm_pool</span>},
-    <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>, <span class="ident">WEnum</span>,
+<span class="kw">use </span>wayland_client::{
+    backend::ObjectData,
+    protocol::{wl_buffer, wl_shm, wl_shm_pool},
+    Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::globals::ProvidesBoundGlobal</span>;
+<span class="kw">use </span><span class="kw">crate</span>::globals::ProvidesBoundGlobal;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::CreatePoolError</span>;
+<span class="kw">use </span><span class="kw">super</span>::CreatePoolError;
 
-<span class="doccomment">/// A raw handler for file backed shared memory pools.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This type of pool will create the SHM memory pool and provide a way to resize the pool.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This pool does not release buffers. If you need this, use one of the higher level pools.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RawPool</span> {
-    <span class="ident">pool</span>: <span class="ident">wl_shm_pool::WlShmPool</span>,
-    <span class="ident">len</span>: <span class="ident">usize</span>,
-    <span class="ident">mem_file</span>: <span class="ident">File</span>,
-    <span class="ident">mmap</span>: <span class="ident">MmapMut</span>,
+<span class="doccomment">/// A raw handler for file backed shared memory pools.
+///
+/// This type of pool will create the SHM memory pool and provide a way to resize the pool.
+///
+/// This pool does not release buffers. If you need this, use one of the higher level pools.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>RawPool {
+    pool: wl_shm_pool::WlShmPool,
+    len: usize,
+    mem_file: File,
+    mmap: MmapMut,
 }
 
-<span class="kw">impl</span> <span class="ident">RawPool</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">len</span>: <span class="ident">usize</span>,
-        <span class="ident">shm</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span>, <span class="number">1</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RawPool</span>, <span class="ident">CreatePoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">shm</span> <span class="op">=</span> <span class="ident">shm</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">shm_fd</span> <span class="op">=</span> <span class="ident">RawPool::create_shm_fd</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">mem_file</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">File::from_raw_fd</span>(<span class="ident">shm_fd</span>) };
-        <span class="ident">mem_file</span>.<span class="ident">set_len</span>(<span class="ident">len</span> <span class="kw">as</span> <span class="ident">u64</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>RawPool {
+    <span class="kw">pub fn </span>new(
+        len: usize,
+        shm: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;wl_shm::WlShm, <span class="number">1</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;RawPool, CreatePoolError&gt; {
+        <span class="kw">let </span>shm = shm.bound_global()<span class="question-mark">?</span>;
+        <span class="kw">let </span>shm_fd = RawPool::create_shm_fd()<span class="question-mark">?</span>;
+        <span class="kw">let </span>mem_file = <span class="kw">unsafe </span>{ File::from_raw_fd(shm_fd) };
+        mem_file.set_len(len <span class="kw">as </span>u64)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">pool</span> <span class="op">=</span> <span class="ident">shm</span>
-            .<span class="ident">send_constructor</span>(
-                <span class="ident">wl_shm::Request::CreatePool</span> { <span class="ident">fd</span>: <span class="ident">shm_fd</span>, <span class="ident">size</span>: <span class="ident">len</span> <span class="kw">as</span> <span class="ident">i32</span> },
-                <span class="ident">Arc::new</span>(<span class="ident">ShmPoolData</span>),
+        <span class="kw">let </span>pool = shm
+            .send_constructor(
+                wl_shm::Request::CreatePool { fd: shm_fd, size: len <span class="kw">as </span>i32 },
+                Arc::new(ShmPoolData),
             )
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Proxy::inert</span>(<span class="ident">shm</span>.<span class="ident">backend</span>().<span class="ident">clone</span>()));
-        <span class="kw">let</span> <span class="ident">mmap</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">MmapMut::map_mut</span>(<span class="kw-2">&amp;</span><span class="ident">mem_file</span>)<span class="question-mark">?</span> };
+            .unwrap_or_else(|<span class="kw">_</span>| Proxy::inert(shm.backend().clone()));
+        <span class="kw">let </span>mmap = <span class="kw">unsafe </span>{ MmapMut::map_mut(<span class="kw-2">&amp;</span>mem_file)<span class="question-mark">? </span>};
 
-        <span class="prelude-val">Ok</span>(<span class="ident">RawPool</span> { <span class="ident">pool</span>, <span class="ident">len</span>, <span class="ident">mem_file</span>, <span class="ident">mmap</span> })
+        <span class="prelude-val">Ok</span>(RawPool { pool, len, mem_file, mmap })
     }
 
-    <span class="doccomment">/// Resizes the memory pool, notifying the server the pool has changed in size.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the</span>
-    <span class="doccomment">/// current size of the pool, this function will do nothing.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">resize</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">size</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">len</span> {
-            <span class="self">self</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">size</span>;
-            <span class="self">self</span>.<span class="ident">mem_file</span>.<span class="ident">set_len</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">u64</span>)<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">resize</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">i32</span>);
-            <span class="self">self</span>.<span class="ident">mmap</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">MmapMut::map_mut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mem_file</span>) }<span class="question-mark">?</span>;
+    <span class="doccomment">/// Resizes the memory pool, notifying the server the pool has changed in size.
+    ///
+    /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
+    /// current size of the pool, this function will do nothing.
+    </span><span class="kw">pub fn </span>resize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, size: usize) -&gt; io::Result&lt;()&gt; {
+        <span class="kw">if </span>size &gt; <span class="self">self</span>.len {
+            <span class="self">self</span>.len = size;
+            <span class="self">self</span>.mem_file.set_len(size <span class="kw">as </span>u64)<span class="question-mark">?</span>;
+            <span class="self">self</span>.pool.resize(size <span class="kw">as </span>i32);
+            <span class="self">self</span>.mmap = <span class="kw">unsafe </span>{ MmapMut::map_mut(<span class="kw-2">&amp;</span><span class="self">self</span>.mem_file) }<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Returns a reference to the underlying shared memory file using the memmap2 crate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mmap</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">MmapMut</span> {
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">mmap</span>
+    <span class="doccomment">/// Returns a reference to the underlying shared memory file using the memmap2 crate.
+    </span><span class="kw">pub fn </span>mmap(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MmapMut {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.mmap
     }
 
-    <span class="doccomment">/// Returns the size of the mempool</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::len_without_is_empty</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">len</span>
+    <span class="doccomment">/// Returns the size of the mempool
+    </span><span class="attribute">#[allow(clippy::len_without_is_empty)]
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.len
     }
 
-    <span class="doccomment">/// Create a new buffer to this pool.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Parameters</span>
-    <span class="doccomment">/// - `offset`: the offset (in bytes) from the beginning of the pool at which this buffer starts.</span>
-    <span class="doccomment">/// - `width` and `height`: the width and height of the buffer in pixels.</span>
-    <span class="doccomment">/// - `stride`: distance (in bytes) between the beginning of a row and the next one.</span>
-    <span class="doccomment">/// - `format`: the encoding format of the pixels.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The encoding format of the pixels must be supported by the compositor or else a protocol error is</span>
-    <span class="doccomment">/// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::shm::ShmState::formats).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note this function only creates the wl_buffer object, you will need to write to the pixels using the</span>
-    <span class="doccomment">/// [`io::Write`] implementation or [`RawPool::mmap`].</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_buffer</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">offset</span>: <span class="ident">i32</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-        <span class="ident">udata</span>: <span class="ident">U</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">wl_buffer::WlBuffer</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_buffer::WlBuffer</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">U</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Create a new buffer to this pool.
+    ///
+    /// ## Parameters
+    /// - `offset`: the offset (in bytes) from the beginning of the pool at which this buffer starts.
+    /// - `width` and `height`: the width and height of the buffer in pixels.
+    /// - `stride`: distance (in bytes) between the beginning of a row and the next one.
+    /// - `format`: the encoding format of the pixels.
+    ///
+    /// The encoding format of the pixels must be supported by the compositor or else a protocol error is
+    /// risen. You can ensure the format is supported by listening to [`ShmState::formats`](crate::shm::ShmState::formats).
+    ///
+    /// Note this function only creates the wl_buffer object, you will need to write to the pixels using the
+    /// [`io::Write`] implementation or [`RawPool::mmap`].
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>create_buffer&lt;D, U&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        offset: i32,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: wl_shm::Format,
+        udata: U,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+    ) -&gt; wl_buffer::WlBuffer
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_buffer::WlBuffer, U&gt; + <span class="lifetime">&#39;static</span>,
+        U: Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">create_buffer</span>(<span class="ident">offset</span>, <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">stride</span>, <span class="ident">format</span>, <span class="ident">qh</span>, <span class="ident">udata</span>)
+        <span class="self">self</span>.pool.create_buffer(offset, width, height, stride, format, qh, udata)
     }
 
-    <span class="doccomment">/// Create a new buffer to this pool.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is identical to [Self::create_buffer], but allows using a custom [ObjectData]</span>
-    <span class="doccomment">/// implementation instead of relying on the [Dispatch] interface.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_buffer_raw</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">offset</span>: <span class="ident">i32</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-        <span class="ident">data</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ObjectData</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">wl_buffer::WlBuffer</span> {
-        <span class="self">self</span>.<span class="ident">pool</span>
-            .<span class="ident">send_constructor</span>(
-                <span class="ident">wl_shm_pool::Request::CreateBuffer</span> {
-                    <span class="ident">offset</span>,
-                    <span class="ident">width</span>,
-                    <span class="ident">height</span>,
-                    <span class="ident">stride</span>,
-                    <span class="ident">format</span>: <span class="ident">WEnum::Value</span>(<span class="ident">format</span>),
+    <span class="doccomment">/// Create a new buffer to this pool.
+    ///
+    /// This is identical to [Self::create_buffer], but allows using a custom [ObjectData]
+    /// implementation instead of relying on the [Dispatch] interface.
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>create_buffer_raw(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        offset: i32,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: wl_shm::Format,
+        data: Arc&lt;<span class="kw">dyn </span>ObjectData + <span class="lifetime">&#39;static</span>&gt;,
+    ) -&gt; wl_buffer::WlBuffer {
+        <span class="self">self</span>.pool
+            .send_constructor(
+                wl_shm_pool::Request::CreateBuffer {
+                    offset,
+                    width,
+                    height,
+                    stride,
+                    format: WEnum::Value(format),
                 },
-                <span class="ident">data</span>,
+                data,
             )
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Proxy::inert</span>(<span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">backend</span>().<span class="ident">clone</span>()))
+            .unwrap_or_else(|<span class="kw">_</span>| Proxy::inert(<span class="self">self</span>.pool.backend().clone()))
     }
 
-    <span class="doccomment">/// Returns the pool object used to communicate with the server.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pool</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_shm_pool::WlShmPool</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pool</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">io::Write</span> <span class="kw">for</span> <span class="ident">RawPool</span> {
-    <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="ident">io::Write::write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">mem_file</span>, <span class="ident">buf</span>)
-    }
-
-    <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="ident">io::Write::flush</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">mem_file</span>)
+    <span class="doccomment">/// Returns the pool object used to communicate with the server.
+    </span><span class="kw">pub fn </span>pool(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_shm_pool::WlShmPool {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.pool
     }
 }
 
-<span class="kw">impl</span> <span class="ident">io::Seek</span> <span class="kw">for</span> <span class="ident">RawPool</span> {
-    <span class="kw">fn</span> <span class="ident">seek</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">io::SeekFrom</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="ident">io::Seek::seek</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">mem_file</span>, <span class="ident">pos</span>)
+<span class="kw">impl </span>io::Write <span class="kw">for </span>RawPool {
+    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;usize&gt; {
+        io::Write::write(<span class="kw-2">&amp;mut </span><span class="self">self</span>.mem_file, buf)
+    }
+
+    <span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;()&gt; {
+        io::Write::flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>.mem_file)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">RawPool</span> {
-    <span class="kw">fn</span> <span class="ident">create_shm_fd</span>() -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">RawFd</span><span class="op">&gt;</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
-        {
-            <span class="kw">match</span> <span class="ident">RawPool::create_memfd</span>() {
-                <span class="prelude-val">Ok</span>(<span class="ident">fd</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">fd</span>),
+<span class="kw">impl </span>io::Seek <span class="kw">for </span>RawPool {
+    <span class="kw">fn </span>seek(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: io::SeekFrom) -&gt; io::Result&lt;u64&gt; {
+        io::Seek::seek(<span class="kw-2">&amp;mut </span><span class="self">self</span>.mem_file, pos)
+    }
+}
 
-                <span class="comment">// Not supported, use fallback.</span>
-                <span class="prelude-val">Err</span>(<span class="ident">Errno::ENOSYS</span>) =&gt; (),
+<span class="kw">impl </span>RawPool {
+    <span class="kw">fn </span>create_shm_fd() -&gt; io::Result&lt;RawFd&gt; {
+        <span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+        </span>{
+            <span class="kw">match </span>RawPool::create_memfd() {
+                <span class="prelude-val">Ok</span>(fd) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(fd),
 
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Into</span>::<span class="op">&lt;</span><span class="ident">io::Error</span><span class="op">&gt;</span><span class="ident">::into</span>(<span class="ident">err</span>)),
+                <span class="comment">// Not supported, use fallback.
+                </span><span class="prelude-val">Err</span>(Errno::ENOSYS) =&gt; (),
+
+                <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Into::&lt;io::Error&gt;::into(err)),
             };
         }
 
-        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem_file_handle</span> <span class="op">=</span> <span class="macro">format!</span>(
+        <span class="kw">let </span>time = SystemTime::now();
+        <span class="kw">let </span><span class="kw-2">mut </span>mem_file_handle = <span class="macro">format!</span>(
             <span class="string">&quot;/smithay-client-toolkit-{}&quot;</span>,
-            <span class="ident">time</span>.<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>).<span class="ident">unwrap</span>().<span class="ident">subsec_nanos</span>()
+            time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
         );
 
-        <span class="kw">loop</span> {
-            <span class="kw">let</span> <span class="ident">flags</span> <span class="op">=</span> <span class="ident">fcntl::OFlag::O_CREAT</span>
-                <span class="op">|</span> <span class="ident">fcntl::OFlag::O_EXCL</span>
-                <span class="op">|</span> <span class="ident">fcntl::OFlag::O_RDWR</span>
-                <span class="op">|</span> <span class="ident">fcntl::OFlag::O_CLOEXEC</span>;
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>flags = fcntl::OFlag::O_CREAT
+                | fcntl::OFlag::O_EXCL
+                | fcntl::OFlag::O_RDWR
+                | fcntl::OFlag::O_CLOEXEC;
 
-            <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="ident">stat::Mode::S_IRUSR</span> <span class="op">|</span> <span class="ident">stat::Mode::S_IWUSR</span>;
+            <span class="kw">let </span>mode = stat::Mode::S_IRUSR | stat::Mode::S_IWUSR;
 
-            <span class="kw">match</span> <span class="ident">mman::shm_open</span>(<span class="ident">mem_file_handle</span>.<span class="ident">as_str</span>(), <span class="ident">flags</span>, <span class="ident">mode</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">fd</span>) =&gt; <span class="kw">match</span> <span class="ident">mman::shm_unlink</span>(<span class="ident">mem_file_handle</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">fd</span>),
+            <span class="kw">match </span>mman::shm_open(mem_file_handle.as_str(), flags, mode) {
+                <span class="prelude-val">Ok</span>(fd) =&gt; <span class="kw">match </span>mman::shm_unlink(mem_file_handle.as_str()) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(fd),
 
-                    <span class="prelude-val">Err</span>(<span class="ident">errno</span>) =&gt; {
-                        <span class="ident">unistd::close</span>(<span class="ident">fd</span>)<span class="question-mark">?</span>;
+                    <span class="prelude-val">Err</span>(errno) =&gt; {
+                        unistd::close(fd)<span class="question-mark">?</span>;
 
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">errno</span>.<span class="ident">into</span>());
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(errno.into());
                     }
                 },
 
-                <span class="prelude-val">Err</span>(<span class="ident">Errno::EEXIST</span>) =&gt; {
-                    <span class="comment">// Change the handle if we happen to be duplicate.</span>
-                    <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
+                <span class="prelude-val">Err</span>(Errno::EEXIST) =&gt; {
+                    <span class="comment">// Change the handle if we happen to be duplicate.
+                    </span><span class="kw">let </span>time = SystemTime::now();
 
-                    <span class="ident">mem_file_handle</span> <span class="op">=</span> <span class="macro">format!</span>(
+                    mem_file_handle = <span class="macro">format!</span>(
                         <span class="string">&quot;/smithay-client-toolkit-{}&quot;</span>,
-                        <span class="ident">time</span>.<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>).<span class="ident">unwrap</span>().<span class="ident">subsec_nanos</span>()
+                        time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
                     );
 
                     <span class="kw">continue</span>;
                 }
 
-                <span class="prelude-val">Err</span>(<span class="ident">Errno::EINTR</span>) =&gt; <span class="kw">continue</span>,
+                <span class="prelude-val">Err</span>(Errno::EINTR) =&gt; <span class="kw">continue</span>,
 
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>.<span class="ident">into</span>()),
+                <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err.into()),
             }
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">create_memfd</span>() -&gt; <span class="ident">nix::Result</span><span class="op">&lt;</span><span class="ident">RawFd</span><span class="op">&gt;</span> {
-        <span class="kw">use</span> <span class="ident">std::ffi::CStr</span>;
+    <span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+    </span><span class="kw">fn </span>create_memfd() -&gt; nix::Result&lt;RawFd&gt; {
+        <span class="kw">use </span>std::ffi::CStr;
 
-        <span class="kw">use</span> <span class="ident">nix</span>::{
-            <span class="ident">fcntl</span>::{<span class="ident">FcntlArg</span>, <span class="ident">SealFlag</span>},
-            <span class="ident">sys::memfd</span>::{<span class="self">self</span>, <span class="ident">MemFdCreateFlag</span>},
+        <span class="kw">use </span>nix::{
+            fcntl::{FcntlArg, SealFlag},
+            sys::memfd::{<span class="self">self</span>, MemFdCreateFlag},
         };
 
-        <span class="kw">loop</span> {
-            <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">CStr::from_bytes_with_nul</span>(<span class="string">b&quot;smithay-client-toolkit\0&quot;</span>).<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">flags</span> <span class="op">=</span> <span class="ident">MemFdCreateFlag::MFD_ALLOW_SEALING</span> <span class="op">|</span> <span class="ident">MemFdCreateFlag::MFD_CLOEXEC</span>;
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>name = CStr::from_bytes_with_nul(<span class="string">b&quot;smithay-client-toolkit\0&quot;</span>).unwrap();
+            <span class="kw">let </span>flags = MemFdCreateFlag::MFD_ALLOW_SEALING | MemFdCreateFlag::MFD_CLOEXEC;
 
-            <span class="kw">match</span> <span class="ident">memfd::memfd_create</span>(<span class="ident">name</span>, <span class="ident">flags</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">fd</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">arg</span> <span class="op">=</span>
-                        <span class="ident">FcntlArg::F_ADD_SEALS</span>(<span class="ident">SealFlag::F_SEAL_SHRINK</span> <span class="op">|</span> <span class="ident">SealFlag::F_SEAL_SEAL</span>);
+            <span class="kw">match </span>memfd::memfd_create(name, flags) {
+                <span class="prelude-val">Ok</span>(fd) =&gt; {
+                    <span class="kw">let </span>arg =
+                        FcntlArg::F_ADD_SEALS(SealFlag::F_SEAL_SHRINK | SealFlag::F_SEAL_SEAL);
 
-                    <span class="comment">// We only need to seal for the purposes of optimization, ignore the errors.</span>
-                    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">fcntl::fcntl</span>(<span class="ident">fd</span>, <span class="ident">arg</span>);
+                    <span class="comment">// We only need to seal for the purposes of optimization, ignore the errors.
+                    </span><span class="kw">let _ </span>= fcntl::fcntl(fd, arg);
 
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">fd</span>);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(fd);
                 }
 
-                <span class="prelude-val">Err</span>(<span class="ident">Errno::EINTR</span>) =&gt; <span class="kw">continue</span>,
+                <span class="prelude-val">Err</span>(Errno::EINTR) =&gt; <span class="kw">continue</span>,
 
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>),
+                <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err),
             }
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">RawPool</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">pool</span>.<span class="ident">destroy</span>();
+<span class="kw">impl </span>Drop <span class="kw">for </span>RawPool {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.pool.destroy();
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">ShmPoolData</span>;
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>ShmPoolData;
 
-<span class="kw">impl</span> <span class="ident">ObjectData</span> <span class="kw">for</span> <span class="ident">ShmPoolData</span> {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="self">self</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">wayland_client::backend::Backend</span>,
-        <span class="kw">_</span>: <span class="ident">wayland_client::backend::protocol::Message</span><span class="op">&lt;</span>
-            <span class="ident">wayland_client::backend::ObjectId</span>,
-            <span class="ident">wayland_backend::io_lifetimes::OwnedFd</span>,
-        <span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span>(<span class="kw">dyn</span> <span class="ident">ObjectData</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
+<span class="kw">impl </span>ObjectData <span class="kw">for </span>ShmPoolData {
+    <span class="kw">fn </span>event(
+        <span class="self">self</span>: Arc&lt;<span class="self">Self</span>&gt;,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>wayland_client::backend::Backend,
+        <span class="kw">_</span>: wayland_client::backend::protocol::Message&lt;
+            wayland_client::backend::ObjectId,
+            wayland_backend::io_lifetimes::OwnedFd,
+        &gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;(<span class="kw">dyn </span>ObjectData + <span class="lifetime">&#39;static</span>)&gt;&gt; {
         <span class="macro">unreachable!</span>(<span class="string">&quot;wl_shm_pool has no events&quot;</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">destroyed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">wayland_client::backend::ObjectId</span>) {}
+    <span class="kw">fn </span>destroyed(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: wayland_client::backend::ObjectId) {}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

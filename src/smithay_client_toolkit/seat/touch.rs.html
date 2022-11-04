@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/touch.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>touch.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/touch.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>touch.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -203,210 +203,210 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::sync::Mutex</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::sync::Mutex;
 
-<span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_surface::WlSurface</span>;
-<span class="kw">use</span> <span class="ident">wayland_client::protocol::wl_touch</span>::{<span class="ident">Event</span> <span class="kw">as</span> <span class="ident">TouchEvent</span>, <span class="ident">WlTouch</span>};
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{<span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">QueueHandle</span>};
+<span class="kw">use </span>wayland_client::protocol::wl_surface::WlSurface;
+<span class="kw">use </span>wayland_client::protocol::wl_touch::{Event <span class="kw">as </span>TouchEvent, WlTouch};
+<span class="kw">use </span>wayland_client::{Connection, Dispatch, QueueHandle};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::seat::SeatState</span>;
+<span class="kw">use </span><span class="kw">crate</span>::seat::SeatState;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TouchData</span> {
-    <span class="ident">inner</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">TouchDataInner</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Default)]
+</span><span class="kw">pub struct </span>TouchData {
+    inner: Mutex&lt;TouchDataInner&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">TouchDataInner</span> {
-    <span class="ident">events</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TouchEvent</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Default)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TouchDataInner {
+    events: Vec&lt;TouchEvent&gt;,
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_touch</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_touch {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::touch::TouchData</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$crate::seat::touch::TouchData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>, <span class="ident">touch</span>: [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">td</span>:<span class="ident">ty</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>]) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, touch: [$(<span class="macro-nonterminal">$td</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
                 $(
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">td</span>,
-                )<span class="op">*</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                    <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$td</span>,
+                )*
+            ] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">TouchDataExt</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="kw">fn</span> <span class="ident">touch_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">TouchData</span>;
+<span class="kw">pub trait </span>TouchDataExt: Send + Sync {
+    <span class="kw">fn </span>touch_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>TouchData;
 }
 
-<span class="kw">impl</span> <span class="ident">TouchDataExt</span> <span class="kw">for</span> <span class="ident">TouchData</span> {
-    <span class="kw">fn</span> <span class="ident">touch_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">TouchData</span> {
-        <span class="self">self</span>
-    }
+<span class="kw">impl </span>TouchDataExt <span class="kw">for </span>TouchData {
+    <span class="kw">fn </span>touch_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>TouchData {
+        <span class="self">self
+    </span>}
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">TouchHandler</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// New touch point.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Indicates a new touch point has appeared on the surface, starting a touch sequence. The ID</span>
-    <span class="doccomment">/// associated with this event identifies this touch point for devices with multi-touch and</span>
-    <span class="doccomment">/// will be referenced in future events.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The associated touch ID ceases to be valid after the touch up event with the associated ID</span>
-    <span class="doccomment">/// and may be reused for other touch points after that.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Coordinates are surface-local.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">down</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
-        <span class="ident">time</span>: <span class="ident">u32</span>,
-        <span class="ident">surface</span>: <span class="ident">WlSurface</span>,
-        <span class="ident">id</span>: <span class="ident">i32</span>,
-        <span class="ident">position</span>: (<span class="ident">f64</span>, <span class="ident">f64</span>),
+<span class="kw">pub trait </span>TouchHandler: Sized {
+    <span class="doccomment">/// New touch point.
+    ///
+    /// Indicates a new touch point has appeared on the surface, starting a touch sequence. The ID
+    /// associated with this event identifies this touch point for devices with multi-touch and
+    /// will be referenced in future events.
+    ///
+    /// The associated touch ID ceases to be valid after the touch up event with the associated ID
+    /// and may be reused for other touch points after that.
+    ///
+    /// Coordinates are surface-local.
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">fn </span>down(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        touch: <span class="kw-2">&amp;</span>WlTouch,
+        serial: u32,
+        time: u32,
+        surface: WlSurface,
+        id: i32,
+        position: (f64, f64),
     );
 
-    <span class="doccomment">/// End of touch sequence.</span>
-    <span class="kw">fn</span> <span class="ident">up</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
-        <span class="ident">time</span>: <span class="ident">u32</span>,
-        <span class="ident">id</span>: <span class="ident">i32</span>,
+    <span class="doccomment">/// End of touch sequence.
+    </span><span class="kw">fn </span>up(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        touch: <span class="kw-2">&amp;</span>WlTouch,
+        serial: u32,
+        time: u32,
+        id: i32,
     );
 
-    <span class="doccomment">/// Touch point motion.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Coordinates are surface-local.</span>
-    <span class="kw">fn</span> <span class="ident">motion</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-        <span class="ident">time</span>: <span class="ident">u32</span>,
-        <span class="ident">id</span>: <span class="ident">i32</span>,
-        <span class="ident">position</span>: (<span class="ident">f64</span>, <span class="ident">f64</span>),
+    <span class="doccomment">/// Touch point motion.
+    ///
+    /// Coordinates are surface-local.
+    </span><span class="kw">fn </span>motion(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        touch: <span class="kw-2">&amp;</span>WlTouch,
+        time: u32,
+        id: i32,
+        position: (f64, f64),
     );
 
-    <span class="doccomment">/// Touch point shape change.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The shape of a touch point is approximated by an ellipse through the major and minor axis</span>
-    <span class="doccomment">/// length. Major always represents the larger of the two axis and is orthogonal to minor.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The dimensions are specified in surface-local coordinates and the locations reported by</span>
-    <span class="doccomment">/// other events always report the center of the ellipse.</span>
-    <span class="kw">fn</span> <span class="ident">shape</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-        <span class="ident">id</span>: <span class="ident">i32</span>,
-        <span class="ident">major</span>: <span class="ident">f64</span>,
-        <span class="ident">minor</span>: <span class="ident">f64</span>,
+    <span class="doccomment">/// Touch point shape change.
+    ///
+    /// The shape of a touch point is approximated by an ellipse through the major and minor axis
+    /// length. Major always represents the larger of the two axis and is orthogonal to minor.
+    ///
+    /// The dimensions are specified in surface-local coordinates and the locations reported by
+    /// other events always report the center of the ellipse.
+    </span><span class="kw">fn </span>shape(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        touch: <span class="kw-2">&amp;</span>WlTouch,
+        id: i32,
+        major: f64,
+        minor: f64,
     );
 
-    <span class="doccomment">/// Touch point shape orientation.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The orientation describes the clockwise angle of a touch point&#39;s major axis to the positive</span>
-    <span class="doccomment">/// surface y-axis and is normalized to the -180° to +180° range.</span>
-    <span class="kw">fn</span> <span class="ident">orientation</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-        <span class="ident">id</span>: <span class="ident">i32</span>,
-        <span class="ident">orientation</span>: <span class="ident">f64</span>,
+    <span class="doccomment">/// Touch point shape orientation.
+    ///
+    /// The orientation describes the clockwise angle of a touch point&#39;s major axis to the positive
+    /// surface y-axis and is normalized to the -180° to +180° range.
+    </span><span class="kw">fn </span>orientation(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        touch: <span class="kw-2">&amp;</span>WlTouch,
+        id: i32,
+        orientation: f64,
     );
 
-    <span class="doccomment">/// Cancel active touch sequence.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This indicates that the compositor has cancelled the active touch sequence, for example due</span>
-    <span class="doccomment">/// to detection of a touch gesture.</span>
-    <span class="kw">fn</span> <span class="ident">cancel</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>);
+    <span class="doccomment">/// Cancel active touch sequence.
+    ///
+    /// This indicates that the compositor has cancelled the active touch sequence, for example due
+    /// to detection of a touch gesture.
+    </span><span class="kw">fn </span>cancel(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, touch: <span class="kw-2">&amp;</span>WlTouch);
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">WlTouch</span>, <span class="ident">U</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SeatState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">WlTouch</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">TouchHandler</span>,
-    <span class="ident">U</span>: <span class="ident">TouchDataExt</span>,
+<span class="kw">impl</span>&lt;D, U&gt; Dispatch&lt;WlTouch, U, D&gt; <span class="kw">for </span>SeatState
+<span class="kw">where
+    </span>D: Dispatch&lt;WlTouch, U&gt; + TouchHandler,
+    U: TouchDataExt,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-        <span class="ident">event</span>: <span class="ident">TouchEvent</span>,
-        <span class="ident">udata</span>: <span class="kw-2">&amp;</span><span class="ident">U</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        touch: <span class="kw-2">&amp;</span>WlTouch,
+        event: TouchEvent,
+        udata: <span class="kw-2">&amp;</span>U,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">touch_data</span>();
-        <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="comment">// Buffer events until frame is received.</span>
-            <span class="ident">TouchEvent::Down</span> { .. }
-            <span class="op">|</span> <span class="ident">TouchEvent::Up</span> { .. }
-            <span class="op">|</span> <span class="ident">TouchEvent::Motion</span> { .. }
-            <span class="op">|</span> <span class="ident">TouchEvent::Shape</span> { .. }
-            <span class="op">|</span> <span class="ident">TouchEvent::Orientation</span> { .. } =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                <span class="ident">guard</span>.<span class="ident">events</span>.<span class="ident">push</span>(<span class="ident">event</span>);
+        <span class="kw">let </span>udata = udata.touch_data();
+        <span class="kw">match </span>event {
+            <span class="comment">// Buffer events until frame is received.
+            </span>TouchEvent::Down { .. }
+            | TouchEvent::Up { .. }
+            | TouchEvent::Motion { .. }
+            | TouchEvent::Shape { .. }
+            | TouchEvent::Orientation { .. } =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
+                guard.events.push(event);
             }
-            <span class="comment">// Process all buffered events.</span>
-            <span class="ident">TouchEvent::Frame</span> =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                <span class="kw">for</span> <span class="ident">event</span> <span class="kw">in</span> <span class="ident">guard</span>.<span class="ident">events</span>.<span class="ident">drain</span>(..) {
-                    <span class="ident">process_framed_event</span>(<span class="ident">data</span>, <span class="ident">touch</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">event</span>);
+            <span class="comment">// Process all buffered events.
+            </span>TouchEvent::Frame =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
+                <span class="kw">for </span>event <span class="kw">in </span>guard.events.drain(..) {
+                    process_framed_event(data, touch, conn, qh, event);
                 }
             }
-            <span class="ident">TouchEvent::Cancel</span> =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                <span class="ident">guard</span>.<span class="ident">events</span>.<span class="ident">clear</span>();
+            TouchEvent::Cancel =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
+                guard.events.clear();
 
-                <span class="ident">data</span>.<span class="ident">cancel</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">touch</span>);
+                data.cancel(conn, qh, touch);
             }
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         }
     }
 }
 
-<span class="doccomment">/// Process a single frame-buffered touch event.</span>
-<span class="kw">fn</span> <span class="ident">process_framed_event</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
-    <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-    <span class="ident">touch</span>: <span class="kw-2">&amp;</span><span class="ident">WlTouch</span>,
-    <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-    <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-    <span class="ident">event</span>: <span class="ident">TouchEvent</span>,
-) <span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">TouchHandler</span>,
+<span class="doccomment">/// Process a single frame-buffered touch event.
+</span><span class="kw">fn </span>process_framed_event&lt;D&gt;(
+    data: <span class="kw-2">&amp;mut </span>D,
+    touch: <span class="kw-2">&amp;</span>WlTouch,
+    conn: <span class="kw-2">&amp;</span>Connection,
+    qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+    event: TouchEvent,
+) <span class="kw">where
+    </span>D: TouchHandler,
 {
-    <span class="kw">match</span> <span class="ident">event</span> {
-        <span class="ident">TouchEvent::Down</span> { <span class="ident">serial</span>, <span class="ident">time</span>, <span class="ident">surface</span>, <span class="ident">id</span>, <span class="ident">x</span>, <span class="ident">y</span> } =&gt; {
-            <span class="ident">data</span>.<span class="ident">down</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">touch</span>, <span class="ident">serial</span>, <span class="ident">time</span>, <span class="ident">surface</span>, <span class="ident">id</span>, (<span class="ident">x</span>, <span class="ident">y</span>));
+    <span class="kw">match </span>event {
+        TouchEvent::Down { serial, time, surface, id, x, y } =&gt; {
+            data.down(conn, qh, touch, serial, time, surface, id, (x, y));
         }
-        <span class="ident">TouchEvent::Up</span> { <span class="ident">serial</span>, <span class="ident">time</span>, <span class="ident">id</span> } =&gt; {
-            <span class="ident">data</span>.<span class="ident">up</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">touch</span>, <span class="ident">serial</span>, <span class="ident">time</span>, <span class="ident">id</span>);
+        TouchEvent::Up { serial, time, id } =&gt; {
+            data.up(conn, qh, touch, serial, time, id);
         }
-        <span class="ident">TouchEvent::Motion</span> { <span class="ident">time</span>, <span class="ident">id</span>, <span class="ident">x</span>, <span class="ident">y</span> } =&gt; {
-            <span class="ident">data</span>.<span class="ident">motion</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">touch</span>, <span class="ident">time</span>, <span class="ident">id</span>, (<span class="ident">x</span>, <span class="ident">y</span>));
+        TouchEvent::Motion { time, id, x, y } =&gt; {
+            data.motion(conn, qh, touch, time, id, (x, y));
         }
-        <span class="ident">TouchEvent::Shape</span> { <span class="ident">id</span>, <span class="ident">major</span>, <span class="ident">minor</span> } =&gt; {
-            <span class="ident">data</span>.<span class="ident">shape</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">touch</span>, <span class="ident">id</span>, <span class="ident">major</span>, <span class="ident">minor</span>);
+        TouchEvent::Shape { id, major, minor } =&gt; {
+            data.shape(conn, qh, touch, id, major, minor);
         }
-        <span class="ident">TouchEvent::Orientation</span> { <span class="ident">id</span>, <span class="ident">orientation</span> } =&gt; {
-            <span class="ident">data</span>.<span class="ident">orientation</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">touch</span>, <span class="ident">id</span>, <span class="ident">orientation</span>);
+        TouchEvent::Orientation { id, orientation } =&gt; {
+            data.orientation(conn, qh, touch, id, orientation);
         }
-        <span class="comment">// No other events should be frame-buffered.</span>
-        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+        <span class="comment">// No other events should be frame-buffered.
+        </span><span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

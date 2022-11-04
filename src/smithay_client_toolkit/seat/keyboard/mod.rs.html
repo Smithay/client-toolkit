@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/keyboard/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/keyboard/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -627,634 +627,634 @@
 <span id="627">627</span>
 <span id="628">628</span>
 <span id="629">629</span>
-</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">rustfmt::skip</span>]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">keysyms</span>;
+</pre><pre class="rust"><code><span class="attribute">#[rustfmt::skip]
+</span><span class="kw">pub mod </span>keysyms;
 
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert::TryInto</span>,
-    <span class="ident">env</span>,
-    <span class="ident">fmt::Debug</span>,
-    <span class="ident">num::NonZeroU32</span>,
-    <span class="ident">os::unix::io::AsRawFd</span>,
-    <span class="ident">sync</span>::{
-        <span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">Ordering</span>},
-        <span class="ident">Mutex</span>,
+<span class="kw">use </span>std::{
+    convert::TryInto,
+    env,
+    fmt::Debug,
+    num::NonZeroU32,
+    os::unix::io::AsRawFd,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
     },
 };
 
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{<span class="ident">wl_keyboard</span>, <span class="ident">wl_seat</span>, <span class="ident">wl_surface</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>, <span class="ident">WEnum</span>,
+<span class="kw">use </span>wayland_client::{
+    protocol::{wl_keyboard, wl_seat, wl_surface},
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
-<span class="kw">use</span> <span class="ident">xkbcommon::xkb</span>;
+<span class="kw">use </span>xkbcommon::xkb;
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Capability</span>, <span class="ident">SeatError</span>, <span class="ident">SeatHandler</span>, <span class="ident">SeatState</span>};
+<span class="kw">use super</span>::{Capability, SeatError, SeatHandler, SeatState};
 
-<span class="doccomment">/// Error when creating a keyboard.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyboardError</span> {
-    <span class="doccomment">/// Seat error.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Seat</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SeatError</span>),
+<span class="doccomment">/// Error when creating a keyboard.
+</span><span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub enum </span>KeyboardError {
+    <span class="doccomment">/// Seat error.
+    </span><span class="attribute">#[error(transparent)]
+    </span>Seat(<span class="attribute">#[from] </span>SeatError),
 
-    <span class="doccomment">/// The specified keymap (RMLVO) is not valid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid keymap was specified&quot;</span>)]</span>
-    <span class="ident">InvalidKeymap</span>,
+    <span class="doccomment">/// The specified keymap (RMLVO) is not valid.
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid keymap was specified&quot;</span>)]
+    </span>InvalidKeymap,
 }
 
-<span class="kw">impl</span> <span class="ident">SeatState</span> {
-    <span class="doccomment">/// Creates a keyboard from a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This keyboard implementation uses libxkbcommon for the keymap.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`</span>
-    <span class="doccomment">/// field.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_keyboard</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">rmlvo</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RMLVO</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">KeyboardError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">KeyboardData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">SeatHandler</span>
-            <span class="op">+</span> <span class="ident">KeyboardHandler</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl </span>SeatState {
+    <span class="doccomment">/// Creates a keyboard from a seat.
+    ///
+    /// This keyboard implementation uses libxkbcommon for the keymap.
+    ///
+    /// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`
+    /// field.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    </span><span class="kw">pub fn </span>get_keyboard&lt;D&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        rmlvo: <span class="prelude-ty">Option</span>&lt;RMLVO&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_keyboard::WlKeyboard, KeyboardError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, KeyboardData&gt;
+            + SeatHandler
+            + KeyboardHandler
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">rmlvo</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">rmlvo</span>) =&gt; <span class="ident">KeyboardData::from_rmlvo</span>(<span class="ident">rmlvo</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="ident">KeyboardData::default</span>(),
+        <span class="kw">let </span>udata = <span class="kw">match </span>rmlvo {
+            <span class="prelude-val">Some</span>(rmlvo) =&gt; KeyboardData::from_rmlvo(rmlvo)<span class="question-mark">?</span>,
+            <span class="prelude-val">None </span>=&gt; KeyboardData::default(),
         };
 
-        <span class="self">self</span>.<span class="ident">get_keyboard_with_data</span>(<span class="ident">qh</span>, <span class="ident">seat</span>, <span class="ident">udata</span>)
+        <span class="self">self</span>.get_keyboard_with_data(qh, seat, udata)
     }
 
-    <span class="doccomment">/// Creates a keyboard from a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This keyboard implementation uses libxkbcommon for the keymap.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`</span>
-    <span class="doccomment">/// field.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_keyboard_with_data</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">udata</span>: <span class="ident">U</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">KeyboardError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SeatHandler</span> <span class="op">+</span> <span class="ident">KeyboardHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">U</span>: <span class="ident">KeyboardDataExt</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Creates a keyboard from a seat.
+    ///
+    /// This keyboard implementation uses libxkbcommon for the keymap.
+    ///
+    /// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`
+    /// field.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    </span><span class="kw">pub fn </span>get_keyboard_with_data&lt;D, U&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        udata: U,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_keyboard::WlKeyboard, KeyboardError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, U&gt; + SeatHandler + KeyboardHandler + <span class="lifetime">&#39;static</span>,
+        U: KeyboardDataExt + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">seat</span> <span class="op">==</span> <span class="ident">seat</span>).<span class="ident">ok_or</span>(<span class="ident">SeatError::DeadObject</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>inner =
+            <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).ok_or(SeatError::DeadObject)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">has_keyboard</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SeatError::UnsupportedCapability</span>(<span class="ident">Capability::Keyboard</span>).<span class="ident">into</span>());
+        <span class="kw">if </span>!inner.data.has_keyboard.load(Ordering::SeqCst) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">seat</span>.<span class="ident">get_keyboard</span>(<span class="ident">qh</span>, <span class="ident">udata</span>))
+        <span class="prelude-val">Ok</span>(seat.get_keyboard(qh, udata))
     }
 }
 
-<span class="doccomment">/// Handler trait for keyboard input.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The functions defined in this trait are called as keyboard events are received from the compositor.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">KeyboardHandler</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// The keyboard has entered a surface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When called, you may assume the specified surface has keyboard focus.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a keyboard enters a surface, the `raw` and `keysym` fields indicate which keys are currently</span>
-    <span class="doccomment">/// pressed.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">enter</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
-        <span class="ident">raw</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
-        <span class="ident">keysyms</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
+<span class="doccomment">/// Handler trait for keyboard input.
+///
+/// The functions defined in this trait are called as keyboard events are received from the compositor.
+</span><span class="kw">pub trait </span>KeyboardHandler: Sized {
+    <span class="doccomment">/// The keyboard has entered a surface.
+    ///
+    /// When called, you may assume the specified surface has keyboard focus.
+    ///
+    /// When a keyboard enters a surface, the `raw` and `keysym` fields indicate which keys are currently
+    /// pressed.
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">fn </span>enter(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
+        serial: u32,
+        raw: <span class="kw-2">&amp;</span>[u32],
+        keysyms: <span class="kw-2">&amp;</span>[u32],
     );
 
-    <span class="doccomment">/// The keyboard has left a surface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When called, keyboard focus leaves the specified surface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// All currently held down keys are released when this event occurs.</span>
-    <span class="kw">fn</span> <span class="ident">leave</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">surface</span>: <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// The keyboard has left a surface.
+    ///
+    /// When called, keyboard focus leaves the specified surface.
+    ///
+    /// All currently held down keys are released when this event occurs.
+    </span><span class="kw">fn </span>leave(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
+        serial: u32,
     );
 
-    <span class="doccomment">/// A key has been pressed on the keyboard.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The key will repeat if there is no other press event afterwards or the key is released.</span>
-    <span class="kw">fn</span> <span class="ident">press_key</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
-        <span class="ident">event</span>: <span class="ident">KeyEvent</span>,
+    <span class="doccomment">/// A key has been pressed on the keyboard.
+    ///
+    /// The key will repeat if there is no other press event afterwards or the key is released.
+    </span><span class="kw">fn </span>press_key(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        serial: u32,
+        event: KeyEvent,
     );
 
-    <span class="doccomment">/// A key has been released.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This stops the key from being repeated if the key is the last key which was pressed.</span>
-    <span class="kw">fn</span> <span class="ident">release_key</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
-        <span class="ident">event</span>: <span class="ident">KeyEvent</span>,
+    <span class="doccomment">/// A key has been released.
+    ///
+    /// This stops the key from being repeated if the key is the last key which was pressed.
+    </span><span class="kw">fn </span>release_key(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        serial: u32,
+        event: KeyEvent,
     );
 
-    <span class="doccomment">/// Keyboard modifiers have been updated.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This happens when one of the modifier keys, such as &quot;Shift&quot;, &quot;Control&quot; or &quot;Alt&quot; is pressed or</span>
-    <span class="doccomment">/// released.</span>
-    <span class="kw">fn</span> <span class="ident">update_modifiers</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
-        <span class="ident">modifiers</span>: <span class="ident">Modifiers</span>,
+    <span class="doccomment">/// Keyboard modifiers have been updated.
+    ///
+    /// This happens when one of the modifier keys, such as &quot;Shift&quot;, &quot;Control&quot; or &quot;Alt&quot; is pressed or
+    /// released.
+    </span><span class="kw">fn </span>update_modifiers(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        serial: u32,
+        modifiers: Modifiers,
     );
 
-    <span class="doccomment">/// The keyboard has updated the rate and delay between repeating key inputs.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function does nothing by default but is provided if a repeat mechanism outside of calloop is\</span>
-    <span class="doccomment">/// used.</span>
-    <span class="kw">fn</span> <span class="ident">update_repeat_info</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">_conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">_qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">_keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">_info</span>: <span class="ident">RepeatInfo</span>,
+    <span class="doccomment">/// The keyboard has updated the rate and delay between repeating key inputs.
+    ///
+    /// This function does nothing by default but is provided if a repeat mechanism outside of calloop is\
+    /// used.
+    </span><span class="kw">fn </span>update_repeat_info(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _conn: <span class="kw-2">&amp;</span>Connection,
+        _qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        _keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        _info: RepeatInfo,
     ) {
     }
 }
 
-<span class="doccomment">/// The rate at which a pressed key is repeated.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RepeatInfo</span> {
-    <span class="doccomment">/// Keys will be repeated at the specified rate and delay.</span>
-    <span class="ident">Repeat</span> {
-        <span class="doccomment">/// The number of repetitions per second that should occur.</span>
-        <span class="ident">rate</span>: <span class="ident">NonZeroU32</span>,
+<span class="doccomment">/// The rate at which a pressed key is repeated.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>RepeatInfo {
+    <span class="doccomment">/// Keys will be repeated at the specified rate and delay.
+    </span>Repeat {
+        <span class="doccomment">/// The number of repetitions per second that should occur.
+        </span>rate: NonZeroU32,
 
-        <span class="doccomment">/// Delay (in milliseconds) between a key press and the start of repetition.</span>
-        <span class="ident">delay</span>: <span class="ident">u32</span>,
+        <span class="doccomment">/// Delay (in milliseconds) between a key press and the start of repetition.
+        </span>delay: u32,
     },
 
-    <span class="doccomment">/// Keys should not be repeated.</span>
-    <span class="ident">Disable</span>,
+    <span class="doccomment">/// Keys should not be repeated.
+    </span>Disable,
 }
 
-<span class="doccomment">/// Data associated with a key press or release event.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyEvent</span> {
-    <span class="doccomment">/// Time at which the keypress occurred.</span>
-    <span class="kw">pub</span> <span class="ident">time</span>: <span class="ident">u32</span>,
+<span class="doccomment">/// Data associated with a key press or release event.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>KeyEvent {
+    <span class="doccomment">/// Time at which the keypress occurred.
+    </span><span class="kw">pub </span>time: u32,
 
-    <span class="doccomment">/// The raw value of the key.</span>
-    <span class="kw">pub</span> <span class="ident">raw_code</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// The raw value of the key.
+    </span><span class="kw">pub </span>raw_code: u32,
 
-    <span class="doccomment">/// The interpreted symbol of the key.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This corresponds to one of the values in the [`keysyms`] module.</span>
-    <span class="kw">pub</span> <span class="ident">keysym</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// The interpreted symbol of the key.
+    ///
+    /// This corresponds to one of the values in the [`keysyms`] module.
+    </span><span class="kw">pub </span>keysym: u32,
 
-    <span class="doccomment">/// UTF-8 interpretation of the entered text.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will always be [`None`] on release events.</span>
-    <span class="kw">pub</span> <span class="ident">utf8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// UTF-8 interpretation of the entered text.
+    ///
+    /// This will always be [`None`] on release events.
+    </span><span class="kw">pub </span>utf8: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="doccomment">/// The state of keyboard modifiers</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Each field of this indicates whether a specified modifier is active.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Depending on the modifier, the modifier key may currently be pressed or toggled.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Modifiers</span> {
-    <span class="doccomment">/// The &quot;control&quot; key</span>
-    <span class="kw">pub</span> <span class="ident">ctrl</span>: <span class="ident">bool</span>,
+<span class="doccomment">/// The state of keyboard modifiers
+///
+/// Each field of this indicates whether a specified modifier is active.
+///
+/// Depending on the modifier, the modifier key may currently be pressed or toggled.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, Default)]
+</span><span class="kw">pub struct </span>Modifiers {
+    <span class="doccomment">/// The &quot;control&quot; key
+    </span><span class="kw">pub </span>ctrl: bool,
 
-    <span class="doccomment">/// The &quot;alt&quot; key</span>
-    <span class="kw">pub</span> <span class="ident">alt</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The &quot;alt&quot; key
+    </span><span class="kw">pub </span>alt: bool,
 
-    <span class="doccomment">/// The &quot;shift&quot; key</span>
-    <span class="kw">pub</span> <span class="ident">shift</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The &quot;shift&quot; key
+    </span><span class="kw">pub </span>shift: bool,
 
-    <span class="doccomment">/// The &quot;Caps lock&quot; key</span>
-    <span class="kw">pub</span> <span class="ident">caps_lock</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The &quot;Caps lock&quot; key
+    </span><span class="kw">pub </span>caps_lock: bool,
 
-    <span class="doccomment">/// The &quot;logo&quot; key</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Also known as the &quot;windows&quot; or &quot;super&quot; key on a keyboard.</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;super&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">logo</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The &quot;logo&quot; key
+    ///
+    /// Also known as the &quot;windows&quot; or &quot;super&quot; key on a keyboard.
+    </span><span class="attribute">#[doc(alias = <span class="string">&quot;windows&quot;</span>)]
+    #[doc(alias = <span class="string">&quot;super&quot;</span>)]
+    </span><span class="kw">pub </span>logo: bool,
 
-    <span class="doccomment">/// The &quot;Num lock&quot; key</span>
-    <span class="kw">pub</span> <span class="ident">num_lock</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The &quot;Num lock&quot; key
+    </span><span class="kw">pub </span>num_lock: bool,
 }
 
-<span class="doccomment">/// The RMLVO description of a keymap</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// All fields are optional, and the system default</span>
-<span class="doccomment">/// will be used if set to `None`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::upper_case_acronyms</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RMLVO</span> {
-    <span class="doccomment">/// The rules file to use</span>
-    <span class="kw">pub</span> <span class="ident">rules</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The RMLVO description of a keymap
+///
+/// All fields are optional, and the system default
+/// will be used if set to `None`.
+</span><span class="attribute">#[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
+</span><span class="kw">pub struct </span>RMLVO {
+    <span class="doccomment">/// The rules file to use
+    </span><span class="kw">pub </span>rules: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// The keyboard model by which to interpret keycodes and LEDs</span>
-    <span class="kw">pub</span> <span class="ident">model</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The keyboard model by which to interpret keycodes and LEDs
+    </span><span class="kw">pub </span>model: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// A comma separated list of layouts (languages) to include in the keymap</span>
-    <span class="kw">pub</span> <span class="ident">layout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A comma separated list of layouts (languages) to include in the keymap
+    </span><span class="kw">pub </span>layout: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// A comma separated list of variants, one per layout, which may modify or</span>
-    <span class="doccomment">/// augment the respective layout in various ways</span>
-    <span class="kw">pub</span> <span class="ident">variant</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A comma separated list of variants, one per layout, which may modify or
+    /// augment the respective layout in various ways
+    </span><span class="kw">pub </span>variant: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// A comma separated list of options, through which the user specifies</span>
-    <span class="doccomment">/// non-layout related preferences, like which key combinations are</span>
-    <span class="doccomment">/// used for switching layouts, or which key is the Compose key.</span>
-    <span class="kw">pub</span> <span class="ident">options</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A comma separated list of options, through which the user specifies
+    /// non-layout related preferences, like which key combinations are
+    /// used for switching layouts, or which key is the Compose key.
+    </span><span class="kw">pub </span>options: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyboardData</span> {
-    <span class="ident">first_event</span>: <span class="ident">AtomicBool</span>,
-    <span class="ident">xkb_context</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">xkb::Context</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// If the user manually specified the RMLVO to use.</span>
-    <span class="ident">user_specified_rmlvo</span>: <span class="ident">bool</span>,
-    <span class="ident">xkb_state</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">xkb::State</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">xkb_compose</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">xkb::compose::State</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>KeyboardData {
+    first_event: AtomicBool,
+    xkb_context: Mutex&lt;xkb::Context&gt;,
+    <span class="doccomment">/// If the user manually specified the RMLVO to use.
+    </span>user_specified_rmlvo: bool,
+    xkb_state: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::State&gt;&gt;,
+    xkb_compose: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::compose::State&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">KeyboardData</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;KeyboardData&quot;</span>).<span class="ident">finish_non_exhaustive</span>()
+<span class="kw">impl </span>Debug <span class="kw">for </span>KeyboardData {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">&quot;KeyboardData&quot;</span>).finish_non_exhaustive()
     }
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_keyboard</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_keyboard {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_keyboard::WlKeyboard</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::keyboard::KeyboardData</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_keyboard::WlKeyboard</span>: <span class="macro-nonterminal">$crate::seat::keyboard::KeyboardData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>, <span class="ident">keyboard</span>: [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">udata</span>:<span class="ident">ty</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>]) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, keyboard: [$(<span class="macro-nonterminal">$udata</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
                 $(
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_keyboard::WlKeyboard</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">udata</span>,
-                )<span class="op">*</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                    <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_keyboard::WlKeyboard</span>: <span class="macro-nonterminal">$udata</span>,
+                )*
+            ] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
 }
 
-<span class="comment">// SAFETY: The state does not share state with any other rust types.</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">KeyboardData</span> {}
-<span class="comment">// SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Sync</span> <span class="kw">for</span> <span class="ident">KeyboardData</span> {}
+<span class="comment">// SAFETY: The state does not share state with any other rust types.
+</span><span class="kw">unsafe impl </span>Send <span class="kw">for </span>KeyboardData {}
+<span class="comment">// SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
+</span><span class="kw">unsafe impl </span>Sync <span class="kw">for </span>KeyboardData {}
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">KeyboardData</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">xkb_context</span> <span class="op">=</span> <span class="ident">xkb::Context::new</span>(<span class="ident">xkb::CONTEXT_NO_FLAGS</span>);
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">KeyboardData</span> {
-            <span class="ident">first_event</span>: <span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>),
-            <span class="ident">xkb_context</span>: <span class="ident">Mutex::new</span>(<span class="ident">xkb_context</span>),
-            <span class="ident">xkb_state</span>: <span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>),
-            <span class="ident">user_specified_rmlvo</span>: <span class="bool-val">false</span>,
-            <span class="ident">xkb_compose</span>: <span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>),
+<span class="kw">impl </span>Default <span class="kw">for </span>KeyboardData {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        <span class="kw">let </span>udata = KeyboardData {
+            first_event: AtomicBool::new(<span class="bool-val">false</span>),
+            xkb_context: Mutex::new(xkb_context),
+            xkb_state: Mutex::new(<span class="prelude-val">None</span>),
+            user_specified_rmlvo: <span class="bool-val">false</span>,
+            xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
         };
 
-        <span class="ident">udata</span>.<span class="ident">init_compose</span>();
+        udata.init_compose();
 
-        <span class="ident">udata</span>
+        udata
     }
 }
 
-<span class="kw">impl</span> <span class="ident">KeyboardData</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_rmlvo</span>(<span class="ident">rmlvo</span>: <span class="ident">RMLVO</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyboardError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">xkb_context</span> <span class="op">=</span> <span class="ident">xkb::Context::new</span>(<span class="ident">xkb::CONTEXT_NO_FLAGS</span>);
-        <span class="kw">let</span> <span class="ident">keymap</span> <span class="op">=</span> <span class="ident">xkb::Keymap::new_from_names</span>(
-            <span class="kw-2">&amp;</span><span class="ident">xkb_context</span>,
-            <span class="kw-2">&amp;</span><span class="ident">rmlvo</span>.<span class="ident">rules</span>.<span class="ident">unwrap_or_default</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">rmlvo</span>.<span class="ident">model</span>.<span class="ident">unwrap_or_default</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">rmlvo</span>.<span class="ident">layout</span>.<span class="ident">unwrap_or_default</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">rmlvo</span>.<span class="ident">variant</span>.<span class="ident">unwrap_or_default</span>(),
-            <span class="ident">rmlvo</span>.<span class="ident">options</span>,
-            <span class="ident">xkb::COMPILE_NO_FLAGS</span>,
+<span class="kw">impl </span>KeyboardData {
+    <span class="kw">pub fn </span>from_rmlvo(rmlvo: RMLVO) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyboardError&gt; {
+        <span class="kw">let </span>xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        <span class="kw">let </span>keymap = xkb::Keymap::new_from_names(
+            <span class="kw-2">&amp;</span>xkb_context,
+            <span class="kw-2">&amp;</span>rmlvo.rules.unwrap_or_default(),
+            <span class="kw-2">&amp;</span>rmlvo.model.unwrap_or_default(),
+            <span class="kw-2">&amp;</span>rmlvo.layout.unwrap_or_default(),
+            <span class="kw-2">&amp;</span>rmlvo.variant.unwrap_or_default(),
+            rmlvo.options,
+            xkb::COMPILE_NO_FLAGS,
         );
 
-        <span class="kw">if</span> <span class="ident">keymap</span>.<span class="ident">is_none</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyboardError::InvalidKeymap</span>);
+        <span class="kw">if </span>keymap.is_none() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyboardError::InvalidKeymap);
         }
 
-        <span class="kw">let</span> <span class="ident">xkb_state</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">xkb::State::new</span>(<span class="kw-2">&amp;</span><span class="ident">keymap</span>.<span class="ident">unwrap</span>()));
+        <span class="kw">let </span>xkb_state = <span class="prelude-val">Some</span>(xkb::State::new(<span class="kw-2">&amp;</span>keymap.unwrap()));
 
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">KeyboardData</span> {
-            <span class="ident">first_event</span>: <span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>),
-            <span class="ident">xkb_context</span>: <span class="ident">Mutex::new</span>(<span class="ident">xkb_context</span>),
-            <span class="ident">xkb_state</span>: <span class="ident">Mutex::new</span>(<span class="ident">xkb_state</span>),
-            <span class="ident">user_specified_rmlvo</span>: <span class="bool-val">true</span>,
-            <span class="ident">xkb_compose</span>: <span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>),
+        <span class="kw">let </span>udata = KeyboardData {
+            first_event: AtomicBool::new(<span class="bool-val">false</span>),
+            xkb_context: Mutex::new(xkb_context),
+            xkb_state: Mutex::new(xkb_state),
+            user_specified_rmlvo: <span class="bool-val">true</span>,
+            xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
         };
 
-        <span class="ident">udata</span>.<span class="ident">init_compose</span>();
+        udata.init_compose();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">udata</span>)
+        <span class="prelude-val">Ok</span>(udata)
     }
 
-    <span class="kw">fn</span> <span class="ident">init_compose</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let</span> <span class="ident">xkb_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">xkb_context</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+    <span class="kw">fn </span>init_compose(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let </span>xkb_context = <span class="self">self</span>.xkb_context.lock().unwrap();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">locale</span>) <span class="op">=</span> <span class="ident">env::var_os</span>(<span class="string">&quot;LC_ALL&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">is_empty</span>() { <span class="prelude-val">None</span> } <span class="kw">else</span> { <span class="prelude-val">Some</span>(<span class="ident">v</span>) })
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">env::var_os</span>(<span class="string">&quot;LC_CTYPE&quot;</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">is_empty</span>() { <span class="prelude-val">None</span> } <span class="kw">else</span> { <span class="prelude-val">Some</span>(<span class="ident">v</span>) })
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">env::var_os</span>(<span class="string">&quot;LANG&quot;</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">is_empty</span>() { <span class="prelude-val">None</span> } <span class="kw">else</span> { <span class="prelude-val">Some</span>(<span class="ident">v</span>) })
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;C&quot;</span>.<span class="ident">into</span>())
-            .<span class="ident">to_str</span>()
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(locale) = env::var_os(<span class="string">&quot;LC_ALL&quot;</span>)
+            .and_then(|v| <span class="kw">if </span>v.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(v) })
+            .or_else(|| env::var_os(<span class="string">&quot;LC_CTYPE&quot;</span>))
+            .and_then(|v| <span class="kw">if </span>v.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(v) })
+            .or_else(|| env::var_os(<span class="string">&quot;LANG&quot;</span>))
+            .and_then(|v| <span class="kw">if </span>v.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(v) })
+            .unwrap_or_else(|| <span class="string">&quot;C&quot;</span>.into())
+            .to_str()
         {
-            <span class="comment">// TODO: Pending new release of xkbcommon to use new_from_locale with OsStr</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">table</span>) <span class="op">=</span> <span class="ident">xkb::compose::Table::new_from_locale</span>(
-                <span class="kw-2">&amp;</span><span class="ident">xkb_context</span>,
-                <span class="ident">locale</span>.<span class="ident">as_ref</span>(),
-                <span class="ident">xkb::compose::COMPILE_NO_FLAGS</span>,
+            <span class="comment">// TODO: Pending new release of xkbcommon to use new_from_locale with OsStr
+            </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(table) = xkb::compose::Table::new_from_locale(
+                <span class="kw-2">&amp;</span>xkb_context,
+                locale.as_ref(),
+                xkb::compose::COMPILE_NO_FLAGS,
             ) {
-                <span class="kw">let</span> <span class="ident">compose_state</span> <span class="op">=</span>
-                    <span class="ident">xkb::compose::State::new</span>(<span class="kw-2">&amp;</span><span class="ident">table</span>, <span class="ident">xkb::compose::COMPILE_NO_FLAGS</span>);
-                <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">xkb_compose</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">compose_state</span>);
+                <span class="kw">let </span>compose_state =
+                    xkb::compose::State::new(<span class="kw-2">&amp;</span>table, xkb::compose::COMPILE_NO_FLAGS);
+                <span class="kw-2">*</span><span class="self">self</span>.xkb_compose.lock().unwrap() = <span class="prelude-val">Some</span>(compose_state);
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">update_modifiers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Modifiers</span> {
-        <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">xkb_state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">guard</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
+    <span class="kw">fn </span>update_modifiers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Modifiers {
+        <span class="kw">let </span>guard = <span class="self">self</span>.xkb_state.lock().unwrap();
+        <span class="kw">let </span>state = guard.as_ref().unwrap();
 
-        <span class="ident">Modifiers</span> {
-            <span class="ident">ctrl</span>: <span class="ident">state</span>.<span class="ident">mod_name_is_active</span>(<span class="ident">xkb::MOD_NAME_CTRL</span>, <span class="ident">xkb::STATE_MODS_EFFECTIVE</span>),
-            <span class="ident">alt</span>: <span class="ident">state</span>.<span class="ident">mod_name_is_active</span>(<span class="ident">xkb::MOD_NAME_ALT</span>, <span class="ident">xkb::STATE_MODS_EFFECTIVE</span>),
-            <span class="ident">shift</span>: <span class="ident">state</span>.<span class="ident">mod_name_is_active</span>(<span class="ident">xkb::MOD_NAME_SHIFT</span>, <span class="ident">xkb::STATE_MODS_EFFECTIVE</span>),
-            <span class="ident">caps_lock</span>: <span class="ident">state</span>.<span class="ident">mod_name_is_active</span>(<span class="ident">xkb::MOD_NAME_CAPS</span>, <span class="ident">xkb::STATE_MODS_EFFECTIVE</span>),
-            <span class="ident">logo</span>: <span class="ident">state</span>.<span class="ident">mod_name_is_active</span>(<span class="ident">xkb::MOD_NAME_LOGO</span>, <span class="ident">xkb::STATE_MODS_EFFECTIVE</span>),
-            <span class="ident">num_lock</span>: <span class="ident">state</span>.<span class="ident">mod_name_is_active</span>(<span class="ident">xkb::MOD_NAME_NUM</span>, <span class="ident">xkb::STATE_MODS_EFFECTIVE</span>),
+        Modifiers {
+            ctrl: state.mod_name_is_active(xkb::MOD_NAME_CTRL, xkb::STATE_MODS_EFFECTIVE),
+            alt: state.mod_name_is_active(xkb::MOD_NAME_ALT, xkb::STATE_MODS_EFFECTIVE),
+            shift: state.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE),
+            caps_lock: state.mod_name_is_active(xkb::MOD_NAME_CAPS, xkb::STATE_MODS_EFFECTIVE),
+            logo: state.mod_name_is_active(xkb::MOD_NAME_LOGO, xkb::STATE_MODS_EFFECTIVE),
+            num_lock: state.mod_name_is_active(xkb::MOD_NAME_NUM, xkb::STATE_MODS_EFFECTIVE),
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">KeyboardDataExt</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="kw">fn</span> <span class="ident">keyboard_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyboardData</span>;
+<span class="kw">pub trait </span>KeyboardDataExt: Send + Sync {
+    <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData;
 }
 
-<span class="kw">impl</span> <span class="ident">KeyboardDataExt</span> <span class="kw">for</span> <span class="ident">KeyboardData</span> {
-    <span class="kw">fn</span> <span class="ident">keyboard_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyboardData</span> {
-        <span class="self">self</span>
-    }
+<span class="kw">impl </span>KeyboardDataExt <span class="kw">for </span>KeyboardData {
+    <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData {
+        <span class="self">self
+    </span>}
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">U</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SeatState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_keyboard::WlKeyboard</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">KeyboardHandler</span>,
-    <span class="ident">U</span>: <span class="ident">KeyboardDataExt</span>,
+<span class="kw">impl</span>&lt;D, U&gt; Dispatch&lt;wl_keyboard::WlKeyboard, U, D&gt; <span class="kw">for </span>SeatState
+<span class="kw">where
+    </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, U&gt; + KeyboardHandler,
+    U: KeyboardDataExt,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">keyboard</span>: <span class="kw-2">&amp;</span><span class="ident">wl_keyboard::WlKeyboard</span>,
-        <span class="ident">event</span>: <span class="ident">wl_keyboard::Event</span>,
-        <span class="ident">udata</span>: <span class="kw-2">&amp;</span><span class="ident">U</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
+        event: wl_keyboard::Event,
+        udata: <span class="kw-2">&amp;</span>U,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">keyboard_data</span>();
+        <span class="kw">let </span>udata = udata.keyboard_data();
 
-        <span class="comment">// The compositor has no way to tell clients if the seat is not version 4 or above.</span>
-        <span class="comment">// In this case, send a synthetic repeat info event using the default repeat values used by the X</span>
-        <span class="comment">// server.</span>
-        <span class="kw">if</span> <span class="ident">keyboard</span>.<span class="ident">version</span>() <span class="op">&lt;</span> <span class="number">4</span> <span class="op">&amp;&amp;</span> <span class="ident">udata</span>.<span class="ident">first_event</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>) {
-            <span class="ident">udata</span>.<span class="ident">first_event</span>.<span class="ident">store</span>(<span class="bool-val">true</span>, <span class="ident">Ordering::SeqCst</span>);
+        <span class="comment">// The compositor has no way to tell clients if the seat is not version 4 or above.
+        // In this case, send a synthetic repeat info event using the default repeat values used by the X
+        // server.
+        </span><span class="kw">if </span>keyboard.version() &lt; <span class="number">4 </span>&amp;&amp; udata.first_event.load(Ordering::SeqCst) {
+            udata.first_event.store(<span class="bool-val">true</span>, Ordering::SeqCst);
 
-            <span class="ident">data</span>.<span class="ident">update_repeat_info</span>(
-                <span class="ident">conn</span>,
-                <span class="ident">qh</span>,
-                <span class="ident">keyboard</span>,
-                <span class="ident">RepeatInfo::Repeat</span> { <span class="ident">rate</span>: <span class="ident">NonZeroU32::new</span>(<span class="number">200</span>).<span class="ident">unwrap</span>(), <span class="ident">delay</span>: <span class="number">200</span> },
+            data.update_repeat_info(
+                conn,
+                qh,
+                keyboard,
+                RepeatInfo::Repeat { rate: NonZeroU32::new(<span class="number">200</span>).unwrap(), delay: <span class="number">200 </span>},
             );
         }
 
-        <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_keyboard::Event::Keymap</span> { <span class="ident">format</span>, <span class="ident">fd</span>, <span class="ident">size</span> } =&gt; {
-                <span class="kw">match</span> <span class="ident">format</span> {
-                    <span class="ident">WEnum::Value</span>(<span class="ident">format</span>) =&gt; <span class="kw">match</span> <span class="ident">format</span> {
-                        <span class="ident">wl_keyboard::KeymapFormat::NoKeymap</span> =&gt; {
-                            <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;non-xkb compatible keymap&quot;</span>);
+        <span class="kw">match </span>event {
+            wl_keyboard::Event::Keymap { format, fd, size } =&gt; {
+                <span class="kw">match </span>format {
+                    WEnum::Value(format) =&gt; <span class="kw">match </span>format {
+                        wl_keyboard::KeymapFormat::NoKeymap =&gt; {
+                            <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;non-xkb compatible keymap&quot;</span>);
                         }
 
-                        <span class="ident">wl_keyboard::KeymapFormat::XkbV1</span> =&gt; {
-                            <span class="kw">if</span> <span class="ident">udata</span>.<span class="ident">user_specified_rmlvo</span> {
-                                <span class="comment">// state is locked, ignore keymap updates</span>
-                                <span class="kw">return</span>;
+                        wl_keyboard::KeymapFormat::XkbV1 =&gt; {
+                            <span class="kw">if </span>udata.user_specified_rmlvo {
+                                <span class="comment">// state is locked, ignore keymap updates
+                                </span><span class="kw">return</span>;
                             }
 
-                            <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">xkb_context</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                            <span class="kw">let </span>context = udata.xkb_context.lock().unwrap();
 
-                            <span class="comment">// 0.5.0-beta.0 does not mark this function as unsafe but upstream rightly makes</span>
-                            <span class="comment">// this function unsafe.</span>
-                            <span class="comment">//</span>
-                            <span class="comment">// Version 7 of wl_keyboard requires the file descriptor to be mapped using</span>
-                            <span class="comment">// MAP_PRIVATE. xkbcommon-rs does mmap the file descriptor properly.</span>
-                            <span class="comment">//</span>
-                            <span class="comment">// SAFETY:</span>
-                            <span class="comment">// - wayland-client guarantees we have received a valid file descriptor.</span>
-                            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_unsafe</span>)]</span> <span class="comment">// Upstream release will change this</span>
-                            <span class="kw">match</span> <span class="kw">unsafe</span> {
-                                <span class="ident">xkb::Keymap::new_from_fd</span>(
-                                    <span class="kw-2">&amp;</span><span class="ident">context</span>,
-                                    <span class="ident">fd</span>.<span class="ident">as_raw_fd</span>(),
-                                    <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>,
-                                    <span class="ident">xkb::KEYMAP_FORMAT_TEXT_V1</span>,
-                                    <span class="ident">xkb::COMPILE_NO_FLAGS</span>,
+                            <span class="comment">// 0.5.0-beta.0 does not mark this function as unsafe but upstream rightly makes
+                            // this function unsafe.
+                            //
+                            // Version 7 of wl_keyboard requires the file descriptor to be mapped using
+                            // MAP_PRIVATE. xkbcommon-rs does mmap the file descriptor properly.
+                            //
+                            // SAFETY:
+                            // - wayland-client guarantees we have received a valid file descriptor.
+                            </span><span class="attribute">#[allow(unused_unsafe)] </span><span class="comment">// Upstream release will change this
+                            </span><span class="kw">match unsafe </span>{
+                                xkb::Keymap::new_from_fd(
+                                    <span class="kw-2">&amp;</span>context,
+                                    fd.as_raw_fd(),
+                                    size <span class="kw">as </span>usize,
+                                    xkb::KEYMAP_FORMAT_TEXT_V1,
+                                    xkb::COMPILE_NO_FLAGS,
                                 )
                             } {
-                                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">keymap</span>)) =&gt; {
-                                    <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">xkb::State::new</span>(<span class="kw-2">&amp;</span><span class="ident">keymap</span>);
-                                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state_guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">xkb_state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                                    <span class="kw-2">*</span><span class="ident">state_guard</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">state</span>);
+                                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(keymap)) =&gt; {
+                                    <span class="kw">let </span>state = xkb::State::new(<span class="kw-2">&amp;</span>keymap);
+                                    <span class="kw">let </span><span class="kw-2">mut </span>state_guard = udata.xkb_state.lock().unwrap();
+                                    <span class="kw-2">*</span>state_guard = <span class="prelude-val">Some</span>(state);
                                 }
 
                                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
-                                    <span class="macro">log::error!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;invalid keymap&quot;</span>);
+                                    <span class="macro">log::error!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;invalid keymap&quot;</span>);
                                 }
 
-                                <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                                    <span class="macro">log::error!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">err</span>);
+                                <span class="prelude-val">Err</span>(err) =&gt; {
+                                    <span class="macro">log::error!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}&quot;</span>, err);
                                 }
                             }
                         }
 
-                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                     },
 
-                    <span class="ident">WEnum::Unknown</span>(<span class="ident">value</span>) =&gt; {
-                        <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown keymap format 0x{:x}&quot;</span>, <span class="ident">value</span>)
+                    WEnum::Unknown(value) =&gt; {
+                        <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown keymap format 0x{:x}&quot;</span>, value)
                     }
                 }
             }
 
-            <span class="ident">wl_keyboard::Event::Enter</span> { <span class="ident">serial</span>, <span class="ident">surface</span>, <span class="ident">keys</span> } =&gt; {
-                <span class="kw">let</span> <span class="ident">state_guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">xkb_state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+            wl_keyboard::Event::Enter { serial, surface, keys } =&gt; {
+                <span class="kw">let </span>state_guard = udata.xkb_state.lock().unwrap();
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">guard</span>) <span class="op">=</span> <span class="ident">state_guard</span>.<span class="ident">as_ref</span>() {
-                    <span class="comment">// Keysyms are encoded as an array of u32</span>
-                    <span class="kw">let</span> <span class="ident">raw</span> <span class="op">=</span> <span class="ident">keys</span>
-                        .<span class="ident">chunks_exact</span>(<span class="number">4</span>)
-                        .<span class="ident">flat_map</span>(<span class="ident">TryInto</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span><span class="ident">::try_into</span>)
-                        .<span class="ident">map</span>(<span class="ident">u32::from_le_bytes</span>)
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(guard) = state_guard.as_ref() {
+                    <span class="comment">// Keysyms are encoded as an array of u32
+                    </span><span class="kw">let </span>raw = keys
+                        .chunks_exact(<span class="number">4</span>)
+                        .flat_map(TryInto::&lt;[u8; <span class="number">4</span>]&gt;::try_into)
+                        .map(u32::from_le_bytes)
+                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-                    <span class="kw">let</span> <span class="ident">keysyms</span> <span class="op">=</span> <span class="ident">raw</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">copied</span>()
-                        <span class="comment">// We must add 8 to the keycode for any functions we pass the raw keycode into per</span>
-                        <span class="comment">// wl_keyboard protocol.</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">raw</span><span class="op">|</span> <span class="ident">guard</span>.<span class="ident">key_get_one_sym</span>(<span class="ident">raw</span> <span class="op">+</span> <span class="number">8</span>))
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+                    <span class="kw">let </span>keysyms = raw
+                        .iter()
+                        .copied()
+                        <span class="comment">// We must add 8 to the keycode for any functions we pass the raw keycode into per
+                        // wl_keyboard protocol.
+                        </span>.map(|raw| guard.key_get_one_sym(raw + <span class="number">8</span>))
+                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-                    <span class="comment">// Drop guard before calling user code.</span>
-                    <span class="ident">drop</span>(<span class="ident">state_guard</span>);
+                    <span class="comment">// Drop guard before calling user code.
+                    </span>drop(state_guard);
 
-                    <span class="ident">data</span>.<span class="ident">enter</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">keyboard</span>, <span class="kw-2">&amp;</span><span class="ident">surface</span>, <span class="ident">serial</span>, <span class="kw-2">&amp;</span><span class="ident">raw</span>, <span class="kw-2">&amp;</span><span class="ident">keysyms</span>);
+                    data.enter(conn, qh, keyboard, <span class="kw-2">&amp;</span>surface, serial, <span class="kw-2">&amp;</span>raw, <span class="kw-2">&amp;</span>keysyms);
                 }
             }
 
-            <span class="ident">wl_keyboard::Event::Leave</span> { <span class="ident">serial</span>, <span class="ident">surface</span> } =&gt; {
-                <span class="comment">// We can send this event without any other checks in the protocol will guarantee a leave is</span>
-                <span class="comment">// sent before entering a new surface.</span>
-                <span class="ident">data</span>.<span class="ident">leave</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">keyboard</span>, <span class="kw-2">&amp;</span><span class="ident">surface</span>, <span class="ident">serial</span>);
+            wl_keyboard::Event::Leave { serial, surface } =&gt; {
+                <span class="comment">// We can send this event without any other checks in the protocol will guarantee a leave is
+                // sent before entering a new surface.
+                </span>data.leave(conn, qh, keyboard, <span class="kw-2">&amp;</span>surface, serial);
             }
 
-            <span class="ident">wl_keyboard::Event::Key</span> { <span class="ident">serial</span>, <span class="ident">time</span>, <span class="ident">key</span>, <span class="ident">state</span> } =&gt; <span class="kw">match</span> <span class="ident">state</span> {
-                <span class="ident">WEnum::Value</span>(<span class="ident">state</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">state_guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">xkb_state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+            wl_keyboard::Event::Key { serial, time, key, state } =&gt; <span class="kw">match </span>state {
+                WEnum::Value(state) =&gt; {
+                    <span class="kw">let </span>state_guard = udata.xkb_state.lock().unwrap();
 
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">guard</span>) <span class="op">=</span> <span class="ident">state_guard</span>.<span class="ident">as_ref</span>() {
-                        <span class="comment">// We must add 8 to the keycode for any functions we pass the raw keycode into per</span>
-                        <span class="comment">// wl_keyboard protocol.</span>
-                        <span class="kw">let</span> <span class="ident">keysym</span> <span class="op">=</span> <span class="ident">guard</span>.<span class="ident">key_get_one_sym</span>(<span class="ident">key</span> <span class="op">+</span> <span class="number">8</span>);
-                        <span class="kw">let</span> <span class="ident">utf8</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">state</span> <span class="op">==</span> <span class="ident">wl_keyboard::KeyState::Pressed</span> {
-                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">compose</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">xkb_compose</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(guard) = state_guard.as_ref() {
+                        <span class="comment">// We must add 8 to the keycode for any functions we pass the raw keycode into per
+                        // wl_keyboard protocol.
+                        </span><span class="kw">let </span>keysym = guard.key_get_one_sym(key + <span class="number">8</span>);
+                        <span class="kw">let </span>utf8 = <span class="kw">if </span>state == wl_keyboard::KeyState::Pressed {
+                            <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
 
-                            <span class="kw">match</span> <span class="ident">compose</span>.<span class="ident">as_mut</span>() {
-                                <span class="prelude-val">Some</span>(<span class="ident">compose</span>) =&gt; <span class="kw">match</span> <span class="ident">compose</span>.<span class="ident">feed</span>(<span class="ident">keysym</span>) {
-                                    <span class="ident">xkb::FeedResult::Ignored</span> =&gt; <span class="prelude-val">None</span>,
-                                    <span class="ident">xkb::FeedResult::Accepted</span> =&gt; <span class="kw">match</span> <span class="ident">compose</span>.<span class="ident">status</span>() {
-                                        <span class="ident">xkb::Status::Composed</span> =&gt; <span class="ident">compose</span>.<span class="ident">utf8</span>(),
-                                        <span class="ident">xkb::Status::Nothing</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">guard</span>.<span class="ident">key_get_utf8</span>(<span class="ident">key</span> <span class="op">+</span> <span class="number">8</span>)),
-                                        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+                            <span class="kw">match </span>compose.as_mut() {
+                                <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(keysym) {
+                                    xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
+                                    xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
+                                        xkb::Status::Composed =&gt; compose.utf8(),
+                                        xkb::Status::Nothing =&gt; <span class="prelude-val">Some</span>(guard.key_get_utf8(key + <span class="number">8</span>)),
+                                        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                                     },
                                 },
 
-                                <span class="comment">// No compose</span>
-                                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">guard</span>.<span class="ident">key_get_utf8</span>(<span class="ident">key</span> <span class="op">+</span> <span class="number">8</span>)),
+                                <span class="comment">// No compose
+                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(guard.key_get_utf8(key + <span class="number">8</span>)),
                             }
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">None</span>
-                        };
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>};
 
-                        <span class="comment">// Drop guard before calling user code.</span>
-                        <span class="ident">drop</span>(<span class="ident">state_guard</span>);
+                        <span class="comment">// Drop guard before calling user code.
+                        </span>drop(state_guard);
 
-                        <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="ident">KeyEvent</span> { <span class="ident">time</span>, <span class="ident">raw_code</span>: <span class="ident">key</span>, <span class="ident">keysym</span>, <span class="ident">utf8</span> };
+                        <span class="kw">let </span>event = KeyEvent { time, raw_code: key, keysym, utf8 };
 
-                        <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">wl_keyboard::KeyState::Released</span> =&gt; {
-                                <span class="ident">data</span>.<span class="ident">release_key</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">keyboard</span>, <span class="ident">serial</span>, <span class="ident">event</span>);
-                            }
-
-                            <span class="ident">wl_keyboard::KeyState::Pressed</span> =&gt; {
-                                <span class="ident">data</span>.<span class="ident">press_key</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">keyboard</span>, <span class="ident">serial</span>, <span class="ident">event</span>);
+                        <span class="kw">match </span>state {
+                            wl_keyboard::KeyState::Released =&gt; {
+                                data.release_key(conn, qh, keyboard, serial, event);
                             }
 
-                            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                            wl_keyboard::KeyState::Pressed =&gt; {
+                                data.press_key(conn, qh, keyboard, serial, event);
+                            }
+
+                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                         }
                     };
                 }
 
-                <span class="ident">WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                    <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: compositor sends invalid key state: {:x}&quot;</span>, <span class="ident">keyboard</span>.<span class="ident">id</span>(), <span class="ident">unknown</span>);
+                WEnum::Unknown(unknown) =&gt; {
+                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: compositor sends invalid key state: {:x}&quot;</span>, keyboard.id(), unknown);
                 }
             },
 
-            <span class="ident">wl_keyboard::Event::Modifiers</span> {
-                <span class="ident">serial</span>,
-                <span class="ident">mods_depressed</span>,
-                <span class="ident">mods_latched</span>,
-                <span class="ident">mods_locked</span>,
-                <span class="ident">group</span>,
+            wl_keyboard::Event::Modifiers {
+                serial,
+                mods_depressed,
+                mods_latched,
+                mods_locked,
+                group,
             } =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">xkb_state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.xkb_state.lock().unwrap();
 
-                <span class="kw">let</span> <span class="ident">mask</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">guard</span>.<span class="ident">as_mut</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">state</span>) =&gt; {
-                        <span class="ident">state</span>.<span class="ident">update_mask</span>(<span class="ident">mods_depressed</span>, <span class="ident">mods_latched</span>, <span class="ident">mods_locked</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="ident">group</span>)
+                <span class="kw">let </span>mask = <span class="kw">match </span>guard.as_mut() {
+                    <span class="prelude-val">Some</span>(state) =&gt; {
+                        state.update_mask(mods_depressed, mods_latched, mods_locked, <span class="number">0</span>, <span class="number">0</span>, group)
                     }
-                    <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
+                    <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
                 };
 
-                <span class="comment">// Drop guard before calling user code.</span>
-                <span class="ident">drop</span>(<span class="ident">guard</span>);
+                <span class="comment">// Drop guard before calling user code.
+                </span>drop(guard);
 
-                <span class="kw">if</span> <span class="ident">mask</span> <span class="op">&amp;</span> <span class="ident">xkb::STATE_MODS_EFFECTIVE</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-                    <span class="kw">let</span> <span class="ident">modifiers</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">update_modifiers</span>();
-                    <span class="ident">data</span>.<span class="ident">update_modifiers</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">keyboard</span>, <span class="ident">serial</span>, <span class="ident">modifiers</span>);
+                <span class="kw">if </span>mask &amp; xkb::STATE_MODS_EFFECTIVE != <span class="number">0 </span>{
+                    <span class="kw">let </span>modifiers = udata.update_modifiers();
+                    data.update_modifiers(conn, qh, keyboard, serial, modifiers);
                 }
             }
 
-            <span class="ident">wl_keyboard::Event::RepeatInfo</span> { <span class="ident">rate</span>, <span class="ident">delay</span> } =&gt; {
-                <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">rate</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-                    <span class="ident">RepeatInfo::Repeat</span> {
-                        <span class="ident">rate</span>: <span class="ident">NonZeroU32::new</span>(<span class="ident">rate</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">unwrap</span>(),
-                        <span class="ident">delay</span>: <span class="ident">delay</span> <span class="kw">as</span> <span class="ident">u32</span>,
+            wl_keyboard::Event::RepeatInfo { rate, delay } =&gt; {
+                <span class="kw">let </span>info = <span class="kw">if </span>rate != <span class="number">0 </span>{
+                    RepeatInfo::Repeat {
+                        rate: NonZeroU32::new(rate <span class="kw">as </span>u32).unwrap(),
+                        delay: delay <span class="kw">as </span>u32,
                     }
-                } <span class="kw">else</span> {
-                    <span class="ident">RepeatInfo::Disable</span>
+                } <span class="kw">else </span>{
+                    RepeatInfo::Disable
                 };
 
-                <span class="ident">data</span>.<span class="ident">update_repeat_info</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">keyboard</span>, <span class="ident">info</span>);
+                data.update_repeat_info(conn, qh, keyboard, info);
             }
 
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

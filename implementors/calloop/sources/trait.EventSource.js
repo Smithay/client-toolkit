@@ -1,3 +1,3 @@
-(function() {var implementors = {};
-implementors["smithay_client_toolkit"] = [{"text":"impl&lt;D&gt; EventSource for <a class=\"struct\" href=\"smithay_client_toolkit/event_loop/struct.WaylandSource.html\" title=\"struct smithay_client_toolkit::event_loop::WaylandSource\">WaylandSource</a>&lt;D&gt;","synthetic":false,"types":["smithay_client_toolkit::event_loop::WaylandSource"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {var implementors = {
+"smithay_client_toolkit":[["impl&lt;D&gt; EventSource for <a class=\"struct\" href=\"smithay_client_toolkit/event_loop/struct.WaylandSource.html\" title=\"struct smithay_client_toolkit::event_loop::WaylandSource\">WaylandSource</a>&lt;D&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

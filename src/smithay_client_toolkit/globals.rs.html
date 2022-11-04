@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/globals.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>globals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/globals.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>globals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -51,58 +51,58 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::GlobalError</span>;
-<span class="kw">use</span> <span class="ident">wayland_client::Proxy</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::GlobalError;
+<span class="kw">use </span>wayland_client::Proxy;
 
-<span class="doccomment">/// A trait implemented by types that provide access to capability globals.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The returned global must be fully compatible with the provided `API_COMPAT_VERSION` generic</span>
-<span class="doccomment">/// argument.  For example:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// - A global that binds to `wl_compositor` with maximum version 4 could implement</span>
-<span class="doccomment">/// `ProvidesBoundGlobal&lt;WlCompositor, 4&gt;`, `ProvidesBoundGlobal&lt;WlCompositor, 3&gt;`,</span>
-<span class="doccomment">/// `ProvidesBoundGlobal&lt;WlCompositor, 2&gt;`, and `ProvidesBoundGlobal&lt;WlCompositor, 1&gt;` because</span>
-<span class="doccomment">/// versions 2-4 only add additional requests to the `wl_surface` API.</span>
-<span class="doccomment">/// - A global that binds to `wl_compositor` with maximum version 5 may only implement</span>
-<span class="doccomment">/// `ProvidesBoundGlobal&lt;WlCompositor, 5&gt;` because version 5 makes using `wl_surface::attach` with</span>
-<span class="doccomment">/// a nonzero offset a protocol error.  A caller who is only aware of the version 4 API risks</span>
-<span class="doccomment">/// causing these protocol errors if it uses surfaces created by such a global.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Changes that cause compatibility breaks include:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// - Adding a new event to the global or to any object created by the global.</span>
-<span class="doccomment">/// - Adding a new requirement to an existing request.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The resulting global may have a version lower than `API_COMPAT_VERSION` if, at runtime, the</span>
-<span class="doccomment">/// compositor does not support the new version.  Clients should either be prepared to handle</span>
-<span class="doccomment">/// earlier versions of the protocol or use [`ProvidesBoundGlobal::with_min_version`] to produce an</span>
-<span class="doccomment">/// error in this case.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// It is permitted to implement `ProvidesBoundGlobal` for versions that are higher than the</span>
-<span class="doccomment">/// maximum version you bind.  When rustc gains the ability to constrain const parameters with</span>
-<span class="doccomment">/// integer bounds (`where API_COMPAT_VERSION &gt;= 5`), implementations of this trait should be</span>
-<span class="doccomment">/// provided by specifying a lower bound for the compat version in order to avoid requiring version</span>
-<span class="doccomment">/// updates be done in lock-step.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Proxy</span>, <span class="kw">const</span> <span class="ident">API_COMPAT_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">bound_global</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">with_min_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">version</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">proxy</span>.<span class="ident">version</span>() <span class="op">&lt;</span> <span class="ident">version</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">GlobalError::InvalidVersion</span> {
-                <span class="ident">name</span>: <span class="ident">I::interface</span>().<span class="ident">name</span>,
-                <span class="ident">required</span>: <span class="ident">version</span>,
-                <span class="ident">available</span>: <span class="ident">proxy</span>.<span class="ident">version</span>(),
+<span class="doccomment">/// A trait implemented by types that provide access to capability globals.
+///
+/// The returned global must be fully compatible with the provided `API_COMPAT_VERSION` generic
+/// argument.  For example:
+///
+/// - A global that binds to `wl_compositor` with maximum version 4 could implement
+/// `ProvidesBoundGlobal&lt;WlCompositor, 4&gt;`, `ProvidesBoundGlobal&lt;WlCompositor, 3&gt;`,
+/// `ProvidesBoundGlobal&lt;WlCompositor, 2&gt;`, and `ProvidesBoundGlobal&lt;WlCompositor, 1&gt;` because
+/// versions 2-4 only add additional requests to the `wl_surface` API.
+/// - A global that binds to `wl_compositor` with maximum version 5 may only implement
+/// `ProvidesBoundGlobal&lt;WlCompositor, 5&gt;` because version 5 makes using `wl_surface::attach` with
+/// a nonzero offset a protocol error.  A caller who is only aware of the version 4 API risks
+/// causing these protocol errors if it uses surfaces created by such a global.
+///
+/// Changes that cause compatibility breaks include:
+///
+/// - Adding a new event to the global or to any object created by the global.
+/// - Adding a new requirement to an existing request.
+///
+/// The resulting global may have a version lower than `API_COMPAT_VERSION` if, at runtime, the
+/// compositor does not support the new version.  Clients should either be prepared to handle
+/// earlier versions of the protocol or use [`ProvidesBoundGlobal::with_min_version`] to produce an
+/// error in this case.
+///
+/// It is permitted to implement `ProvidesBoundGlobal` for versions that are higher than the
+/// maximum version you bind.  When rustc gains the ability to constrain const parameters with
+/// integer bounds (`where API_COMPAT_VERSION &gt;= 5`), implementations of this trait should be
+/// provided by specifying a lower bound for the compat version in order to avoid requiring version
+/// updates be done in lock-step.
+</span><span class="kw">pub trait </span>ProvidesBoundGlobal&lt;I: Proxy, <span class="kw">const </span>API_COMPAT_VERSION: u32&gt; {
+    <span class="kw">fn </span>bound_global(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;I, GlobalError&gt;;
+    <span class="kw">fn </span>with_min_version(<span class="kw-2">&amp;</span><span class="self">self</span>, version: u32) -&gt; <span class="prelude-ty">Result</span>&lt;I, GlobalError&gt; {
+        <span class="kw">let </span>proxy = <span class="self">self</span>.bound_global()<span class="question-mark">?</span>;
+        <span class="kw">if </span>proxy.version() &lt; version {
+            <span class="prelude-val">Err</span>(GlobalError::InvalidVersion {
+                name: I::interface().name,
+                required: version,
+                available: proxy.version(),
             })
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(proxy)
         }
     }
 }
 
-<span class="doccomment">/// A struct used as the UserData field for globals bound by SCTK.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This is used instead of `()` to allow multiple `Dispatch` impls on the same object.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GlobalData</span>;
+<span class="doccomment">/// A struct used as the UserData field for globals bound by SCTK.
+///
+/// This is used instead of `()` to allow multiple `Dispatch` impls on the same object.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>GlobalData;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

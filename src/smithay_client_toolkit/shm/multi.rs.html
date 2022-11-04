@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shm/multi.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>multi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shm/multi.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>multi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -421,428 +421,428 @@
 <span id="421">421</span>
 <span id="422">422</span>
 <span id="423">423</span>
-</pre><pre class="rust"><code><span class="doccomment">//! A pool implementation which automatically manage buffers.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This pool is built on the [`RawPool`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The [`MultiPool`] takes a key which is used to identify buffers and tries to return the buffer associated to the key</span>
-<span class="doccomment">//! if possible. If no buffer in the pool is associated to the key, it will create a new one.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Example</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```rust</span>
-<span class="doccomment">//! use smithay_client_toolkit::reexports::client::{</span>
-<span class="doccomment">//!     QueueHandle,</span>
-<span class="doccomment">//!     protocol::wl_surface::WlSurface,</span>
-<span class="doccomment">//!     protocol::wl_shm::Format,</span>
-<span class="doccomment">//! };</span>
-<span class="doccomment">//! use smithay_client_toolkit::shm::multi::MultiPool;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! struct WlFoo {</span>
-<span class="doccomment">//!     // The surface we&#39;ll draw on and the index of buffer associated to it</span>
-<span class="doccomment">//!     surface: (WlSurface, usize),</span>
-<span class="doccomment">//!     pool: MultiPool&lt;(WlSurface, usize)&gt;</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! impl WlFoo {</span>
-<span class="doccomment">//!     fn draw(&amp;mut self, qh: &amp;QueueHandle&lt;WlFoo&gt;) {</span>
-<span class="doccomment">//!         let surface = &amp;self.surface.0;</span>
-<span class="doccomment">//!         // We&#39;ll increment &quot;i&quot; until the pool can create a new buffer</span>
-<span class="doccomment">//!         // if there&#39;s no buffer associated with our surface and &quot;i&quot; or if</span>
-<span class="doccomment">//!         // a buffer with the obuffer associated with our surface and &quot;i&quot; is free for use.</span>
-<span class="doccomment">//!         //</span>
-<span class="doccomment">//!         // There&#39;s no limit to the amount of buffers we can allocate to our surface but since</span>
-<span class="doccomment">//!         // shm buffers are released fairly fast, it&#39;s unlikely we&#39;ll need more than double buffering.</span>
-<span class="doccomment">//!         for i in 0..2 {</span>
-<span class="doccomment">//!             self.surface.1 = i;</span>
-<span class="doccomment">//!             if let Ok((offset, buffer, slice)) = self.pool.create_buffer(</span>
-<span class="doccomment">//!                 100,</span>
-<span class="doccomment">//!                 100 * 4,</span>
-<span class="doccomment">//!                 100,</span>
-<span class="doccomment">//!                 &amp;self.surface,</span>
-<span class="doccomment">//!                 Format::Argb8888,</span>
-<span class="doccomment">//!             ) {</span>
-<span class="doccomment">//!                 /*</span>
-<span class="doccomment">//!                     insert drawing code here</span>
-<span class="doccomment">//!                 */</span>
-<span class="doccomment">//!                 surface.attach(Some(buffer), 0, 0);</span>
-<span class="doccomment">//!                 surface.commit();</span>
-<span class="doccomment">//!                 // We exit the function after the draw.</span>
-<span class="doccomment">//!                 return;</span>
-<span class="doccomment">//!             }</span>
-<span class="doccomment">//!         }</span>
-<span class="doccomment">//!         /*</span>
-<span class="doccomment">//!             If there&#39;s no buffer available we can for example request a frame callback</span>
-<span class="doccomment">//!             and trigger a redraw when it fires.</span>
-<span class="doccomment">//!             (not shown in this example)</span>
-<span class="doccomment">//!         */</span>
-<span class="doccomment">//!     }</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! fn draw(slice: &amp;mut [u8]) {</span>
-<span class="doccomment">//!     todo!()</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
+</pre><pre class="rust"><code><span class="doccomment">//! A pool implementation which automatically manage buffers.
+//!
+//! This pool is built on the [`RawPool`].
+//!
+//! The [`MultiPool`] takes a key which is used to identify buffers and tries to return the buffer associated to the key
+//! if possible. If no buffer in the pool is associated to the key, it will create a new one.
+//!
+//! # Example
+//!
+//! ```rust
+//! use smithay_client_toolkit::reexports::client::{
+//!     QueueHandle,
+//!     protocol::wl_surface::WlSurface,
+//!     protocol::wl_shm::Format,
+//! };
+//! use smithay_client_toolkit::shm::multi::MultiPool;
+//!
+//! struct WlFoo {
+//!     // The surface we&#39;ll draw on and the index of buffer associated to it
+//!     surface: (WlSurface, usize),
+//!     pool: MultiPool&lt;(WlSurface, usize)&gt;
+//! }
+//!
+//! impl WlFoo {
+//!     fn draw(&amp;mut self, qh: &amp;QueueHandle&lt;WlFoo&gt;) {
+//!         let surface = &amp;self.surface.0;
+//!         // We&#39;ll increment &quot;i&quot; until the pool can create a new buffer
+//!         // if there&#39;s no buffer associated with our surface and &quot;i&quot; or if
+//!         // a buffer with the obuffer associated with our surface and &quot;i&quot; is free for use.
+//!         //
+//!         // There&#39;s no limit to the amount of buffers we can allocate to our surface but since
+//!         // shm buffers are released fairly fast, it&#39;s unlikely we&#39;ll need more than double buffering.
+//!         for i in 0..2 {
+//!             self.surface.1 = i;
+//!             if let Ok((offset, buffer, slice)) = self.pool.create_buffer(
+//!                 100,
+//!                 100 * 4,
+//!                 100,
+//!                 &amp;self.surface,
+//!                 Format::Argb8888,
+//!             ) {
+//!                 /*
+//!                     insert drawing code here
+//!                 */
+//!                 surface.attach(Some(buffer), 0, 0);
+//!                 surface.commit();
+//!                 // We exit the function after the draw.
+//!                 return;
+//!             }
+//!         }
+//!         /*
+//!             If there&#39;s no buffer available we can for example request a frame callback
+//!             and trigger a redraw when it fires.
+//!             (not shown in this example)
+//!         */
+//!     }
+//! }
+//!
+//! fn draw(slice: &amp;mut [u8]) {
+//!     todo!()
+//! }
+//!
+//! ```
+//!
 
-<span class="kw">use</span> <span class="ident">std::borrow::Borrow</span>;
-<span class="kw">use</span> <span class="ident">std::io</span>;
+</span><span class="kw">use </span>std::borrow::Borrow;
+<span class="kw">use </span>std::io;
 
-<span class="kw">use</span> <span class="ident">std::sync</span>::{
-    <span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">Ordering</span>},
-    <span class="ident">Arc</span>,
+<span class="kw">use </span>std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
 };
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{<span class="ident">wl_buffer</span>, <span class="ident">wl_shm</span>},
-    <span class="ident">Proxy</span>,
+<span class="kw">use </span>wayland_client::{
+    protocol::{wl_buffer, wl_shm},
+    Proxy,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::globals::ProvidesBoundGlobal</span>;
+<span class="kw">use </span><span class="kw">crate</span>::globals::ProvidesBoundGlobal;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::raw::RawPool</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::CreatePoolError</span>;
+<span class="kw">use </span><span class="kw">super</span>::raw::RawPool;
+<span class="kw">use </span><span class="kw">super</span>::CreatePoolError;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PoolError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;buffer is currently used&quot;</span>)]</span>
-    <span class="ident">InUse</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;buffer is overlapping another&quot;</span>)]</span>
-    <span class="ident">Overlap</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;buffer could not be found&quot;</span>)]</span>
-    <span class="ident">NotFound</span>,
+<span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub enum </span>PoolError {
+    <span class="attribute">#[error(<span class="string">&quot;buffer is currently used&quot;</span>)]
+    </span>InUse,
+    <span class="attribute">#[error(<span class="string">&quot;buffer is overlapping another&quot;</span>)]
+    </span>Overlap,
+    <span class="attribute">#[error(<span class="string">&quot;buffer could not be found&quot;</span>)]
+    </span>NotFound,
 }
 
-<span class="doccomment">/// This pool manages buffers associated with keys.</span>
-<span class="doccomment">/// Only one buffer can be attributed to a given key.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MultiPool</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="ident">buffer_list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BufferSlot</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">inner</span>: <span class="ident">RawPool</span>,
+<span class="doccomment">/// This pool manages buffers associated with keys.
+/// Only one buffer can be attributed to a given key.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>MultiPool&lt;K&gt; {
+    buffer_list: Vec&lt;BufferSlot&lt;K&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) inner: RawPool,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BufferSlot</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="ident">free</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
-    <span class="ident">size</span>: <span class="ident">usize</span>,
-    <span class="ident">used</span>: <span class="ident">usize</span>,
-    <span class="ident">offset</span>: <span class="ident">usize</span>,
-    <span class="ident">buffer</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_buffer::WlBuffer</span><span class="op">&gt;</span>,
-    <span class="ident">key</span>: <span class="ident">K</span>,
+<span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub struct </span>BufferSlot&lt;K&gt; {
+    free: Arc&lt;AtomicBool&gt;,
+    size: usize,
+    used: usize,
+    offset: usize,
+    buffer: <span class="prelude-ty">Option</span>&lt;wl_buffer::WlBuffer&gt;,
+    key: K,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">BufferSlot</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">destroy</span>().<span class="ident">ok</span>();
+<span class="kw">impl</span>&lt;K&gt; Drop <span class="kw">for </span>BufferSlot&lt;K&gt; {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.destroy().ok();
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">BufferSlot</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">destroy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">buffer</span>.<span class="ident">as_ref</span>().<span class="ident">ok_or</span>(<span class="ident">PoolError::NotFound</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">buffer</span><span class="op">|</span> {
-            <span class="self">self</span>.<span class="ident">free</span>.<span class="ident">load</span>(<span class="ident">Ordering::Relaxed</span>).<span class="ident">then</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">buffer</span>.<span class="ident">destroy</span>()).<span class="ident">ok_or</span>(<span class="ident">PoolError::InUse</span>)
+<span class="kw">impl</span>&lt;K&gt; BufferSlot&lt;K&gt; {
+    <span class="kw">pub fn </span>destroy(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), PoolError&gt; {
+        <span class="self">self</span>.buffer.as_ref().ok_or(PoolError::NotFound).and_then(|buffer| {
+            <span class="self">self</span>.free.load(Ordering::Relaxed).then(|| buffer.destroy()).ok_or(PoolError::InUse)
         })
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> <span class="ident">MultiPool</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">shm</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">wl_shm::WlShm</span>, <span class="number">1</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CreatePoolError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">inner</span>: <span class="ident">RawPool::new</span>(<span class="number">4096</span>, <span class="ident">shm</span>)<span class="question-mark">?</span>, <span class="ident">buffer_list</span>: <span class="ident">Vec::new</span>() })
+<span class="kw">impl</span>&lt;K&gt; MultiPool&lt;K&gt; {
+    <span class="kw">pub fn </span>new(shm: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;wl_shm::WlShm, <span class="number">1</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CreatePoolError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ inner: RawPool::new(<span class="number">4096</span>, shm)<span class="question-mark">?</span>, buffer_list: Vec::new() })
     }
 
-    <span class="doccomment">/// Resizes the memory pool, notifying the server the pool has changed in size.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the</span>
-    <span class="doccomment">/// current size of the pool, this function will do nothing.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">resize</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">resize</span>(<span class="ident">size</span>)
+    <span class="doccomment">/// Resizes the memory pool, notifying the server the pool has changed in size.
+    ///
+    /// The wl_shm protocol only allows the pool to be made bigger. If the new size is smaller than the
+    /// current size of the pool, this function will do nothing.
+    </span><span class="kw">pub fn </span>resize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, size: usize) -&gt; io::Result&lt;()&gt; {
+        <span class="self">self</span>.inner.resize(size)
     }
 
-    <span class="doccomment">/// Removes the buffer with the given key from the pool and rearranges the others.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Q</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BufferSlot</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">Q</span>: <span class="ident">PartialEq</span>,
-        <span class="ident">K</span>: <span class="ident">std::borrow::Borrow</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Removes the buffer with the given key from the pool and rearranges the others.
+    </span><span class="kw">pub fn </span>remove&lt;Q&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>Q) -&gt; <span class="prelude-ty">Option</span>&lt;BufferSlot&lt;K&gt;&gt;
+    <span class="kw">where
+        </span>Q: PartialEq,
+        K: std::borrow::Borrow&lt;Q&gt;,
     {
-        <span class="self">self</span>.<span class="ident">buffer_list</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">enumerate</span>()
-            .<span class="ident">find</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">slot</span>)<span class="op">|</span> <span class="ident">slot</span>.<span class="ident">key</span>.<span class="ident">borrow</span>().<span class="ident">eq</span>(<span class="ident">key</span>))
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">i</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">buffer_list</span>.<span class="ident">remove</span>(<span class="ident">i</span>))
+        <span class="self">self</span>.buffer_list
+            .iter()
+            .enumerate()
+            .find(|(<span class="kw">_</span>, slot)| slot.key.borrow().eq(key))
+            .map(|(i, <span class="kw">_</span>)| i)
+            .map(|i| <span class="self">self</span>.buffer_list.remove(i))
     }
 
-    <span class="doccomment">/// Insert a buffer into the pool.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The parameters are:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - `width`: the width of this buffer (in pixels)</span>
-    <span class="doccomment">/// - `height`: the height of this buffer (in pixels)</span>
-    <span class="doccomment">/// - `stride`: distance (in bytes) between the beginning of a row and the next one</span>
-    <span class="doccomment">/// - `key`: a borrowed form of the stored key type</span>
-    <span class="doccomment">/// - `format`: the encoding format of the pixels.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Q</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">PoolError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">K</span>: <span class="ident">Borrow</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>,
-        <span class="ident">Q</span>: <span class="ident">PartialEq</span> <span class="op">+</span> <span class="ident">ToOwned</span><span class="op">&lt;</span><span class="ident">Owned</span> <span class="op">=</span> <span class="ident">K</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Insert a buffer into the pool.
+    ///
+    /// The parameters are:
+    ///
+    /// - `width`: the width of this buffer (in pixels)
+    /// - `height`: the height of this buffer (in pixels)
+    /// - `stride`: distance (in bytes) between the beginning of a row and the next one
+    /// - `key`: a borrowed form of the stored key type
+    /// - `format`: the encoding format of the pixels.
+    </span><span class="kw">pub fn </span>insert&lt;Q&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: <span class="kw-2">&amp;</span>Q,
+        format: wl_shm::Format,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, PoolError&gt;
+    <span class="kw">where
+        </span>K: Borrow&lt;Q&gt;,
+        Q: PartialEq + ToOwned&lt;Owned = K&gt;,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">found_key</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> (<span class="ident">stride</span> <span class="op">*</span> <span class="ident">height</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">index</span> <span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">PoolError::NotFound</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>found_key = <span class="bool-val">false</span>;
+        <span class="kw">let </span>size = (stride * height) <span class="kw">as </span>usize;
+        <span class="kw">let </span><span class="kw-2">mut </span>index = <span class="prelude-val">Err</span>(PoolError::NotFound);
 
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">buf_slot</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">buffer_list</span>.<span class="ident">iter_mut</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">key</span>.<span class="ident">borrow</span>().<span class="ident">eq</span>(<span class="ident">key</span>) {
-                <span class="ident">found_key</span> <span class="op">=</span> <span class="bool-val">true</span>;
-                <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">free</span>.<span class="ident">load</span>(<span class="ident">Ordering::Relaxed</span>) {
-                    <span class="comment">// Destroys the buffer if it&#39;s resized</span>
-                    <span class="kw">if</span> <span class="ident">size</span> <span class="op">!</span><span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">used</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">buffer</span>) <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">buffer</span>.<span class="ident">take</span>() {
-                            <span class="ident">buffer</span>.<span class="ident">destroy</span>();
+        <span class="kw">for </span>(i, buf_slot) <span class="kw">in </span><span class="self">self</span>.buffer_list.iter_mut().enumerate() {
+            <span class="kw">if </span>buf_slot.key.borrow().eq(key) {
+                found_key = <span class="bool-val">true</span>;
+                <span class="kw">if </span>buf_slot.free.load(Ordering::Relaxed) {
+                    <span class="comment">// Destroys the buffer if it&#39;s resized
+                    </span><span class="kw">if </span>size != buf_slot.used {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(buffer) = buf_slot.buffer.take() {
+                            buffer.destroy();
                         }
                     }
-                    <span class="comment">// Increases the size of the Buffer if it&#39;s too small and add 5% padding.</span>
-                    <span class="comment">// It is possible this buffer overlaps the following but the else if</span>
-                    <span class="comment">// statement prevents this buffer from being returned if that&#39;s the case.</span>
-                    <span class="ident">buf_slot</span>.<span class="ident">size</span> <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">size</span>.<span class="ident">max</span>(<span class="ident">size</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">/</span> <span class="number">20</span>);
-                    <span class="ident">index</span> <span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">i</span>);
-                } <span class="kw">else</span> {
-                    <span class="ident">index</span> <span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">PoolError::InUse</span>);
+                    <span class="comment">// Increases the size of the Buffer if it&#39;s too small and add 5% padding.
+                    // It is possible this buffer overlaps the following but the else if
+                    // statement prevents this buffer from being returned if that&#39;s the case.
+                    </span>buf_slot.size = buf_slot.size.max(size + size / <span class="number">20</span>);
+                    index = <span class="prelude-val">Ok</span>(i);
+                } <span class="kw">else </span>{
+                    index = <span class="prelude-val">Err</span>(PoolError::InUse);
                 }
-            <span class="comment">// If a buffer is resized, it is likely that the followings might overlap</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">offset</span> <span class="op">&gt;</span> <span class="ident">buf_slot</span>.<span class="ident">offset</span> {
-                <span class="comment">// When the buffer is free, it&#39;s safe to shift it because we know the compositor won&#39;t try to read it.</span>
-                <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">free</span>.<span class="ident">load</span>(<span class="ident">Ordering::Relaxed</span>) {
-                    <span class="kw">if</span> <span class="ident">offset</span> <span class="op">!</span><span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">offset</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">buffer</span>) <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">buffer</span>.<span class="ident">take</span>() {
-                            <span class="ident">buffer</span>.<span class="ident">destroy</span>();
+            <span class="comment">// If a buffer is resized, it is likely that the followings might overlap
+            </span>} <span class="kw">else if </span>offset &gt; buf_slot.offset {
+                <span class="comment">// When the buffer is free, it&#39;s safe to shift it because we know the compositor won&#39;t try to read it.
+                </span><span class="kw">if </span>buf_slot.free.load(Ordering::Relaxed) {
+                    <span class="kw">if </span>offset != buf_slot.offset {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(buffer) = buf_slot.buffer.take() {
+                            buffer.destroy();
                         }
                     }
-                    <span class="ident">buf_slot</span>.<span class="ident">offset</span> <span class="op">=</span> <span class="ident">offset</span>;
-                } <span class="kw">else</span> {
-                    <span class="comment">// If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.</span>
-                    <span class="ident">index</span> <span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">PoolError::InUse</span>);
+                    buf_slot.offset = offset;
+                } <span class="kw">else </span>{
+                    <span class="comment">// If one of the overlapping buffers is busy, then no buffer can be returned because it could result in a data race.
+                    </span>index = <span class="prelude-val">Err</span>(PoolError::InUse);
                 }
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">found_key</span> {
+            } <span class="kw">else if </span>found_key {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> (<span class="ident">buf_slot</span>.<span class="ident">size</span> <span class="op">+</span> <span class="number">63</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="number">63</span>;
-            <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="ident">size</span>;
+            <span class="kw">let </span>size = (buf_slot.size + <span class="number">63</span>) &amp; !<span class="number">63</span>;
+            offset += size;
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">found_key</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">index</span> {
-                <span class="kw">return</span> <span class="self">self</span>
-                    .<span class="ident">dyn_resize</span>(<span class="ident">offset</span>, <span class="ident">width</span>, <span class="ident">stride</span>, <span class="ident">height</span>, <span class="ident">key</span>.<span class="ident">to_owned</span>(), <span class="ident">format</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">buffer_list</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">err</span>);
+        <span class="kw">if </span>!found_key {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = index {
+                <span class="kw">return </span><span class="self">self
+                    </span>.dyn_resize(offset, width, stride, height, key.to_owned(), format)
+                    .map(|<span class="kw">_</span>| <span class="self">self</span>.buffer_list.len() - <span class="number">1</span>)
+                    .ok_or(err);
             }
         }
 
-        <span class="ident">index</span>
+        index
     }
 
-    <span class="doccomment">/// Retreives the buffer associated with the given key.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The parameters are:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - `width`: the width of this buffer (in pixels)</span>
-    <span class="doccomment">/// - `height`: the height of this buffer (in pixels)</span>
-    <span class="doccomment">/// - `stride`: distance (in bytes) between the beginning of a row and the next one</span>
-    <span class="doccomment">/// - `key`: a borrowed form of the stored key type</span>
-    <span class="doccomment">/// - `format`: the encoding format of the pixels.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Q</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="ident">wl_buffer::WlBuffer</span>, <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>])<span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">Q</span>: <span class="ident">PartialEq</span>,
-        <span class="ident">K</span>: <span class="ident">std::borrow::Borrow</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Retreives the buffer associated with the given key.
+    ///
+    /// The parameters are:
+    ///
+    /// - `width`: the width of this buffer (in pixels)
+    /// - `height`: the height of this buffer (in pixels)
+    /// - `stride`: distance (in bytes) between the beginning of a row and the next one
+    /// - `key`: a borrowed form of the stored key type
+    /// - `format`: the encoding format of the pixels.
+    </span><span class="kw">pub fn </span>get&lt;Q&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: <span class="kw-2">&amp;</span>Q,
+        format: wl_shm::Format,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(usize, <span class="kw-2">&amp;</span>wl_buffer::WlBuffer, <span class="kw-2">&amp;mut </span>[u8])&gt;
+    <span class="kw">where
+        </span>Q: PartialEq,
+        K: std::borrow::Borrow&lt;Q&gt;,
     {
-        <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> (<span class="ident">stride</span> <span class="op">*</span> <span class="ident">height</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">buf_slot</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">buffer_list</span>.<span class="ident">iter_mut</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">buf_slot</span><span class="op">|</span> <span class="ident">buf_slot</span>.<span class="ident">key</span>.<span class="ident">borrow</span>().<span class="ident">eq</span>(<span class="ident">key</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>len = <span class="self">self</span>.inner.len();
+        <span class="kw">let </span>size = (stride * height) <span class="kw">as </span>usize;
+        <span class="kw">let </span>buf_slot =
+            <span class="self">self</span>.buffer_list.iter_mut().find(|buf_slot| buf_slot.key.borrow().eq(key))<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">size</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">size</span> {
-            <span class="kw">return</span> <span class="prelude-val">None</span>;
+        <span class="kw">if </span>buf_slot.size &gt;= size {
+            <span class="kw">return </span><span class="prelude-val">None</span>;
         }
 
-        <span class="ident">buf_slot</span>.<span class="ident">used</span> <span class="op">=</span> <span class="ident">size</span>;
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">offset</span>;
-        <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">buffer</span>.<span class="ident">is_none</span>() {
-            <span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">len</span> {
-                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">resize</span>(<span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">/</span> <span class="number">20</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+        buf_slot.used = size;
+        <span class="kw">let </span>offset = buf_slot.offset;
+        <span class="kw">if </span>buf_slot.buffer.is_none() {
+            <span class="kw">if </span>offset + size &gt; len {
+                <span class="self">self</span>.inner.resize(offset + size + size / <span class="number">20</span>).ok()<span class="question-mark">?</span>;
             }
-            <span class="kw">let</span> <span class="ident">free</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">true</span>));
-            <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">BufferObjectData</span> { <span class="ident">free</span>: <span class="ident">free</span>.<span class="ident">clone</span>() };
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">create_buffer_raw</span>(
-                <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">i32</span>,
-                <span class="ident">width</span>,
-                <span class="ident">height</span>,
-                <span class="ident">stride</span>,
-                <span class="ident">format</span>,
-                <span class="ident">Arc::new</span>(<span class="ident">data</span>),
+            <span class="kw">let </span>free = Arc::new(AtomicBool::new(<span class="bool-val">true</span>));
+            <span class="kw">let </span>data = BufferObjectData { free: free.clone() };
+            <span class="kw">let </span>buffer = <span class="self">self</span>.inner.create_buffer_raw(
+                offset <span class="kw">as </span>i32,
+                width,
+                height,
+                stride,
+                format,
+                Arc::new(data),
             );
-            <span class="ident">buf_slot</span>.<span class="ident">free</span> <span class="op">=</span> <span class="ident">free</span>;
-            <span class="ident">buf_slot</span>.<span class="ident">buffer</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">buffer</span>);
+            buf_slot.free = free;
+            buf_slot.buffer = <span class="prelude-val">Some</span>(buffer);
         }
-        <span class="kw">let</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">buffer</span>.<span class="ident">as_ref</span>()<span class="question-mark">?</span>;
-        <span class="ident">buf_slot</span>.<span class="ident">free</span>.<span class="ident">store</span>(<span class="bool-val">false</span>, <span class="ident">Ordering::Relaxed</span>);
-        <span class="prelude-val">Some</span>((<span class="ident">offset</span>, <span class="ident">buf</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">mmap</span>()[<span class="ident">offset</span>..][..<span class="ident">size</span>]))
+        <span class="kw">let </span>buf = buf_slot.buffer.as_ref()<span class="question-mark">?</span>;
+        buf_slot.free.store(<span class="bool-val">false</span>, Ordering::Relaxed);
+        <span class="prelude-val">Some</span>((offset, buf, <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner.mmap()[offset..][..size]))
     }
 
-    <span class="doccomment">/// Returns the buffer associated with the given key and its offset (usize) in the mempool.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The parameters are:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - `width`: the width of this buffer (in pixels)</span>
-    <span class="doccomment">/// - `height`: the height of this buffer (in pixels)</span>
-    <span class="doccomment">/// - `stride`: distance (in bytes) between the beginning of a row and the next one</span>
-    <span class="doccomment">/// - `key`: a borrowed form of the stored key type</span>
-    <span class="doccomment">/// - `format`: the encoding format of the pixels.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The offset can be used to determine whether or not a buffer was moved in the mempool</span>
-    <span class="doccomment">/// and by consequence if it should be damaged partially or fully.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_buffer</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Q</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="ident">wl_buffer::WlBuffer</span>, <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>]), <span class="ident">PoolError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">K</span>: <span class="ident">Borrow</span><span class="op">&lt;</span><span class="ident">Q</span><span class="op">&gt;</span>,
-        <span class="ident">Q</span>: <span class="ident">PartialEq</span> <span class="op">+</span> <span class="ident">ToOwned</span><span class="op">&lt;</span><span class="ident">Owned</span> <span class="op">=</span> <span class="ident">K</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Returns the buffer associated with the given key and its offset (usize) in the mempool.
+    ///
+    /// The parameters are:
+    ///
+    /// - `width`: the width of this buffer (in pixels)
+    /// - `height`: the height of this buffer (in pixels)
+    /// - `stride`: distance (in bytes) between the beginning of a row and the next one
+    /// - `key`: a borrowed form of the stored key type
+    /// - `format`: the encoding format of the pixels.
+    ///
+    /// The offset can be used to determine whether or not a buffer was moved in the mempool
+    /// and by consequence if it should be damaged partially or fully.
+    </span><span class="kw">pub fn </span>create_buffer&lt;Q&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: <span class="kw-2">&amp;</span>Q,
+        format: wl_shm::Format,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(usize, <span class="kw-2">&amp;</span>wl_buffer::WlBuffer, <span class="kw-2">&amp;mut </span>[u8]), PoolError&gt;
+    <span class="kw">where
+        </span>K: Borrow&lt;Q&gt;,
+        Q: PartialEq + ToOwned&lt;Owned = K&gt;,
     {
-        <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">insert</span>(<span class="ident">width</span>, <span class="ident">stride</span>, <span class="ident">height</span>, <span class="ident">key</span>, <span class="ident">format</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">get_at</span>(<span class="ident">index</span>, <span class="ident">width</span>, <span class="ident">stride</span>, <span class="ident">height</span>, <span class="ident">format</span>)
+        <span class="kw">let </span>index = <span class="self">self</span>.insert(width, stride, height, key, format)<span class="question-mark">?</span>;
+        <span class="self">self</span>.get_at(index, width, stride, height, format)
     }
 
-    <span class="doccomment">/// Retreives the buffer at the given index.</span>
-    <span class="kw">fn</span> <span class="ident">get_at</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">index</span>: <span class="ident">usize</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="ident">wl_buffer::WlBuffer</span>, <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>]), <span class="ident">PoolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> (<span class="ident">stride</span> <span class="op">*</span> <span class="ident">height</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">buf_slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">buffer_list</span>.<span class="ident">get_mut</span>(<span class="ident">index</span>).<span class="ident">ok_or</span>(<span class="ident">PoolError::NotFound</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// Retreives the buffer at the given index.
+    </span><span class="kw">fn </span>get_at(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        index: usize,
+        width: i32,
+        stride: i32,
+        height: i32,
+        format: wl_shm::Format,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(usize, <span class="kw-2">&amp;</span>wl_buffer::WlBuffer, <span class="kw-2">&amp;mut </span>[u8]), PoolError&gt; {
+        <span class="kw">let </span>len = <span class="self">self</span>.inner.len();
+        <span class="kw">let </span>size = (stride * height) <span class="kw">as </span>usize;
+        <span class="kw">let </span>buf_slot = <span class="self">self</span>.buffer_list.get_mut(index).ok_or(PoolError::NotFound)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">size</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PoolError::Overlap</span>);
+        <span class="kw">if </span>buf_slot.size &gt; size {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PoolError::Overlap);
         }
 
-        <span class="ident">buf_slot</span>.<span class="ident">used</span> <span class="op">=</span> <span class="ident">size</span>;
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">offset</span>;
-        <span class="kw">if</span> <span class="ident">buf_slot</span>.<span class="ident">buffer</span>.<span class="ident">is_none</span>() {
-            <span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">len</span> {
-                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">resize</span>(<span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">/</span> <span class="number">20</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::Overlap</span>)<span class="question-mark">?</span>;
+        buf_slot.used = size;
+        <span class="kw">let </span>offset = buf_slot.offset;
+        <span class="kw">if </span>buf_slot.buffer.is_none() {
+            <span class="kw">if </span>offset + size &gt; len {
+                <span class="self">self</span>.inner.resize(offset + size + size / <span class="number">20</span>).map_err(|<span class="kw">_</span>| PoolError::Overlap)<span class="question-mark">?</span>;
             }
-            <span class="kw">let</span> <span class="ident">free</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">true</span>));
-            <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">BufferObjectData</span> { <span class="ident">free</span>: <span class="ident">free</span>.<span class="ident">clone</span>() };
-            <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">create_buffer_raw</span>(
-                <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">i32</span>,
-                <span class="ident">width</span>,
-                <span class="ident">height</span>,
-                <span class="ident">stride</span>,
-                <span class="ident">format</span>,
-                <span class="ident">Arc::new</span>(<span class="ident">data</span>),
+            <span class="kw">let </span>free = Arc::new(AtomicBool::new(<span class="bool-val">true</span>));
+            <span class="kw">let </span>data = BufferObjectData { free: free.clone() };
+            <span class="kw">let </span>buffer = <span class="self">self</span>.inner.create_buffer_raw(
+                offset <span class="kw">as </span>i32,
+                width,
+                height,
+                stride,
+                format,
+                Arc::new(data),
             );
-            <span class="ident">buf_slot</span>.<span class="ident">free</span> <span class="op">=</span> <span class="ident">free</span>;
-            <span class="ident">buf_slot</span>.<span class="ident">buffer</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">buffer</span>);
+            buf_slot.free = free;
+            buf_slot.buffer = <span class="prelude-val">Some</span>(buffer);
         }
-        <span class="ident">buf_slot</span>.<span class="ident">free</span>.<span class="ident">store</span>(<span class="bool-val">false</span>, <span class="ident">Ordering::Relaxed</span>);
-        <span class="kw">let</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">buf_slot</span>.<span class="ident">buffer</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
-        <span class="prelude-val">Ok</span>((<span class="ident">offset</span>, <span class="ident">buf</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">mmap</span>()[<span class="ident">offset</span>..][..<span class="ident">size</span>]))
+        buf_slot.free.store(<span class="bool-val">false</span>, Ordering::Relaxed);
+        <span class="kw">let </span>buf = buf_slot.buffer.as_ref().unwrap();
+        <span class="prelude-val">Ok</span>((offset, buf, <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner.mmap()[offset..][..size]))
     }
 
-    <span class="doccomment">/// Calcule the offet and size of a buffer based on its stride.</span>
-    <span class="kw">fn</span> <span class="ident">offset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">offset</span>: <span class="ident">i32</span>, <span class="ident">stride</span>: <span class="ident">i32</span>, <span class="ident">height</span>: <span class="ident">i32</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">usize</span>) {
-        <span class="comment">// bytes per pixel</span>
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">stride</span> <span class="op">*</span> <span class="ident">height</span>;
-        <span class="comment">// 5% padding.</span>
-        <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="ident">offset</span> <span class="op">/</span> <span class="number">20</span>;
-        <span class="ident">offset</span> <span class="op">=</span> (<span class="ident">offset</span> <span class="op">+</span> <span class="number">63</span>) <span class="op">&amp;</span> <span class="op">!</span><span class="number">63</span>;
-        (<span class="ident">offset</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>)
+    <span class="doccomment">/// Calcule the offet and size of a buffer based on its stride.
+    </span><span class="kw">fn </span>offset(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>offset: i32, stride: i32, height: i32) -&gt; (usize, usize) {
+        <span class="comment">// bytes per pixel
+        </span><span class="kw">let </span>size = stride * height;
+        <span class="comment">// 5% padding.
+        </span>offset += offset / <span class="number">20</span>;
+        offset = (offset + <span class="number">63</span>) &amp; !<span class="number">63</span>;
+        (offset <span class="kw">as </span>usize, size <span class="kw">as </span>usize)
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="doccomment">/// Resizes the pool and appends a new buffer.</span>
-    <span class="kw">fn</span> <span class="ident">dyn_resize</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">offset</span>: <span class="ident">usize</span>,
-        <span class="ident">width</span>: <span class="ident">i32</span>,
-        <span class="ident">stride</span>: <span class="ident">i32</span>,
-        <span class="ident">height</span>: <span class="ident">i32</span>,
-        <span class="ident">key</span>: <span class="ident">K</span>,
-        <span class="ident">format</span>: <span class="ident">wl_shm::Format</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">offset</span>, <span class="ident">size</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">offset</span>(<span class="ident">offset</span> <span class="kw">as</span> <span class="ident">i32</span>, <span class="ident">stride</span>, <span class="ident">height</span>);
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> {
-            <span class="self">self</span>.<span class="ident">resize</span>(<span class="ident">offset</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">/</span> <span class="number">20</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+    <span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="doccomment">/// Resizes the pool and appends a new buffer.
+    </span><span class="kw">fn </span>dyn_resize(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        offset: usize,
+        width: i32,
+        stride: i32,
+        height: i32,
+        key: K,
+        format: wl_shm::Format,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
+        <span class="kw">let </span>(offset, size) = <span class="self">self</span>.offset(offset <span class="kw">as </span>i32, stride, height);
+        <span class="kw">if </span><span class="self">self</span>.inner.len() &lt; offset + size {
+            <span class="self">self</span>.resize(offset + size + size / <span class="number">20</span>).ok()<span class="question-mark">?</span>;
         }
-        <span class="kw">let</span> <span class="ident">free</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">true</span>));
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">BufferObjectData</span> { <span class="ident">free</span>: <span class="ident">free</span>.<span class="ident">clone</span>() };
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">create_buffer_raw</span>(
-            <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">i32</span>,
-            <span class="ident">width</span>,
-            <span class="ident">height</span>,
-            <span class="ident">stride</span>,
-            <span class="ident">format</span>,
-            <span class="ident">Arc::new</span>(<span class="ident">data</span>),
+        <span class="kw">let </span>free = Arc::new(AtomicBool::new(<span class="bool-val">true</span>));
+        <span class="kw">let </span>data = BufferObjectData { free: free.clone() };
+        <span class="kw">let </span>buffer = <span class="self">self</span>.inner.create_buffer_raw(
+            offset <span class="kw">as </span>i32,
+            width,
+            height,
+            stride,
+            format,
+            Arc::new(data),
         );
-        <span class="self">self</span>.<span class="ident">buffer_list</span>.<span class="ident">push</span>(<span class="ident">BufferSlot</span> {
-            <span class="ident">offset</span>,
-            <span class="ident">used</span>: <span class="number">0</span>,
-            <span class="ident">free</span>,
-            <span class="ident">buffer</span>: <span class="prelude-val">Some</span>(<span class="ident">buffer</span>),
-            <span class="ident">size</span>,
-            <span class="ident">key</span>,
+        <span class="self">self</span>.buffer_list.push(BufferSlot {
+            offset,
+            used: <span class="number">0</span>,
+            free,
+            buffer: <span class="prelude-val">Some</span>(buffer),
+            size,
+            key,
         });
         <span class="prelude-val">Some</span>(())
     }
 }
 
-<span class="kw">struct</span> <span class="ident">BufferObjectData</span> {
-    <span class="ident">free</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
+<span class="kw">struct </span>BufferObjectData {
+    free: Arc&lt;AtomicBool&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">wayland_client::backend::ObjectData</span> <span class="kw">for</span> <span class="ident">BufferObjectData</span> {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="self">self</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">_backend</span>: <span class="kw-2">&amp;</span><span class="ident">wayland_backend::client::Backend</span>,
-        <span class="ident">msg</span>: <span class="ident">wayland_backend::protocol::Message</span><span class="op">&lt;</span>
-            <span class="ident">wayland_backend::client::ObjectId</span>,
-            <span class="ident">wayland_backend::io_lifetimes::OwnedFd</span>,
-        <span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">wayland_backend::client::ObjectData</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">debug_assert!</span>(<span class="ident">wayland_client::backend::protocol::same_interface</span>(
-            <span class="ident">msg</span>.<span class="ident">sender_id</span>.<span class="ident">interface</span>(),
-            <span class="ident">wl_buffer::WlBuffer::interface</span>()
+<span class="kw">impl </span>wayland_client::backend::ObjectData <span class="kw">for </span>BufferObjectData {
+    <span class="kw">fn </span>event(
+        <span class="self">self</span>: Arc&lt;<span class="self">Self</span>&gt;,
+        _backend: <span class="kw-2">&amp;</span>wayland_backend::client::Backend,
+        msg: wayland_backend::protocol::Message&lt;
+            wayland_backend::client::ObjectId,
+            wayland_backend::io_lifetimes::OwnedFd,
+        &gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;<span class="kw">dyn </span>wayland_backend::client::ObjectData&gt;&gt; {
+        <span class="macro">debug_assert!</span>(wayland_client::backend::protocol::same_interface(
+            msg.sender_id.interface(),
+            wl_buffer::WlBuffer::interface()
         ));
-        <span class="macro">debug_assert!</span>(<span class="ident">msg</span>.<span class="ident">opcode</span> <span class="op">==</span> <span class="number">0</span>);
-        <span class="comment">// wl_buffer only has a single event: wl_buffer.release</span>
-        <span class="self">self</span>.<span class="ident">free</span>.<span class="ident">store</span>(<span class="bool-val">true</span>, <span class="ident">Ordering::Relaxed</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="macro">debug_assert!</span>(msg.opcode == <span class="number">0</span>);
+        <span class="comment">// wl_buffer only has a single event: wl_buffer.release
+        </span><span class="self">self</span>.free.store(<span class="bool-val">true</span>, Ordering::Relaxed);
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">destroyed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">wayland_backend::client::ObjectId</span>) {}
+    <span class="kw">fn </span>destroyed(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: wayland_backend::client::ObjectId) {}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

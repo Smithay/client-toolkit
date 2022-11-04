@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -424,431 +424,431 @@
 <span id="424">424</span>
 <span id="425">425</span>
 <span id="426">426</span>
-</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;xkbcommon&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">keyboard</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">pointer</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">touch</span>;
+</pre><pre class="rust"><code><span class="attribute">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
+</span><span class="kw">pub mod </span>keyboard;
+<span class="kw">pub mod </span>pointer;
+<span class="kw">pub mod </span>touch;
 
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fmt</span>::{<span class="self">self</span>, <span class="ident">Display</span>, <span class="ident">Formatter</span>},
-    <span class="ident">sync</span>::{
-        <span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">Ordering</span>},
-        <span class="ident">Arc</span>, <span class="ident">Mutex</span>,
+<span class="kw">use </span>std::{
+    fmt::{<span class="self">self</span>, Display, Formatter},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
     },
 };
 
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{<span class="ident">wl_pointer</span>, <span class="ident">wl_seat</span>, <span class="ident">wl_touch</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
+<span class="kw">use </span>wayland_client::{
+    protocol::{wl_pointer, wl_seat, wl_touch},
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::registry</span>::{<span class="ident">ProvidesRegistryState</span>, <span class="ident">RegistryHandler</span>};
+<span class="kw">use </span><span class="kw">crate</span>::registry::{ProvidesRegistryState, RegistryHandler};
 
-<span class="kw">use</span> <span class="self">self</span>::{
-    <span class="ident">pointer</span>::{<span class="ident">PointerData</span>, <span class="ident">PointerDataExt</span>, <span class="ident">PointerHandler</span>},
-    <span class="ident">touch</span>::{<span class="ident">TouchData</span>, <span class="ident">TouchDataExt</span>, <span class="ident">TouchHandler</span>},
+<span class="kw">use </span><span class="self">self</span>::{
+    pointer::{PointerData, PointerDataExt, PointerHandler},
+    touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Capability</span> {
-    <span class="ident">Keyboard</span>,
+<span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>Capability {
+    Keyboard,
 
-    <span class="ident">Pointer</span>,
+    Pointer,
 
-    <span class="ident">Touch</span>,
+    Touch,
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Capability</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Capability::Keyboard</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;keyboard&quot;</span>),
-            <span class="ident">Capability::Pointer</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;pointer&quot;</span>),
-            <span class="ident">Capability::Touch</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;touch&quot;</span>),
+<span class="kw">impl </span>Display <span class="kw">for </span>Capability {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            Capability::Keyboard =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;keyboard&quot;</span>),
+            Capability::Pointer =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;pointer&quot;</span>),
+            Capability::Touch =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;touch&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SeatError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the capability \&quot;{0}\&quot; is not supported&quot;</span>)]</span>
-    <span class="doccomment">/// The capability is not supported.</span>
-    <span class="ident">UnsupportedCapability</span>(<span class="ident">Capability</span>),
+<span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub enum </span>SeatError {
+    <span class="attribute">#[error(<span class="string">&quot;the capability \&quot;{0}\&quot; is not supported&quot;</span>)]
+    </span><span class="doccomment">/// The capability is not supported.
+    </span>UnsupportedCapability(Capability),
 
-    <span class="doccomment">/// The seat is dead.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the seat is dead&quot;</span>)]</span>
-    <span class="ident">DeadObject</span>,
+    <span class="doccomment">/// The seat is dead.
+    </span><span class="attribute">#[error(<span class="string">&quot;the seat is dead&quot;</span>)]
+    </span>DeadObject,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SeatState</span> {
-    <span class="comment">// (name, seat)</span>
-    <span class="ident">seats</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SeatInner</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>SeatState {
+    <span class="comment">// (name, seat)
+    </span>seats: Vec&lt;SeatInner&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">SeatState</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">SeatState</span> {
-        <span class="ident">SeatState</span> { <span class="ident">seats</span>: <span class="macro">vec!</span>[] }
+<span class="kw">impl </span>SeatState {
+    <span class="kw">pub fn </span>new() -&gt; SeatState {
+        SeatState { seats: <span class="macro">vec!</span>[] }
     }
 
-    <span class="doccomment">/// Returns an iterator over all the seats.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">seats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">wl_seat::WlSeat</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">seat</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">into_iter</span>()
+    <span class="doccomment">/// Returns an iterator over all the seats.
+    </span><span class="kw">pub fn </span>seats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = wl_seat::WlSeat&gt; {
+        <span class="self">self</span>.seats.iter().map(|inner| inner.seat.clone()).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().into_iter()
     }
 
-    <span class="doccomment">/// Returns information about a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`None`] if the seat is dead.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SeatInfo</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">seat</span> <span class="op">==</span> <span class="ident">seat</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">name</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
+    <span class="doccomment">/// Returns information about a seat.
+    ///
+    /// This will return [`None`] if the seat is dead.
+    </span><span class="kw">pub fn </span>info(<span class="kw-2">&amp;</span><span class="self">self</span>, seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat) -&gt; <span class="prelude-ty">Option</span>&lt;SeatInfo&gt; {
+        <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).map(|inner| {
+            <span class="kw">let </span>name = inner.data.name.lock().unwrap().clone();
 
-            <span class="ident">SeatInfo</span> {
-                <span class="ident">name</span>,
-                <span class="ident">has_keyboard</span>: <span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">has_keyboard</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>),
-                <span class="ident">has_pointer</span>: <span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">has_pointer</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>),
-                <span class="ident">has_touch</span>: <span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">has_touch</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>),
+            SeatInfo {
+                name,
+                has_keyboard: inner.data.has_keyboard.load(Ordering::SeqCst),
+                has_pointer: inner.data.has_pointer.load(Ordering::SeqCst),
+                has_touch: inner.data.has_touch.load(Ordering::SeqCst),
             }
         })
     }
 
-    <span class="doccomment">/// Creates a pointer from a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_pointer</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_pointer::WlPointer</span>, <span class="ident">SeatError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_pointer::WlPointer</span>, <span class="ident">PointerData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">PointerHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Creates a pointer from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    </span><span class="kw">pub fn </span>get_pointer&lt;D&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_pointer::WlPointer, SeatError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.<span class="ident">get_pointer_with_data</span>(<span class="ident">qh</span>, <span class="ident">seat</span>, <span class="ident">PointerData::default</span>())
+        <span class="self">self</span>.get_pointer_with_data(qh, seat, PointerData::default())
     }
 
-    <span class="doccomment">/// Creates a pointer from a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_pointer_with_data</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">pointer_data</span>: <span class="ident">U</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_pointer::WlPointer</span>, <span class="ident">SeatError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_pointer::WlPointer</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">PointerHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">U</span>: <span class="ident">PointerDataExt</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Creates a pointer from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    </span><span class="kw">pub fn </span>get_pointer_with_data&lt;D, U&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        pointer_data: U,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_pointer::WlPointer, SeatError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_pointer::WlPointer, U&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
+        U: PointerDataExt + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">seat</span> <span class="op">==</span> <span class="ident">seat</span>).<span class="ident">ok_or</span>(<span class="ident">SeatError::DeadObject</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>inner =
+            <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).ok_or(SeatError::DeadObject)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">has_pointer</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SeatError::UnsupportedCapability</span>(<span class="ident">Capability::Pointer</span>));
+        <span class="kw">if </span>!inner.data.has_pointer.load(Ordering::SeqCst) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">seat</span>.<span class="ident">get_pointer</span>(<span class="ident">qh</span>, <span class="ident">pointer_data</span>))
+        <span class="prelude-val">Ok</span>(seat.get_pointer(qh, pointer_data))
     }
 
-    <span class="doccomment">/// Creates a touch handle from a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_touch</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_touch::WlTouch</span>, <span class="ident">SeatError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_touch::WlTouch</span>, <span class="ident">TouchData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">TouchHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Creates a touch handle from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.
+    </span><span class="kw">pub fn </span>get_touch&lt;D&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_touch::WlTouch, SeatError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_touch::WlTouch, TouchData&gt; + TouchHandler + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.<span class="ident">get_touch_with_data</span>(<span class="ident">qh</span>, <span class="ident">seat</span>, <span class="ident">TouchData::default</span>())
+        <span class="self">self</span>.get_touch_with_data(qh, seat, TouchData::default())
     }
 
-    <span class="doccomment">/// Creates a touch handle from a seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ## Errors</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_touch_with_data</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">udata</span>: <span class="ident">U</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">wl_touch::WlTouch</span>, <span class="ident">SeatError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_touch::WlTouch</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">TouchHandler</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">U</span>: <span class="ident">TouchDataExt</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Creates a touch handle from a seat.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support touch.
+    </span><span class="kw">pub fn </span>get_touch_with_data&lt;D, U&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        udata: U,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_touch::WlTouch, SeatError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_touch::WlTouch, U&gt; + TouchHandler + <span class="lifetime">&#39;static</span>,
+        U: TouchDataExt + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">inner</span>.<span class="ident">seat</span> <span class="op">==</span> <span class="ident">seat</span>).<span class="ident">ok_or</span>(<span class="ident">SeatError::DeadObject</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>inner =
+            <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).ok_or(SeatError::DeadObject)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">has_touch</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SeatError::UnsupportedCapability</span>(<span class="ident">Capability::Touch</span>));
+        <span class="kw">if </span>!inner.data.has_touch.load(Ordering::SeqCst) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">seat</span>.<span class="ident">get_touch</span>(<span class="ident">qh</span>, <span class="ident">udata</span>))
+        <span class="prelude-val">Ok</span>(seat.get_touch(qh, udata))
     }
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SeatHandler</span>: <span class="ident">Sized</span> {
-    <span class="kw">fn</span> <span class="ident">seat_state</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">SeatState</span>;
+<span class="kw">pub trait </span>SeatHandler: Sized {
+    <span class="kw">fn </span>seat_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>SeatState;
 
-    <span class="doccomment">/// A new seat has been created.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function only indicates that a seat has been created, you will need to wait for [`new_capability`](SeatHandler::new_capability)</span>
-    <span class="doccomment">/// to be called before creating any keyboards,</span>
-    <span class="kw">fn</span> <span class="ident">new_seat</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">seat</span>: <span class="ident">wl_seat::WlSeat</span>);
+    <span class="doccomment">/// A new seat has been created.
+    ///
+    /// This function only indicates that a seat has been created, you will need to wait for [`new_capability`](SeatHandler::new_capability)
+    /// to be called before creating any keyboards,
+    </span><span class="kw">fn </span>new_seat(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, seat: wl_seat::WlSeat);
 
-    <span class="doccomment">/// A new capability is available on the seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This allows you to create the corresponding object related to the capability.</span>
-    <span class="kw">fn</span> <span class="ident">new_capability</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">capability</span>: <span class="ident">Capability</span>,
+    <span class="doccomment">/// A new capability is available on the seat.
+    ///
+    /// This allows you to create the corresponding object related to the capability.
+    </span><span class="kw">fn </span>new_capability(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        seat: wl_seat::WlSeat,
+        capability: Capability,
     );
 
-    <span class="doccomment">/// A capability has been removed from the seat.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If an object has been created from the capability, it should be destroyed.</span>
-    <span class="kw">fn</span> <span class="ident">remove_capability</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">seat</span>: <span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">capability</span>: <span class="ident">Capability</span>,
+    <span class="doccomment">/// A capability has been removed from the seat.
+    ///
+    /// If an object has been created from the capability, it should be destroyed.
+    </span><span class="kw">fn </span>remove_capability(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        seat: wl_seat::WlSeat,
+        capability: Capability,
     );
 
-    <span class="doccomment">/// A seat has been removed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The seat is destroyed and all capability objects created from it are invalid.</span>
-    <span class="kw">fn</span> <span class="ident">remove_seat</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">seat</span>: <span class="ident">wl_seat::WlSeat</span>);
+    <span class="doccomment">/// A seat has been removed.
+    ///
+    /// The seat is destroyed and all capability objects created from it are invalid.
+    </span><span class="kw">fn </span>remove_seat(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, seat: wl_seat::WlSeat);
 }
 
-<span class="doccomment">/// Description of a seat.</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SeatInfo</span> {
-    <span class="doccomment">/// The name of the seat.</span>
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Description of a seat.
+</span><span class="attribute">#[non_exhaustive]
+#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>SeatInfo {
+    <span class="doccomment">/// The name of the seat.
+    </span><span class="kw">pub </span>name: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// Does the seat support a keyboard.</span>
-    <span class="kw">pub</span> <span class="ident">has_keyboard</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Does the seat support a keyboard.
+    </span><span class="kw">pub </span>has_keyboard: bool,
 
-    <span class="doccomment">/// Does the seat support a pointer.</span>
-    <span class="kw">pub</span> <span class="ident">has_pointer</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Does the seat support a pointer.
+    </span><span class="kw">pub </span>has_pointer: bool,
 
-    <span class="doccomment">/// Does the seat support touch input.</span>
-    <span class="kw">pub</span> <span class="ident">has_touch</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Does the seat support touch input.
+    </span><span class="kw">pub </span>has_touch: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">SeatInfo</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">name</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;name: \&quot;{}\&quot; &quot;</span>, <span class="ident">name</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>Display <span class="kw">for </span>SeatInfo {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>name) = <span class="self">self</span>.name {
+            <span class="macro">write!</span>(f, <span class="string">&quot;name: \&quot;{}\&quot; &quot;</span>, name)<span class="question-mark">?</span>;
         }
 
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;capabilities: (&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">&quot;capabilities: (&quot;</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">has_keyboard</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">has_pointer</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">has_touch</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;none&quot;</span>)<span class="question-mark">?</span>;
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">has_keyboard</span> {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;keyboard&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">if </span>!<span class="self">self</span>.has_keyboard &amp;&amp; !<span class="self">self</span>.has_pointer &amp;&amp; !<span class="self">self</span>.has_touch {
+            <span class="macro">write!</span>(f, <span class="string">&quot;none&quot;</span>)<span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            <span class="kw">if </span><span class="self">self</span>.has_keyboard {
+                <span class="macro">write!</span>(f, <span class="string">&quot;keyboard&quot;</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">has_pointer</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">has_touch</span> {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">if </span><span class="self">self</span>.has_pointer || <span class="self">self</span>.has_touch {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?</span>;
                 }
             }
 
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">has_pointer</span> {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;pointer&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span><span class="self">self</span>.has_pointer {
+                <span class="macro">write!</span>(f, <span class="string">&quot;pointer&quot;</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">has_touch</span> {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">if </span><span class="self">self</span>.has_touch {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?</span>;
                 }
             }
 
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">has_touch</span> {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;touch&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span><span class="self">self</span>.has_touch {
+                <span class="macro">write!</span>(f, <span class="string">&quot;touch&quot;</span>)<span class="question-mark">?</span>;
             }
         }
 
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;)&quot;</span>)
+        <span class="macro">write!</span>(f, <span class="string">&quot;)&quot;</span>)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SeatData</span> {
-    <span class="ident">has_keyboard</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
-    <span class="ident">has_pointer</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
-    <span class="ident">has_touch</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
-    <span class="ident">name</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">id</span>: <span class="ident">u32</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>SeatData {
+    has_keyboard: Arc&lt;AtomicBool&gt;,
+    has_pointer: Arc&lt;AtomicBool&gt;,
+    has_touch: Arc&lt;AtomicBool&gt;,
+    name: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;&gt;,
+    id: u32,
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_seat</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_seat {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_seat::WlSeat</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatData</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_seat::WlSeat</span>: <span class="macro-nonterminal">$crate::seat::SeatData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">SeatInner</span> {
-    <span class="ident">seat</span>: <span class="ident">wl_seat::WlSeat</span>,
-    <span class="ident">data</span>: <span class="ident">SeatData</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>SeatInner {
+    seat: wl_seat::WlSeat,
+    data: SeatData,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">SeatData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SeatState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">SeatData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SeatHandler</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_seat::WlSeat, SeatData, D&gt; <span class="kw">for </span>SeatState
+<span class="kw">where
+    </span>D: Dispatch&lt;wl_seat::WlSeat, SeatData&gt; + SeatHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">seat</span>: <span class="kw-2">&amp;</span><span class="ident">wl_seat::WlSeat</span>,
-        <span class="ident">event</span>: <span class="ident">wl_seat::Event</span>,
-        <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">SeatData</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        state: <span class="kw-2">&amp;mut </span>D,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        event: wl_seat::Event,
+        data: <span class="kw-2">&amp;</span>SeatData,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_seat::Event::Capabilities</span> { <span class="ident">capabilities</span> } =&gt; {
-                <span class="kw">let</span> <span class="ident">capabilities</span> <span class="op">=</span> <span class="ident">wl_seat::Capability::from_bits_truncate</span>(<span class="ident">capabilities</span>.<span class="ident">into</span>());
+        <span class="kw">match </span>event {
+            wl_seat::Event::Capabilities { capabilities } =&gt; {
+                <span class="kw">let </span>capabilities = wl_seat::Capability::from_bits_truncate(capabilities.into());
 
-                <span class="kw">let</span> <span class="ident">keyboard</span> <span class="op">=</span> <span class="ident">capabilities</span>.<span class="ident">contains</span>(<span class="ident">wl_seat::Capability::Keyboard</span>);
-                <span class="kw">let</span> <span class="ident">has_keyboard</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">has_keyboard</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>);
-                <span class="kw">let</span> <span class="ident">pointer</span> <span class="op">=</span> <span class="ident">capabilities</span>.<span class="ident">contains</span>(<span class="ident">wl_seat::Capability::Pointer</span>);
-                <span class="kw">let</span> <span class="ident">has_pointer</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">has_pointer</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>);
-                <span class="kw">let</span> <span class="ident">touch</span> <span class="op">=</span> <span class="ident">capabilities</span>.<span class="ident">contains</span>(<span class="ident">wl_seat::Capability::Touch</span>);
-                <span class="kw">let</span> <span class="ident">has_touch</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">has_touch</span>.<span class="ident">load</span>(<span class="ident">Ordering::SeqCst</span>);
+                <span class="kw">let </span>keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
+                <span class="kw">let </span>has_keyboard = data.has_keyboard.load(Ordering::SeqCst);
+                <span class="kw">let </span>pointer = capabilities.contains(wl_seat::Capability::Pointer);
+                <span class="kw">let </span>has_pointer = data.has_pointer.load(Ordering::SeqCst);
+                <span class="kw">let </span>touch = capabilities.contains(wl_seat::Capability::Touch);
+                <span class="kw">let </span>has_touch = data.has_touch.load(Ordering::SeqCst);
 
-                <span class="comment">// Update capabilities as necessary</span>
-                <span class="kw">if</span> <span class="ident">keyboard</span> <span class="op">!</span><span class="op">=</span> <span class="ident">has_keyboard</span> {
-                    <span class="ident">data</span>.<span class="ident">has_keyboard</span>.<span class="ident">store</span>(<span class="ident">keyboard</span>, <span class="ident">Ordering::SeqCst</span>);
+                <span class="comment">// Update capabilities as necessary
+                </span><span class="kw">if </span>keyboard != has_keyboard {
+                    data.has_keyboard.store(keyboard, Ordering::SeqCst);
 
-                    <span class="kw">match</span> <span class="ident">keyboard</span> {
-                        <span class="bool-val">true</span> =&gt; <span class="ident">state</span>.<span class="ident">new_capability</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">Capability::Keyboard</span>),
-                        <span class="bool-val">false</span> =&gt; {
-                            <span class="ident">state</span>.<span class="ident">remove_capability</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">Capability::Keyboard</span>)
+                    <span class="kw">match </span>keyboard {
+                        <span class="bool-val">true </span>=&gt; state.new_capability(conn, qh, seat.clone(), Capability::Keyboard),
+                        <span class="bool-val">false </span>=&gt; {
+                            state.remove_capability(conn, qh, seat.clone(), Capability::Keyboard)
                         }
                     }
                 }
 
-                <span class="kw">if</span> <span class="ident">pointer</span> <span class="op">!</span><span class="op">=</span> <span class="ident">has_pointer</span> {
-                    <span class="ident">data</span>.<span class="ident">has_pointer</span>.<span class="ident">store</span>(<span class="ident">pointer</span>, <span class="ident">Ordering::SeqCst</span>);
+                <span class="kw">if </span>pointer != has_pointer {
+                    data.has_pointer.store(pointer, Ordering::SeqCst);
 
-                    <span class="kw">match</span> <span class="ident">pointer</span> {
-                        <span class="bool-val">true</span> =&gt; <span class="ident">state</span>.<span class="ident">new_capability</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">Capability::Pointer</span>),
-                        <span class="bool-val">false</span> =&gt; {
-                            <span class="ident">state</span>.<span class="ident">remove_capability</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">Capability::Pointer</span>)
+                    <span class="kw">match </span>pointer {
+                        <span class="bool-val">true </span>=&gt; state.new_capability(conn, qh, seat.clone(), Capability::Pointer),
+                        <span class="bool-val">false </span>=&gt; {
+                            state.remove_capability(conn, qh, seat.clone(), Capability::Pointer)
                         }
                     }
                 }
 
-                <span class="kw">if</span> <span class="ident">touch</span> <span class="op">!</span><span class="op">=</span> <span class="ident">has_touch</span> {
-                    <span class="ident">data</span>.<span class="ident">has_touch</span>.<span class="ident">store</span>(<span class="ident">touch</span>, <span class="ident">Ordering::SeqCst</span>);
+                <span class="kw">if </span>touch != has_touch {
+                    data.has_touch.store(touch, Ordering::SeqCst);
 
-                    <span class="kw">match</span> <span class="ident">touch</span> {
-                        <span class="bool-val">true</span> =&gt; <span class="ident">state</span>.<span class="ident">new_capability</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">Capability::Touch</span>),
-                        <span class="bool-val">false</span> =&gt; <span class="ident">state</span>.<span class="ident">remove_capability</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">Capability::Touch</span>),
+                    <span class="kw">match </span>touch {
+                        <span class="bool-val">true </span>=&gt; state.new_capability(conn, qh, seat.clone(), Capability::Touch),
+                        <span class="bool-val">false </span>=&gt; state.remove_capability(conn, qh, seat.clone(), Capability::Touch),
                     }
                 }
             }
 
-            <span class="ident">wl_seat::Event::Name</span> { <span class="ident">name</span> } =&gt; {
-                <span class="kw-2">*</span><span class="ident">data</span>.<span class="ident">name</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>);
+            wl_seat::Event::Name { name } =&gt; {
+                <span class="kw-2">*</span>data.name.lock().unwrap() = <span class="prelude-val">Some</span>(name);
             }
 
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SeatState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_seat::WlSeat</span>, <span class="ident">SeatData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SeatHandler</span> <span class="op">+</span> <span class="ident">ProvidesRegistryState</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl</span>&lt;D&gt; RegistryHandler&lt;D&gt; <span class="kw">for </span>SeatState
+<span class="kw">where
+    </span>D: Dispatch&lt;wl_seat::WlSeat, SeatData&gt; + SeatHandler + ProvidesRegistryState + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">fn</span> <span class="ident">ready</span>(<span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">seats</span> <span class="op">=</span> <span class="ident">state</span>
-            .<span class="ident">registry</span>()
-            .<span class="ident">bind_all</span>(<span class="ident">qh</span>, <span class="number">1</span>..<span class="op">=</span><span class="number">7</span>, <span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">SeatData</span> {
-                <span class="ident">has_keyboard</span>: <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>)),
-                <span class="ident">has_pointer</span>: <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>)),
-                <span class="ident">has_touch</span>: <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>)),
-                <span class="ident">name</span>: <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>)),
-                <span class="ident">id</span>,
+    <span class="kw">fn </span>ready(state: <span class="kw-2">&amp;mut </span>D, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
+        <span class="kw">let </span>seats = state
+            .registry()
+            .bind_all(qh, <span class="number">1</span>..=<span class="number">7</span>, |id| SeatData {
+                has_keyboard: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                has_pointer: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                has_touch: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                name: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
+                id,
             })
-            .<span class="ident">expect</span>(<span class="string">&quot;failed to bind global&quot;</span>);
+            .expect(<span class="string">&quot;failed to bind global&quot;</span>);
 
-        <span class="kw">for</span> <span class="ident">seat</span> <span class="kw">in</span> <span class="ident">seats</span> {
-            <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
+        <span class="kw">for </span>seat <span class="kw">in </span>seats {
+            <span class="kw">let </span>data = seat.data::&lt;SeatData&gt;().unwrap().clone();
 
-            <span class="ident">state</span>.<span class="ident">seat_state</span>().<span class="ident">seats</span>.<span class="ident">push</span>(<span class="ident">SeatInner</span> { <span class="ident">seat</span>: <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">data</span> });
-            <span class="ident">state</span>.<span class="ident">new_seat</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>);
+            state.seat_state().seats.push(SeatInner { seat: seat.clone(), data });
+            state.new_seat(conn, qh, seat);
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">new_global</span>(
-        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="kw">_</span>: <span class="ident">u32</span>,
+    <span class="kw">fn </span>new_global(
+        state: <span class="kw-2">&amp;mut </span>D,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        name: u32,
+        interface: <span class="kw-2">&amp;</span>str,
+        <span class="kw">_</span>: u32,
     ) {
-        <span class="kw">if</span> <span class="ident">interface</span> <span class="op">==</span> <span class="string">&quot;wl_seat&quot;</span> {
-            <span class="kw">let</span> <span class="ident">seat</span> <span class="op">=</span> <span class="ident">state</span>
-                .<span class="ident">registry</span>()
-                .<span class="ident">bind_specific</span>(
-                    <span class="ident">qh</span>,
-                    <span class="ident">name</span>,
-                    <span class="number">1</span>..<span class="op">=</span><span class="number">7</span>,
-                    <span class="ident">SeatData</span> {
-                        <span class="ident">has_keyboard</span>: <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>)),
-                        <span class="ident">has_pointer</span>: <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>)),
-                        <span class="ident">has_touch</span>: <span class="ident">Arc::new</span>(<span class="ident">AtomicBool::new</span>(<span class="bool-val">false</span>)),
-                        <span class="ident">name</span>: <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>)),
-                        <span class="ident">id</span>: <span class="ident">name</span>,
+        <span class="kw">if </span>interface == <span class="string">&quot;wl_seat&quot; </span>{
+            <span class="kw">let </span>seat = state
+                .registry()
+                .bind_specific(
+                    qh,
+                    name,
+                    <span class="number">1</span>..=<span class="number">7</span>,
+                    SeatData {
+                        has_keyboard: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                        has_pointer: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                        has_touch: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                        name: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
+                        id: name,
                     },
                 )
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to bind global&quot;</span>);
+                .expect(<span class="string">&quot;failed to bind global&quot;</span>);
 
-            <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">data</span>::<span class="op">&lt;</span><span class="ident">SeatData</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
+            <span class="kw">let </span>data = seat.data::&lt;SeatData&gt;().unwrap().clone();
 
-            <span class="ident">state</span>.<span class="ident">seat_state</span>().<span class="ident">seats</span>.<span class="ident">push</span>(<span class="ident">SeatInner</span> { <span class="ident">seat</span>: <span class="ident">seat</span>.<span class="ident">clone</span>(), <span class="ident">data</span> });
-            <span class="ident">state</span>.<span class="ident">new_seat</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>);
+            state.seat_state().seats.push(SeatInner { seat: seat.clone(), data });
+            state.new_seat(conn, qh, seat);
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">remove_global</span>(
-        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="kw">fn </span>remove_global(
+        state: <span class="kw-2">&amp;mut </span>D,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        name: u32,
+        interface: <span class="kw-2">&amp;</span>str,
     ) {
-        <span class="kw">if</span> <span class="ident">interface</span> <span class="op">==</span> <span class="string">&quot;wl_seat&quot;</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">seat</span>) <span class="op">=</span> <span class="ident">state</span>.<span class="ident">seat_state</span>().<span class="ident">seats</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">id</span> <span class="op">==</span> <span class="ident">name</span>)
+        <span class="kw">if </span>interface == <span class="string">&quot;wl_seat&quot; </span>{
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(seat) = state.seat_state().seats.iter().find(|inner| inner.data.id == name)
             {
-                <span class="kw">let</span> <span class="ident">seat</span> <span class="op">=</span> <span class="ident">seat</span>.<span class="ident">seat</span>.<span class="ident">clone</span>();
+                <span class="kw">let </span>seat = seat.seat.clone();
 
-                <span class="ident">state</span>.<span class="ident">remove_seat</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">seat</span>);
-                <span class="ident">state</span>.<span class="ident">seat_state</span>().<span class="ident">seats</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">id</span> <span class="op">!</span><span class="op">=</span> <span class="ident">name</span>);
+                state.remove_seat(conn, qh, seat);
+                state.seat_state().seats.retain(|inner| inner.data.id != name);
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

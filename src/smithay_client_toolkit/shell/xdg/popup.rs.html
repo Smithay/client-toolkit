@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/xdg/popup.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>popup.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/shell/xdg/popup.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>popup.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -286,293 +286,293 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">compositor</span>::{<span class="ident">Surface</span>, <span class="ident">SurfaceData</span>},
-    <span class="ident">error::GlobalError</span>,
-    <span class="ident">globals::ProvidesBoundGlobal</span>,
-    <span class="ident">shell::xdg::XdgShellSurface</span>,
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    compositor::{Surface, SurfaceData},
+    error::GlobalError,
+    globals::ProvidesBoundGlobal,
+    shell::xdg::XdgShellSurface,
 };
-<span class="kw">use</span> <span class="ident">std::sync</span>::{
-    <span class="ident">atomic</span>::{<span class="ident">AtomicI32</span>, <span class="ident">AtomicU32</span>, <span class="ident">Ordering::Relaxed</span>},
-    <span class="ident">Arc</span>, <span class="ident">Weak</span>,
+<span class="kw">use </span>std::sync::{
+    atomic::{AtomicI32, AtomicU32, Ordering::Relaxed},
+    Arc, Weak,
 };
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{<span class="ident">wl_compositor::WlCompositor</span>, <span class="ident">wl_surface</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">QueueHandle</span>,
+<span class="kw">use </span>wayland_client::{
+    protocol::{wl_compositor::WlCompositor, wl_surface},
+    Connection, Dispatch, QueueHandle,
 };
-<span class="kw">use</span> <span class="ident">wayland_protocols::xdg::shell::client</span>::{<span class="ident">xdg_popup</span>, <span class="ident">xdg_positioner</span>, <span class="ident">xdg_surface</span>, <span class="ident">xdg_wm_base</span>};
+<span class="kw">use </span>wayland_protocols::xdg::shell::client::{xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Popup</span> {
-    <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">PopupInner</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>Popup {
+    inner: Arc&lt;PopupInner&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">Popup</span> {}
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Popup</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Popup</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">Arc::ptr_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>, <span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">inner</span>)
+<span class="kw">impl </span>Eq <span class="kw">for </span>Popup {}
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>Popup {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Popup) -&gt; bool {
+        Arc::ptr_eq(<span class="kw-2">&amp;</span><span class="self">self</span>.inner, <span class="kw-2">&amp;</span>other.inner)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PopupData</span> {
-    <span class="ident">inner</span>: <span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">PopupInner</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>PopupData {
+    inner: Weak&lt;PopupInner&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">PopupInner</span> {
-    <span class="ident">surface</span>: <span class="ident">XdgShellSurface</span>,
-    <span class="ident">xdg_popup</span>: <span class="ident">xdg_popup::XdgPopup</span>,
-    <span class="ident">pending_position</span>: (<span class="ident">AtomicI32</span>, <span class="ident">AtomicI32</span>),
-    <span class="ident">pending_dimensions</span>: (<span class="ident">AtomicI32</span>, <span class="ident">AtomicI32</span>),
-    <span class="ident">pending_token</span>: <span class="ident">AtomicU32</span>,
-    <span class="ident">configure_state</span>: <span class="ident">AtomicU32</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>PopupInner {
+    surface: XdgShellSurface,
+    xdg_popup: xdg_popup::XdgPopup,
+    pending_position: (AtomicI32, AtomicI32),
+    pending_dimensions: (AtomicI32, AtomicI32),
+    pending_token: AtomicU32,
+    configure_state: AtomicU32,
 }
 
-<span class="kw">impl</span> <span class="ident">Popup</span> {
-    <span class="doccomment">/// Create a new popup.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This creates the popup and sends the initial commit.  You must wait for</span>
-    <span class="doccomment">/// [`PopupHandler::configure`] to commit contents to the surface.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
-        <span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span>,
-        <span class="ident">position</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_positioner::XdgPositioner</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">compositor</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">WlCompositor</span>, <span class="number">5</span><span class="op">&gt;</span>,
-        <span class="ident">wm_base</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">xdg_wm_base::XdgWmBase</span>, <span class="number">4</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Popup</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_surface::WlSurface</span>, <span class="ident">SurfaceData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">PopupData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_popup::XdgPopup</span>, <span class="ident">PopupData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">PopupHandler</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl </span>Popup {
+    <span class="doccomment">/// Create a new popup.
+    ///
+    /// This creates the popup and sends the initial commit.  You must wait for
+    /// [`PopupHandler::configure`] to commit contents to the surface.
+    </span><span class="kw">pub fn </span>new&lt;D&gt;(
+        parent: <span class="kw-2">&amp;</span>xdg_surface::XdgSurface,
+        position: <span class="kw-2">&amp;</span>xdg_positioner::XdgPositioner,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        compositor: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;WlCompositor, <span class="number">5</span>&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Popup, GlobalError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_surface::WlSurface, SurfaceData&gt;
+            + Dispatch&lt;xdg_surface::XdgSurface, PopupData&gt;
+            + Dispatch&lt;xdg_popup::XdgPopup, PopupData&gt;
+            + PopupHandler
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">Surface::new</span>(<span class="ident">compositor</span>, <span class="ident">qh</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">popup</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::from_surface</span>(<span class="prelude-val">Some</span>(<span class="ident">parent</span>), <span class="ident">position</span>, <span class="ident">qh</span>, <span class="ident">surface</span>, <span class="ident">wm_base</span>)<span class="question-mark">?</span>;
-        <span class="ident">popup</span>.<span class="ident">wl_surface</span>().<span class="ident">commit</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">popup</span>)
+        <span class="kw">let </span>surface = Surface::new(compositor, qh)<span class="question-mark">?</span>;
+        <span class="kw">let </span>popup = <span class="self">Self</span>::from_surface(<span class="prelude-val">Some</span>(parent), position, qh, surface, wm_base)<span class="question-mark">?</span>;
+        popup.wl_surface().commit();
+        <span class="prelude-val">Ok</span>(popup)
     }
 
-    <span class="doccomment">/// Create a new popup from an existing surface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If you do not specify a parent surface, you must configure the parent using an alternate</span>
-    <span class="doccomment">/// function such as [`LayerSurface::get_popup`] prior to committing the surface, or you will</span>
-    <span class="doccomment">/// get an `invalid_popup_parent` protocol error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// [`LayerSurface::get_popup`]: wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1::get_popup</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_surface</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(
-        <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span><span class="op">&gt;</span>,
-        <span class="ident">position</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_positioner::XdgPositioner</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">surface</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Surface</span><span class="op">&gt;</span>,
-        <span class="ident">wm_base</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">xdg_wm_base::XdgWmBase</span>, <span class="number">4</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Popup</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">PopupData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_popup::XdgPopup</span>, <span class="ident">PopupData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Create a new popup from an existing surface.
+    ///
+    /// If you do not specify a parent surface, you must configure the parent using an alternate
+    /// function such as [`LayerSurface::get_popup`] prior to committing the surface, or you will
+    /// get an `invalid_popup_parent` protocol error.
+    ///
+    /// [`LayerSurface::get_popup`]: wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1::get_popup
+    </span><span class="kw">pub fn </span>from_surface&lt;D&gt;(
+        parent: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>xdg_surface::XdgSurface&gt;,
+        position: <span class="kw-2">&amp;</span>xdg_positioner::XdgPositioner,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        surface: <span class="kw">impl </span>Into&lt;Surface&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Popup, GlobalError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;xdg_surface::XdgSurface, PopupData&gt;
+            + Dispatch&lt;xdg_popup::XdgPopup, PopupData&gt;
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">surface</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">wm_base</span> <span class="op">=</span> <span class="ident">wm_base</span>.<span class="ident">bound_global</span>()<span class="question-mark">?</span>;
-        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the</span>
-        <span class="comment">// new objects being processed and the Weak in the PopupData becoming usable.</span>
-        <span class="kw">let</span> <span class="ident">freeze</span> <span class="op">=</span> <span class="ident">qh</span>.<span class="ident">freeze</span>();
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Arc::new_cyclic</span>(<span class="op">|</span><span class="ident">weak</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">xdg_surface</span> <span class="op">=</span> <span class="ident">wm_base</span>.<span class="ident">get_xdg_surface</span>(
-                <span class="ident">surface</span>.<span class="ident">wl_surface</span>(),
-                <span class="ident">qh</span>,
-                <span class="ident">PopupData</span> { <span class="ident">inner</span>: <span class="ident">weak</span>.<span class="ident">clone</span>() },
+        <span class="kw">let </span>surface = surface.into();
+        <span class="kw">let </span>wm_base = wm_base.bound_global()<span class="question-mark">?</span>;
+        <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        </span><span class="kw">let </span>freeze = qh.freeze();
+        <span class="kw">let </span>inner = Arc::new_cyclic(|weak| {
+            <span class="kw">let </span>xdg_surface = wm_base.get_xdg_surface(
+                surface.wl_surface(),
+                qh,
+                PopupData { inner: weak.clone() },
             );
-            <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="ident">XdgShellSurface</span> { <span class="ident">surface</span>, <span class="ident">xdg_surface</span> };
-            <span class="kw">let</span> <span class="ident">xdg_popup</span> <span class="op">=</span> <span class="ident">surface</span>.<span class="ident">xdg_surface</span>().<span class="ident">get_popup</span>(
-                <span class="ident">parent</span>,
-                <span class="ident">position</span>,
-                <span class="ident">qh</span>,
-                <span class="ident">PopupData</span> { <span class="ident">inner</span>: <span class="ident">weak</span>.<span class="ident">clone</span>() },
+            <span class="kw">let </span>surface = XdgShellSurface { surface, xdg_surface };
+            <span class="kw">let </span>xdg_popup = surface.xdg_surface().get_popup(
+                parent,
+                position,
+                qh,
+                PopupData { inner: weak.clone() },
             );
 
-            <span class="ident">PopupInner</span> {
-                <span class="ident">surface</span>,
-                <span class="ident">xdg_popup</span>,
-                <span class="ident">pending_position</span>: (<span class="ident">AtomicI32::new</span>(<span class="number">0</span>), <span class="ident">AtomicI32::new</span>(<span class="number">0</span>)),
-                <span class="ident">pending_dimensions</span>: (<span class="ident">AtomicI32::new</span>(<span class="op">-</span><span class="number">1</span>), <span class="ident">AtomicI32::new</span>(<span class="op">-</span><span class="number">1</span>)),
-                <span class="ident">pending_token</span>: <span class="ident">AtomicU32::new</span>(<span class="number">0</span>),
-                <span class="ident">configure_state</span>: <span class="ident">AtomicU32::new</span>(<span class="ident">PopupConfigure::STATE_NEW</span>),
+            PopupInner {
+                surface,
+                xdg_popup,
+                pending_position: (AtomicI32::new(<span class="number">0</span>), AtomicI32::new(<span class="number">0</span>)),
+                pending_dimensions: (AtomicI32::new(-<span class="number">1</span>), AtomicI32::new(-<span class="number">1</span>)),
+                pending_token: AtomicU32::new(<span class="number">0</span>),
+                configure_state: AtomicU32::new(PopupConfigure::STATE_NEW),
             }
         });
-        <span class="ident">drop</span>(<span class="ident">freeze</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">Popup</span> { <span class="ident">inner</span> })
+        drop(freeze);
+        <span class="prelude-val">Ok</span>(Popup { inner })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_popup</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">xdg_popup::XdgPopup</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">xdg_popup</span>
+    <span class="kw">pub fn </span>xdg_popup(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>xdg_popup::XdgPopup {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.inner.xdg_popup
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_shell_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">XdgShellSurface</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">surface</span>
+    <span class="kw">pub fn </span>xdg_shell_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>XdgShellSurface {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.inner.surface
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xdg_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">surface</span>.<span class="ident">xdg_surface</span>()
+    <span class="kw">pub fn </span>xdg_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>xdg_surface::XdgSurface {
+        <span class="self">self</span>.inner.surface.xdg_surface()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wl_surface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_surface::WlSurface</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">surface</span>.<span class="ident">wl_surface</span>()
+    <span class="kw">pub fn </span>wl_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_surface::WlSurface {
+        <span class="self">self</span>.inner.surface.wl_surface()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reposition</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">position</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_positioner::XdgPositioner</span>, <span class="ident">token</span>: <span class="ident">u32</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_popup</span>().<span class="ident">reposition</span>(<span class="ident">position</span>, <span class="ident">token</span>);
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">PopupData</span> {
-    <span class="doccomment">/// Get a new handle to the Popup</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This returns `None` if the popup has been destroyed.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">popup</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Popup</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upgrade</span>()<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(<span class="ident">Popup</span> { <span class="ident">inner</span> })
+    <span class="kw">pub fn </span>reposition(<span class="kw-2">&amp;</span><span class="self">self</span>, position: <span class="kw-2">&amp;</span>xdg_positioner::XdgPositioner, token: u32) {
+        <span class="self">self</span>.xdg_popup().reposition(position, token);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">PopupInner</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">xdg_popup</span>.<span class="ident">destroy</span>();
+<span class="kw">impl </span>PopupData {
+    <span class="doccomment">/// Get a new handle to the Popup
+    ///
+    /// This returns `None` if the popup has been destroyed.
+    </span><span class="kw">pub fn </span>popup(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Popup&gt; {
+        <span class="kw">let </span>inner = <span class="self">self</span>.inner.upgrade()<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(Popup { inner })
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PopupConfigure</span> {
-    <span class="doccomment">/// (x,y) relative to parent surface window geometry</span>
-    <span class="kw">pub</span> <span class="ident">position</span>: (<span class="ident">i32</span>, <span class="ident">i32</span>),
-    <span class="kw">pub</span> <span class="ident">width</span>: <span class="ident">i32</span>,
-    <span class="kw">pub</span> <span class="ident">height</span>: <span class="ident">i32</span>,
-    <span class="kw">pub</span> <span class="ident">serial</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">kind</span>: <span class="ident">ConfigureKind</span>,
+<span class="kw">impl </span>Drop <span class="kw">for </span>PopupInner {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.xdg_popup.destroy();
+    }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConfigureKind</span> {
-    <span class="doccomment">/// Initial configure for this popup</span>
-    <span class="ident">Initial</span>,
-    <span class="doccomment">/// The configure is due to an xdg_positioner with set_reactive requested</span>
-    <span class="ident">Reactive</span>,
-    <span class="doccomment">/// The configure is due to a reposition request with this token</span>
-    <span class="ident">Reposition</span> { <span class="ident">token</span>: <span class="ident">u32</span> },
+<span class="attribute">#[derive(Debug, Clone)]
+#[non_exhaustive]
+</span><span class="kw">pub struct </span>PopupConfigure {
+    <span class="doccomment">/// (x,y) relative to parent surface window geometry
+    </span><span class="kw">pub </span>position: (i32, i32),
+    <span class="kw">pub </span>width: i32,
+    <span class="kw">pub </span>height: i32,
+    <span class="kw">pub </span>serial: u32,
+    <span class="kw">pub </span>kind: ConfigureKind,
 }
 
-<span class="kw">impl</span> <span class="ident">PopupConfigure</span> {
-    <span class="kw">const</span> <span class="ident">STATE_NEW</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">STATE_CONFIGURED</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
-    <span class="kw">const</span> <span class="ident">STATE_REPOSITION_ACK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">2</span>;
+<span class="attribute">#[derive(Debug, Clone)]
+#[non_exhaustive]
+</span><span class="kw">pub enum </span>ConfigureKind {
+    <span class="doccomment">/// Initial configure for this popup
+    </span>Initial,
+    <span class="doccomment">/// The configure is due to an xdg_positioner with set_reactive requested
+    </span>Reactive,
+    <span class="doccomment">/// The configure is due to a reposition request with this token
+    </span>Reposition { token: u32 },
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PopupHandler</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// The popup has been configured.</span>
-    <span class="kw">fn</span> <span class="ident">configure</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">popup</span>: <span class="kw-2">&amp;</span><span class="ident">Popup</span>,
-        <span class="ident">config</span>: <span class="ident">PopupConfigure</span>,
+<span class="kw">impl </span>PopupConfigure {
+    <span class="kw">const </span>STATE_NEW: u32 = <span class="number">0</span>;
+    <span class="kw">const </span>STATE_CONFIGURED: u32 = <span class="number">1</span>;
+    <span class="kw">const </span>STATE_REPOSITION_ACK: u32 = <span class="number">2</span>;
+}
+
+<span class="kw">pub trait </span>PopupHandler: Sized {
+    <span class="doccomment">/// The popup has been configured.
+    </span><span class="kw">fn </span>configure(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        popup: <span class="kw-2">&amp;</span>Popup,
+        config: PopupConfigure,
     );
 
-    <span class="doccomment">/// The popup was dismissed by the compositor and should be destroyed.</span>
-    <span class="kw">fn</span> <span class="ident">done</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">popup</span>: <span class="kw-2">&amp;</span><span class="ident">Popup</span>);
+    <span class="doccomment">/// The popup was dismissed by the compositor and should be destroyed.
+    </span><span class="kw">fn </span>done(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, popup: <span class="kw-2">&amp;</span>Popup);
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">PopupData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PopupData</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_surface::XdgSurface</span>, <span class="ident">PopupData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">PopupHandler</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;xdg_surface::XdgSurface, PopupData, D&gt; <span class="kw">for </span>PopupData
+<span class="kw">where
+    </span>D: Dispatch&lt;xdg_surface::XdgSurface, PopupData&gt; + PopupHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">xdg_surface</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_surface::XdgSurface</span>,
-        <span class="ident">event</span>: <span class="ident">xdg_surface::Event</span>,
-        <span class="ident">pdata</span>: <span class="kw-2">&amp;</span><span class="ident">PopupData</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        xdg_surface: <span class="kw-2">&amp;</span>xdg_surface::XdgSurface,
+        event: xdg_surface::Event,
+        pdata: <span class="kw-2">&amp;</span>PopupData,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">let</span> <span class="ident">popup</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pdata</span>.<span class="ident">popup</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">popup</span>) =&gt; <span class="ident">popup</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
+        <span class="kw">let </span>popup = <span class="kw">match </span>pdata.popup() {
+            <span class="prelude-val">Some</span>(popup) =&gt; popup,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
         };
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">popup</span>.<span class="ident">inner</span>;
-        <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">xdg_surface::Event::Configure</span> { <span class="ident">serial</span> } =&gt; {
-                <span class="ident">xdg_surface</span>.<span class="ident">ack_configure</span>(<span class="ident">serial</span>);
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_position</span>.<span class="number">0</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>);
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_position</span>.<span class="number">1</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>);
-                <span class="kw">let</span> <span class="ident">width</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_dimensions</span>.<span class="number">0</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>);
-                <span class="kw">let</span> <span class="ident">height</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">pending_dimensions</span>.<span class="number">1</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>);
-                <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span>
-                    <span class="kw">match</span> <span class="ident">inner</span>.<span class="ident">configure_state</span>.<span class="ident">swap</span>(<span class="ident">PopupConfigure::STATE_CONFIGURED</span>, <span class="ident">Relaxed</span>) {
-                        <span class="ident">PopupConfigure::STATE_NEW</span> =&gt; <span class="ident">ConfigureKind::Initial</span>,
-                        <span class="ident">PopupConfigure::STATE_CONFIGURED</span> =&gt; <span class="ident">ConfigureKind::Reactive</span>,
-                        <span class="ident">PopupConfigure::STATE_REPOSITION_ACK</span> =&gt; {
-                            <span class="ident">ConfigureKind::Reposition</span> { <span class="ident">token</span>: <span class="ident">inner</span>.<span class="ident">pending_token</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>) }
+        <span class="kw">let </span>inner = <span class="kw-2">&amp;</span>popup.inner;
+        <span class="kw">match </span>event {
+            xdg_surface::Event::Configure { serial } =&gt; {
+                xdg_surface.ack_configure(serial);
+                <span class="kw">let </span>x = inner.pending_position.<span class="number">0</span>.load(Relaxed);
+                <span class="kw">let </span>y = inner.pending_position.<span class="number">1</span>.load(Relaxed);
+                <span class="kw">let </span>width = inner.pending_dimensions.<span class="number">0</span>.load(Relaxed);
+                <span class="kw">let </span>height = inner.pending_dimensions.<span class="number">1</span>.load(Relaxed);
+                <span class="kw">let </span>kind =
+                    <span class="kw">match </span>inner.configure_state.swap(PopupConfigure::STATE_CONFIGURED, Relaxed) {
+                        PopupConfigure::STATE_NEW =&gt; ConfigureKind::Initial,
+                        PopupConfigure::STATE_CONFIGURED =&gt; ConfigureKind::Reactive,
+                        PopupConfigure::STATE_REPOSITION_ACK =&gt; {
+                            ConfigureKind::Reposition { token: inner.pending_token.load(Relaxed) }
                         }
-                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                     };
 
-                <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">PopupConfigure</span> { <span class="ident">position</span>: (<span class="ident">x</span>, <span class="ident">y</span>), <span class="ident">width</span>, <span class="ident">height</span>, <span class="ident">serial</span>, <span class="ident">kind</span> };
+                <span class="kw">let </span>config = PopupConfigure { position: (x, y), width, height, serial, kind };
 
-                <span class="ident">data</span>.<span class="ident">configure</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="kw-2">&amp;</span><span class="ident">popup</span>, <span class="ident">config</span>);
+                data.configure(conn, qh, <span class="kw-2">&amp;</span>popup, config);
             }
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_popup::XdgPopup</span>, <span class="ident">PopupData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PopupData</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">xdg_popup::XdgPopup</span>, <span class="ident">PopupData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">PopupHandler</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;xdg_popup::XdgPopup, PopupData, D&gt; <span class="kw">for </span>PopupData
+<span class="kw">where
+    </span>D: Dispatch&lt;xdg_popup::XdgPopup, PopupData&gt; + PopupHandler,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">xdg_popup::XdgPopup</span>,
-        <span class="ident">event</span>: <span class="ident">xdg_popup::Event</span>,
-        <span class="ident">pdata</span>: <span class="kw-2">&amp;</span><span class="ident">PopupData</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>xdg_popup::XdgPopup,
+        event: xdg_popup::Event,
+        pdata: <span class="kw-2">&amp;</span>PopupData,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">let</span> <span class="ident">popup</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pdata</span>.<span class="ident">popup</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">popup</span>) =&gt; <span class="ident">popup</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
+        <span class="kw">let </span>popup = <span class="kw">match </span>pdata.popup() {
+            <span class="prelude-val">Some</span>(popup) =&gt; popup,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
         };
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">popup</span>.<span class="ident">inner</span>;
-        <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">xdg_popup::Event::Configure</span> { <span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">width</span>, <span class="ident">height</span> } =&gt; {
-                <span class="ident">inner</span>.<span class="ident">pending_position</span>.<span class="number">0</span>.<span class="ident">store</span>(<span class="ident">x</span>, <span class="ident">Relaxed</span>);
-                <span class="ident">inner</span>.<span class="ident">pending_position</span>.<span class="number">1</span>.<span class="ident">store</span>(<span class="ident">y</span>, <span class="ident">Relaxed</span>);
-                <span class="ident">inner</span>.<span class="ident">pending_dimensions</span>.<span class="number">0</span>.<span class="ident">store</span>(<span class="ident">width</span>, <span class="ident">Relaxed</span>);
-                <span class="ident">inner</span>.<span class="ident">pending_dimensions</span>.<span class="number">1</span>.<span class="ident">store</span>(<span class="ident">height</span>, <span class="ident">Relaxed</span>);
+        <span class="kw">let </span>inner = <span class="kw-2">&amp;</span>popup.inner;
+        <span class="kw">match </span>event {
+            xdg_popup::Event::Configure { x, y, width, height } =&gt; {
+                inner.pending_position.<span class="number">0</span>.store(x, Relaxed);
+                inner.pending_position.<span class="number">1</span>.store(y, Relaxed);
+                inner.pending_dimensions.<span class="number">0</span>.store(width, Relaxed);
+                inner.pending_dimensions.<span class="number">1</span>.store(height, Relaxed);
             }
-            <span class="ident">xdg_popup::Event::PopupDone</span> =&gt; {
-                <span class="ident">data</span>.<span class="ident">done</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="kw-2">&amp;</span><span class="ident">popup</span>);
+            xdg_popup::Event::PopupDone =&gt; {
+                data.done(conn, qh, <span class="kw-2">&amp;</span>popup);
             }
-            <span class="ident">xdg_popup::Event::Repositioned</span> { <span class="ident">token</span> } =&gt; {
-                <span class="ident">inner</span>.<span class="ident">pending_token</span>.<span class="ident">store</span>(<span class="ident">token</span>, <span class="ident">Relaxed</span>);
-                <span class="ident">inner</span>.<span class="ident">configure_state</span>.<span class="ident">store</span>(<span class="ident">PopupConfigure::STATE_REPOSITION_ACK</span>, <span class="ident">Relaxed</span>);
+            xdg_popup::Event::Repositioned { token } =&gt; {
+                inner.pending_token.store(token, Relaxed);
+                inner.configure_state.store(PopupConfigure::STATE_REPOSITION_ACK, Relaxed);
             }
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_xdg_popup</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_popup::XdgPopup</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::popup::PopupData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::popup::PopupData</span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::popup::PopupData</span>
-        ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::shell::xdg::popup::PopupData</span>);
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_xdg_popup {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols::xdg::shell::client::xdg_popup::XdgPopup</span>: <span class="macro-nonterminal">$crate::shell::xdg::popup::PopupData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::xdg::popup::PopupData</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [
+            <span class="macro-nonterminal">$crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface</span>: <span class="macro-nonterminal">$crate::shell::xdg::popup::PopupData
+        </span>] =&gt; <span class="macro-nonterminal">$crate::shell::xdg::popup::PopupData</span>);
     };
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

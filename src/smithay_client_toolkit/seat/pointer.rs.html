@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/pointer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pointer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/pointer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pointer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -341,348 +341,348 @@
 <span id="341">341</span>
 <span id="342">342</span>
 <span id="343">343</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">mem</span>, <span class="ident">sync::Mutex</span>};
-<span class="kw">use</span> <span class="ident">wayland_backend::smallvec::SmallVec</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::{mem, sync::Mutex};
+<span class="kw">use </span>wayland_backend::smallvec::SmallVec;
 
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">protocol</span>::{<span class="ident">wl_pointer</span>, <span class="ident">wl_surface</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>, <span class="ident">WEnum</span>,
+<span class="kw">use </span>wayland_client::{
+    protocol::{wl_pointer, wl_surface},
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SeatState</span>;
+<span class="kw">use </span><span class="kw">super</span>::SeatState;
 
-<span class="comment">/* From linux/input-event-codes.h - the buttons usually used by mice */</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_LEFT</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x110</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_RIGHT</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x111</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_MIDDLE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x112</span>;
-<span class="doccomment">/// The fourth non-scroll button, which is often used as &quot;back&quot; in web browsers.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_SIDE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x113</span>;
-<span class="doccomment">/// The fifth non-scroll button, which is often used as &quot;forward&quot; in web browsers.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_EXTRA</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x114</span>;
+<span class="comment">/* From linux/input-event-codes.h - the buttons usually used by mice */
+</span><span class="kw">pub const </span>BTN_LEFT: u32 = <span class="number">0x110</span>;
+<span class="kw">pub const </span>BTN_RIGHT: u32 = <span class="number">0x111</span>;
+<span class="kw">pub const </span>BTN_MIDDLE: u32 = <span class="number">0x112</span>;
+<span class="doccomment">/// The fourth non-scroll button, which is often used as &quot;back&quot; in web browsers.
+</span><span class="kw">pub const </span>BTN_SIDE: u32 = <span class="number">0x113</span>;
+<span class="doccomment">/// The fifth non-scroll button, which is often used as &quot;forward&quot; in web browsers.
+</span><span class="kw">pub const </span>BTN_EXTRA: u32 = <span class="number">0x114</span>;
 
-<span class="doccomment">/// See also [`BTN_EXTRA`].</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_FORWARD</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x115</span>;
-<span class="doccomment">/// See also [`BTN_SIDE`].</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_BACK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x116</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BTN_TASK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x117</span>;
+<span class="doccomment">/// See also [`BTN_EXTRA`].
+</span><span class="kw">pub const </span>BTN_FORWARD: u32 = <span class="number">0x115</span>;
+<span class="doccomment">/// See also [`BTN_SIDE`].
+</span><span class="kw">pub const </span>BTN_BACK: u32 = <span class="number">0x116</span>;
+<span class="kw">pub const </span>BTN_TASK: u32 = <span class="number">0x117</span>;
 
-<span class="doccomment">/// Describes a scroll along one axis</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AxisScroll</span> {
-    <span class="doccomment">/// The scroll measured in pixels.</span>
-    <span class="kw">pub</span> <span class="ident">absolute</span>: <span class="ident">f64</span>,
+<span class="doccomment">/// Describes a scroll along one axis
+</span><span class="attribute">#[derive(Default, Debug, Clone, Copy, PartialEq)]
+</span><span class="kw">pub struct </span>AxisScroll {
+    <span class="doccomment">/// The scroll measured in pixels.
+    </span><span class="kw">pub </span>absolute: f64,
 
-    <span class="doccomment">/// The scroll measured in steps.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note: this might always be zero if the scrolling is due to a touchpad or other continuous</span>
-    <span class="doccomment">/// source.</span>
-    <span class="kw">pub</span> <span class="ident">discrete</span>: <span class="ident">i32</span>,
+    <span class="doccomment">/// The scroll measured in steps.
+    ///
+    /// Note: this might always be zero if the scrolling is due to a touchpad or other continuous
+    /// source.
+    </span><span class="kw">pub </span>discrete: i32,
 
-    <span class="doccomment">/// The scroll was stopped.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Generally this is encountered when hardware indicates the end of some continuous scrolling.</span>
-    <span class="kw">pub</span> <span class="ident">stop</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The scroll was stopped.
+    ///
+    /// Generally this is encountered when hardware indicates the end of some continuous scrolling.
+    </span><span class="kw">pub </span>stop: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">AxisScroll</span> {
-    <span class="doccomment">/// Returns true if there was no movement along this axis.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_none</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident"><span class="self">Self</span>::default</span>()
+<span class="kw">impl </span>AxisScroll {
+    <span class="doccomment">/// Returns true if there was no movement along this axis.
+    </span><span class="kw">pub fn </span>is_none(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw-2">*</span><span class="self">self </span>== <span class="self">Self</span>::default()
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="ident">absolute</span> <span class="op">+</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">absolute</span>;
-        <span class="self">self</span>.<span class="ident">discrete</span> <span class="op">+</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">discrete</span>;
-        <span class="self">self</span>.<span class="ident">stop</span> <span class="op">|</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">stop</span>;
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
+        <span class="self">self</span>.absolute += other.absolute;
+        <span class="self">self</span>.discrete += other.discrete;
+        <span class="self">self</span>.stop |= other.stop;
     }
 }
 
-<span class="doccomment">/// A single pointer event.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PointerEvent</span> {
-    <span class="kw">pub</span> <span class="ident">surface</span>: <span class="ident">wl_surface::WlSurface</span>,
-    <span class="kw">pub</span> <span class="ident">position</span>: (<span class="ident">f64</span>, <span class="ident">f64</span>),
-    <span class="kw">pub</span> <span class="ident">kind</span>: <span class="ident">PointerEventKind</span>,
+<span class="doccomment">/// A single pointer event.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>PointerEvent {
+    <span class="kw">pub </span>surface: wl_surface::WlSurface,
+    <span class="kw">pub </span>position: (f64, f64),
+    <span class="kw">pub </span>kind: PointerEventKind,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PointerEventKind</span> {
-    <span class="ident">Enter</span> {
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>PointerEventKind {
+    Enter {
+        serial: u32,
     },
-    <span class="ident">Leave</span> {
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+    Leave {
+        serial: u32,
     },
-    <span class="ident">Motion</span> {
-        <span class="ident">time</span>: <span class="ident">u32</span>,
+    Motion {
+        time: u32,
     },
-    <span class="ident">Press</span> {
-        <span class="ident">time</span>: <span class="ident">u32</span>,
-        <span class="ident">button</span>: <span class="ident">u32</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+    Press {
+        time: u32,
+        button: u32,
+        serial: u32,
     },
-    <span class="ident">Release</span> {
-        <span class="ident">time</span>: <span class="ident">u32</span>,
-        <span class="ident">button</span>: <span class="ident">u32</span>,
-        <span class="ident">serial</span>: <span class="ident">u32</span>,
+    Release {
+        time: u32,
+        button: u32,
+        serial: u32,
     },
-    <span class="ident">Axis</span> {
-        <span class="ident">time</span>: <span class="ident">u32</span>,
-        <span class="ident">horizontal</span>: <span class="ident">AxisScroll</span>,
-        <span class="ident">vertical</span>: <span class="ident">AxisScroll</span>,
-        <span class="ident">source</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_pointer::AxisSource</span><span class="op">&gt;</span>,
+    Axis {
+        time: u32,
+        horizontal: AxisScroll,
+        vertical: AxisScroll,
+        source: <span class="prelude-ty">Option</span>&lt;wl_pointer::AxisSource&gt;,
     },
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PointerHandler</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// One or more pointer events are available.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Multiple related events may be grouped together in a single frame.  Some examples:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - A drag that terminates outside the surface may send the Release and Leave events as one frame</span>
-    <span class="doccomment">/// - Movement from one surface to another may send the Enter and Leave events in one frame</span>
-    <span class="kw">fn</span> <span class="ident">pointer_frame</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">wl_pointer::WlPointer</span>,
-        <span class="ident">events</span>: <span class="kw-2">&amp;</span>[<span class="ident">PointerEvent</span>],
+<span class="kw">pub trait </span>PointerHandler: Sized {
+    <span class="doccomment">/// One or more pointer events are available.
+    ///
+    /// Multiple related events may be grouped together in a single frame.  Some examples:
+    ///
+    /// - A drag that terminates outside the surface may send the Release and Leave events as one frame
+    /// - Movement from one surface to another may send the Enter and Leave events in one frame
+    </span><span class="kw">fn </span>pointer_frame(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        pointer: <span class="kw-2">&amp;</span>wl_pointer::WlPointer,
+        events: <span class="kw-2">&amp;</span>[PointerEvent],
     );
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PointerData</span> {
-    <span class="ident">inner</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">PointerDataInner</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Default)]
+</span><span class="kw">pub struct </span>PointerData {
+    inner: Mutex&lt;PointerDataInner&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PointerDataExt</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="kw">fn</span> <span class="ident">pointer_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">PointerData</span>;
+<span class="kw">pub trait </span>PointerDataExt: Send + Sync {
+    <span class="kw">fn </span>pointer_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PointerData;
 }
 
-<span class="kw">impl</span> <span class="ident">PointerDataExt</span> <span class="kw">for</span> <span class="ident">PointerData</span> {
-    <span class="kw">fn</span> <span class="ident">pointer_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">PointerData</span> {
-        <span class="self">self</span>
-    }
+<span class="kw">impl </span>PointerDataExt <span class="kw">for </span>PointerData {
+    <span class="kw">fn </span>pointer_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PointerData {
+        <span class="self">self
+    </span>}
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_pointer</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_pointer {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_pointer::WlPointer</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::pointer::PointerData</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_pointer::WlPointer</span>: <span class="macro-nonterminal">$crate::seat::pointer::PointerData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>, <span class="ident">pointer</span>: [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">pointer_data</span>:<span class="ident">ty</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>]) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, pointer: [$(<span class="macro-nonterminal">$pointer_data</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
                 $(
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_pointer::WlPointer</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">pointer_data</span>,
-                )<span class="op">*</span>
-            ] =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::seat::SeatState</span>
-        );
+                    <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_pointer::WlPointer</span>: <span class="macro-nonterminal">$pointer_data</span>,
+                )*
+            ] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
     };
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PointerDataInner</span> {
-    <span class="doccomment">/// Surface the pointer most recently entered</span>
-    <span class="ident">surface</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">wl_surface::WlSurface</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Position relative to the surface</span>
-    <span class="ident">position</span>: (<span class="ident">f64</span>, <span class="ident">f64</span>),
+<span class="attribute">#[derive(Debug, Default)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PointerDataInner {
+    <span class="doccomment">/// Surface the pointer most recently entered
+    </span>surface: <span class="prelude-ty">Option</span>&lt;wl_surface::WlSurface&gt;,
+    <span class="doccomment">/// Position relative to the surface
+    </span>position: (f64, f64),
 
-    <span class="doccomment">/// List of pending events.  Only used for version &gt;= 5.</span>
-    <span class="ident">pending</span>: <span class="ident">SmallVec</span><span class="op">&lt;</span>[<span class="ident">PointerEvent</span>; <span class="number">3</span>]<span class="op">&gt;</span>,
+    <span class="doccomment">/// List of pending events.  Only used for version &gt;= 5.
+    </span>pending: SmallVec&lt;[PointerEvent; <span class="number">3</span>]&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_pointer::WlPointer</span>, <span class="ident">U</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SeatState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_pointer::WlPointer</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">PointerHandler</span>,
-    <span class="ident">U</span>: <span class="ident">PointerDataExt</span>,
+<span class="kw">impl</span>&lt;D, U&gt; Dispatch&lt;wl_pointer::WlPointer, U, D&gt; <span class="kw">for </span>SeatState
+<span class="kw">where
+    </span>D: Dispatch&lt;wl_pointer::WlPointer, U&gt; + PointerHandler,
+    U: PointerDataExt,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">pointer</span>: <span class="kw-2">&amp;</span><span class="ident">wl_pointer::WlPointer</span>,
-        <span class="ident">event</span>: <span class="ident">wl_pointer::Event</span>,
-        <span class="ident">udata</span>: <span class="kw-2">&amp;</span><span class="ident">U</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        data: <span class="kw-2">&amp;mut </span>D,
+        pointer: <span class="kw-2">&amp;</span>wl_pointer::WlPointer,
+        event: wl_pointer::Event,
+        udata: <span class="kw-2">&amp;</span>U,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">pointer_data</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">udata</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leave_surface</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_pointer::Event::Enter</span> { <span class="ident">surface</span>, <span class="ident">surface_x</span>, <span class="ident">surface_y</span>, <span class="ident">serial</span> } =&gt; {
-                <span class="ident">guard</span>.<span class="ident">surface</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">surface</span>);
-                <span class="ident">guard</span>.<span class="ident">position</span> <span class="op">=</span> (<span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
+        <span class="kw">let </span>udata = udata.pointer_data();
+        <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>leave_surface = <span class="prelude-val">None</span>;
+        <span class="kw">let </span>kind = <span class="kw">match </span>event {
+            wl_pointer::Event::Enter { surface, surface_x, surface_y, serial } =&gt; {
+                guard.surface = <span class="prelude-val">Some</span>(surface);
+                guard.position = (surface_x, surface_y);
 
-                <span class="ident">PointerEventKind::Enter</span> { <span class="ident">serial</span> }
+                PointerEventKind::Enter { serial }
             }
 
-            <span class="ident">wl_pointer::Event::Leave</span> { <span class="ident">surface</span>, <span class="ident">serial</span> } =&gt; {
-                <span class="kw">if</span> <span class="ident">guard</span>.<span class="ident">surface</span>.<span class="ident">as_ref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">surface</span>) {
-                    <span class="ident">guard</span>.<span class="ident">surface</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+            wl_pointer::Event::Leave { surface, serial } =&gt; {
+                <span class="kw">if </span>guard.surface.as_ref() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>surface) {
+                    guard.surface = <span class="prelude-val">None</span>;
                 }
-                <span class="ident">leave_surface</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">surface</span>);
+                leave_surface = <span class="prelude-val">Some</span>(surface);
 
-                <span class="ident">PointerEventKind::Leave</span> { <span class="ident">serial</span> }
+                PointerEventKind::Leave { serial }
             }
 
-            <span class="ident">wl_pointer::Event::Motion</span> { <span class="ident">time</span>, <span class="ident">surface_x</span>, <span class="ident">surface_y</span> } =&gt; {
-                <span class="ident">guard</span>.<span class="ident">position</span> <span class="op">=</span> (<span class="ident">surface_x</span>, <span class="ident">surface_y</span>);
+            wl_pointer::Event::Motion { time, surface_x, surface_y } =&gt; {
+                guard.position = (surface_x, surface_y);
 
-                <span class="ident">PointerEventKind::Motion</span> { <span class="ident">time</span> }
+                PointerEventKind::Motion { time }
             }
 
-            <span class="ident">wl_pointer::Event::Button</span> { <span class="ident">time</span>, <span class="ident">button</span>, <span class="ident">state</span>, <span class="ident">serial</span> } =&gt; <span class="kw">match</span> <span class="ident">state</span> {
-                <span class="ident">WEnum::Value</span>(<span class="ident">wl_pointer::ButtonState::Pressed</span>) =&gt; {
-                    <span class="ident">PointerEventKind::Press</span> { <span class="ident">time</span>, <span class="ident">button</span>, <span class="ident">serial</span> }
+            wl_pointer::Event::Button { time, button, state, serial } =&gt; <span class="kw">match </span>state {
+                WEnum::Value(wl_pointer::ButtonState::Pressed) =&gt; {
+                    PointerEventKind::Press { time, button, serial }
                 }
-                <span class="ident">WEnum::Value</span>(<span class="ident">wl_pointer::ButtonState::Released</span>) =&gt; {
-                    <span class="ident">PointerEventKind::Release</span> { <span class="ident">time</span>, <span class="ident">button</span>, <span class="ident">serial</span> }
+                WEnum::Value(wl_pointer::ButtonState::Released) =&gt; {
+                    PointerEventKind::Release { time, button, serial }
                 }
-                <span class="ident">WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                    <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer button state: {:x}&quot;</span>, <span class="ident">pointer</span>.<span class="ident">id</span>(), <span class="ident">unknown</span>);
+                WEnum::Unknown(unknown) =&gt; {
+                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer button state: {:x}&quot;</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
-                <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             },
 
-            <span class="comment">// Axis logical events.</span>
-            <span class="ident">wl_pointer::Event::Axis</span> { <span class="ident">time</span>, <span class="ident">axis</span>, <span class="ident">value</span> } =&gt; <span class="kw">match</span> <span class="ident">axis</span> {
-                <span class="ident">WEnum::Value</span>(<span class="ident">axis</span>) =&gt; {
-                    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">horizontal</span>, <span class="kw-2">mut</span> <span class="ident">vertical</span>) <span class="op">=</span> <span class="op">&lt;</span>(<span class="ident">AxisScroll</span>, <span class="ident">AxisScroll</span>)<span class="op">&gt;</span><span class="ident">::default</span>();
-                    <span class="kw">match</span> <span class="ident">axis</span> {
-                        <span class="ident">wl_pointer::Axis::VerticalScroll</span> =&gt; {
-                            <span class="ident">vertical</span>.<span class="ident">absolute</span> <span class="op">=</span> <span class="ident">value</span>;
+            <span class="comment">// Axis logical events.
+            </span>wl_pointer::Event::Axis { time, axis, value } =&gt; <span class="kw">match </span>axis {
+                WEnum::Value(axis) =&gt; {
+                    <span class="kw">let </span>(<span class="kw-2">mut </span>horizontal, <span class="kw-2">mut </span>vertical) = &lt;(AxisScroll, AxisScroll)&gt;::default();
+                    <span class="kw">match </span>axis {
+                        wl_pointer::Axis::VerticalScroll =&gt; {
+                            vertical.absolute = value;
                         }
-                        <span class="ident">wl_pointer::Axis::HorizontalScroll</span> =&gt; {
-                            <span class="ident">horizontal</span>.<span class="ident">absolute</span> <span class="op">=</span> <span class="ident">value</span>;
+                        wl_pointer::Axis::HorizontalScroll =&gt; {
+                            horizontal.absolute = value;
                         }
-                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                     };
 
-                    <span class="ident">PointerEventKind::Axis</span> { <span class="ident">time</span>, <span class="ident">horizontal</span>, <span class="ident">vertical</span>, <span class="ident">source</span>: <span class="prelude-val">None</span> }
+                    PointerEventKind::Axis { time, horizontal, vertical, source: <span class="prelude-val">None </span>}
                 }
-                <span class="ident">WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                    <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, <span class="ident">pointer</span>.<span class="ident">id</span>(), <span class="ident">unknown</span>);
+                WEnum::Unknown(unknown) =&gt; {
+                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
             },
 
-            <span class="ident">wl_pointer::Event::AxisSource</span> { <span class="ident">axis_source</span> } =&gt; <span class="kw">match</span> <span class="ident">axis_source</span> {
-                <span class="ident">WEnum::Value</span>(<span class="ident">source</span>) =&gt; <span class="ident">PointerEventKind::Axis</span> {
-                    <span class="ident">horizontal</span>: <span class="ident">AxisScroll::default</span>(),
-                    <span class="ident">vertical</span>: <span class="ident">AxisScroll::default</span>(),
-                    <span class="ident">source</span>: <span class="prelude-val">Some</span>(<span class="ident">source</span>),
-                    <span class="ident">time</span>: <span class="number">0</span>,
+            wl_pointer::Event::AxisSource { axis_source } =&gt; <span class="kw">match </span>axis_source {
+                WEnum::Value(source) =&gt; PointerEventKind::Axis {
+                    horizontal: AxisScroll::default(),
+                    vertical: AxisScroll::default(),
+                    source: <span class="prelude-val">Some</span>(source),
+                    time: <span class="number">0</span>,
                 },
-                <span class="ident">WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                    <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown pointer axis source: {:x}&quot;</span>, <span class="ident">unknown</span>);
+                WEnum::Unknown(unknown) =&gt; {
+                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown pointer axis source: {:x}&quot;</span>, unknown);
                     <span class="kw">return</span>;
                 }
             },
 
-            <span class="ident">wl_pointer::Event::AxisStop</span> { <span class="ident">time</span>, <span class="ident">axis</span> } =&gt; <span class="kw">match</span> <span class="ident">axis</span> {
-                <span class="ident">WEnum::Value</span>(<span class="ident">axis</span>) =&gt; {
-                    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">horizontal</span>, <span class="kw-2">mut</span> <span class="ident">vertical</span>) <span class="op">=</span> <span class="op">&lt;</span>(<span class="ident">AxisScroll</span>, <span class="ident">AxisScroll</span>)<span class="op">&gt;</span><span class="ident">::default</span>();
-                    <span class="kw">match</span> <span class="ident">axis</span> {
-                        <span class="ident">wl_pointer::Axis::VerticalScroll</span> =&gt; <span class="ident">vertical</span>.<span class="ident">stop</span> <span class="op">=</span> <span class="bool-val">true</span>,
-                        <span class="ident">wl_pointer::Axis::HorizontalScroll</span> =&gt; <span class="ident">horizontal</span>.<span class="ident">stop</span> <span class="op">=</span> <span class="bool-val">true</span>,
+            wl_pointer::Event::AxisStop { time, axis } =&gt; <span class="kw">match </span>axis {
+                WEnum::Value(axis) =&gt; {
+                    <span class="kw">let </span>(<span class="kw-2">mut </span>horizontal, <span class="kw-2">mut </span>vertical) = &lt;(AxisScroll, AxisScroll)&gt;::default();
+                    <span class="kw">match </span>axis {
+                        wl_pointer::Axis::VerticalScroll =&gt; vertical.stop = <span class="bool-val">true</span>,
+                        wl_pointer::Axis::HorizontalScroll =&gt; horizontal.stop = <span class="bool-val">true</span>,
 
-                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                     }
 
-                    <span class="ident">PointerEventKind::Axis</span> { <span class="ident">time</span>, <span class="ident">horizontal</span>, <span class="ident">vertical</span>, <span class="ident">source</span>: <span class="prelude-val">None</span> }
+                    PointerEventKind::Axis { time, horizontal, vertical, source: <span class="prelude-val">None </span>}
                 }
 
-                <span class="ident">WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                    <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, <span class="ident">pointer</span>.<span class="ident">id</span>(), <span class="ident">unknown</span>);
+                WEnum::Unknown(unknown) =&gt; {
+                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
             },
 
-            <span class="ident">wl_pointer::Event::AxisDiscrete</span> { <span class="ident">axis</span>, <span class="ident">discrete</span> } =&gt; <span class="kw">match</span> <span class="ident">axis</span> {
-                <span class="ident">WEnum::Value</span>(<span class="ident">axis</span>) =&gt; {
-                    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">horizontal</span>, <span class="kw-2">mut</span> <span class="ident">vertical</span>) <span class="op">=</span> <span class="op">&lt;</span>(<span class="ident">AxisScroll</span>, <span class="ident">AxisScroll</span>)<span class="op">&gt;</span><span class="ident">::default</span>();
-                    <span class="kw">match</span> <span class="ident">axis</span> {
-                        <span class="ident">wl_pointer::Axis::VerticalScroll</span> =&gt; {
-                            <span class="ident">vertical</span>.<span class="ident">discrete</span> <span class="op">=</span> <span class="ident">discrete</span>;
+            wl_pointer::Event::AxisDiscrete { axis, discrete } =&gt; <span class="kw">match </span>axis {
+                WEnum::Value(axis) =&gt; {
+                    <span class="kw">let </span>(<span class="kw-2">mut </span>horizontal, <span class="kw-2">mut </span>vertical) = &lt;(AxisScroll, AxisScroll)&gt;::default();
+                    <span class="kw">match </span>axis {
+                        wl_pointer::Axis::VerticalScroll =&gt; {
+                            vertical.discrete = discrete;
                         }
 
-                        <span class="ident">wl_pointer::Axis::HorizontalScroll</span> =&gt; {
-                            <span class="ident">horizontal</span>.<span class="ident">discrete</span> <span class="op">=</span> <span class="ident">discrete</span>;
+                        wl_pointer::Axis::HorizontalScroll =&gt; {
+                            horizontal.discrete = discrete;
                         }
 
-                        <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                     };
 
-                    <span class="ident">PointerEventKind::Axis</span> { <span class="ident">time</span>: <span class="number">0</span>, <span class="ident">horizontal</span>, <span class="ident">vertical</span>, <span class="ident">source</span>: <span class="prelude-val">None</span> }
+                    PointerEventKind::Axis { time: <span class="number">0</span>, horizontal, vertical, source: <span class="prelude-val">None </span>}
                 }
 
-                <span class="ident">WEnum::Unknown</span>(<span class="ident">unknown</span>) =&gt; {
-                    <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, <span class="ident">pointer</span>.<span class="ident">id</span>(), <span class="ident">unknown</span>);
+                WEnum::Unknown(unknown) =&gt; {
+                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
             },
 
-            <span class="ident">wl_pointer::Event::Frame</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">pending</span> <span class="op">=</span> <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="ident">guard</span>.<span class="ident">pending</span>);
-                <span class="ident">drop</span>(<span class="ident">guard</span>);
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">pending</span>.<span class="ident">is_empty</span>() {
-                    <span class="ident">data</span>.<span class="ident">pointer_frame</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">pointer</span>, <span class="kw-2">&amp;</span><span class="ident">pending</span>);
+            wl_pointer::Event::Frame =&gt; {
+                <span class="kw">let </span>pending = mem::take(<span class="kw-2">&amp;mut </span>guard.pending);
+                drop(guard);
+                <span class="kw">if </span>!pending.is_empty() {
+                    data.pointer_frame(conn, qh, pointer, <span class="kw-2">&amp;</span>pending);
                 }
                 <span class="kw">return</span>;
             }
 
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         };
 
-        <span class="kw">let</span> <span class="ident">surface</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">leave_surface</span>, <span class="kw-2">&amp;</span><span class="ident">guard</span>.<span class="ident">surface</span>) {
-            (<span class="prelude-val">Some</span>(<span class="ident">surface</span>), <span class="kw">_</span>) =&gt; <span class="ident">surface</span>,
-            (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">surface</span>)) =&gt; <span class="ident">surface</span>.<span class="ident">clone</span>(),
+        <span class="kw">let </span>surface = <span class="kw">match </span>(leave_surface, <span class="kw-2">&amp;</span>guard.surface) {
+            (<span class="prelude-val">Some</span>(surface), <span class="kw">_</span>) =&gt; surface,
+            (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(surface)) =&gt; surface.clone(),
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; {
-                <span class="macro">log::warn!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: got pointer event {:?} without an entered surface&quot;</span>, <span class="ident">pointer</span>.<span class="ident">id</span>(), <span class="ident">kind</span>);
+                <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: got pointer event {:?} without an entered surface&quot;</span>, pointer.id(), kind);
                 <span class="kw">return</span>;
             }
         };
 
-        <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="ident">PointerEvent</span> { <span class="ident">surface</span>, <span class="ident">position</span>: <span class="ident">guard</span>.<span class="ident">position</span>, <span class="ident">kind</span> };
+        <span class="kw">let </span>event = PointerEvent { surface, position: guard.position, kind };
 
-        <span class="kw">if</span> <span class="ident">pointer</span>.<span class="ident">version</span>() <span class="op">&lt;</span> <span class="number">5</span> {
-            <span class="ident">drop</span>(<span class="ident">guard</span>);
-            <span class="comment">// No Frame events, send right away</span>
-            <span class="ident">data</span>.<span class="ident">pointer_frame</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">pointer</span>, <span class="kw-2">&amp;</span>[<span class="ident">event</span>]);
-        } <span class="kw">else</span> {
-            <span class="comment">// Merge a new Axis event with the previous event to create an event with more</span>
-            <span class="comment">// information and potentially diagonal scrolling.</span>
-            <span class="kw">if</span> <span class="kw">let</span> (
-                <span class="prelude-val">Some</span>(<span class="ident">PointerEvent</span> {
-                    <span class="ident">kind</span>:
-                        <span class="ident">PointerEventKind::Axis</span> { <span class="ident">time</span>: <span class="ident">ot</span>, <span class="ident">horizontal</span>: <span class="ident">oh</span>, <span class="ident">vertical</span>: <span class="ident">ov</span>, <span class="ident">source</span>: <span class="ident">os</span> },
+        <span class="kw">if </span>pointer.version() &lt; <span class="number">5 </span>{
+            drop(guard);
+            <span class="comment">// No Frame events, send right away
+            </span>data.pointer_frame(conn, qh, pointer, <span class="kw-2">&amp;</span>[event]);
+        } <span class="kw">else </span>{
+            <span class="comment">// Merge a new Axis event with the previous event to create an event with more
+            // information and potentially diagonal scrolling.
+            </span><span class="kw">if let </span>(
+                <span class="prelude-val">Some</span>(PointerEvent {
+                    kind:
+                        PointerEventKind::Axis { time: ot, horizontal: oh, vertical: ov, source: os },
                     ..
                 }),
-                <span class="ident">PointerEvent</span> {
-                    <span class="ident">kind</span>:
-                        <span class="ident">PointerEventKind::Axis</span> { <span class="ident">time</span>: <span class="ident">nt</span>, <span class="ident">horizontal</span>: <span class="ident">nh</span>, <span class="ident">vertical</span>: <span class="ident">nv</span>, <span class="ident">source</span>: <span class="ident">ns</span> },
+                PointerEvent {
+                    kind:
+                        PointerEventKind::Axis { time: nt, horizontal: nh, vertical: nv, source: ns },
                     ..
                 },
-            ) <span class="op">=</span> (<span class="ident">guard</span>.<span class="ident">pending</span>.<span class="ident">last_mut</span>(), <span class="kw-2">&amp;</span><span class="ident">event</span>)
+            ) = (guard.pending.last_mut(), <span class="kw-2">&amp;</span>event)
             {
-                <span class="comment">// A time of 0 is &quot;don&#39;t know&quot;, so avoid using it if possible.</span>
-                <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">ot</span> <span class="op">==</span> <span class="number">0</span> {
-                    <span class="kw-2">*</span><span class="ident">ot</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">nt</span>;
+                <span class="comment">// A time of 0 is &quot;don&#39;t know&quot;, so avoid using it if possible.
+                </span><span class="kw">if </span><span class="kw-2">*</span>ot == <span class="number">0 </span>{
+                    <span class="kw-2">*</span>ot = <span class="kw-2">*</span>nt;
                 }
-                <span class="ident">oh</span>.<span class="ident">merge</span>(<span class="ident">nh</span>);
-                <span class="ident">ov</span>.<span class="ident">merge</span>(<span class="ident">nv</span>);
-                <span class="kw-2">*</span><span class="ident">os</span> <span class="op">=</span> <span class="ident">os</span>.<span class="ident">or</span>(<span class="kw-2">*</span><span class="ident">ns</span>);
+                oh.merge(nh);
+                ov.merge(nv);
+                <span class="kw-2">*</span>os = os.or(<span class="kw-2">*</span>ns);
                 <span class="kw">return</span>;
             }
 
-            <span class="ident">guard</span>.<span class="ident">pending</span>.<span class="ident">push</span>(<span class="ident">event</span>);
+            guard.pending.push(event);
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/registry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>registry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/registry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>registry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -619,626 +619,626 @@
 <span id="619">619</span>
 <span id="620">620</span>
 <span id="621">621</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! [`RegistryState`] provides an interface to bind globals regularly, creating an object with each new</span>
-<span class="doccomment">//! instantiation or caching bound globals to prevent duplicate object instances from being created. Binding</span>
-<span class="doccomment">//! a global regularly is accomplished through [`RegistryState::bind_one`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The [`delegate_registry`](crate::delegate_registry) macro is used to implement handling for [`wl_registry`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Sample implementation of [`RegistryHandler`]</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//! use smithay_client_toolkit::reexports::client::{</span>
-<span class="doccomment">//!     Connection, Dispatch, QueueHandle,</span>
-<span class="doccomment">//!     delegate_dispatch,</span>
-<span class="doccomment">//!     protocol::wl_compositor,</span>
-<span class="doccomment">//! };</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! use smithay_client_toolkit::registry::{</span>
-<span class="doccomment">//!     GlobalProxy, ProvidesRegistryState, RegistryHandler, RegistryState,</span>
-<span class="doccomment">//! };</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! struct ExampleApp {</span>
-<span class="doccomment">//!     /// The registry state is needed to use the global abstractions.</span>
-<span class="doccomment">//!     registry_state: RegistryState,</span>
-<span class="doccomment">//!     /// This is a type we want to delegate global handling to.</span>
-<span class="doccomment">//!     delegate_that_wants_registry: Delegate,</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! /// The delegate a global should be provided to.</span>
-<span class="doccomment">//! struct Delegate {</span>
-<span class="doccomment">//!     // You usually want to cache the bound global so you can use it later</span>
-<span class="doccomment">//!     compositor: GlobalProxy&lt;wl_compositor::WlCompositor&gt;,</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // When implementing RegistryHandler, you must be able to dispatch any type you could bind using the registry state.</span>
-<span class="doccomment">//! impl&lt;D&gt; RegistryHandler&lt;D&gt; for Delegate</span>
-<span class="doccomment">//! where</span>
-<span class="doccomment">//!     // In order to bind a global, you must statically assert the global may be handled with the data type.</span>
-<span class="doccomment">//!     D: Dispatch&lt;wl_compositor::WlCompositor, ()&gt;</span>
-<span class="doccomment">//!         // ProvidesRegistryState provides a function to access the RegistryState within the impl.</span>
-<span class="doccomment">//!         + ProvidesRegistryState</span>
-<span class="doccomment">//!         // We need some way to access our part of the application&#39;s state.  This uses AsMut,</span>
-<span class="doccomment">//!         // but you may prefer to create your own trait to avoid making .as_mut() ambiguous.</span>
-<span class="doccomment">//!         + AsMut&lt;Delegate&gt;</span>
-<span class="doccomment">//!         + &#39;static,</span>
-<span class="doccomment">//! {</span>
-<span class="doccomment">//!     // When all globals have been enumerated, this is called.</span>
-<span class="doccomment">//!     fn ready(</span>
-<span class="doccomment">//!         data: &amp;mut D,</span>
-<span class="doccomment">//!         conn: &amp;Connection,</span>
-<span class="doccomment">//!         qh: &amp;QueueHandle&lt;D&gt;,</span>
-<span class="doccomment">//!     ) {</span>
-<span class="doccomment">//!         // Bind the global and store it in our state.</span>
-<span class="doccomment">//!         data.as_mut().compositor = data.registry().bind_one(</span>
-<span class="doccomment">//!             qh,</span>
-<span class="doccomment">//!             1..=2, // we want to bind version 1 or 2 of the global.</span>
-<span class="doccomment">//!             (), // and we provide the user data for the wl_compositor being created.</span>
-<span class="doccomment">//!         ).into();</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!         // You could either handle errors here or when attempting to use the interface.  Most</span>
-<span class="doccomment">//!         // Wayland protocols are optional, so if your application can function without a</span>
-<span class="doccomment">//!         // protocol it should try to do so; the From impl of GlobalProxy is written to make</span>
-<span class="doccomment">//!         // this straightforward.</span>
-<span class="doccomment">//!     }</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//! ```</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.
+//!
+//! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].
+//!
+//! [`RegistryState`] provides an interface to bind globals regularly, creating an object with each new
+//! instantiation or caching bound globals to prevent duplicate object instances from being created. Binding
+//! a global regularly is accomplished through [`RegistryState::bind_one`].
+//!
+//! The [`delegate_registry`](crate::delegate_registry) macro is used to implement handling for [`wl_registry`].
+//!
+//! ## Sample implementation of [`RegistryHandler`]
+//!
+//! ```
+//! use smithay_client_toolkit::reexports::client::{
+//!     Connection, Dispatch, QueueHandle,
+//!     delegate_dispatch,
+//!     protocol::wl_compositor,
+//! };
+//!
+//! use smithay_client_toolkit::registry::{
+//!     GlobalProxy, ProvidesRegistryState, RegistryHandler, RegistryState,
+//! };
+//!
+//! struct ExampleApp {
+//!     /// The registry state is needed to use the global abstractions.
+//!     registry_state: RegistryState,
+//!     /// This is a type we want to delegate global handling to.
+//!     delegate_that_wants_registry: Delegate,
+//! }
+//!
+//! /// The delegate a global should be provided to.
+//! struct Delegate {
+//!     // You usually want to cache the bound global so you can use it later
+//!     compositor: GlobalProxy&lt;wl_compositor::WlCompositor&gt;,
+//! }
+//!
+//! // When implementing RegistryHandler, you must be able to dispatch any type you could bind using the registry state.
+//! impl&lt;D&gt; RegistryHandler&lt;D&gt; for Delegate
+//! where
+//!     // In order to bind a global, you must statically assert the global may be handled with the data type.
+//!     D: Dispatch&lt;wl_compositor::WlCompositor, ()&gt;
+//!         // ProvidesRegistryState provides a function to access the RegistryState within the impl.
+//!         + ProvidesRegistryState
+//!         // We need some way to access our part of the application&#39;s state.  This uses AsMut,
+//!         // but you may prefer to create your own trait to avoid making .as_mut() ambiguous.
+//!         + AsMut&lt;Delegate&gt;
+//!         + &#39;static,
+//! {
+//!     // When all globals have been enumerated, this is called.
+//!     fn ready(
+//!         data: &amp;mut D,
+//!         conn: &amp;Connection,
+//!         qh: &amp;QueueHandle&lt;D&gt;,
+//!     ) {
+//!         // Bind the global and store it in our state.
+//!         data.as_mut().compositor = data.registry().bind_one(
+//!             qh,
+//!             1..=2, // we want to bind version 1 or 2 of the global.
+//!             (), // and we provide the user data for the wl_compositor being created.
+//!         ).into();
+//!
+//!         // You could either handle errors here or when attempting to use the interface.  Most
+//!         // Wayland protocols are optional, so if your application can function without a
+//!         // protocol it should try to do so; the From impl of GlobalProxy is written to make
+//!         // this straightforward.
+//!     }
+//! }
+//! ```
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error::GlobalError</span>,
-    <span class="ident">globals</span>::{<span class="ident">GlobalData</span>, <span class="ident">ProvidesBoundGlobal</span>},
+</span><span class="kw">use crate</span>::{
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
 };
-<span class="kw">use</span> <span class="ident">wayland_client</span>::{
-    <span class="ident">globals</span>::{<span class="ident">BindError</span>, <span class="ident">GlobalList</span>},
-    <span class="ident">protocol</span>::{<span class="ident">wl_callback</span>, <span class="ident">wl_registry</span>},
-    <span class="ident">Connection</span>, <span class="ident">Dispatch</span>, <span class="ident">Proxy</span>, <span class="ident">QueueHandle</span>,
+<span class="kw">use </span>wayland_client::{
+    globals::{BindError, GlobalList},
+    protocol::{wl_callback, wl_registry},
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
-<span class="doccomment">/// A trait implemented by modular parts of a smithay&#39;s client toolkit and protocol delegates that may be used</span>
-<span class="doccomment">/// to receive notification of a global being created or destroyed.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Delegates that choose to implement this trait may be used in [`registry_handlers`] which</span>
-<span class="doccomment">/// automatically notifies delegates about the creation and destruction of globals.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// [`registry_handlers`]: crate::registry_handlers</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that in order to delegate registry handling to a type which implements this trait, your `D` data type</span>
-<span class="doccomment">/// must implement [`ProvidesRegistryState`].</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">ProvidesRegistryState</span>,
+<span class="doccomment">/// A trait implemented by modular parts of a smithay&#39;s client toolkit and protocol delegates that may be used
+/// to receive notification of a global being created or destroyed.
+///
+/// Delegates that choose to implement this trait may be used in [`registry_handlers`] which
+/// automatically notifies delegates about the creation and destruction of globals.
+///
+/// [`registry_handlers`]: crate::registry_handlers
+///
+/// Note that in order to delegate registry handling to a type which implements this trait, your `D` data type
+/// must implement [`ProvidesRegistryState`].
+</span><span class="kw">pub trait </span>RegistryHandler&lt;D&gt;
+<span class="kw">where
+    </span>D: ProvidesRegistryState,
 {
-    <span class="doccomment">/// Called when initial enumeration of globals has been completed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This should be used to bind capability globals.</span>
-    <span class="kw">fn</span> <span class="ident">ready</span>(<span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>);
+    <span class="doccomment">/// Called when initial enumeration of globals has been completed.
+    ///
+    /// This should be used to bind capability globals.
+    </span><span class="kw">fn </span>ready(data: <span class="kw-2">&amp;mut </span>D, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;);
 
-    <span class="doccomment">/// Called when a new global has been advertised by the compositor.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The provided registry handle may be used to bind the global.  This is not called during</span>
-    <span class="doccomment">/// initial enumeration of globals, only for globals added after the calls to</span>
-    <span class="doccomment">/// [`RegistryHandler::ready`].  It is primarily useful for multi-instance globals such as</span>
-    <span class="doccomment">/// `wl_output` and `wl_seat`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default implementation does nothing.</span>
-    <span class="kw">fn</span> <span class="ident">new_global</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">version</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// Called when a new global has been advertised by the compositor.
+    ///
+    /// The provided registry handle may be used to bind the global.  This is not called during
+    /// initial enumeration of globals, only for globals added after the calls to
+    /// [`RegistryHandler::ready`].  It is primarily useful for multi-instance globals such as
+    /// `wl_output` and `wl_seat`.
+    ///
+    /// The default implementation does nothing.
+    </span><span class="kw">fn </span>new_global(
+        data: <span class="kw-2">&amp;mut </span>D,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        name: u32,
+        interface: <span class="kw-2">&amp;</span>str,
+        version: u32,
     ) {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> (<span class="ident">data</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">name</span>, <span class="ident">interface</span>, <span class="ident">version</span>);
+        <span class="kw">let _ </span>= (data, conn, qh, name, interface, version);
     }
 
-    <span class="doccomment">/// Called when a global has been destroyed by the compositor.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default implementation does nothing.</span>
-    <span class="kw">fn</span> <span class="ident">remove_global</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="doccomment">/// Called when a global has been destroyed by the compositor.
+    ///
+    /// The default implementation does nothing.
+    </span><span class="kw">fn </span>remove_global(
+        data: <span class="kw-2">&amp;mut </span>D,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        name: u32,
+        interface: <span class="kw-2">&amp;</span>str,
     ) {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> (<span class="ident">data</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">name</span>, <span class="ident">interface</span>);
+        <span class="kw">let _ </span>= (data, conn, qh, name, interface);
     }
 }
 
-<span class="doccomment">/// Trait which asserts a data type may provide a mutable reference to the registry state.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need</span>
-<span class="doccomment">/// to access the registry utilities provided by Smithay&#39;s client toolkit.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ProvidesRegistryState</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// Returns a mutable reference to the registry state.</span>
-    <span class="kw">fn</span> <span class="ident">registry</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">RegistryState</span>;
+<span class="doccomment">/// Trait which asserts a data type may provide a mutable reference to the registry state.
+///
+/// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
+/// to access the registry utilities provided by Smithay&#39;s client toolkit.
+</span><span class="kw">pub trait </span>ProvidesRegistryState: Sized {
+    <span class="doccomment">/// Returns a mutable reference to the registry state.
+    </span><span class="kw">fn </span>registry(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>RegistryState;
 
-    <span class="doccomment">/// Called when initial enumeration of globals has been completed.</span>
-    <span class="kw">fn</span> <span class="ident">global_enumeration_finished</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>);
+    <span class="doccomment">/// Called when initial enumeration of globals has been completed.
+    </span><span class="kw">fn </span>global_enumeration_finished(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;);
 
-    <span class="doccomment">/// Called when a new global has been advertised by the compositor.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is not called during initial global enumeration.</span>
-    <span class="kw">fn</span> <span class="ident">runtime_add_global</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">version</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// Called when a new global has been advertised by the compositor.
+    ///
+    /// This is not called during initial global enumeration.
+    </span><span class="kw">fn </span>runtime_add_global(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        name: u32,
+        interface: <span class="kw-2">&amp;</span>str,
+        version: u32,
     );
 
-    <span class="doccomment">/// Called when a global has been destroyed by the compositor.</span>
-    <span class="kw">fn</span> <span class="ident">runtime_remove_global</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="doccomment">/// Called when a global has been destroyed by the compositor.
+    </span><span class="kw">fn </span>runtime_remove_global(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        name: u32,
+        interface: <span class="kw-2">&amp;</span>str,
     );
 }
 
-<span class="doccomment">/// State object associated with the registry handling for smithay&#39;s client toolkit.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This object provides utilities to cache bound globals that are needed by multiple modules.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RegistryState</span> {
-    <span class="ident">registry</span>: <span class="ident">wl_registry::WlRegistry</span>,
-    <span class="ident">globals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Global</span><span class="op">&gt;</span>,
-    <span class="ident">ready</span>: <span class="ident">bool</span>,
+<span class="doccomment">/// State object associated with the registry handling for smithay&#39;s client toolkit.
+///
+/// This object provides utilities to cache bound globals that are needed by multiple modules.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>RegistryState {
+    registry: wl_registry::WlRegistry,
+    globals: Vec&lt;Global&gt;,
+    ready: bool,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Global</span> {
-    <span class="doccomment">/// The numeric name for this global, usable in [RegistryState::bind_specific].</span>
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// The maximum version supported by the compositor for this global.</span>
-    <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">u32</span>,
-    <span class="ident">interface</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
+</span><span class="kw">pub struct </span>Global {
+    <span class="doccomment">/// The numeric name for this global, usable in [RegistryState::bind_specific].
+    </span><span class="kw">pub </span>name: u32,
+    <span class="doccomment">/// The maximum version supported by the compositor for this global.
+    </span><span class="kw">pub </span>version: u32,
+    interface: String,
 }
 
-<span class="kw">impl</span> <span class="ident">Global</span> {
-    <span class="doccomment">/// The interface name for this global.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">interface</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interface</span>
+<span class="kw">impl </span>Global {
+    <span class="doccomment">/// The interface name for this global.
+    </span><span class="kw">pub fn </span>interface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.interface
     }
 }
 
-<span class="kw">impl</span> <span class="ident">RegistryState</span> {
-    <span class="doccomment">/// Creates a new registry handle.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This type may be used to bind globals as they are advertised.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_registry::WlRegistry</span>, <span class="ident">GlobalData</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_callback::WlCallback</span>, <span class="ident">RegistryReady</span><span class="op">&gt;</span>
-            <span class="op">+</span> <span class="ident">ProvidesRegistryState</span>
-            <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl </span>RegistryState {
+    <span class="doccomment">/// Creates a new registry handle.
+    ///
+    /// This type may be used to bind globals as they are advertised.
+    </span><span class="kw">pub fn </span>new&lt;D&gt;(conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>D: Dispatch&lt;wl_registry::WlRegistry, GlobalData&gt;
+            + Dispatch&lt;wl_callback::WlCallback, RegistryReady&gt;
+            + ProvidesRegistryState
+            + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">display</span> <span class="op">=</span> <span class="ident">conn</span>.<span class="ident">display</span>();
-        <span class="kw">let</span> <span class="ident">registry</span> <span class="op">=</span> <span class="ident">display</span>.<span class="ident">get_registry</span>(<span class="ident">qh</span>, <span class="ident">GlobalData</span>);
-        <span class="ident">display</span>.<span class="ident">sync</span>(<span class="ident">qh</span>, <span class="ident">RegistryReady</span>);
-        <span class="ident">RegistryState</span> { <span class="ident">registry</span>, <span class="ident">globals</span>: <span class="ident">Vec::new</span>(), <span class="ident">ready</span>: <span class="bool-val">false</span> }
+        <span class="kw">let </span>display = conn.display();
+        <span class="kw">let </span>registry = display.get_registry(qh, GlobalData);
+        display.sync(qh, RegistryReady);
+        RegistryState { registry, globals: Vec::new(), ready: <span class="bool-val">false </span>}
     }
 
-    <span class="doccomment">/// Uses an existing WlRegistry for handling registry state.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note: prefer using [Self::new] unless you need access to the registry for other reasons.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You will need to ensure the RegistryReady signal is sent to this object after initial</span>
-    <span class="doccomment">/// enumeration of the registry is complete.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_registry</span>(<span class="ident">registry</span>: <span class="ident">wl_registry::WlRegistry</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">RegistryState</span> { <span class="ident">registry</span>, <span class="ident">globals</span>: <span class="ident">Vec::new</span>(), <span class="ident">ready</span>: <span class="bool-val">false</span> }
+    <span class="doccomment">/// Uses an existing WlRegistry for handling registry state.
+    ///
+    /// Note: prefer using [Self::new] unless you need access to the registry for other reasons.
+    ///
+    /// You will need to ensure the RegistryReady signal is sent to this object after initial
+    /// enumeration of the registry is complete.
+    </span><span class="kw">pub fn </span>from_registry(registry: wl_registry::WlRegistry) -&gt; <span class="self">Self </span>{
+        RegistryState { registry, globals: Vec::new(), ready: <span class="bool-val">false </span>}
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">registry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">wl_registry::WlRegistry</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">registry</span>
+    <span class="kw">pub fn </span>registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_registry::WlRegistry {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.registry
     }
 
-    <span class="doccomment">/// Returns true if the registry has completed the initial enumeration of globals and is ready</span>
-    <span class="doccomment">/// to serve bind requests.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ready</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">ready</span>
+    <span class="doccomment">/// Returns true if the registry has completed the initial enumeration of globals and is ready
+    /// to serve bind requests.
+    </span><span class="kw">pub fn </span>ready(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.ready
     }
 
-    <span class="doccomment">/// Returns an iterator over all globals.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This list may be incomplete if [Self::ready] returns false, and may change later if the</span>
-    <span class="doccomment">/// compositor adds or removes globals after initial enumeration.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// No guarantees are provided about the ordering of the globals in this iterator.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">globals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Global</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
-        <span class="self">self</span>.<span class="ident">globals</span>.<span class="ident">iter</span>()
+    <span class="doccomment">/// Returns an iterator over all globals.
+    ///
+    /// This list may be incomplete if [Self::ready] returns false, and may change later if the
+    /// compositor adds or removes globals after initial enumeration.
+    ///
+    /// No guarantees are provided about the ordering of the globals in this iterator.
+    </span><span class="kw">pub fn </span>globals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Global&gt; + <span class="lifetime">&#39;_ </span>{
+        <span class="self">self</span>.globals.iter()
     }
 
-    <span class="doccomment">/// Returns an iterator over all globals implementing the given interface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This may be more efficient than searching [Self::globals].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">globals_by_interface</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>,
-    ) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Global</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
-        <span class="self">self</span>.<span class="ident">globals</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">interface</span> <span class="op">==</span> <span class="ident">interface</span>)
+    <span class="doccomment">/// Returns an iterator over all globals implementing the given interface.
+    ///
+    /// This may be more efficient than searching [Self::globals].
+    </span><span class="kw">pub fn </span>globals_by_interface&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        interface: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str,
+    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Global&gt; + <span class="lifetime">&#39;a </span>{
+        <span class="self">self</span>.globals.iter().filter(<span class="kw">move </span>|g| g.interface == interface)
     }
 
-    <span class="doccomment">/// Binds a global, returning a new object associated with the global.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This should not be used to bind globals that have multiple instances such as `wl_output`;</span>
-    <span class="doccomment">/// use [Self::bind_all] instead.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind_one</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Binds a global, returning a new object associated with the global.
+    ///
+    /// This should not be used to bind globals that have multiple instances such as `wl_output`;
+    /// use [Self::bind_all] instead.
+    </span><span class="kw">pub fn </span>bind_one&lt;I, D, U&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">version</span>: <span class="ident">std::ops::RangeInclusive</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-        <span class="ident">udata</span>: <span class="ident">U</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">U</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        version: std::ops::RangeInclusive&lt;u32&gt;,
+        udata: U,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;I, BindError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
+        I: Proxy + <span class="lifetime">&#39;static</span>,
+        U: Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">iface</span> <span class="op">=</span> <span class="ident">I::interface</span>();
-        <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>() <span class="op">&gt;</span> <span class="ident">iface</span>.<span class="ident">version</span> {
-            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.</span>
-            <span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) of {} was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
-                <span class="ident">version</span>.<span class="ident">end</span>(), <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">version</span>);
+        <span class="kw">let </span>iface = I::interface();
+        <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
+            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
+            </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) of {} was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+                version.end(), iface.name, iface.version);
         }
-        <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>() <span class="op">&lt;</span> <span class="ident">iface</span>.<span class="ident">version</span> {
-            <span class="comment">// This is a reminder to evaluate the new API and bump the maximum in order to be able</span>
-            <span class="comment">// to use new APIs.  Actual use of new APIs still needs runtime version checks.</span>
-            <span class="macro">log::trace!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Version {} of {} is available; binding is currently limited to {}&quot;</span>, <span class="ident">iface</span>.<span class="ident">version</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>.<span class="ident">end</span>());
+        <span class="kw">if </span><span class="kw-2">*</span>version.end() &lt; iface.version {
+            <span class="comment">// This is a reminder to evaluate the new API and bump the maximum in order to be able
+            // to use new APIs.  Actual use of new APIs still needs runtime version checks.
+            </span><span class="macro">log::trace!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Version {} of {} is available; binding is currently limited to {}&quot;</span>, iface.version, iface.name, version.end());
         }
-        <span class="kw">for</span> <span class="ident">global</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">globals</span> {
-            <span class="kw">if</span> <span class="ident">global</span>.<span class="ident">interface</span> <span class="op">!</span><span class="op">=</span> <span class="ident">iface</span>.<span class="ident">name</span> {
+        <span class="kw">for </span>global <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.globals {
+            <span class="kw">if </span>global.interface != iface.name {
                 <span class="kw">continue</span>;
             }
-            <span class="kw">if</span> <span class="ident">global</span>.<span class="ident">version</span> <span class="op">&lt;</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">start</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BindError::UnsupportedVersion</span>);
+            <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
             }
-            <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">global</span>.<span class="ident">version</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>());
-            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>);
-            <span class="macro">log::debug!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, <span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>);
+            <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
+            <span class="kw">let </span>proxy = <span class="self">self</span>.registry.bind(global.name, version, qh, udata);
+            <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
 
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(proxy);
         }
-        <span class="prelude-val">Err</span>(<span class="ident">BindError::NotPresent</span>)
+        <span class="prelude-val">Err</span>(BindError::NotPresent)
     }
 
-    <span class="doccomment">/// Binds a global, returning a new object associated with the global.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This binds a specific object by its name as provided by the [RegistryHandler::new_global]</span>
-    <span class="doccomment">/// callback.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind_specific</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">D</span>, <span class="ident">U</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Binds a global, returning a new object associated with the global.
+    ///
+    /// This binds a specific object by its name as provided by the [RegistryHandler::new_global]
+    /// callback.
+    </span><span class="kw">pub fn </span>bind_specific&lt;I, D, U&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">name</span>: <span class="ident">u32</span>,
-        <span class="ident">version</span>: <span class="ident">std::ops::RangeInclusive</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-        <span class="ident">udata</span>: <span class="ident">U</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">U</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        name: u32,
+        version: std::ops::RangeInclusive&lt;u32&gt;,
+        udata: U,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;I, BindError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
+        I: Proxy + <span class="lifetime">&#39;static</span>,
+        U: Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">iface</span> <span class="op">=</span> <span class="ident">I::interface</span>();
-        <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>() <span class="op">&gt;</span> <span class="ident">iface</span>.<span class="ident">version</span> {
-            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.</span>
-            <span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
-                <span class="ident">version</span>.<span class="ident">end</span>(), <span class="ident">iface</span>.<span class="ident">version</span>);
+        <span class="kw">let </span>iface = I::interface();
+        <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
+            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
+            </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+                version.end(), iface.version);
         }
-        <span class="comment">// Optimize for runtime_add_global which will use the last entry</span>
-        <span class="kw">for</span> <span class="ident">global</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">globals</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-            <span class="kw">if</span> <span class="ident">global</span>.<span class="ident">name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">name</span> <span class="op">|</span><span class="op">|</span> <span class="ident">global</span>.<span class="ident">interface</span> <span class="op">!</span><span class="op">=</span> <span class="ident">iface</span>.<span class="ident">name</span> {
+        <span class="comment">// Optimize for runtime_add_global which will use the last entry
+        </span><span class="kw">for </span>global <span class="kw">in </span><span class="self">self</span>.globals.iter().rev() {
+            <span class="kw">if </span>global.name != name || global.interface != iface.name {
                 <span class="kw">continue</span>;
             }
-            <span class="kw">if</span> <span class="ident">global</span>.<span class="ident">version</span> <span class="op">&lt;</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">start</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BindError::UnsupportedVersion</span>);
+            <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
             }
-            <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">global</span>.<span class="ident">version</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>());
-            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>);
-            <span class="macro">log::debug!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, <span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>);
+            <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
+            <span class="kw">let </span>proxy = <span class="self">self</span>.registry.bind(global.name, version, qh, udata);
+            <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
 
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(proxy);
         }
-        <span class="prelude-val">Err</span>(<span class="ident">BindError::NotPresent</span>)
+        <span class="prelude-val">Err</span>(BindError::NotPresent)
     }
 
-    <span class="doccomment">/// Binds all globals with a given interface.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind_all</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">D</span>, <span class="ident">U</span>, <span class="ident">F</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Binds all globals with a given interface.
+    </span><span class="kw">pub fn </span>bind_all&lt;I, D, U, F&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
-        <span class="ident">version</span>: <span class="ident">std::ops::RangeInclusive</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-        <span class="kw-2">mut</span> <span class="ident">make_udata</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-        <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">u32</span>) -&gt; <span class="ident">U</span>,
-        <span class="ident">U</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        version: std::ops::RangeInclusive&lt;u32&gt;,
+        <span class="kw-2">mut </span>make_udata: F,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;I&gt;, BindError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
+        I: Proxy + <span class="lifetime">&#39;static</span>,
+        F: FnMut(u32) -&gt; U,
+        U: Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">iface</span> <span class="op">=</span> <span class="ident">I::interface</span>();
-        <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>() <span class="op">&gt;</span> <span class="ident">iface</span>.<span class="ident">version</span> {
-            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.</span>
-            <span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
-                <span class="ident">version</span>.<span class="ident">end</span>(), <span class="ident">iface</span>.<span class="ident">version</span>);
+        <span class="kw">let </span>iface = I::interface();
+        <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
+            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
+            </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+                version.end(), iface.version);
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">global</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">globals</span> {
-            <span class="kw">if</span> <span class="ident">global</span>.<span class="ident">interface</span> <span class="op">!</span><span class="op">=</span> <span class="ident">iface</span>.<span class="ident">name</span> {
+        <span class="kw">let </span><span class="kw-2">mut </span>rv = Vec::new();
+        <span class="kw">for </span>global <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.globals {
+            <span class="kw">if </span>global.interface != iface.name {
                 <span class="kw">continue</span>;
             }
-            <span class="kw">if</span> <span class="ident">global</span>.<span class="ident">version</span> <span class="op">&lt;</span> <span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">start</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BindError::UnsupportedVersion</span>);
+            <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
             }
-            <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">global</span>.<span class="ident">version</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">version</span>.<span class="ident">end</span>());
-            <span class="kw">let</span> <span class="ident">udata</span> <span class="op">=</span> <span class="ident">make_udata</span>(<span class="ident">global</span>.<span class="ident">name</span>);
-            <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">registry</span>.<span class="ident">bind</span>(<span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">version</span>, <span class="ident">qh</span>, <span class="ident">udata</span>);
-            <span class="macro">log::debug!</span>(<span class="ident">target</span>: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, <span class="ident">global</span>.<span class="ident">name</span>, <span class="ident">iface</span>.<span class="ident">name</span>, <span class="ident">version</span>);
+            <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
+            <span class="kw">let </span>udata = make_udata(global.name);
+            <span class="kw">let </span>proxy = <span class="self">self</span>.registry.bind(global.name, version, qh, udata);
+            <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
 
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="ident">proxy</span>);
+            rv.push(proxy);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">rv</span>)
+        <span class="prelude-val">Ok</span>(rv)
     }
 }
 
-<span class="doccomment">/// Delegates the handling of [`wl_registry`].</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Anything which implements [`RegistryHandler`] may be used in the delegate.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ## Usage</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// use smithay_client_toolkit::{</span>
-<span class="doccomment">///     delegate_registry, delegate_shm, registry_handlers,</span>
-<span class="doccomment">///     shm::{ShmHandler, ShmState},</span>
-<span class="doccomment">/// };</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// struct ExampleApp {</span>
-<span class="doccomment">///     shm_state: ShmState,</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// // Here is the implementation of wl_shm to compile:</span>
-<span class="doccomment">/// delegate_shm!(ExampleApp);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl ShmHandler for ExampleApp {</span>
-<span class="doccomment">///     fn shm_state(&amp;mut self) -&gt; &amp;mut ShmState {</span>
-<span class="doccomment">///         &amp;mut self.shm_state</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_registry</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+<span class="doccomment">/// Delegates the handling of [`wl_registry`].
+///
+/// Anything which implements [`RegistryHandler`] may be used in the delegate.
+///
+/// ## Usage
+///
+/// ```
+/// use smithay_client_toolkit::{
+///     delegate_registry, delegate_shm, registry_handlers,
+///     shm::{ShmHandler, ShmState},
+/// };
+///
+/// struct ExampleApp {
+///     shm_state: ShmState,
+/// }
+///
+/// // Here is the implementation of wl_shm to compile:
+/// delegate_shm!(ExampleApp);
+///
+/// impl ShmHandler for ExampleApp {
+///     fn shm_state(&amp;mut self) -&gt; &amp;mut ShmState {
+///         &amp;mut self.shm_state
+///     }
+/// }
+/// ```
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_registry {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_registry::WlRegistry</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::globals::GlobalData</span>
-            ]  =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryState</span>
-        );
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_registry::WlRegistry</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+            </span>]  =&gt; <span class="macro-nonterminal">$crate::registry::RegistryState
+        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryReady</span>
-            ]  =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryState</span>
-        );
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$crate::registry::RegistryReady
+            </span>]  =&gt; <span class="macro-nonterminal">$crate::registry::RegistryState
+        </span>);
     };
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_registry::WlRegistry</span>, <span class="ident">GlobalData</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RegistryState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_registry::WlRegistry</span>, <span class="ident">GlobalData</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ProvidesRegistryState</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_registry::WlRegistry, GlobalData, D&gt; <span class="kw">for </span>RegistryState
+<span class="kw">where
+    </span>D: Dispatch&lt;wl_registry::WlRegistry, GlobalData&gt; + ProvidesRegistryState,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">wl_registry::WlRegistry</span>,
-        <span class="ident">event</span>: <span class="ident">wl_registry::Event</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalData</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        state: <span class="kw-2">&amp;mut </span>D,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>wl_registry::WlRegistry,
+        event: wl_registry::Event,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>GlobalData,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="kw">match</span> <span class="ident">event</span> {
-            <span class="ident">wl_registry::Event::Global</span> { <span class="ident">name</span>, <span class="ident">interface</span>, <span class="ident">version</span> } =&gt; {
-                <span class="kw">let</span> <span class="ident">iface</span> <span class="op">=</span> <span class="ident">interface</span>.<span class="ident">clone</span>();
-                <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">globals</span>.<span class="ident">push</span>(<span class="ident">Global</span> { <span class="ident">name</span>, <span class="ident">interface</span>, <span class="ident">version</span> });
-                <span class="kw">if</span> <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">ready</span> {
-                    <span class="ident">state</span>.<span class="ident">runtime_add_global</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">iface</span>, <span class="ident">version</span>);
+        <span class="kw">match </span>event {
+            wl_registry::Event::Global { name, interface, version } =&gt; {
+                <span class="kw">let </span>iface = interface.clone();
+                state.registry().globals.push(Global { name, interface, version });
+                <span class="kw">if </span>state.registry().ready {
+                    state.runtime_add_global(conn, qh, name, <span class="kw-2">&amp;</span>iface, version);
                 }
             }
 
-            <span class="ident">wl_registry::Event::GlobalRemove</span> { <span class="ident">name</span> } =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">i</span>) <span class="op">=</span> <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">globals</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">name</span> <span class="op">==</span> <span class="ident">name</span>) {
-                    <span class="kw">let</span> <span class="ident">global</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">globals</span>.<span class="ident">swap_remove</span>(<span class="ident">i</span>);
-                    <span class="kw">if</span> <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">ready</span> {
-                        <span class="ident">state</span>.<span class="ident">runtime_remove_global</span>(<span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">global</span>.<span class="ident">interface</span>);
+            wl_registry::Event::GlobalRemove { name } =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = state.registry().globals.iter().position(|g| g.name == name) {
+                    <span class="kw">let </span>global = state.registry().globals.swap_remove(i);
+                    <span class="kw">if </span>state.registry().ready {
+                        state.runtime_remove_global(conn, qh, name, <span class="kw-2">&amp;</span>global.interface);
                     }
                 }
             }
 
-            <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;wl_registry is frozen&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;wl_registry is frozen&quot;</span>),
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_callback::WlCallback</span>, <span class="ident">RegistryReady</span>, <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RegistryState</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">wl_callback::WlCallback</span>, <span class="ident">RegistryReady</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ProvidesRegistryState</span>,
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_callback::WlCallback, RegistryReady, D&gt; <span class="kw">for </span>RegistryState
+<span class="kw">where
+    </span>D: Dispatch&lt;wl_callback::WlCallback, RegistryReady&gt; + ProvidesRegistryState,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(
-        <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">wl_callback::WlCallback</span>,
-        <span class="kw">_</span>: <span class="ident">wl_callback::Event</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">RegistryReady</span>,
-        <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>,
-        <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>event(
+        state: <span class="kw-2">&amp;mut </span>D,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>wl_callback::WlCallback,
+        <span class="kw">_</span>: wl_callback::Event,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>RegistryReady,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="ident">state</span>.<span class="ident">registry</span>().<span class="ident">ready</span> <span class="op">=</span> <span class="bool-val">true</span>;
-        <span class="ident">state</span>.<span class="ident">global_enumeration_finished</span>(<span class="ident">conn</span>, <span class="ident">qh</span>);
+        state.registry().ready = <span class="bool-val">true</span>;
+        state.global_enumeration_finished(conn, qh);
     }
 }
 
-<span class="doccomment">/// A helper that sets [RegistryState::ready] when enumeration is finished.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RegistryReady</span>;
+<span class="doccomment">/// A helper that sets [RegistryState::ready] when enumeration is finished.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>RegistryReady;
 
-<span class="doccomment">/// A helper for storing a bound global.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This helper is intended to simplify the implementation of [RegistryHandler] for state objects</span>
-<span class="doccomment">/// that cache a bound global.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Initial state: registry has not yet finished enumeration or there is a missing</span>
-    <span class="doccomment">/// [RegistryHandler] delegtation.</span>
-    <span class="ident">NotReady</span>,
-    <span class="doccomment">/// The requested global was not present after a complete enumeration.</span>
-    <span class="ident">NotPresent</span>,
-    <span class="doccomment">/// The cached global.</span>
-    <span class="ident">Bound</span>(<span class="ident">I</span>),
+<span class="doccomment">/// A helper for storing a bound global.
+///
+/// This helper is intended to simplify the implementation of [RegistryHandler] for state objects
+/// that cache a bound global.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>GlobalProxy&lt;I&gt; {
+    <span class="doccomment">/// Initial state: registry has not yet finished enumeration or there is a missing
+    /// [RegistryHandler] delegtation.
+    </span>NotReady,
+    <span class="doccomment">/// The requested global was not present after a complete enumeration.
+    </span>NotPresent,
+    <span class="doccomment">/// The cached global.
+    </span>Bound(I),
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">BindError</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">BindError</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>) =&gt; <span class="ident">GlobalProxy::Bound</span>(<span class="ident">proxy</span>),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident">GlobalProxy::NotPresent</span>,
+<span class="kw">impl</span>&lt;I&gt; From&lt;<span class="prelude-ty">Result</span>&lt;I, BindError&gt;&gt; <span class="kw">for </span>GlobalProxy&lt;I&gt; {
+    <span class="kw">fn </span>from(r: <span class="prelude-ty">Result</span>&lt;I, BindError&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>r {
+            <span class="prelude-val">Ok</span>(proxy) =&gt; GlobalProxy::Bound(proxy),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; GlobalProxy::NotPresent,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Proxy</span><span class="op">&gt;</span> <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">GlobalProxy::NotReady</span>
+<span class="kw">impl</span>&lt;I: Proxy&gt; GlobalProxy&lt;I&gt; {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        GlobalProxy::NotReady
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">with_min_version</span>(<span class="number">0</span>)
+    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>I, GlobalError&gt; {
+        <span class="self">self</span>.with_min_version(<span class="number">0</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_min_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">min_version</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">GlobalProxy::Bound</span>(<span class="ident">proxy</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">proxy</span>.<span class="ident">version</span>() <span class="op">&lt;</span> <span class="ident">min_version</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">GlobalError::InvalidVersion</span> {
-                        <span class="ident">name</span>: <span class="ident">I::interface</span>().<span class="ident">name</span>,
-                        <span class="ident">required</span>: <span class="ident">min_version</span>,
-                        <span class="ident">available</span>: <span class="ident">proxy</span>.<span class="ident">version</span>(),
+    <span class="kw">pub fn </span>with_min_version(<span class="kw-2">&amp;</span><span class="self">self</span>, min_version: u32) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>I, GlobalError&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            GlobalProxy::Bound(proxy) =&gt; {
+                <span class="kw">if </span>proxy.version() &lt; min_version {
+                    <span class="prelude-val">Err</span>(GlobalError::InvalidVersion {
+                        name: I::interface().name,
+                        required: min_version,
+                        available: proxy.version(),
                     })
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">proxy</span>)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Ok</span>(proxy)
                 }
             }
-            <span class="ident">GlobalProxy::NotPresent</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">GlobalError::MissingGlobal</span>(<span class="ident">I::interface</span>().<span class="ident">name</span>)),
-            <span class="ident">GlobalProxy::NotReady</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">GlobalError::NotReady</span>),
+            GlobalProxy::NotPresent =&gt; <span class="prelude-val">Err</span>(GlobalError::MissingGlobal(I::interface().name)),
+            GlobalProxy::NotReady =&gt; <span class="prelude-val">Err</span>(GlobalError::NotReady),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> {
-    <span class="ident">proxy</span>: <span class="ident">GlobalProxy</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>SimpleGlobal&lt;I, <span class="kw">const </span>MAX_VERSION: u32&gt; {
+    proxy: GlobalProxy&lt;I&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">not_ready</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">proxy</span>: <span class="ident">GlobalProxy::NotReady</span> }
+<span class="kw">impl</span>&lt;I: Proxy + <span class="lifetime">&#39;static</span>, <span class="kw">const </span>MAX_VERSION: u32&gt; SimpleGlobal&lt;I, MAX_VERSION&gt; {
+    <span class="kw">pub fn </span>not_ready() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ proxy: GlobalProxy::NotReady }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>(<span class="ident">globals</span>: <span class="kw-2">&amp;</span><span class="ident">GlobalList</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">BindError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">State</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, (), <span class="ident">State</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="kw">pub fn </span>bind&lt;State&gt;(globals: <span class="kw-2">&amp;</span>GlobalList, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BindError&gt;
+    <span class="kw">where
+        </span>State: Dispatch&lt;I, (), State&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let</span> <span class="ident">proxy</span> <span class="op">=</span> <span class="ident">globals</span>.<span class="ident">bind</span>(<span class="ident">qh</span>, <span class="number">0</span>..<span class="op">=</span><span class="ident">MAX_VERSION</span>, ())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">proxy</span>: <span class="ident">GlobalProxy::Bound</span>(<span class="ident">proxy</span>) })
+        <span class="kw">let </span>proxy = globals.bind(qh, <span class="number">0</span>..=MAX_VERSION, ())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ proxy: GlobalProxy::Bound(proxy) })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">proxy</span>.<span class="ident">get</span>()
+    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>I, GlobalError&gt; {
+        <span class="self">self</span>.proxy.get()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_min_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">min_version</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">proxy</span>.<span class="ident">with_min_version</span>(<span class="ident">min_version</span>)
+    <span class="kw">pub fn </span>with_min_version(<span class="kw-2">&amp;</span><span class="self">self</span>, min_version: u32) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>I, GlobalError&gt; {
+        <span class="self">self</span>.proxy.with_min_version(min_version)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="ident">Clone</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> <span class="ident">ProvidesBoundGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span>
-    <span class="kw">for</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span>
+<span class="kw">impl</span>&lt;I: Proxy + Clone, <span class="kw">const </span>MAX_VERSION: u32&gt; ProvidesBoundGlobal&lt;I, MAX_VERSION&gt;
+    <span class="kw">for </span>SimpleGlobal&lt;I, MAX_VERSION&gt;
 {
-    <span class="kw">fn</span> <span class="ident">bound_global</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">GlobalError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">proxy</span>.<span class="ident">get</span>().<span class="ident">cloned</span>()
+    <span class="kw">fn </span>bound_global(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;I, GlobalError&gt; {
+        <span class="self">self</span>.proxy.get().cloned()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">I</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> <span class="ident">RegistryHandler</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">ProvidesRegistryState</span> <span class="op">+</span> <span class="ident">AsMut</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, ()<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-    <span class="ident">I</span>: <span class="ident">Proxy</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl</span>&lt;D, I, <span class="kw">const </span>MAX_VERSION: u32&gt; RegistryHandler&lt;D&gt; <span class="kw">for </span>SimpleGlobal&lt;I, MAX_VERSION&gt;
+<span class="kw">where
+    </span>D: ProvidesRegistryState + AsMut&lt;<span class="self">Self</span>&gt; + Dispatch&lt;I, ()&gt; + <span class="lifetime">&#39;static</span>,
+    I: Proxy + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">fn</span> <span class="ident">ready</span>(<span class="ident">data</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>) {
-        <span class="ident">data</span>.<span class="ident">as_mut</span>().<span class="ident">proxy</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">registry</span>().<span class="ident">bind_one</span>(<span class="ident">qh</span>, <span class="number">0</span>..<span class="op">=</span><span class="ident">MAX_VERSION</span>, ()).<span class="ident">into</span>();
+    <span class="kw">fn </span>ready(data: <span class="kw-2">&amp;mut </span>D, <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
+        data.as_mut().proxy = data.registry().bind_one(qh, <span class="number">0</span>..=MAX_VERSION, ()).into();
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">I</span>, <span class="kw">const</span> <span class="ident">MAX_VERSION</span>: <span class="ident">u32</span><span class="op">&gt;</span> <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, (), <span class="ident">D</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SimpleGlobal</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">MAX_VERSION</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">D</span>: <span class="ident">Dispatch</span><span class="op">&lt;</span><span class="ident">I</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">I</span>: <span class="ident">Proxy</span>,
+<span class="kw">impl</span>&lt;D, I, <span class="kw">const </span>MAX_VERSION: u32&gt; Dispatch&lt;I, (), D&gt; <span class="kw">for </span>SimpleGlobal&lt;I, MAX_VERSION&gt;
+<span class="kw">where
+    </span>D: Dispatch&lt;I, ()&gt;,
+    I: Proxy,
 {
-    <span class="kw">fn</span> <span class="ident">event</span>(<span class="kw">_</span>: <span class="kw-2">&amp;mut</span> <span class="ident">D</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">I</span>, <span class="kw">_</span>: <span class="op">&lt;</span><span class="ident">I</span> <span class="kw">as</span> <span class="ident">Proxy</span><span class="op">&gt;</span><span class="ident">::Event</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span>(), <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Connection</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">QueueHandle</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>) {
-        <span class="macro">unreachable!</span>(<span class="string">&quot;SimpleGlobal is not suitable for {} which has events&quot;</span>, <span class="ident">I::interface</span>().<span class="ident">name</span>);
+    <span class="kw">fn </span>event(<span class="kw">_</span>: <span class="kw-2">&amp;mut </span>D, <span class="kw">_</span>: <span class="kw-2">&amp;</span>I, <span class="kw">_</span>: &lt;I <span class="kw">as </span>Proxy&gt;::Event, <span class="kw">_</span>: <span class="kw-2">&amp;</span>(), <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection, <span class="kw">_</span>: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
+        <span class="macro">unreachable!</span>(<span class="string">&quot;SimpleGlobal is not suitable for {} which has events&quot;</span>, I::interface().name);
     }
 }
 
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">delegate_simple</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">iface</span>:<span class="ident">ty</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max</span>:<span class="ident">expr</span>) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@<span class="op">&lt;</span> $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span> <span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: [ <span class="macro-nonterminal">$</span><span class="macro-nonterminal">iface</span>: () ]
-            =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::SimpleGlobal</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">iface</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max</span><span class="op">&gt;</span>
+<span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>delegate_simple {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:ty, <span class="macro-nonterminal">$iface</span>:ty, <span class="macro-nonterminal">$max</span>:expr) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: [ <span class="macro-nonterminal">$iface</span>: () ]
+            =&gt; <span class="macro-nonterminal">$crate::registry::SimpleGlobal</span>&lt;<span class="macro-nonterminal">$iface</span>, <span class="macro-nonterminal">$max</span>&gt;
         );
     };
 }
 
-<span class="doccomment">/// A helper macro for implementing [`ProvidesRegistryState`].</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// See [`delegate_registry`] for an example.</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">registry_handlers</span> {
-    ($(@<span class="op">&lt;</span>$( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">lt</span>:<span class="ident">tt</span> $( : <span class="macro-nonterminal">$</span><span class="macro-nonterminal">clt</span>:<span class="ident">tt</span> $(<span class="op">+</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dlt</span>:<span class="ident">tt</span> )<span class="op">*</span> )<span class="question-mark">?</span> ),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span> $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:<span class="ident">ty</span>),<span class="op">*</span> $(,)<span class="question-mark">?</span>) =&gt; {
-        <span class="kw">fn</span> <span class="ident">global_enumeration_finished</span>(
-            <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-            <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::Connection</span>,
-            <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+<span class="doccomment">/// A helper macro for implementing [`ProvidesRegistryState`].
+///
+/// See [`delegate_registry`] for an example.
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>registry_handlers {
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span>$(<span class="macro-nonterminal">$ty</span>:ty),* $(,)<span class="question-mark">?</span>) =&gt; {
+        <span class="kw">fn </span>global_enumeration_finished(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            conn: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::Connection</span>,
+            qh: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::QueueHandle</span>&lt;<span class="self">Self</span>&gt;,
         ) {
             $(
-                <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryHandler</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::ready</span>(<span class="self">self</span>, <span class="ident">conn</span>, <span class="ident">qh</span>);
-            )<span class="op">*</span>
+                &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span><span class="macro-nonterminal">$crate::registry::RegistryHandler</span>&lt;<span class="self">Self</span>&gt;&gt;::ready(<span class="self">self</span>, conn, qh);
+            )*
         }
 
-        <span class="kw">fn</span> <span class="ident">runtime_add_global</span>(
-            <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-            <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::Connection</span>,
-            <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-            <span class="ident">name</span>: <span class="ident">u32</span>,
-            <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-            <span class="ident">version</span>: <span class="ident">u32</span>,
+        <span class="kw">fn </span>runtime_add_global(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            conn: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::Connection</span>,
+            qh: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::QueueHandle</span>&lt;<span class="self">Self</span>&gt;,
+            name: u32,
+            interface: <span class="kw-2">&amp;</span>str,
+            version: u32,
         ) {
             $(
-                <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryHandler</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::new_global</span>(<span class="self">self</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">name</span>, <span class="ident">interface</span>, <span class="ident">version</span>);
-            )<span class="op">*</span>
+                &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span><span class="macro-nonterminal">$crate::registry::RegistryHandler</span>&lt;<span class="self">Self</span>&gt;&gt;::new_global(<span class="self">self</span>, conn, qh, name, interface, version);
+            )*
         }
 
-        <span class="kw">fn</span> <span class="ident">runtime_remove_global</span>(
-            <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-            <span class="ident">conn</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::Connection</span>,
-            <span class="ident">qh</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::reexports::client::QueueHandle</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-            <span class="ident">name</span>: <span class="ident">u32</span>,
-            <span class="ident">interface</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="kw">fn </span>runtime_remove_global(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            conn: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::Connection</span>,
+            qh: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::QueueHandle</span>&lt;<span class="self">Self</span>&gt;,
+            name: u32,
+            interface: <span class="kw-2">&amp;</span>str,
         ) {
             $(
-                <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::registry::RegistryHandler</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::remove_global</span>(<span class="self">self</span>, <span class="ident">conn</span>, <span class="ident">qh</span>, <span class="ident">name</span>, <span class="ident">interface</span>);
-            )<span class="op">*</span>
+                &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span><span class="macro-nonterminal">$crate::registry::RegistryHandler</span>&lt;<span class="self">Self</span>&gt;&gt;::remove_global(<span class="self">self</span>, conn, qh, name, interface);
+            )*
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
