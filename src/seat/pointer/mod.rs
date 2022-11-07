@@ -522,7 +522,7 @@ impl ThemedPointer {
             return Err(PointerThemeError::MissingEnterSerial);
         };
 
-        self.pointer.set_cursor(serial, Some(&surface), hx as i32, hy as i32);
+        self.pointer.set_cursor(serial, Some(surface), hx as i32, hy as i32);
 
         Ok(())
     }
