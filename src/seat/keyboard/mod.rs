@@ -602,8 +602,17 @@ where
                                 #[cfg(feature = "calloop")]
                                 {
                                     if let Some(repeat_sender) = &udata.repeat_sender {
-                                        let _ = repeat_sender
-                                            .send(RepeatMessage::StartRepeat(event.clone()));
+                                        let state_guard = udata.xkb_state.lock().unwrap();
+                                        let key_repeats = state_guard
+                                            .as_ref()
+                                            .map(|guard| {
+                                                guard.get_keymap().key_repeats(event.keysym)
+                                            })
+                                            .unwrap_or_default();
+                                        if key_repeats {
+                                            let _ = repeat_sender
+                                                .send(RepeatMessage::StartRepeat(event.clone()));
+                                        }
                                     }
                                 }
                                 data.press_key(conn, qh, keyboard, serial, event);
