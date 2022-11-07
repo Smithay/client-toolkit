@@ -32,8 +32,8 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut state = State {
-        registry_state: RegistryState::new(&globals, &conn, &qh),
-        output_state: OutputState::new(),
+        registry_state: RegistryState::new(&globals),
+        output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
         shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
@@ -44,10 +44,6 @@ fn main() {
         pool: None,
         windows: Vec::new(),
     };
-
-    while !state.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut state).unwrap();
-    }
 
     let mut pool_size = 0;
 

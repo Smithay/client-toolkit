@@ -36,9 +36,9 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&globals, &conn, &qh),
-        seat_state: SeatState::new(),
-        output_state: OutputState::new(),
+        registry_state: RegistryState::new(&globals),
+        seat_state: SeatState::new(&globals, &qh),
+        output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
         shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
@@ -57,10 +57,6 @@ fn main() {
         keyboard_focus: false,
         pointer: None,
     };
-
-    while !simple_window.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut simple_window).unwrap();
-    }
 
     let pool = SlotPool::new(
         simple_window.width as usize * simple_window.height as usize * 4,

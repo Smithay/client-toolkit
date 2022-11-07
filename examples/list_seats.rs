@@ -15,11 +15,10 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut list_seats = ListSeats {
-        registry_state: RegistryState::new(&globals, &conn, &qh),
-        seat_state: SeatState::new(),
+        registry_state: RegistryState::new(&globals),
+        seat_state: SeatState::new(&globals, &qh),
     };
 
-    event_queue.blocking_dispatch(&mut list_seats).unwrap();
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
 
     println!("Available seats:");

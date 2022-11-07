@@ -24,10 +24,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Initialize the registry handling so other parts of Smithay's client toolkit may bind
     // globals.
-    let registry_state = RegistryState::new(&globals, &conn, &qh);
+    let registry_state = RegistryState::new(&globals);
 
     // Initialize the delegate we will use for outputs.
-    let output_delegate = OutputState::new();
+    let output_delegate = OutputState::new(&globals, &qh);
 
     // Set up application state.
     //
@@ -35,15 +35,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // application is running.
     let mut list_outputs = ListOutputs { registry_state, output_state: output_delegate };
 
-    // Send requests to the server and block until we receive events from the server.
-    while !list_outputs.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut list_outputs)?;
-    }
-
-    // We do this again here because the first time we let the delegates bind their globals.
+    // `OutputState::new()` binds the output globals found in `registry_queue_init()`.
     //
-    // After the delegates have bound their globals and created the necessary objects, we need to dispatch
-    // again so that events may be sent to the newly created objects.
+    // After the globals are bound, we need to dispatch again so that events may be sent to the newly
+    // created objects.
     event_queue.roundtrip(&mut list_outputs)?;
 
     // Now our outputs have been initialized with data, we may access what outputs exist and information about
