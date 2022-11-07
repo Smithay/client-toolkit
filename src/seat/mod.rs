@@ -19,7 +19,10 @@ use wayland_client::{
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    pointer::{PointerData, PointerDataExt, PointerDataInner, PointerHandler, ThemeSpec, Themes},
+    pointer::{
+        PointerData, PointerDataExt, PointerDataInner, PointerHandler, ThemeSpec, ThemedPointer,
+        Themes,
+    },
     touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
@@ -112,20 +115,26 @@ impl SeatState {
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         theme: ThemeSpec,
-    ) -> Result<wl_pointer::WlPointer, SeatError>
+        scale: i32,
+    ) -> Result<(wl_pointer::WlPointer, ThemedPointer), SeatError>
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
-        self.get_pointer_with_data(
+        let wl_ptr = self.get_pointer_with_data(
             qh,
             seat,
-            PointerData {
-                inner: Mutex::new(PointerDataInner {
-                    pointer_themes: Arc::new(Mutex::new(Themes::new(theme))),
-                    ..Default::default()
-                }),
+            PointerData { inner: Mutex::new(PointerDataInner { ..Default::default() }) },
+        )?;
+
+        Ok((
+            wl_ptr.clone(),
+            ThemedPointer {
+                themes: Arc::new(Mutex::new(Themes::new(theme))),
+                pointer: wl_ptr,
+                current_ptr: "left_ptr".to_string(),
+                scale,
             },
-        )
+        ))
     }
 
     /// Creates a pointer from a seat.

@@ -9,10 +9,7 @@ use smithay_client_toolkit::{
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers},
-        pointer::{
-            PointerData, PointerDataExt, PointerEvent, PointerEventKind, PointerHandler,
-            ThemedPointer,
-        },
+        pointer::{PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer},
         Capability, SeatHandler, SeatState,
     },
     shell::xdg::{
@@ -27,7 +24,7 @@ use smithay_client_toolkit::{
 use wayland_client::{
     globals::{registry_queue_init, GlobalListContents},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, QueueHandle,
 };
 
 fn main() {
@@ -238,8 +235,13 @@ impl SeatHandler for SimpleWindow {
 
         if capability == Capability::Pointer && self.pointer.is_none() {
             println!("Set pointer capability");
-            let pointer = self.seat_state.get_pointer(qh, &seat).expect("Failed to create pointer");
+            println!("Creating pointer theme");
+            let (pointer, themed_pointer) = self
+                .seat_state
+                .get_pointer_with_theme(qh, &seat, ThemeSpec::System, 1)
+                .expect("Failed to create pointer");
             self.pointer = Some(pointer);
+            self.themed_pointer.replace(themed_pointer);
         }
     }
 
@@ -375,23 +377,13 @@ impl ShmHandler for SimpleWindow {
 impl SimpleWindow {
     pub fn draw(&mut self, conn: &Connection, qh: &QueueHandle<Self>) {
         if let Some(window) = self.window.as_ref() {
-            if self.themed_pointer.is_none() && self.pointer.is_some() {
-                let ptr = self.pointer.clone().unwrap();
-                let ptr_data: &PointerData = ptr.data().unwrap();
-                let themed_pointer = ptr_data.themed_pointer(
-                    self.pointer.clone().unwrap(),
-                    self.pointer_surface.clone().unwrap(),
-                    self.shm_state.wl_shm().clone(),
-                    1,
-                    Some(0),
-                );
-                self.themed_pointer.replace(themed_pointer);
-            }
-            self.themed_pointer
-                .as_mut()
-                .unwrap()
-                .set_cursor(conn, "diamond_cross", Some(0))
-                .unwrap();
+            let cursor_surface = self.pointer_surface.as_ref().unwrap();
+            let _ = self.themed_pointer.as_mut().unwrap().set_cursor(
+                conn,
+                "diamond_cross",
+                self.shm_state.wl_shm(),
+                cursor_surface,
+            );
 
             let width = self.width;
             let height = self.height;
