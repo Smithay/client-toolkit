@@ -19,10 +19,7 @@ use wayland_client::{
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    pointer::{
-        PointerData, PointerDataExt, PointerDataInner, PointerHandler, ThemeSpec, ThemedPointer,
-        Themes,
-    },
+    pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
     touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
@@ -120,21 +117,7 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
-        let wl_ptr = self.get_pointer_with_data(
-            qh,
-            seat,
-            PointerData { inner: Mutex::new(PointerDataInner { ..Default::default() }) },
-        )?;
-
-        Ok((
-            wl_ptr.clone(),
-            ThemedPointer {
-                themes: Arc::new(Mutex::new(Themes::new(theme))),
-                pointer: wl_ptr,
-                current_ptr: "left_ptr".to_string(),
-                scale,
-            },
-        ))
+        self.get_pointer_with_theme_and_data(qh, seat, theme, scale, Default::default())
     }
 
     /// Creates a pointer from a seat.
@@ -160,6 +143,42 @@ impl SeatState {
         }
 
         Ok(seat.get_pointer(qh, pointer_data))
+    }
+
+    /// Creates a pointer from a seat with the provided theme and data.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    pub fn get_pointer_with_theme_and_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        theme: ThemeSpec,
+        scale: i32,
+        pointer_data: U,
+    ) -> Result<(wl_pointer::WlPointer, ThemedPointer), SeatError>
+    where
+        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
+        U: PointerDataExt + 'static,
+    {
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_pointer.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Pointer));
+        }
+
+        let wl_ptr = seat.get_pointer(qh, pointer_data);
+        Ok((
+            wl_ptr.clone(),
+            ThemedPointer {
+                themes: Arc::new(Mutex::new(Themes::new(theme))),
+                pointer: wl_ptr,
+                current_ptr: "left_ptr".to_string(),
+                scale,
+            },
+        ))
     }
 
     /// Creates a touch handle from a seat.
