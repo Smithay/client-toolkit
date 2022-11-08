@@ -34,61 +34,59 @@ fn main() {
 
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
+    let registry_state = RegistryState::new(&conn, &qh);
+    let seat_state = SeatState::new();
+    let output_state = OutputState::new();
+    let compositor_state =
+        CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
+    let shm_state = ShmState::bind(&globals, &qh).expect("wl_shm not available");
+    let xdg_shell_state = XdgShellState::bind(&globals, &qh).expect("xdg shell not available");
+    let mut xdg_window_state = XdgWindowState::bind(&globals, &qh);
 
-    let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&conn, &qh),
-        seat_state: SeatState::new(),
-        output_state: OutputState::new(),
-        compositor_state: CompositorState::bind(&globals, &qh)
-            .expect("wl_compositor not available"),
-        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
-        xdg_shell_state: XdgShellState::bind(&globals, &qh).expect("xdg shell not available"),
-        xdg_window_state: XdgWindowState::bind(&globals, &qh),
+    let width = 256;
+    let height = 256;
+    let pool = SlotPool::new(width as usize * height as usize * 4, &shm_state)
+        .expect("Failed to create pool");
 
-        exit: false,
-        first_configure: true,
-        pool: None,
-        width: 256,
-        height: 256,
-        shift: None,
-        buffer: None,
-        window: None,
-        pointer_surface: None,
-        keyboard: None,
-        keyboard_focus: false,
-        pointer: None,
-        themed_pointer: None,
-    };
-
-    while !simple_window.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut simple_window).unwrap();
-    }
-
-    let pool = SlotPool::new(
-        simple_window.width as usize * simple_window.height as usize * 4,
-        &simple_window.shm_state,
-    )
-    .expect("Failed to create pool");
-    simple_window.pool = Some(pool);
-
-    let window_surface = simple_window.compositor_state.create_surface(&qh).unwrap();
-    let pointer_surface = simple_window.compositor_state.create_surface(&qh).unwrap();
+    let window_surface = compositor_state.create_surface(&qh).unwrap();
+    let pointer_surface = compositor_state.create_surface(&qh).unwrap();
 
     let window = Window::builder()
         .title("A wayland window")
         // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
         .app_id("io.github.smithay.client-toolkit.SimpleWindow")
         .min_size((256, 256))
-        .map(
-            &qh,
-            &simple_window.xdg_shell_state,
-            &mut simple_window.xdg_window_state,
-            window_surface,
-        )
+        .map(&qh, &xdg_shell_state, &mut xdg_window_state, window_surface)
         .expect("window creation");
 
-    simple_window.pointer_surface.replace(pointer_surface);
-    simple_window.window = Some(window);
+    let mut simple_window = SimpleWindow {
+        registry_state,
+        seat_state,
+        output_state,
+        _compositor_state: compositor_state,
+        shm_state,
+        _xdg_shell_state: xdg_shell_state,
+        _xdg_window_state: xdg_window_state,
+
+        exit: false,
+        first_configure: true,
+        pool,
+        width,
+        height,
+        shift: None,
+        buffer: None,
+        window,
+        pointer_surface,
+        keyboard: None,
+        keyboard_focus: false,
+        pointer: None,
+        themed_pointer: None,
+        set_cursor: false,
+    };
+
+    while !simple_window.registry_state.ready() {
+        event_queue.blocking_dispatch(&mut simple_window).unwrap();
+    }
 
     // We don't draw immediately, the configure will notify us when to first draw.
 
@@ -106,24 +104,25 @@ struct SimpleWindow {
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
-    compositor_state: CompositorState,
+    _compositor_state: CompositorState,
     shm_state: ShmState,
-    xdg_shell_state: XdgShellState,
-    xdg_window_state: XdgWindowState,
+    _xdg_shell_state: XdgShellState,
+    _xdg_window_state: XdgWindowState,
 
     exit: bool,
     first_configure: bool,
-    pool: Option<SlotPool>,
+    pool: SlotPool,
     width: u32,
     height: u32,
     shift: Option<u32>,
     buffer: Option<Buffer>,
-    window: Option<Window>,
-    pointer_surface: Option<wl_surface::WlSurface>,
+    window: Window,
+    pointer_surface: wl_surface::WlSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     pointer: Option<wl_pointer::WlPointer>,
     themed_pointer: Option<ThemedPointer>,
+    set_cursor: bool,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -277,7 +276,7 @@ impl KeyboardHandler for SimpleWindow {
         _: &[u32],
         keysyms: &[u32],
     ) {
-        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
+        if self.window.wl_surface() == surface {
             println!("Keyboard focus on window with pressed syms: {:?}", keysyms);
             self.keyboard_focus = true;
         }
@@ -291,7 +290,7 @@ impl KeyboardHandler for SimpleWindow {
         surface: &wl_surface::WlSurface,
         _: u32,
     ) {
-        if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
+        if self.window.wl_surface() == surface {
             println!("Release keyboard focus on window");
             self.keyboard_focus = false;
         }
@@ -342,12 +341,13 @@ impl PointerHandler for SimpleWindow {
         use PointerEventKind::*;
         for event in events {
             // Ignore events for other surfaces
-            if Some(&event.surface) != self.window.as_ref().map(Window::wl_surface) {
+            if &event.surface != self.window.wl_surface() {
                 continue;
             }
             match event.kind {
                 Enter { .. } => {
                     println!("Pointer entered @{:?}", event.position);
+                    self.set_cursor = true;
                 }
                 Leave { .. } => {
                     println!("Pointer left");
@@ -376,76 +376,77 @@ impl ShmHandler for SimpleWindow {
 
 impl SimpleWindow {
     pub fn draw(&mut self, conn: &Connection, qh: &QueueHandle<Self>) {
-        if let Some(window) = self.window.as_ref() {
-            let cursor_surface = self.pointer_surface.as_ref().unwrap();
+        if self.set_cursor {
             let _ = self.themed_pointer.as_mut().unwrap().set_cursor(
                 conn,
                 "diamond_cross",
                 self.shm_state.wl_shm(),
-                cursor_surface,
+                &self.pointer_surface,
             );
+            self.set_cursor = false;
+        }
 
-            let width = self.width;
-            let height = self.height;
-            let stride = self.width as i32 * 4;
-            let pool = self.pool.as_mut().unwrap();
+        let width = self.width;
+        let height = self.height;
+        let stride = self.width as i32 * 4;
 
-            let buffer = self.buffer.get_or_insert_with(|| {
-                pool.create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
-                    .expect("create buffer")
-                    .0
+        let buffer = self.buffer.get_or_insert_with(|| {
+            self.pool
+                .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
+                .expect("create buffer")
+                .0
+        });
+
+        let canvas = match self.pool.canvas(buffer) {
+            Some(canvas) => canvas,
+            None => {
+                // This should be rare, but if the compositor has not released the previous
+                // buffer, we need double-buffering.
+                let (second_buffer, canvas) = self
+                    .pool
+                    .create_buffer(
+                        self.width as i32,
+                        self.height as i32,
+                        stride,
+                        wl_shm::Format::Argb8888,
+                    )
+                    .expect("create buffer");
+                *buffer = second_buffer;
+                canvas
+            }
+        };
+
+        // Draw to the window:
+        {
+            let shift = self.shift.unwrap_or(0);
+            canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
+                let x = ((index + shift as usize) % width as usize) as u32;
+                let y = (index / width as usize) as u32;
+
+                let a = 0xFF;
+                let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
+                let g = u32::min((x * 0xFF) / width, ((height - y) * 0xFF) / height);
+                let b = u32::min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
+                let color = (a << 24) + (r << 16) + (g << 8) + b;
+
+                let array: &mut [u8; 4] = chunk.try_into().unwrap();
+                *array = color.to_le_bytes();
             });
 
-            let canvas = match pool.canvas(buffer) {
-                Some(canvas) => canvas,
-                None => {
-                    // This should be rare, but if the compositor has not released the previous
-                    // buffer, we need double-buffering.
-                    let (second_buffer, canvas) = pool
-                        .create_buffer(
-                            self.width as i32,
-                            self.height as i32,
-                            stride,
-                            wl_shm::Format::Argb8888,
-                        )
-                        .expect("create buffer");
-                    *buffer = second_buffer;
-                    canvas
-                }
-            };
-
-            // Draw to the window:
-            {
-                let shift = self.shift.unwrap_or(0);
-                canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
-                    let x = ((index + shift as usize) % width as usize) as u32;
-                    let y = (index / width as usize) as u32;
-
-                    let a = 0xFF;
-                    let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
-                    let g = u32::min((x * 0xFF) / width, ((height - y) * 0xFF) / height);
-                    let b = u32::min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
-                    let color = (a << 24) + (r << 16) + (g << 8) + b;
-
-                    let array: &mut [u8; 4] = chunk.try_into().unwrap();
-                    *array = color.to_le_bytes();
-                });
-
-                if let Some(shift) = &mut self.shift {
-                    *shift = (*shift + 1) % width;
-                }
+            if let Some(shift) = &mut self.shift {
+                *shift = (*shift + 1) % width;
             }
-
-            // Damage the entire window
-            window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
-
-            // Request our next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone());
-
-            // Attach and commit to present.
-            buffer.attach_to(window.wl_surface()).expect("buffer attach");
-            window.wl_surface().commit();
         }
+
+        // Damage the entire window
+        self.window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
+
+        // Request our next frame
+        self.window.wl_surface().frame(qh, self.window.wl_surface().clone());
+
+        // Attach and commit to present.
+        buffer.attach_to(self.window.wl_surface()).expect("buffer attach");
+        self.window.wl_surface().commit();
     }
 }
 
