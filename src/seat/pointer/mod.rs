@@ -402,6 +402,12 @@ pub enum ThemeSpec<'a> {
     System,
 }
 
+impl<'a> Default for ThemeSpec<'a> {
+    fn default() -> Self {
+        Self::System
+    }
+}
+
 /// An error indicating that the cursor was not found.
 #[derive(Debug, thiserror::Error)]
 pub enum PointerThemeError {
@@ -432,7 +438,7 @@ pub(crate) struct Themes {
 
 impl Default for Themes {
     fn default() -> Self {
-        Themes::new(ThemeSpec::System)
+        Themes::new(ThemeSpec::default())
     }
 }
 

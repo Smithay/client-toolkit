@@ -238,7 +238,7 @@ impl SeatHandler for SimpleWindow {
             println!("Creating pointer theme");
             let (pointer, themed_pointer) = self
                 .seat_state
-                .get_pointer_with_theme(qh, &seat, ThemeSpec::System, 1)
+                .get_pointer_with_theme(qh, &seat, ThemeSpec::default(), 1)
                 .expect("Failed to create pointer");
             self.pointer = Some(pointer);
             self.themed_pointer.replace(themed_pointer);
