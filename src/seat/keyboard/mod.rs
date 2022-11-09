@@ -95,6 +95,17 @@ impl SeatState {
     }
 }
 
+/// Wrapper around a libxkbcommon keymap
+#[allow(missing_debug_implementations)]
+pub struct Keymap<'a>(&'a xkb::Keymap);
+
+impl<'a> Keymap<'a> {
+    /// Get keymap as string in text format. The keymap should always be valid.
+    pub fn as_string(&self) -> String {
+        self.0.get_as_string(xkb::KEYMAP_FORMAT_TEXT_V1)
+    }
+}
+
 /// Handler trait for keyboard input.
 ///
 /// The functions defined in this trait are called as keyboard events are received from the compositor.
@@ -178,6 +189,22 @@ pub trait KeyboardHandler: Sized {
         _qh: &QueueHandle<Self>,
         _keyboard: &wl_keyboard::WlKeyboard,
         _info: RepeatInfo,
+    ) {
+    }
+
+    /// Keyboard keymap has been updated.
+    ///
+    /// `keymap.as_string()` can be used get the keymap as a string. It cannot be exposed directly
+    /// as an `xkbcommon::xkb::Keymap` due to the fact xkbcommon uses non-thread-safe reference
+    /// counting. But can be used to create an independent `Keymap`.
+    ///
+    /// This is called after the default handler for keymap changes and does nothing by default.
+    fn update_keymap<'a>(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        _keymap: Keymap<'a>,
     ) {
     }
 }
@@ -478,8 +505,11 @@ where
                             } {
                                 Ok(Some(keymap)) => {
                                     let state = xkb::State::new(&keymap);
-                                    let mut state_guard = udata.xkb_state.lock().unwrap();
-                                    *state_guard = Some(state);
+                                    {
+                                        let mut state_guard = udata.xkb_state.lock().unwrap();
+                                        *state_guard = Some(state);
+                                    }
+                                    data.update_keymap(conn, qh, keyboard, Keymap(&keymap));
                                 }
 
                                 Ok(None) => {
