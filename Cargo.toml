@@ -48,6 +48,7 @@ pkg-config = { version = "0.3", optional = true }
 
 [dev-dependencies]
 bytemuck = "1.13.0"
+drm-fourcc = "2.2.0"
 font-kit = "0.11.0"
 image = "0.23"
 env_logger = "0.9"
