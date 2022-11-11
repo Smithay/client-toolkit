@@ -690,8 +690,7 @@ where
                                 event.utf8 = utf8;
 
                                 current_event.replace(event.clone());
-                                let _ =
-                                    repeat_sender.send(RepeatMessage::StartRepeat(event.clone()));
+                                let _ = repeat_sender.send(RepeatMessage::StartRepeat(event));
                             }
                         }
                         mask
