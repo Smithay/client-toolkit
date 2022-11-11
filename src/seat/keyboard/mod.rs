@@ -288,6 +288,7 @@ pub struct KeyboardData {
     xkb_compose: Mutex<Option<xkb::compose::State>>,
     #[cfg(feature = "calloop")]
     repeat_sender: Option<calloop::channel::Sender<RepeatMessage>>,
+    current_repeat: Mutex<Option<KeyEvent>>,
 }
 
 impl Debug for KeyboardData {
@@ -331,6 +332,7 @@ impl Default for KeyboardData {
             user_specified_rmlvo: false,
             xkb_compose: Mutex::new(None),
             repeat_sender: None,
+            current_repeat: Mutex::new(None),
         };
 
         udata.init_compose();
@@ -365,6 +367,7 @@ impl KeyboardData {
             user_specified_rmlvo: true,
             xkb_compose: Mutex::new(None),
             repeat_sender: None,
+            current_repeat: Mutex::new(None),
         };
 
         udata.init_compose();
@@ -592,7 +595,14 @@ where
                                 #[cfg(feature = "calloop")]
                                 {
                                     if let Some(repeat_sender) = &udata.repeat_sender {
-                                        let _ = repeat_sender.send(RepeatMessage::StopRepeat);
+                                        let mut current_repeat =
+                                            udata.current_repeat.lock().unwrap();
+                                        if Some(event.keysym)
+                                            == current_repeat.as_ref().map(|r| r.keysym)
+                                        {
+                                            current_repeat.take();
+                                            let _ = repeat_sender.send(RepeatMessage::StopRepeat);
+                                        }
                                     }
                                 }
                                 data.release_key(conn, qh, keyboard, serial, event);
@@ -606,10 +616,15 @@ where
                                         let key_repeats = state_guard
                                             .as_ref()
                                             .map(|guard| {
-                                                guard.get_keymap().key_repeats(event.keysym)
+                                                guard.get_keymap().key_repeats(event.raw_code + 8)
                                             })
                                             .unwrap_or_default();
                                         if key_repeats {
+                                            udata
+                                                .current_repeat
+                                                .lock()
+                                                .unwrap()
+                                                .replace(event.clone());
                                             let _ = repeat_sender
                                                 .send(RepeatMessage::StartRepeat(event.clone()));
                                         }
@@ -639,7 +654,47 @@ where
 
                 let mask = match guard.as_mut() {
                     Some(state) => {
-                        state.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group)
+                        let mask = state.update_mask(
+                            mods_depressed,
+                            mods_latched,
+                            mods_locked,
+                            0,
+                            0,
+                            group,
+                        );
+
+                        // update current repeating key
+                        let mut current_event = udata.current_repeat.lock().unwrap();
+                        if let Some(mut event) = current_event.take() {
+                            if let Some(repeat_sender) = &udata.repeat_sender {
+                                // apply new modifiers to get new utf8
+                                let utf8 = {
+                                    let mut compose = udata.xkb_compose.lock().unwrap();
+
+                                    match compose.as_mut() {
+                                        Some(compose) => match compose.feed(event.keysym) {
+                                            xkb::FeedResult::Ignored => None,
+                                            xkb::FeedResult::Accepted => match compose.status() {
+                                                xkb::Status::Composed => compose.utf8(),
+                                                xkb::Status::Nothing => {
+                                                    Some(state.key_get_utf8(event.raw_code + 8))
+                                                }
+                                                _ => None,
+                                            },
+                                        },
+
+                                        // No compose
+                                        None => Some(state.key_get_utf8(event.raw_code + 8)),
+                                    }
+                                };
+                                event.utf8 = utf8;
+
+                                current_event.replace(event.clone());
+                                let _ =
+                                    repeat_sender.send(RepeatMessage::StartRepeat(event.clone()));
+                            }
+                        }
+                        mask
                     }
                     None => return,
                 };
