@@ -424,6 +424,60 @@
 <span id="424">424</span>
 <span id="425">425</span>
 <span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
 </pre><pre class="rust"><code><span class="attribute">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
 </span><span class="kw">pub mod </span>keyboard;
 <span class="kw">pub mod </span>pointer;
@@ -445,7 +499,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::registry::{ProvidesRegistryState, RegistryHandler};
 
 <span class="kw">use </span><span class="self">self</span>::{
-    pointer::{PointerData, PointerDataExt, PointerHandler},
+    pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
     touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
@@ -528,6 +582,24 @@
         <span class="self">self</span>.get_pointer_with_data(qh, seat, PointerData::default())
     }
 
+    <span class="doccomment">/// Creates a pointer from a seat with the provided theme.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    </span><span class="kw">pub fn </span>get_pointer_with_theme&lt;D&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        theme: ThemeSpec,
+        scale: i32,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(wl_pointer::WlPointer, ThemedPointer), SeatError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
+    {
+        <span class="self">self</span>.get_pointer_with_theme_and_data(qh, seat, theme, scale, Default::default())
+    }
+
     <span class="doccomment">/// Creates a pointer from a seat.
     ///
     /// ## Errors
@@ -551,6 +623,42 @@
         }
 
         <span class="prelude-val">Ok</span>(seat.get_pointer(qh, pointer_data))
+    }
+
+    <span class="doccomment">/// Creates a pointer from a seat with the provided theme and data.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    </span><span class="kw">pub fn </span>get_pointer_with_theme_and_data&lt;D, U&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+        seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        theme: ThemeSpec,
+        scale: i32,
+        pointer_data: U,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(wl_pointer::WlPointer, ThemedPointer), SeatError&gt;
+    <span class="kw">where
+        </span>D: Dispatch&lt;wl_pointer::WlPointer, U&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
+        U: PointerDataExt + <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">let </span>inner =
+            <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).ok_or(SeatError::DeadObject)<span class="question-mark">?</span>;
+
+        <span class="kw">if </span>!inner.data.has_pointer.load(Ordering::SeqCst) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SeatError::UnsupportedCapability(Capability::Pointer));
+        }
+
+        <span class="kw">let </span>wl_ptr = seat.get_pointer(qh, pointer_data);
+        <span class="prelude-val">Ok</span>((
+            wl_ptr.clone(),
+            ThemedPointer {
+                themes: Arc::new(Mutex::new(Themes::new(theme))),
+                pointer: wl_ptr,
+                current_ptr: <span class="string">&quot;left_ptr&quot;</span>.to_string(),
+                scale,
+            },
+        ))
     }
 
     <span class="doccomment">/// Creates a touch handle from a seat.

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/pointer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pointer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/pointer/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../smithay_client_toolkit/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../smithay_client_toolkit/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -341,13 +341,212 @@
 <span id="341">341</span>
 <span id="342">342</span>
 <span id="343">343</span>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{mem, sync::Mutex};
-<span class="kw">use </span>wayland_backend::smallvec::SmallVec;
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::{hash_map::Entry, HashMap},
+    env, mem,
+    sync::{Arc, Mutex},
+};
+<span class="kw">use </span>wayland_backend::{client::InvalidId, smallvec::SmallVec};
 
 <span class="kw">use </span>wayland_client::{
-    protocol::{wl_pointer, wl_surface},
+    protocol::{wl_pointer, wl_shm, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
+<span class="kw">use </span>wayland_cursor::{Cursor, CursorTheme};
+
+<span class="kw">use </span><span class="kw">crate</span>::error::GlobalError;
 
 <span class="kw">use </span><span class="kw">super</span>::SeatState;
 
@@ -452,7 +651,7 @@
 
 <span class="attribute">#[derive(Debug, Default)]
 </span><span class="kw">pub struct </span>PointerData {
-    inner: Mutex&lt;PointerDataInner&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) inner: Mutex&lt;PointerDataInner&gt;,
 }
 
 <span class="kw">pub trait </span>PointerDataExt: Send + Sync {
@@ -488,12 +687,15 @@
 <span class="attribute">#[derive(Debug, Default)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PointerDataInner {
     <span class="doccomment">/// Surface the pointer most recently entered
-    </span>surface: <span class="prelude-ty">Option</span>&lt;wl_surface::WlSurface&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) surface: <span class="prelude-ty">Option</span>&lt;wl_surface::WlSurface&gt;,
     <span class="doccomment">/// Position relative to the surface
-    </span>position: (f64, f64),
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) position: (f64, f64),
 
     <span class="doccomment">/// List of pending events.  Only used for version &gt;= 5.
-    </span>pending: SmallVec&lt;[PointerEvent; <span class="number">3</span>]&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) pending: SmallVec&lt;[PointerEvent; <span class="number">3</span>]&gt;,
+
+    <span class="doccomment">/// the serial of the latest enter event for the pointer
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) latest_enter: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
 <span class="kw">impl</span>&lt;D, U&gt; Dispatch&lt;wl_pointer::WlPointer, U, D&gt; <span class="kw">for </span>SeatState
@@ -516,6 +718,7 @@
             wl_pointer::Event::Enter { surface, surface_x, surface_y, serial } =&gt; {
                 guard.surface = <span class="prelude-val">Some</span>(surface);
                 guard.position = (surface_x, surface_y);
+                guard.latest_enter.replace(serial);
 
                 PointerEventKind::Enter { serial }
             }
@@ -684,5 +887,186 @@
         }
     }
 }
+
+<span class="doccomment">/// Pointer themeing
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ThemedPointer {
+    <span class="kw">pub</span>(<span class="kw">super</span>) themes: Arc&lt;Mutex&lt;Themes&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) pointer: wl_pointer::WlPointer,
+    <span class="kw">pub</span>(<span class="kw">super</span>) current_ptr: String,
+    <span class="kw">pub</span>(<span class="kw">super</span>) scale: i32,
+}
+
+<span class="kw">impl </span>ThemedPointer {
+    <span class="kw">pub fn </span>set_cursor(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        name: <span class="kw-2">&amp;</span>str,
+        shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
+        surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
+        <span class="self">self</span>.current_ptr = name.into();
+        <span class="self">self</span>.update_cursor(conn, shm, surface)
+    }
+
+    <span class="kw">pub fn </span>pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_pointer::WlPointer {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.pointer
+    }
+}
+
+<span class="doccomment">/// Specifies which cursor theme should be used by the theme manager.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>ThemeSpec&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="doccomment">/// Use this specific theme with the given base size.
+    </span>Named {
+        <span class="doccomment">/// Name of the cursor theme.
+        </span>name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str,
+
+        <span class="doccomment">/// Base size of the cursor names.
+        ///
+        /// Note this size assumes a scale factor of 1. Cursor image sizes may be multiplied by the base size
+        /// for HiDPI outputs.
+        </span>size: u32,
+    },
+
+    <span class="doccomment">/// Use the system provided theme
+    ///
+    /// In this case SCTK will read the `XCURSOR_THEME` and
+    /// `XCURSOR_SIZE` environment variables to figure out the
+    /// theme to use.
+    </span>System,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Default <span class="kw">for </span>ThemeSpec&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::System
+    }
+}
+
+<span class="doccomment">/// An error indicating that the cursor was not found.
+</span><span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub enum </span>PointerThemeError {
+    <span class="doccomment">/// An invalid ObjectId was used.
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid ObjectId&quot;</span>)]
+    </span>InvalidId(InvalidId),
+
+    <span class="doccomment">/// A global error occurred.
+    </span><span class="attribute">#[error(<span class="string">&quot;A Global Error occured&quot;</span>)]
+    </span>GlobalError(GlobalError),
+
+    <span class="doccomment">/// The requested cursor was not found.
+    </span><span class="attribute">#[error(<span class="string">&quot;Cursor not found&quot;</span>)]
+    </span>CursorNotFound,
+
+    <span class="doccomment">/// There has been no enter event yet for the pointer.
+    </span><span class="attribute">#[error(<span class="string">&quot;Missing enter event serial&quot;</span>)]
+    </span>MissingEnterSerial,
+}
+
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Themes {
+    name: String,
+    size: u32,
+    <span class="comment">// Scale -&gt; CursorTheme
+    </span>themes: HashMap&lt;u32, CursorTheme&gt;,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>Themes {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        Themes::new(ThemeSpec::default())
+    }
+}
+
+<span class="kw">impl </span>Themes {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(spec: ThemeSpec) -&gt; Themes {
+        <span class="kw">let </span>(name, size) = <span class="kw">match </span>spec {
+            ThemeSpec::Named { name, size } =&gt; (name.into(), size),
+            ThemeSpec::System =&gt; {
+                <span class="kw">let </span>name = env::var(<span class="string">&quot;XCURSOR_THEME&quot;</span>).ok().unwrap_or_else(|| <span class="string">&quot;default&quot;</span>.into());
+                <span class="kw">let </span>size = env::var(<span class="string">&quot;XCURSOR_SIZE&quot;</span>).ok().and_then(|s| s.parse().ok()).unwrap_or(<span class="number">24</span>);
+                (name, size)
+            }
+        };
+
+        Themes { name, size, themes: HashMap::new() }
+    }
+
+    <span class="kw">fn </span>get_cursor(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        name: <span class="kw-2">&amp;</span>str,
+        scale: u32,
+        shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Cursor&gt;, InvalidId&gt; {
+        <span class="comment">// Check if the theme has been initialized at the specified scale.
+        </span><span class="kw">if let </span>Entry::Vacant(e) = <span class="self">self</span>.themes.entry(scale) {
+            <span class="comment">// Initialize the theme for the specified scale
+            </span><span class="kw">let </span>theme = CursorTheme::load_from_name(
+                conn,
+                shm.clone(), <span class="comment">// TODO: Does the cursor theme need to clone wl_shm?
+                </span><span class="kw-2">&amp;</span><span class="self">self</span>.name,
+                <span class="self">self</span>.size * scale,
+            )<span class="question-mark">?</span>;
+
+            e.insert(theme);
+        }
+
+        <span class="kw">let </span>theme = <span class="self">self</span>.themes.get_mut(<span class="kw-2">&amp;</span>scale).unwrap();
+
+        <span class="prelude-val">Ok</span>(theme.get_cursor(name))
+    }
+}
+
+<span class="kw">impl </span>ThemedPointer {
+    <span class="kw">fn </span>update_cursor(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
+        surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>themes = <span class="self">self</span>.themes.lock().unwrap();
+
+        <span class="kw">let </span>cursor = themes
+            .get_cursor(conn, <span class="kw-2">&amp;</span><span class="self">self</span>.current_ptr, <span class="self">self</span>.scale <span class="kw">as </span>u32, shm)
+            .map_err(PointerThemeError::InvalidId)<span class="question-mark">?
+            </span>.ok_or(PointerThemeError::CursorNotFound)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>image = <span class="kw-2">&amp;</span>cursor[<span class="number">0</span>];
+        <span class="kw">let </span>(w, h) = image.dimensions();
+        <span class="kw">let </span>(hx, hy) = image.hotspot();
+
+        surface.set_buffer_scale(<span class="self">self</span>.scale);
+        surface.attach(<span class="prelude-val">Some</span>(image), <span class="number">0</span>, <span class="number">0</span>);
+
+        <span class="kw">if </span>surface.version() &gt;= <span class="number">4 </span>{
+            surface.damage_buffer(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32, h <span class="kw">as </span>i32);
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>scale = <span class="self">self</span>.scale;
+
+            <span class="comment">// surface is old and does not support damage_buffer, so we damage
+            // in surface coordinates and hope it is not rescaled
+            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / scale <span class="kw">as </span>i32, h <span class="kw">as </span>i32 / scale <span class="kw">as </span>i32);
+        }
+
+        <span class="comment">// Commit the surface to place the cursor image in the compositor&#39;s memory.
+        </span>surface.commit();
+
+        <span class="comment">// Set the pointer surface to change the pointer.
+        </span><span class="kw">let </span>serial = <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = <span class="self">self
+            </span>.pointer
+            .data::&lt;PointerData&gt;()
+            .and_then(|ptr_data| ptr_data.inner.lock().ok())
+            .and_then(|data_inner| data_inner.latest_enter)
+        {
+            serial
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial);
+        };
+
+        <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32, hy <span class="kw">as </span>i32);
+
+        <span class="prelude-val">Ok</span>(())
+    }
+}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
