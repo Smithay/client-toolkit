@@ -22,9 +22,9 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    globals::registry_queue_init,
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, QueueHandle,
 };
 
 fn main() {
@@ -34,9 +34,9 @@ fn main() {
 
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
-    let registry_state = RegistryState::new(&conn, &qh);
-    let seat_state = SeatState::new();
-    let output_state = OutputState::new();
+    let registry_state = RegistryState::new(&globals);
+    let seat_state = SeatState::new(&globals, &qh);
+    let output_state = OutputState::new(&globals, &qh);
     let compositor_state =
         CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     let shm_state = ShmState::bind(&globals, &qh).expect("wl_shm not available");
@@ -83,10 +83,6 @@ fn main() {
         themed_pointer: None,
         set_cursor: false,
     };
-
-    while !simple_window.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut simple_window).unwrap();
-    }
 
     // We don't draw immediately, the configure will notify us when to first draw.
 
@@ -468,17 +464,4 @@ impl ProvidesRegistryState for SimpleWindow {
         &mut self.registry_state
     }
     registry_handlers![OutputState, SeatState,];
-}
-
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for SimpleWindow {
-    fn event(
-        _state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
-        _event: wl_registry::Event,
-        _data: &GlobalListContents,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-        // We don't need any other globals.
-    }
 }
