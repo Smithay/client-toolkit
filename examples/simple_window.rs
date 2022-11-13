@@ -22,9 +22,9 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_registry, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    globals::registry_queue_init,
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, QueueHandle,
 };
 
 fn main() {
@@ -36,9 +36,9 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&conn, &qh),
-        seat_state: SeatState::new(),
-        output_state: OutputState::new(),
+        registry_state: RegistryState::new(&globals),
+        seat_state: SeatState::new(&globals, &qh),
+        output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
         shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
@@ -57,10 +57,6 @@ fn main() {
         keyboard_focus: false,
         pointer: None,
     };
-
-    while !simple_window.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut simple_window).unwrap();
-    }
 
     let pool = SlotPool::new(
         simple_window.width as usize * simple_window.height as usize * 4,
@@ -444,17 +440,4 @@ impl ProvidesRegistryState for SimpleWindow {
         &mut self.registry_state
     }
     registry_handlers![OutputState, SeatState,];
-}
-
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for SimpleWindow {
-    fn event(
-        _state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
-        _event: wl_registry::Event,
-        _data: &GlobalListContents,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-        // We don't need any other globals.
-    }
 }

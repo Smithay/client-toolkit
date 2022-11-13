@@ -12,6 +12,7 @@ use std::{
 };
 
 use wayland_client::{
+    globals::GlobalList,
     protocol::{wl_pointer, wl_seat, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -61,8 +62,28 @@ pub struct SeatState {
 }
 
 impl SeatState {
-    pub fn new() -> SeatState {
-        SeatState { seats: vec![] }
+    pub fn new<D: Dispatch<wl_seat::WlSeat, SeatData> + 'static>(
+        global_list: &GlobalList,
+        qh: &QueueHandle<D>,
+    ) -> SeatState {
+        let seats = global_list.contents().with_list(|globals| {
+            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=7, |id| SeatData {
+                has_keyboard: Arc::new(AtomicBool::new(false)),
+                has_pointer: Arc::new(AtomicBool::new(false)),
+                has_touch: Arc::new(AtomicBool::new(false)),
+                name: Arc::new(Mutex::new(None)),
+                id,
+            })
+            .expect("failed to bind global")
+        });
+
+        let mut state = SeatState { seats: vec![] };
+        for seat in seats {
+            let data = seat.data::<SeatData>().unwrap().clone();
+
+            state.seats.push(SeatInner { seat: seat.clone(), data });
+        }
+        state
     }
 
     /// Returns an iterator over all the seats.
@@ -408,26 +429,6 @@ impl<D> RegistryHandler<D> for SeatState
 where
     D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler + ProvidesRegistryState + 'static,
 {
-    fn ready(state: &mut D, conn: &Connection, qh: &QueueHandle<D>) {
-        let seats = state
-            .registry()
-            .bind_all(qh, 1..=7, |id| SeatData {
-                has_keyboard: Arc::new(AtomicBool::new(false)),
-                has_pointer: Arc::new(AtomicBool::new(false)),
-                has_touch: Arc::new(AtomicBool::new(false)),
-                name: Arc::new(Mutex::new(None)),
-                id,
-            })
-            .expect("failed to bind global");
-
-        for seat in seats {
-            let data = seat.data::<SeatData>().unwrap().clone();
-
-            state.seat_state().seats.push(SeatInner { seat: seat.clone(), data });
-            state.new_seat(conn, qh, seat);
-        }
-    }
-
     fn new_global(
         state: &mut D,
         conn: &Connection,

@@ -5,6 +5,7 @@ use std::{
 };
 
 use wayland_client::{
+    globals::GlobalList,
     protocol::wl_output::{self, Subpixel, Transform},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
@@ -130,8 +131,36 @@ impl fmt::Debug for ScaleWatcherHandle {
 }
 
 impl OutputState {
-    pub fn new() -> OutputState {
-        OutputState { xdg: GlobalProxy::new(), outputs: vec![], callbacks: vec![] }
+    pub fn new<
+        D: Dispatch<wl_output::WlOutput, OutputData>
+            + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
+            + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
+            + 'static,
+    >(
+        global_list: &GlobalList,
+        qh: &QueueHandle<D>,
+    ) -> OutputState {
+        let (outputs, xdg) = global_list.contents().with_list(|globals| {
+            let outputs: Vec<wl_output::WlOutput> = crate::registry::bind_all(
+                global_list.registry(),
+                globals,
+                qh,
+                1..=4,
+                OutputData::new,
+            )
+            .expect("Failed to bind global");
+            let xdg =
+                crate::registry::bind_one(global_list.registry(), globals, qh, 1..=3, GlobalData)
+                    .into();
+            (outputs, xdg)
+        });
+
+        // Only bind xdg output manager if it's needed
+        let mut output_state = OutputState { xdg, outputs: vec![], callbacks: vec![] };
+        for wl_output in outputs {
+            output_state.setup(wl_output, qh);
+        }
+        output_state
     }
 
     /// Returns an iterator over all outputs.
@@ -645,21 +674,6 @@ where
         + ProvidesRegistryState
         + 'static,
 {
-    fn ready(data: &mut D, _: &Connection, qh: &QueueHandle<D>) {
-        let outputs: Vec<wl_output::WlOutput> =
-            data.registry().bind_all(qh, 1..=4, OutputData::new).expect("Failed to bind global");
-
-        // Only bind xdg output manager if it's needed
-        let xdg = data.registry().bind_one(qh, 1..=3, GlobalData).into();
-
-        let output_state = data.output_state();
-        output_state.xdg = xdg;
-
-        for wl_output in outputs {
-            output_state.setup(wl_output, qh);
-        }
-    }
-
     fn new_global(
         data: &mut D,
         _: &Connection,
