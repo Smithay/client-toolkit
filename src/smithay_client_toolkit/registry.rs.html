@@ -550,75 +550,6 @@
 <span id="550">550</span>
 <span id="551">551</span>
 <span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.
 //!
 //! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].
@@ -635,7 +566,8 @@
 //! use smithay_client_toolkit::reexports::client::{
 //!     Connection, Dispatch, QueueHandle,
 //!     delegate_dispatch,
-//!     protocol::wl_compositor,
+//!     globals::GlobalList,
+//!     protocol::wl_output,
 //! };
 //!
 //! use smithay_client_toolkit::registry::{
@@ -651,15 +583,14 @@
 //!
 //! /// The delegate a global should be provided to.
 //! struct Delegate {
-//!     // You usually want to cache the bound global so you can use it later
-//!     compositor: GlobalProxy&lt;wl_compositor::WlCompositor&gt;,
+//!     outputs: Vec&lt;wl_output::WlOutput&gt;,
 //! }
 //!
 //! // When implementing RegistryHandler, you must be able to dispatch any type you could bind using the registry state.
 //! impl&lt;D&gt; RegistryHandler&lt;D&gt; for Delegate
 //! where
 //!     // In order to bind a global, you must statically assert the global may be handled with the data type.
-//!     D: Dispatch&lt;wl_compositor::WlCompositor, ()&gt;
+//!     D: Dispatch&lt;wl_output::WlOutput, ()&gt;
 //!         // ProvidesRegistryState provides a function to access the RegistryState within the impl.
 //!         + ProvidesRegistryState
 //!         // We need some way to access our part of the application&#39;s state.  This uses AsMut,
@@ -667,18 +598,20 @@
 //!         + AsMut&lt;Delegate&gt;
 //!         + &#39;static,
 //! {
-//!     // When all globals have been enumerated, this is called.
-//!     fn ready(
-//!         data: &amp;mut D,
-//!         conn: &amp;Connection,
-//!         qh: &amp;QueueHandle&lt;D&gt;,
-//!     ) {
-//!         // Bind the global and store it in our state.
-//!         data.as_mut().compositor = data.registry().bind_one(
-//!             qh,
-//!             1..=2, // we want to bind version 1 or 2 of the global.
-//!             (), // and we provide the user data for the wl_compositor being created.
-//!         ).into();
+//!   /// New global added after initial enumeration.
+//!    fn new_global(
+//!        data: &amp;mut D,
+//!        conn: &amp;Connection,
+//!        qh: &amp;QueueHandle&lt;D&gt;,
+//!        name: u32,
+//!        interface: &amp;str,
+//!        version: u32,
+//!    ) {
+//!         if interface == &quot;wl_output&quot; {
+//!             // Bind `wl_output` with newest version from 1 to 4 the compositor supports
+//!             let output = data.registry().bind_specific(qh, name, 1..=4, ()).unwrap();
+//!             data.as_mut().outputs.push(output);
+//!         }
 //!
 //!         // You could either handle errors here or when attempting to use the interface.  Most
 //!         // Wayland protocols are optional, so if your application can function without a
@@ -688,13 +621,10 @@
 //! }
 //! ```
 
-</span><span class="kw">use crate</span>::{
-    error::GlobalError,
-    globals::{GlobalData, ProvidesBoundGlobal},
-};
+</span><span class="kw">use crate</span>::{error::GlobalError, globals::ProvidesBoundGlobal};
 <span class="kw">use </span>wayland_client::{
-    globals::{BindError, GlobalList},
-    protocol::{wl_callback, wl_registry},
+    globals::{BindError, Global, GlobalList, GlobalListContents},
+    protocol::wl_registry,
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
@@ -712,11 +642,6 @@
 <span class="kw">where
     </span>D: ProvidesRegistryState,
 {
-    <span class="doccomment">/// Called when initial enumeration of globals has been completed.
-    ///
-    /// This should be used to bind capability globals.
-    </span><span class="kw">fn </span>ready(data: <span class="kw-2">&amp;mut </span>D, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;);
-
     <span class="doccomment">/// Called when a new global has been advertised by the compositor.
     ///
     /// The provided registry handle may be used to bind the global.  This is not called during
@@ -758,9 +683,6 @@
     <span class="doccomment">/// Returns a mutable reference to the registry state.
     </span><span class="kw">fn </span>registry(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>RegistryState;
 
-    <span class="doccomment">/// Called when initial enumeration of globals has been completed.
-    </span><span class="kw">fn </span>global_enumeration_finished(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;);
-
     <span class="doccomment">/// Called when a new global has been advertised by the compositor.
     ///
     /// This is not called during initial global enumeration.
@@ -790,60 +712,21 @@
 </span><span class="kw">pub struct </span>RegistryState {
     registry: wl_registry::WlRegistry,
     globals: Vec&lt;Global&gt;,
-    ready: bool,
-}
-
-<span class="attribute">#[derive(Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
-</span><span class="kw">pub struct </span>Global {
-    <span class="doccomment">/// The numeric name for this global, usable in [RegistryState::bind_specific].
-    </span><span class="kw">pub </span>name: u32,
-    <span class="doccomment">/// The maximum version supported by the compositor for this global.
-    </span><span class="kw">pub </span>version: u32,
-    interface: String,
-}
-
-<span class="kw">impl </span>Global {
-    <span class="doccomment">/// The interface name for this global.
-    </span><span class="kw">pub fn </span>interface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.interface
-    }
 }
 
 <span class="kw">impl </span>RegistryState {
     <span class="doccomment">/// Creates a new registry handle.
     ///
     /// This type may be used to bind globals as they are advertised.
-    </span><span class="kw">pub fn </span>new&lt;D&gt;(conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) -&gt; <span class="self">Self
-    </span><span class="kw">where
-        </span>D: Dispatch&lt;wl_registry::WlRegistry, GlobalData&gt;
-            + Dispatch&lt;wl_callback::WlCallback, RegistryReady&gt;
-            + ProvidesRegistryState
-            + <span class="lifetime">&#39;static</span>,
-    {
-        <span class="kw">let </span>display = conn.display();
-        <span class="kw">let </span>registry = display.get_registry(qh, GlobalData);
-        display.sync(qh, RegistryReady);
-        RegistryState { registry, globals: Vec::new(), ready: <span class="bool-val">false </span>}
-    }
+    </span><span class="kw">pub fn </span>new(global_list: <span class="kw-2">&amp;</span>GlobalList) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>registry = global_list.registry().clone();
+        <span class="kw">let </span>globals = global_list.contents().clone_list();
 
-    <span class="doccomment">/// Uses an existing WlRegistry for handling registry state.
-    ///
-    /// Note: prefer using [Self::new] unless you need access to the registry for other reasons.
-    ///
-    /// You will need to ensure the RegistryReady signal is sent to this object after initial
-    /// enumeration of the registry is complete.
-    </span><span class="kw">pub fn </span>from_registry(registry: wl_registry::WlRegistry) -&gt; <span class="self">Self </span>{
-        RegistryState { registry, globals: Vec::new(), ready: <span class="bool-val">false </span>}
+        RegistryState { registry, globals }
     }
 
     <span class="kw">pub fn </span>registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_registry::WlRegistry {
         <span class="kw-2">&amp;</span><span class="self">self</span>.registry
-    }
-
-    <span class="doccomment">/// Returns true if the registry has completed the initial enumeration of globals and is ready
-    /// to serve bind requests.
-    </span><span class="kw">pub fn </span>ready(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.ready
     }
 
     <span class="doccomment">/// Returns an iterator over all globals.
@@ -881,31 +764,7 @@
         I: Proxy + <span class="lifetime">&#39;static</span>,
         U: Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span>iface = I::interface();
-        <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
-            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
-            </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) of {} was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
-                version.end(), iface.name, iface.version);
-        }
-        <span class="kw">if </span><span class="kw-2">*</span>version.end() &lt; iface.version {
-            <span class="comment">// This is a reminder to evaluate the new API and bump the maximum in order to be able
-            // to use new APIs.  Actual use of new APIs still needs runtime version checks.
-            </span><span class="macro">log::trace!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Version {} of {} is available; binding is currently limited to {}&quot;</span>, iface.version, iface.name, version.end());
-        }
-        <span class="kw">for </span>global <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.globals {
-            <span class="kw">if </span>global.interface != iface.name {
-                <span class="kw">continue</span>;
-            }
-            <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
-            }
-            <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
-            <span class="kw">let </span>proxy = <span class="self">self</span>.registry.bind(global.name, version, qh, udata);
-            <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
-
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(proxy);
-        }
-        <span class="prelude-val">Err</span>(BindError::NotPresent)
+        bind_one(<span class="kw-2">&amp;</span><span class="self">self</span>.registry, <span class="kw-2">&amp;</span><span class="self">self</span>.globals, qh, version, udata)
     }
 
     <span class="doccomment">/// Binds a global, returning a new object associated with the global.
@@ -952,7 +811,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         version: std::ops::RangeInclusive&lt;u32&gt;,
-        <span class="kw-2">mut </span>make_udata: F,
+        make_udata: F,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;I&gt;, BindError&gt;
     <span class="kw">where
         </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
@@ -960,28 +819,7 @@
         F: FnMut(u32) -&gt; U,
         U: Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span>iface = I::interface();
-        <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
-            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
-            </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
-                version.end(), iface.version);
-        }
-        <span class="kw">let </span><span class="kw-2">mut </span>rv = Vec::new();
-        <span class="kw">for </span>global <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.globals {
-            <span class="kw">if </span>global.interface != iface.name {
-                <span class="kw">continue</span>;
-            }
-            <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
-            }
-            <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
-            <span class="kw">let </span>udata = make_udata(global.name);
-            <span class="kw">let </span>proxy = <span class="self">self</span>.registry.bind(global.name, version, qh, udata);
-            <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
-
-            rv.push(proxy);
-        }
-        <span class="prelude-val">Ok</span>(rv)
+        bind_all(<span class="kw-2">&amp;</span><span class="self">self</span>.registry, <span class="kw-2">&amp;</span><span class="self">self</span>.globals, qh, version, make_udata)
     }
 }
 
@@ -1015,26 +853,21 @@
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_registry::WlRegistry</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
-            </span>]  =&gt; <span class="macro-nonterminal">$crate::registry::RegistryState
-        </span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-            [
-                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$crate::registry::RegistryReady
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_registry::WlRegistry</span>: <span class="macro-nonterminal">$crate::reexports::client::globals::GlobalListContents
             </span>]  =&gt; <span class="macro-nonterminal">$crate::registry::RegistryState
         </span>);
     };
 }
 
-<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_registry::WlRegistry, GlobalData, D&gt; <span class="kw">for </span>RegistryState
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_registry::WlRegistry, GlobalListContents, D&gt; <span class="kw">for </span>RegistryState
 <span class="kw">where
-    </span>D: Dispatch&lt;wl_registry::WlRegistry, GlobalData&gt; + ProvidesRegistryState,
+    </span>D: Dispatch&lt;wl_registry::WlRegistry, GlobalListContents&gt; + ProvidesRegistryState,
 {
     <span class="kw">fn </span>event(
         state: <span class="kw-2">&amp;mut </span>D,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>wl_registry::WlRegistry,
         event: wl_registry::Event,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span>GlobalData,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span>GlobalListContents,
         conn: <span class="kw-2">&amp;</span>Connection,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
@@ -1042,17 +875,13 @@
             wl_registry::Event::Global { name, interface, version } =&gt; {
                 <span class="kw">let </span>iface = interface.clone();
                 state.registry().globals.push(Global { name, interface, version });
-                <span class="kw">if </span>state.registry().ready {
-                    state.runtime_add_global(conn, qh, name, <span class="kw-2">&amp;</span>iface, version);
-                }
+                state.runtime_add_global(conn, qh, name, <span class="kw-2">&amp;</span>iface, version);
             }
 
             wl_registry::Event::GlobalRemove { name } =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = state.registry().globals.iter().position(|g| g.name == name) {
                     <span class="kw">let </span>global = state.registry().globals.swap_remove(i);
-                    <span class="kw">if </span>state.registry().ready {
-                        state.runtime_remove_global(conn, qh, name, <span class="kw-2">&amp;</span>global.interface);
-                    }
+                    state.runtime_remove_global(conn, qh, name, <span class="kw-2">&amp;</span>global.interface);
                 }
             }
 
@@ -1060,27 +889,6 @@
         }
     }
 }
-
-<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_callback::WlCallback, RegistryReady, D&gt; <span class="kw">for </span>RegistryState
-<span class="kw">where
-    </span>D: Dispatch&lt;wl_callback::WlCallback, RegistryReady&gt; + ProvidesRegistryState,
-{
-    <span class="kw">fn </span>event(
-        state: <span class="kw-2">&amp;mut </span>D,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span>wl_callback::WlCallback,
-        <span class="kw">_</span>: wl_callback::Event,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span>RegistryReady,
-        conn: <span class="kw-2">&amp;</span>Connection,
-        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
-    ) {
-        state.registry().ready = <span class="bool-val">true</span>;
-        state.global_enumeration_finished(conn, qh);
-    }
-}
-
-<span class="doccomment">/// A helper that sets [RegistryState::ready] when enumeration is finished.
-</span><span class="attribute">#[derive(Debug)]
-</span><span class="kw">pub struct </span>RegistryReady;
 
 <span class="doccomment">/// A helper for storing a bound global.
 ///
@@ -1140,10 +948,6 @@
 }
 
 <span class="kw">impl</span>&lt;I: Proxy + <span class="lifetime">&#39;static</span>, <span class="kw">const </span>MAX_VERSION: u32&gt; SimpleGlobal&lt;I, MAX_VERSION&gt; {
-    <span class="kw">pub fn </span>not_ready() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ proxy: GlobalProxy::NotReady }
-    }
-
     <span class="kw">pub fn </span>bind&lt;State&gt;(globals: <span class="kw-2">&amp;</span>GlobalList, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BindError&gt;
     <span class="kw">where
         </span>State: Dispatch&lt;I, (), State&gt; + <span class="lifetime">&#39;static</span>,
@@ -1169,16 +973,6 @@
     }
 }
 
-<span class="kw">impl</span>&lt;D, I, <span class="kw">const </span>MAX_VERSION: u32&gt; RegistryHandler&lt;D&gt; <span class="kw">for </span>SimpleGlobal&lt;I, MAX_VERSION&gt;
-<span class="kw">where
-    </span>D: ProvidesRegistryState + AsMut&lt;<span class="self">Self</span>&gt; + Dispatch&lt;I, ()&gt; + <span class="lifetime">&#39;static</span>,
-    I: Proxy + <span class="lifetime">&#39;static</span>,
-{
-    <span class="kw">fn </span>ready(data: <span class="kw-2">&amp;mut </span>D, <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
-        data.as_mut().proxy = data.registry().bind_one(qh, <span class="number">0</span>..=MAX_VERSION, ()).into();
-    }
-}
-
 <span class="kw">impl</span>&lt;D, I, <span class="kw">const </span>MAX_VERSION: u32&gt; Dispatch&lt;I, (), D&gt; <span class="kw">for </span>SimpleGlobal&lt;I, MAX_VERSION&gt;
 <span class="kw">where
     </span>D: Dispatch&lt;I, ()&gt;,
@@ -1187,6 +981,84 @@
     <span class="kw">fn </span>event(<span class="kw">_</span>: <span class="kw-2">&amp;mut </span>D, <span class="kw">_</span>: <span class="kw-2">&amp;</span>I, <span class="kw">_</span>: &lt;I <span class="kw">as </span>Proxy&gt;::Event, <span class="kw">_</span>: <span class="kw-2">&amp;</span>(), <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection, <span class="kw">_</span>: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
         <span class="macro">unreachable!</span>(<span class="string">&quot;SimpleGlobal is not suitable for {} which has events&quot;</span>, I::interface().name);
     }
+}
+
+<span class="doccomment">/// Binds all globals with a given interface.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bind_all&lt;I, D, U, F&gt;(
+    registry: <span class="kw-2">&amp;</span>wl_registry::WlRegistry,
+    globals: <span class="kw-2">&amp;</span>[Global],
+    qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+    version: std::ops::RangeInclusive&lt;u32&gt;,
+    <span class="kw-2">mut </span>make_udata: F,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;I&gt;, BindError&gt;
+<span class="kw">where
+    </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
+    I: Proxy + <span class="lifetime">&#39;static</span>,
+    F: FnMut(u32) -&gt; U,
+    U: Send + Sync + <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">let </span>iface = I::interface();
+    <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
+        <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
+        </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+            version.end(), iface.version);
+    }
+    <span class="kw">let </span><span class="kw-2">mut </span>rv = Vec::new();
+    <span class="kw">for </span>global <span class="kw">in </span>globals {
+        <span class="kw">if </span>global.interface != iface.name {
+            <span class="kw">continue</span>;
+        }
+        <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
+        }
+        <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
+        <span class="kw">let </span>udata = make_udata(global.name);
+        <span class="kw">let </span>proxy = registry.bind(global.name, version, qh, udata);
+        <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
+
+        rv.push(proxy);
+    }
+    <span class="prelude-val">Ok</span>(rv)
+}
+
+<span class="doccomment">/// Binds a global, returning a new object associated with the global.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bind_one&lt;I, D, U&gt;(
+    registry: <span class="kw-2">&amp;</span>wl_registry::WlRegistry,
+    globals: <span class="kw-2">&amp;</span>[Global],
+    qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+    version: std::ops::RangeInclusive&lt;u32&gt;,
+    udata: U,
+) -&gt; <span class="prelude-ty">Result</span>&lt;I, BindError&gt;
+<span class="kw">where
+    </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
+    I: Proxy + <span class="lifetime">&#39;static</span>,
+    U: Send + Sync + <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">let </span>iface = I::interface();
+    <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
+        <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
+        </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) of {} was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+            version.end(), iface.name, iface.version);
+    }
+    <span class="kw">if </span><span class="kw-2">*</span>version.end() &lt; iface.version {
+        <span class="comment">// This is a reminder to evaluate the new API and bump the maximum in order to be able
+        // to use new APIs.  Actual use of new APIs still needs runtime version checks.
+        </span><span class="macro">log::trace!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Version {} of {} is available; binding is currently limited to {}&quot;</span>, iface.version, iface.name, version.end());
+    }
+    <span class="kw">for </span>global <span class="kw">in </span>globals {
+        <span class="kw">if </span>global.interface != iface.name {
+            <span class="kw">continue</span>;
+        }
+        <span class="kw">if </span>global.version &lt; <span class="kw-2">*</span>version.start() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BindError::UnsupportedVersion);
+        }
+        <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
+        <span class="kw">let </span>proxy = registry.bind(global.name, version, qh, udata);
+        <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
+
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(proxy);
+    }
+    <span class="prelude-val">Err</span>(BindError::NotPresent)
 }
 
 <span class="attribute">#[macro_export]
@@ -1204,16 +1076,6 @@
 </span><span class="attribute">#[macro_export]
 </span><span class="macro">macro_rules! </span>registry_handlers {
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span>$(<span class="macro-nonterminal">$ty</span>:ty),* $(,)<span class="question-mark">?</span>) =&gt; {
-        <span class="kw">fn </span>global_enumeration_finished(
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            conn: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::Connection</span>,
-            qh: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::QueueHandle</span>&lt;<span class="self">Self</span>&gt;,
-        ) {
-            $(
-                &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span><span class="macro-nonterminal">$crate::registry::RegistryHandler</span>&lt;<span class="self">Self</span>&gt;&gt;::ready(<span class="self">self</span>, conn, qh);
-            )*
-        }
-
         <span class="kw">fn </span>runtime_add_global(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             conn: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::reexports::client::Connection</span>,

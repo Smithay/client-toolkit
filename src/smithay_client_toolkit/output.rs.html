@@ -755,6 +755,20 @@
 <span id="755">755</span>
 <span id="756">756</span>
 <span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     any::Any,
     fmt::{<span class="self">self</span>, Display, Formatter},
@@ -762,6 +776,7 @@
 };
 
 <span class="kw">use </span>wayland_client::{
+    globals::GlobalList,
     protocol::wl_output::{<span class="self">self</span>, Subpixel, Transform},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
@@ -887,8 +902,36 @@
 }
 
 <span class="kw">impl </span>OutputState {
-    <span class="kw">pub fn </span>new() -&gt; OutputState {
-        OutputState { xdg: GlobalProxy::new(), outputs: <span class="macro">vec!</span>[], callbacks: <span class="macro">vec!</span>[] }
+    <span class="kw">pub fn </span>new&lt;
+        D: Dispatch&lt;wl_output::WlOutput, OutputData&gt;
+            + Dispatch&lt;zxdg_output_v1::ZxdgOutputV1, OutputData&gt;
+            + Dispatch&lt;zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData&gt;
+            + <span class="lifetime">&#39;static</span>,
+    &gt;(
+        global_list: <span class="kw-2">&amp;</span>GlobalList,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+    ) -&gt; OutputState {
+        <span class="kw">let </span>(outputs, xdg) = global_list.contents().with_list(|globals| {
+            <span class="kw">let </span>outputs: Vec&lt;wl_output::WlOutput&gt; = <span class="kw">crate</span>::registry::bind_all(
+                global_list.registry(),
+                globals,
+                qh,
+                <span class="number">1</span>..=<span class="number">4</span>,
+                OutputData::new,
+            )
+            .expect(<span class="string">&quot;Failed to bind global&quot;</span>);
+            <span class="kw">let </span>xdg =
+                <span class="kw">crate</span>::registry::bind_one(global_list.registry(), globals, qh, <span class="number">1</span>..=<span class="number">3</span>, GlobalData)
+                    .into();
+            (outputs, xdg)
+        });
+
+        <span class="comment">// Only bind xdg output manager if it&#39;s needed
+        </span><span class="kw">let </span><span class="kw-2">mut </span>output_state = OutputState { xdg, outputs: <span class="macro">vec!</span>[], callbacks: <span class="macro">vec!</span>[] };
+        <span class="kw">for </span>wl_output <span class="kw">in </span>outputs {
+            output_state.setup(wl_output, qh);
+        }
+        output_state
     }
 
     <span class="doccomment">/// Returns an iterator over all outputs.
@@ -1402,21 +1445,6 @@
         + ProvidesRegistryState
         + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">fn </span>ready(data: <span class="kw-2">&amp;mut </span>D, <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
-        <span class="kw">let </span>outputs: Vec&lt;wl_output::WlOutput&gt; =
-            data.registry().bind_all(qh, <span class="number">1</span>..=<span class="number">4</span>, OutputData::new).expect(<span class="string">&quot;Failed to bind global&quot;</span>);
-
-        <span class="comment">// Only bind xdg output manager if it&#39;s needed
-        </span><span class="kw">let </span>xdg = data.registry().bind_one(qh, <span class="number">1</span>..=<span class="number">3</span>, GlobalData).into();
-
-        <span class="kw">let </span>output_state = data.output_state();
-        output_state.xdg = xdg;
-
-        <span class="kw">for </span>wl_output <span class="kw">in </span>outputs {
-            output_state.setup(wl_output, qh);
-        }
-    }
-
     <span class="kw">fn </span>new_global(
         data: <span class="kw-2">&amp;mut </span>D,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection,
