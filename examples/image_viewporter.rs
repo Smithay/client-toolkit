@@ -14,8 +14,8 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, ShmHandler, ShmState},
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::{wl_output, wl_registry, wl_shm, wl_surface},
+    globals::registry_queue_init,
+    protocol::{wl_output, wl_shm, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::wp::viewporter::client::{
@@ -32,8 +32,8 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut state = State {
-        registry_state: RegistryState::new(&conn, &qh),
-        output_state: OutputState::new(),
+        registry_state: RegistryState::new(&globals),
+        output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
         shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
@@ -44,10 +44,6 @@ fn main() {
         pool: None,
         windows: Vec::new(),
     };
-
-    while !state.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut state).unwrap();
-    }
 
     let mut pool_size = 0;
 
@@ -310,18 +306,5 @@ impl Dispatch<WpViewport, ()> for State {
 impl Drop for ImageViewer {
     fn drop(&mut self) {
         self.viewport.destroy()
-    }
-}
-
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for State {
-    fn event(
-        _state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
-        _event: wl_registry::Event,
-        _data: &GlobalListContents,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-        // We don't need any other globals.
     }
 }

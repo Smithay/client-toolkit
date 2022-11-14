@@ -13,9 +13,9 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::{wl_output, wl_registry, wl_seat, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle,
+    globals::registry_queue_init,
+    protocol::{wl_output, wl_seat, wl_surface},
+    Connection, Proxy, QueueHandle,
 };
 
 fn main() {
@@ -76,9 +76,9 @@ fn main() {
         .expect("Failed to request device");
 
     let mut wgpu = Wgpu {
-        registry_state: RegistryState::new(&conn, &qh),
-        seat_state: SeatState::new(),
-        output_state: OutputState::new(),
+        registry_state: RegistryState::new(&globals),
+        seat_state: SeatState::new(&globals, &qh),
+        output_state: OutputState::new(&globals, &qh),
 
         exit: false,
         width: 256,
@@ -89,10 +89,6 @@ fn main() {
         adapter,
         queue,
     };
-
-    while !wgpu.registry_state.ready() {
-        event_queue.blocking_dispatch(&mut wgpu).unwrap();
-    }
 
     // We don't draw immediately, the configure will notify us when to first draw.
     loop {
@@ -287,17 +283,4 @@ impl ProvidesRegistryState for Wgpu {
         &mut self.registry_state
     }
     registry_handlers![OutputState];
-}
-
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for Wgpu {
-    fn event(
-        _state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
-        _event: wl_registry::Event,
-        _data: &GlobalListContents,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-        // We don't need any other globals.
-    }
 }

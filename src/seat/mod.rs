@@ -12,6 +12,7 @@ use std::{
 };
 
 use wayland_client::{
+    globals::GlobalList,
     protocol::{wl_pointer, wl_seat, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -19,7 +20,7 @@ use wayland_client::{
 use crate::registry::{ProvidesRegistryState, RegistryHandler};
 
 use self::{
-    pointer::{PointerData, PointerDataExt, PointerHandler},
+    pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
     touch::{TouchData, TouchDataExt, TouchHandler},
 };
 
@@ -61,8 +62,28 @@ pub struct SeatState {
 }
 
 impl SeatState {
-    pub fn new() -> SeatState {
-        SeatState { seats: vec![] }
+    pub fn new<D: Dispatch<wl_seat::WlSeat, SeatData> + 'static>(
+        global_list: &GlobalList,
+        qh: &QueueHandle<D>,
+    ) -> SeatState {
+        let seats = global_list.contents().with_list(|globals| {
+            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=7, |id| SeatData {
+                has_keyboard: Arc::new(AtomicBool::new(false)),
+                has_pointer: Arc::new(AtomicBool::new(false)),
+                has_touch: Arc::new(AtomicBool::new(false)),
+                name: Arc::new(Mutex::new(None)),
+                id,
+            })
+            .expect("failed to bind global")
+        });
+
+        let mut state = SeatState { seats: vec![] };
+        for seat in seats {
+            let data = seat.data::<SeatData>().unwrap().clone();
+
+            state.seats.push(SeatInner { seat: seat.clone(), data });
+        }
+        state
     }
 
     /// Returns an iterator over all the seats.
@@ -102,6 +123,24 @@ impl SeatState {
         self.get_pointer_with_data(qh, seat, PointerData::default())
     }
 
+    /// Creates a pointer from a seat with the provided theme.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    pub fn get_pointer_with_theme<D>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        theme: ThemeSpec,
+        scale: i32,
+    ) -> Result<(wl_pointer::WlPointer, ThemedPointer), SeatError>
+    where
+        D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
+    {
+        self.get_pointer_with_theme_and_data(qh, seat, theme, scale, Default::default())
+    }
+
     /// Creates a pointer from a seat.
     ///
     /// ## Errors
@@ -125,6 +164,42 @@ impl SeatState {
         }
 
         Ok(seat.get_pointer(qh, pointer_data))
+    }
+
+    /// Creates a pointer from a seat with the provided theme and data.
+    ///
+    /// ## Errors
+    ///
+    /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
+    pub fn get_pointer_with_theme_and_data<D, U>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+        theme: ThemeSpec,
+        scale: i32,
+        pointer_data: U,
+    ) -> Result<(wl_pointer::WlPointer, ThemedPointer), SeatError>
+    where
+        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
+        U: PointerDataExt + 'static,
+    {
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_pointer.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Pointer));
+        }
+
+        let wl_ptr = seat.get_pointer(qh, pointer_data);
+        Ok((
+            wl_ptr.clone(),
+            ThemedPointer {
+                themes: Arc::new(Mutex::new(Themes::new(theme))),
+                pointer: wl_ptr,
+                current_ptr: "left_ptr".to_string(),
+                scale,
+            },
+        ))
     }
 
     /// Creates a touch handle from a seat.
@@ -354,26 +429,6 @@ impl<D> RegistryHandler<D> for SeatState
 where
     D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler + ProvidesRegistryState + 'static,
 {
-    fn ready(state: &mut D, conn: &Connection, qh: &QueueHandle<D>) {
-        let seats = state
-            .registry()
-            .bind_all(qh, 1..=7, |id| SeatData {
-                has_keyboard: Arc::new(AtomicBool::new(false)),
-                has_pointer: Arc::new(AtomicBool::new(false)),
-                has_touch: Arc::new(AtomicBool::new(false)),
-                name: Arc::new(Mutex::new(None)),
-                id,
-            })
-            .expect("failed to bind global");
-
-        for seat in seats {
-            let data = seat.data::<SeatData>().unwrap().clone();
-
-            state.seat_state().seats.push(SeatInner { seat: seat.clone(), data });
-            state.new_seat(conn, qh, seat);
-        }
-    }
-
     fn new_global(
         state: &mut D,
         conn: &Connection,
