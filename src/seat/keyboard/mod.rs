@@ -27,6 +27,7 @@ pub mod repeat;
 use repeat::RepeatMessage;
 
 /// Error when creating a keyboard.
+#[must_use]
 #[derive(Debug, thiserror::Error)]
 pub enum KeyboardError {
     /// Seat error.
