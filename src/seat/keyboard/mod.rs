@@ -627,8 +627,8 @@ where
                                     if let Some(repeat_sender) = &udata.repeat_sender {
                                         let mut current_repeat =
                                             udata.current_repeat.lock().unwrap();
-                                        if Some(event.keysym)
-                                            == current_repeat.as_ref().map(|r| r.keysym)
+                                        if Some(event.raw_code)
+                                            == current_repeat.as_ref().map(|r| r.raw_code)
                                         {
                                             current_repeat.take();
                                             let _ = repeat_sender.send(RepeatMessage::StopRepeat);
