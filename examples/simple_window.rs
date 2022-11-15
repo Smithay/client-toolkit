@@ -1,9 +1,11 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, time::Duration};
 
+use calloop::{EventLoop, LoopHandle};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
     delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    event_loop::WaylandSource,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -32,8 +34,12 @@ fn main() {
 
     let conn = Connection::connect_to_env().unwrap();
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let (globals, event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
+    let mut event_loop: EventLoop<SimpleWindow> =
+        EventLoop::try_new().expect("Failed to initialize the event loop!");
+    let loop_handle = event_loop.handle();
+    WaylandSource::new(event_queue).unwrap().insert(loop_handle).unwrap();
 
     let mut simple_window = SimpleWindow {
         registry_state: RegistryState::new(&globals),
@@ -56,6 +62,7 @@ fn main() {
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
+        loop_handle: event_loop.handle(),
     };
 
     let pool = SlotPool::new(
@@ -80,7 +87,7 @@ fn main() {
     // We don't draw immediately, the configure will notify us when to first draw.
 
     loop {
-        event_queue.blocking_dispatch(&mut simple_window).unwrap();
+        event_loop.dispatch(Duration::from_millis(16), &mut simple_window).unwrap();
 
         if simple_window.exit {
             println!("exiting example");
@@ -109,6 +116,7 @@ struct SimpleWindow {
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     pointer: Option<wl_pointer::WlPointer>,
+    loop_handle: LoopHandle<'static, SimpleWindow>,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -213,8 +221,15 @@ impl SeatHandler for SimpleWindow {
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             println!("Set keyboard capability");
-            let keyboard =
-                self.seat_state.get_keyboard(qh, &seat, None).expect("Failed to create keyboard");
+            let (keyboard, source) = self
+                .seat_state
+                .get_keyboard_with_repeat(qh, &seat, None)
+                .expect("Failed to create keyboard");
+            self.loop_handle
+                .insert_source(source, |e, _, _state| {
+                    dbg!(e);
+                })
+                .expect("Failed to insert the repeating keyboard into the event loop");
             self.keyboard = Some(keyboard);
         }
 
