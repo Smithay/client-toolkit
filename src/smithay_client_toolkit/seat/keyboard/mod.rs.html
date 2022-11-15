@@ -657,6 +657,111 @@
 <span id="657">657</span>
 <span id="658">658</span>
 <span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
 </pre><pre class="rust"><code><span class="attribute">#[rustfmt::skip]
 </span><span class="kw">pub mod </span>keysyms;
 
@@ -680,8 +785,14 @@
 
 <span class="kw">use super</span>::{Capability, SeatError, SeatHandler, SeatState};
 
+<span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+</span><span class="kw">pub mod </span>repeat;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+</span><span class="kw">use </span>repeat::RepeatMessage;
+
 <span class="doccomment">/// Error when creating a keyboard.
-</span><span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="attribute">#[must_use]
+#[derive(Debug, thiserror::Error)]
 </span><span class="kw">pub enum </span>KeyboardError {
     <span class="doccomment">/// Seat error.
     </span><span class="attribute">#[error(transparent)]
@@ -869,7 +980,7 @@
 }
 
 <span class="doccomment">/// The rate at which a pressed key is repeated.
-</span><span class="attribute">#[derive(Debug)]
+</span><span class="attribute">#[derive(Debug, Clone, Copy)]
 </span><span class="kw">pub enum </span>RepeatInfo {
     <span class="doccomment">/// Keys will be repeated at the specified rate and delay.
     </span>Repeat {
@@ -967,6 +1078,9 @@
     </span>user_specified_rmlvo: bool,
     xkb_state: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::State&gt;&gt;,
     xkb_compose: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::compose::State&gt;&gt;,
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+    </span>repeat_sender: <span class="prelude-ty">Option</span>&lt;calloop::channel::Sender&lt;RepeatMessage&gt;&gt;,
+    current_repeat: Mutex&lt;<span class="prelude-ty">Option</span>&lt;KeyEvent&gt;&gt;,
 }
 
 <span class="kw">impl </span>Debug <span class="kw">for </span>KeyboardData {
@@ -1009,6 +1123,8 @@
             xkb_state: Mutex::new(<span class="prelude-val">None</span>),
             user_specified_rmlvo: <span class="bool-val">false</span>,
             xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
+            repeat_sender: <span class="prelude-val">None</span>,
+            current_repeat: Mutex::new(<span class="prelude-val">None</span>),
         };
 
         udata.init_compose();
@@ -1042,6 +1158,8 @@
             xkb_state: Mutex::new(xkb_state),
             user_specified_rmlvo: <span class="bool-val">true</span>,
             xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
+            repeat_sender: <span class="prelude-val">None</span>,
+            current_repeat: Mutex::new(<span class="prelude-val">None</span>),
         };
 
         udata.init_compose();
@@ -1091,10 +1209,15 @@
 
 <span class="kw">pub trait </span>KeyboardDataExt: Send + Sync {
     <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData;
+    <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData;
 }
 
 <span class="kw">impl </span>KeyboardDataExt <span class="kw">for </span>KeyboardData {
     <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData {
+        <span class="self">self
+    </span>}
+
+    <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData {
         <span class="self">self
     </span>}
 }
@@ -1219,7 +1342,14 @@
             wl_keyboard::Event::Leave { serial, surface } =&gt; {
                 <span class="comment">// We can send this event without any other checks in the protocol will guarantee a leave is
                 // sent before entering a new surface.
-                </span>data.leave(conn, qh, keyboard, <span class="kw-2">&amp;</span>surface, serial);
+                </span><span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                </span>{
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
+                        <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::StopRepeat);
+                    }
+                }
+
+                data.leave(conn, qh, keyboard, <span class="kw-2">&amp;</span>surface, serial);
             }
 
             wl_keyboard::Event::Key { serial, time, key, state } =&gt; <span class="kw">match </span>state {
@@ -1257,10 +1387,44 @@
 
                         <span class="kw">match </span>state {
                             wl_keyboard::KeyState::Released =&gt; {
+                                <span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                                </span>{
+                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
+                                        <span class="kw">let </span><span class="kw-2">mut </span>current_repeat =
+                                            udata.current_repeat.lock().unwrap();
+                                        <span class="kw">if </span><span class="prelude-val">Some</span>(event.raw_code)
+                                            == current_repeat.as_ref().map(|r| r.raw_code)
+                                        {
+                                            current_repeat.take();
+                                            <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::StopRepeat);
+                                        }
+                                    }
+                                }
                                 data.release_key(conn, qh, keyboard, serial, event);
                             }
 
                             wl_keyboard::KeyState::Pressed =&gt; {
+                                <span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                                </span>{
+                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
+                                        <span class="kw">let </span>state_guard = udata.xkb_state.lock().unwrap();
+                                        <span class="kw">let </span>key_repeats = state_guard
+                                            .as_ref()
+                                            .map(|guard| {
+                                                guard.get_keymap().key_repeats(event.raw_code + <span class="number">8</span>)
+                                            })
+                                            .unwrap_or_default();
+                                        <span class="kw">if </span>key_repeats {
+                                            udata
+                                                .current_repeat
+                                                .lock()
+                                                .unwrap()
+                                                .replace(event.clone());
+                                            <span class="kw">let _ </span>= repeat_sender
+                                                .send(RepeatMessage::StartRepeat(event.clone()));
+                                        }
+                                    }
+                                }
                                 data.press_key(conn, qh, keyboard, serial, event);
                             }
 
@@ -1285,7 +1449,46 @@
 
                 <span class="kw">let </span>mask = <span class="kw">match </span>guard.as_mut() {
                     <span class="prelude-val">Some</span>(state) =&gt; {
-                        state.update_mask(mods_depressed, mods_latched, mods_locked, <span class="number">0</span>, <span class="number">0</span>, group)
+                        <span class="kw">let </span>mask = state.update_mask(
+                            mods_depressed,
+                            mods_latched,
+                            mods_locked,
+                            <span class="number">0</span>,
+                            <span class="number">0</span>,
+                            group,
+                        );
+
+                        <span class="comment">// update current repeating key
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>current_event = udata.current_repeat.lock().unwrap();
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>event) = current_event.take() {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
+                                <span class="comment">// apply new modifiers to get new utf8
+                                </span><span class="kw">let </span>utf8 = {
+                                    <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
+
+                                    <span class="kw">match </span>compose.as_mut() {
+                                        <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.keysym) {
+                                            xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
+                                            xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
+                                                xkb::Status::Composed =&gt; compose.utf8(),
+                                                xkb::Status::Nothing =&gt; {
+                                                    <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>))
+                                                }
+                                                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                                            },
+                                        },
+
+                                        <span class="comment">// No compose
+                                        </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>)),
+                                    }
+                                };
+                                event.utf8 = utf8;
+
+                                current_event.replace(event.clone());
+                                <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::StartRepeat(event));
+                            }
+                        }
+                        mask
                     }
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
                 };
@@ -1308,6 +1511,13 @@
                 } <span class="kw">else </span>{
                     RepeatInfo::Disable
                 };
+
+                <span class="attribute">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                </span>{
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
+                        <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::RepeatInfo(info));
+                    }
+                }
 
                 data.update_repeat_info(conn, qh, keyboard, info);
             }
