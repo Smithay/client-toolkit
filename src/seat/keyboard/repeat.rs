@@ -195,8 +195,6 @@ impl EventSource for KeyRepeatSource {
 
         let timer_pa = timer.process_events(readiness, token, |mut event, _| {
             if self.disabled || key.is_none() {
-                // TODO How to pause the timer without dropping it?
-                // return TimeoutAction::ToDuration(Duration::from_millis(*delay_mut));
                 return TimeoutAction::Drop;
             }
             // Invoke the event
