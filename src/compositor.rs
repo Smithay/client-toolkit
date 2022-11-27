@@ -69,10 +69,7 @@ impl CompositorState {
         &self.wl_compositor
     }
 
-    pub fn create_surface<D>(
-        &self,
-        qh: &QueueHandle<D>,
-    ) -> Result<wl_surface::WlSurface, GlobalError>
+    pub fn create_surface<D>(&self, qh: &QueueHandle<D>) -> wl_surface::WlSurface
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
     {
@@ -83,14 +80,12 @@ impl CompositorState {
         &self,
         qh: &QueueHandle<D>,
         data: U,
-    ) -> Result<wl_surface::WlSurface, GlobalError>
+    ) -> wl_surface::WlSurface
     where
         D: Dispatch<wl_surface::WlSurface, U> + 'static,
         U: SurfaceDataExt + 'static,
     {
-        let surface = self.wl_compositor.create_surface(qh, data);
-
-        Ok(surface)
+        self.wl_compositor.create_surface(qh, data)
     }
 }
 

@@ -506,11 +506,9 @@ impl ThemedPointer {
         if surface.version() >= 4 {
             surface.damage_buffer(0, 0, w as i32, h as i32);
         } else {
-            let scale = self.scale;
-
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            surface.damage(0, 0, w as i32 / scale as i32, h as i32 / scale as i32);
+            surface.damage(0, 0, w as i32 / self.scale, h as i32 / self.scale);
         }
 
         // Commit the surface to place the cursor image in the compositor's memory.

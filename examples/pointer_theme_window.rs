@@ -48,8 +48,8 @@ fn main() {
     let pool = SlotPool::new(width as usize * height as usize * 4, &shm_state)
         .expect("Failed to create pool");
 
-    let window_surface = compositor_state.create_surface(&qh).unwrap();
-    let pointer_surface = compositor_state.create_surface(&qh).unwrap();
+    let window_surface = compositor_state.create_surface(&qh);
+    let pointer_surface = compositor_state.create_surface(&qh);
 
     let window = Window::builder()
         .title("A wayland window")

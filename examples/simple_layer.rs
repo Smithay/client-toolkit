@@ -62,14 +62,14 @@ fn main() {
     .expect("Failed to create pool");
     simple_layer.pool = Some(pool);
 
-    let surface = simple_layer.compositor_state.create_surface(&qh).unwrap();
+    let surface = simple_layer.compositor_state.create_surface(&qh);
 
     let layer = LayerSurface::builder()
         .size((256, 256))
         .anchor(Anchor::BOTTOM)
         .keyboard_interactivity(KeyboardInteractivity::OnDemand)
         .namespace("sample_layer")
-        .map(&qh, &mut simple_layer.layer_state, surface, Layer::Top)
+        .map(&qh, &simple_layer.layer_state, surface, Layer::Top)
         .expect("layer surface creation");
 
     simple_layer.layer = Some(layer);
