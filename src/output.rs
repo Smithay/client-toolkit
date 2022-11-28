@@ -155,7 +155,6 @@ impl OutputState {
             (outputs, xdg)
         });
 
-        // Only bind xdg output manager if it's needed
         let mut output_state = OutputState { xdg, outputs: vec![], callbacks: vec![] };
         for wl_output in outputs {
             output_state.setup(wl_output, qh);
@@ -680,14 +679,9 @@ where
         qh: &QueueHandle<D>,
         name: u32,
         interface: &str,
-        version: u32,
+        _version: u32,
     ) {
         if interface == "wl_output" {
-            // Lazily bind xdg output manager if it's needed
-            if version < 4 && matches!(data.output_state().xdg, GlobalProxy::NotReady) {
-                data.output_state().xdg = data.registry().bind_one(qh, 1..=3, GlobalData).into();
-            }
-
             let output = data
                 .registry()
                 .bind_specific(qh, name, 1..=4, OutputData::new(name))
