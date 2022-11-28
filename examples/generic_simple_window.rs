@@ -66,7 +66,7 @@ fn main() {
     .expect("Failed to create pool");
     simple_window.pool = Some(pool);
 
-    let surface = simple_window.compositor_state.create_surface(&qh).unwrap();
+    let surface = simple_window.compositor_state.create_surface(&qh);
 
     let window = Window::builder()
         .title("A wayland window")

@@ -60,7 +60,7 @@ fn main() {
         // We'll need the image in RGBA for drawing it
         let image = image.to_rgba8();
 
-        let surface = state.compositor_state.create_surface(&qh).unwrap();
+        let surface = state.compositor_state.create_surface(&qh);
 
         pool_size += image.width() * image.height() * 4;
 
