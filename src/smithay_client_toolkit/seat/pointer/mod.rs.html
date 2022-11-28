@@ -531,8 +531,6 @@
 <span id="531">531</span>
 <span id="532">532</span>
 <span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap},
     env, mem,
@@ -1041,11 +1039,9 @@
         <span class="kw">if </span>surface.version() &gt;= <span class="number">4 </span>{
             surface.damage_buffer(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32, h <span class="kw">as </span>i32);
         } <span class="kw">else </span>{
-            <span class="kw">let </span>scale = <span class="self">self</span>.scale;
-
             <span class="comment">// surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / scale <span class="kw">as </span>i32, h <span class="kw">as </span>i32 / scale <span class="kw">as </span>i32);
+            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / <span class="self">self</span>.scale, h <span class="kw">as </span>i32 / <span class="self">self</span>.scale);
         }
 
         <span class="comment">// Commit the surface to place the cursor image in the compositor&#39;s memory.
