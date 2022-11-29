@@ -436,14 +436,10 @@ where
             }
 
             wl_output::Event::Mode { flags, width, height, refresh } => {
-                if let Some((index, _)) =
-                    inner.pending_info.modes.iter().enumerate().find(|(_, mode)| {
-                        mode.dimensions == (width, height) && mode.refresh_rate == refresh
-                    })
-                {
-                    // We found a match, remove the old mode.
-                    inner.pending_info.modes.remove(index);
-                }
+                // Remove the old mode
+                inner.pending_info.modes.retain(|mode| {
+                    mode.dimensions != (width, height) || mode.refresh_rate != refresh
+                });
 
                 let flags = match flags {
                     WEnum::Value(flags) => flags,
@@ -453,32 +449,28 @@ where
                 let current = flags.contains(wl_output::Mode::Current);
                 let preferred = flags.contains(wl_output::Mode::Preferred);
 
+                // Any mode that isn't current is deprecated, let's deprecate any existing modes that may be
+                // marked as current.
+                //
+                // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
+                for mode in &mut inner.pending_info.modes {
+                    // This mode is no longer preferred.
+                    if preferred {
+                        mode.preferred = false;
+                    }
+
+                    // This mode is no longer current.
+                    if current {
+                        mode.current = false;
+                    }
+                }
+
                 // Now create the new mode.
                 inner.pending_info.modes.push(Mode {
                     dimensions: (width, height),
                     refresh_rate: refresh,
                     current,
                     preferred,
-                });
-
-                let index = inner.pending_info.modes.len() - 1;
-
-                // Any mode that isn't current is deprecated, let's deprecate any existing modes that may be
-                // marked as current.
-                //
-                // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
-                inner.pending_info.modes.iter_mut().enumerate().for_each(|(mode_index, mode)| {
-                    if index != mode_index {
-                        // This mode is no longer preferred.
-                        if mode.preferred && preferred {
-                            mode.preferred = false;
-                        }
-
-                        // This mode is no longer current.
-                        if mode.current && current {
-                            mode.current = false;
-                        }
-                    }
                 });
 
                 inner.pending_wl = true;
