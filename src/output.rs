@@ -402,6 +402,13 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
+        let inner = state
+            .output_state()
+            .outputs
+            .iter_mut()
+            .find(|inner| &inner.wl_output == output)
+            .expect("Received event for dead output");
+
         match event {
             wl_output::Event::Geometry {
                 x,
@@ -413,13 +420,6 @@ where
                 model,
                 transform,
             } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
                 inner.pending_info.location = (x, y);
                 inner.pending_info.physical_size = (physical_width, physical_height);
                 inner.pending_info.subpixel = match subpixel {
@@ -436,13 +436,6 @@ where
             }
 
             wl_output::Event::Mode { flags, width, height, refresh } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
                 if let Some((index, _)) =
                     inner.pending_info.modes.iter().enumerate().find(|(_, mode)| {
                         mode.dimensions == (width, height) && mode.refresh_rate == refresh
@@ -492,49 +485,21 @@ where
             }
 
             wl_output::Event::Scale { factor } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
                 inner.pending_info.scale_factor = factor;
                 inner.pending_wl = true;
             }
 
             wl_output::Event::Name { name } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
                 inner.pending_info.name = Some(name);
                 inner.pending_wl = true;
             }
 
             wl_output::Event::Description { description } => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
                 inner.pending_info.description = Some(description);
                 inner.pending_wl = true;
             }
 
             wl_output::Event::Done => {
-                let inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| &inner.wl_output == output)
-                    .expect("Received event for dead output");
-
                 let info = inner.pending_info.clone();
                 inner.current_info = Some(info.clone());
                 inner.pending_wl = false;
