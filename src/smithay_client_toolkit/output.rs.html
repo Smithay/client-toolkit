@@ -720,49 +720,6 @@
 <span id="720">720</span>
 <span id="721">721</span>
 <span id="722">722</span>
-<span id="723">723</span>
-<span id="724">724</span>
-<span id="725">725</span>
-<span id="726">726</span>
-<span id="727">727</span>
-<span id="728">728</span>
-<span id="729">729</span>
-<span id="730">730</span>
-<span id="731">731</span>
-<span id="732">732</span>
-<span id="733">733</span>
-<span id="734">734</span>
-<span id="735">735</span>
-<span id="736">736</span>
-<span id="737">737</span>
-<span id="738">738</span>
-<span id="739">739</span>
-<span id="740">740</span>
-<span id="741">741</span>
-<span id="742">742</span>
-<span id="743">743</span>
-<span id="744">744</span>
-<span id="745">745</span>
-<span id="746">746</span>
-<span id="747">747</span>
-<span id="748">748</span>
-<span id="749">749</span>
-<span id="750">750</span>
-<span id="751">751</span>
-<span id="752">752</span>
-<span id="753">753</span>
-<span id="754">754</span>
-<span id="755">755</span>
-<span id="756">756</span>
-<span id="757">757</span>
-<span id="758">758</span>
-<span id="759">759</span>
-<span id="760">760</span>
-<span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
-<span id="765">765</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     any::Any,
     fmt::{<span class="self">self</span>, Display, Formatter},
@@ -1166,6 +1123,13 @@
         conn: <span class="kw-2">&amp;</span>Connection,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
+        <span class="kw">let </span>inner = state
+            .output_state()
+            .outputs
+            .iter_mut()
+            .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
+            .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
+
         <span class="kw">match </span>event {
             wl_output::Event::Geometry {
                 x,
@@ -1177,13 +1141,6 @@
                 model,
                 transform,
             } =&gt; {
-                <span class="kw">let </span>inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-                    .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
-
                 inner.pending_info.location = (x, y);
                 inner.pending_info.physical_size = (physical_width, physical_height);
                 inner.pending_info.subpixel = <span class="kw">match </span>subpixel {
@@ -1200,21 +1157,10 @@
             }
 
             wl_output::Event::Mode { flags, width, height, refresh } =&gt; {
-                <span class="kw">let </span>inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-                    .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
-
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((index, <span class="kw">_</span>)) =
-                    inner.pending_info.modes.iter().enumerate().find(|(<span class="kw">_</span>, mode)| {
-                        mode.dimensions == (width, height) &amp;&amp; mode.refresh_rate == refresh
-                    })
-                {
-                    <span class="comment">// We found a match, remove the old mode.
-                    </span>inner.pending_info.modes.remove(index);
-                }
+                <span class="comment">// Remove the old mode
+                </span>inner.pending_info.modes.retain(|mode| {
+                    mode.dimensions != (width, height) || mode.refresh_rate != refresh
+                });
 
                 <span class="kw">let </span>flags = <span class="kw">match </span>flags {
                     WEnum::Value(flags) =&gt; flags,
@@ -1224,6 +1170,22 @@
                 <span class="kw">let </span>current = flags.contains(wl_output::Mode::Current);
                 <span class="kw">let </span>preferred = flags.contains(wl_output::Mode::Preferred);
 
+                <span class="comment">// Any mode that isn&#39;t current is deprecated, let&#39;s deprecate any existing modes that may be
+                // marked as current.
+                //
+                // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
+                </span><span class="kw">for </span>mode <span class="kw">in </span><span class="kw-2">&amp;mut </span>inner.pending_info.modes {
+                    <span class="comment">// This mode is no longer preferred.
+                    </span><span class="kw">if </span>preferred {
+                        mode.preferred = <span class="bool-val">false</span>;
+                    }
+
+                    <span class="comment">// This mode is no longer current.
+                    </span><span class="kw">if </span>current {
+                        mode.current = <span class="bool-val">false</span>;
+                    }
+                }
+
                 <span class="comment">// Now create the new mode.
                 </span>inner.pending_info.modes.push(Mode {
                     dimensions: (width, height),
@@ -1232,73 +1194,25 @@
                     preferred,
                 });
 
-                <span class="kw">let </span>index = inner.pending_info.modes.len() - <span class="number">1</span>;
-
-                <span class="comment">// Any mode that isn&#39;t current is deprecated, let&#39;s deprecate any existing modes that may be
-                // marked as current.
-                //
-                // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
-                </span>inner.pending_info.modes.iter_mut().enumerate().for_each(|(mode_index, mode)| {
-                    <span class="kw">if </span>index != mode_index {
-                        <span class="comment">// This mode is no longer preferred.
-                        </span><span class="kw">if </span>mode.preferred &amp;&amp; preferred {
-                            mode.preferred = <span class="bool-val">false</span>;
-                        }
-
-                        <span class="comment">// This mode is no longer current.
-                        </span><span class="kw">if </span>mode.current &amp;&amp; current {
-                            mode.current = <span class="bool-val">false</span>;
-                        }
-                    }
-                });
-
                 inner.pending_wl = <span class="bool-val">true</span>;
             }
 
             wl_output::Event::Scale { factor } =&gt; {
-                <span class="kw">let </span>inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-                    .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
-
                 inner.pending_info.scale_factor = factor;
                 inner.pending_wl = <span class="bool-val">true</span>;
             }
 
             wl_output::Event::Name { name } =&gt; {
-                <span class="kw">let </span>inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-                    .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
-
                 inner.pending_info.name = <span class="prelude-val">Some</span>(name);
                 inner.pending_wl = <span class="bool-val">true</span>;
             }
 
             wl_output::Event::Description { description } =&gt; {
-                <span class="kw">let </span>inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-                    .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
-
                 inner.pending_info.description = <span class="prelude-val">Some</span>(description);
                 inner.pending_wl = <span class="bool-val">true</span>;
             }
 
             wl_output::Event::Done =&gt; {
-                <span class="kw">let </span>inner = state
-                    .output_state()
-                    .outputs
-                    .iter_mut()
-                    .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-                    .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
-
                 <span class="kw">let </span>info = inner.pending_info.clone();
                 inner.current_info = <span class="prelude-val">Some</span>(info.clone());
                 inner.pending_wl = <span class="bool-val">false</span>;
