@@ -763,12 +763,6 @@
 <span id="763">763</span>
 <span id="764">764</span>
 <span id="765">765</span>
-<span id="766">766</span>
-<span id="767">767</span>
-<span id="768">768</span>
-<span id="769">769</span>
-<span id="770">770</span>
-<span id="771">771</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     any::Any,
     fmt::{<span class="self">self</span>, Display, Formatter},
@@ -926,8 +920,7 @@
             (outputs, xdg)
         });
 
-        <span class="comment">// Only bind xdg output manager if it&#39;s needed
-        </span><span class="kw">let </span><span class="kw-2">mut </span>output_state = OutputState { xdg, outputs: <span class="macro">vec!</span>[], callbacks: <span class="macro">vec!</span>[] };
+        <span class="kw">let </span><span class="kw-2">mut </span>output_state = OutputState { xdg, outputs: <span class="macro">vec!</span>[], callbacks: <span class="macro">vec!</span>[] };
         <span class="kw">for </span>wl_output <span class="kw">in </span>outputs {
             output_state.setup(wl_output, qh);
         }
@@ -1451,14 +1444,9 @@
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         name: u32,
         interface: <span class="kw-2">&amp;</span>str,
-        version: u32,
+        _version: u32,
     ) {
         <span class="kw">if </span>interface == <span class="string">&quot;wl_output&quot; </span>{
-            <span class="comment">// Lazily bind xdg output manager if it&#39;s needed
-            </span><span class="kw">if </span>version &lt; <span class="number">4 </span>&amp;&amp; <span class="macro">matches!</span>(data.output_state().xdg, GlobalProxy::NotReady) {
-                data.output_state().xdg = data.registry().bind_one(qh, <span class="number">1</span>..=<span class="number">3</span>, GlobalData).into();
-            }
-
             <span class="kw">let </span>output = data
                 .registry()
                 .bind_specific(qh, name, <span class="number">1</span>..=<span class="number">4</span>, OutputData::new(name))
