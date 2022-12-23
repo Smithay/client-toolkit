@@ -720,6 +720,13 @@
 <span id="720">720</span>
 <span id="721">721</span>
 <span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     any::Any,
     fmt::{<span class="self">self</span>, Display, Formatter},
@@ -1217,24 +1224,17 @@
                 inner.current_info = <span class="prelude-val">Some</span>(info.clone());
                 inner.pending_wl = <span class="bool-val">false</span>;
 
-                <span class="kw">if </span>inner
-                    .xdg_output
-                    .as_ref()
-                    .map(Proxy::version)
-                    .map(|v| v &gt; <span class="number">3</span>) <span class="comment">// version 3 of xdg_output deprecates xdg_output::done
-                    </span>.unwrap_or(<span class="bool-val">false</span>)
-                {
-                    inner.pending_xdg = <span class="bool-val">false</span>;
-                }
-
                 <span class="comment">// Set the user data, see if we need to run scale callbacks
                 </span><span class="kw">let </span>run_callbacks = data.set(info);
 
-                <span class="kw">if </span>inner.just_created {
-                    inner.just_created = <span class="bool-val">false</span>;
-                    state.new_output(conn, qh, output.clone());
-                } <span class="kw">else </span>{
-                    state.update_output(conn, qh, output.clone());
+                <span class="comment">// Don&#39;t call `new_output` until we have xdg output info
+                </span><span class="kw">if </span>!inner.pending_xdg {
+                    <span class="kw">if </span>inner.just_created {
+                        inner.just_created = <span class="bool-val">false</span>;
+                        state.new_output(conn, qh, output.clone());
+                    } <span class="kw">else </span>{
+                        state.update_output(conn, qh, output.clone());
+                    }
                 }
 
                 <span class="kw">if </span>run_callbacks {
@@ -1287,27 +1287,41 @@
             .find(|inner| inner.xdg_output.as_ref() == <span class="prelude-val">Some</span>(output))
             .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
 
+        <span class="comment">// zxdg_output_v1::done is deprecated in version 3. So we only need
+        // to wait for wl_output::done, once we get any xdg output info.
+        </span><span class="kw">if </span>output.version() &gt;= <span class="number">3 </span>{
+            inner.pending_xdg = <span class="bool-val">false</span>;
+        }
+
         <span class="kw">match </span>event {
             zxdg_output_v1::Event::LogicalPosition { x, y } =&gt; {
                 inner.pending_info.logical_position = <span class="prelude-val">Some</span>((x, y));
-                inner.pending_xdg = <span class="bool-val">true</span>;
+                <span class="kw">if </span>output.version() &lt; <span class="number">3 </span>{
+                    inner.pending_xdg = <span class="bool-val">true</span>;
+                }
             }
             zxdg_output_v1::Event::LogicalSize { width, height } =&gt; {
                 inner.pending_info.logical_size = <span class="prelude-val">Some</span>((width, height));
-                inner.pending_xdg = <span class="bool-val">true</span>;
+                <span class="kw">if </span>output.version() &lt; <span class="number">3 </span>{
+                    inner.pending_xdg = <span class="bool-val">true</span>;
+                }
             }
             zxdg_output_v1::Event::Name { name } =&gt; {
                 <span class="kw">if </span>inner.wl_output.version() &lt; <span class="number">4 </span>{
                     inner.pending_info.name = <span class="prelude-val">Some</span>(name);
                 }
-                inner.pending_xdg = <span class="bool-val">true</span>;
+                <span class="kw">if </span>output.version() &lt; <span class="number">3 </span>{
+                    inner.pending_xdg = <span class="bool-val">true</span>;
+                }
             }
 
             zxdg_output_v1::Event::Description { description } =&gt; {
                 <span class="kw">if </span>inner.wl_output.version() &lt; <span class="number">4 </span>{
                     inner.pending_info.description = <span class="prelude-val">Some</span>(description);
                 }
-                inner.pending_xdg = <span class="bool-val">true</span>;
+                <span class="kw">if </span>output.version() &lt; <span class="number">3 </span>{
+                    inner.pending_xdg = <span class="bool-val">true</span>;
+                }
             }
 
             zxdg_output_v1::Event::Done =&gt; {
