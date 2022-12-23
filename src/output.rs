@@ -495,24 +495,17 @@ where
                 inner.current_info = Some(info.clone());
                 inner.pending_wl = false;
 
-                if inner
-                    .xdg_output
-                    .as_ref()
-                    .map(Proxy::version)
-                    .map(|v| v > 3) // version 3 of xdg_output deprecates xdg_output::done
-                    .unwrap_or(false)
-                {
-                    inner.pending_xdg = false;
-                }
-
                 // Set the user data, see if we need to run scale callbacks
                 let run_callbacks = data.set(info);
 
-                if inner.just_created {
-                    inner.just_created = false;
-                    state.new_output(conn, qh, output.clone());
-                } else {
-                    state.update_output(conn, qh, output.clone());
+                // Don't call `new_output` until we have xdg output info
+                if !inner.pending_xdg {
+                    if inner.just_created {
+                        inner.just_created = false;
+                        state.new_output(conn, qh, output.clone());
+                    } else {
+                        state.update_output(conn, qh, output.clone());
+                    }
                 }
 
                 if run_callbacks {
@@ -565,27 +558,41 @@ where
             .find(|inner| inner.xdg_output.as_ref() == Some(output))
             .expect("Received event for dead output");
 
+        // zxdg_output_v1::done is deprecated in version 3. So we only need
+        // to wait for wl_output::done, once we get any xdg output info.
+        if output.version() >= 3 {
+            inner.pending_xdg = false;
+        }
+
         match event {
             zxdg_output_v1::Event::LogicalPosition { x, y } => {
                 inner.pending_info.logical_position = Some((x, y));
-                inner.pending_xdg = true;
+                if output.version() < 3 {
+                    inner.pending_xdg = true;
+                }
             }
             zxdg_output_v1::Event::LogicalSize { width, height } => {
                 inner.pending_info.logical_size = Some((width, height));
-                inner.pending_xdg = true;
+                if output.version() < 3 {
+                    inner.pending_xdg = true;
+                }
             }
             zxdg_output_v1::Event::Name { name } => {
                 if inner.wl_output.version() < 4 {
                     inner.pending_info.name = Some(name);
                 }
-                inner.pending_xdg = true;
+                if output.version() < 3 {
+                    inner.pending_xdg = true;
+                }
             }
 
             zxdg_output_v1::Event::Description { description } => {
                 if inner.wl_output.version() < 4 {
                     inner.pending_info.description = Some(description);
                 }
-                inner.pending_xdg = true;
+                if output.version() < 3 {
+                    inner.pending_xdg = true;
+                }
             }
 
             zxdg_output_v1::Event::Done => {
