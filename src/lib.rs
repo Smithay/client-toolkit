@@ -22,6 +22,7 @@ pub mod event_loop;
 pub mod globals;
 pub mod output;
 pub mod registry;
+pub mod screencopy;
 pub mod seat;
 pub mod shell;
 pub mod shm;
