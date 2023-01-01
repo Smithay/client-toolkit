@@ -17,8 +17,6 @@ pub mod reexports {
 
 pub mod compositor;
 pub mod error;
-#[cfg(feature = "calloop")]
-pub mod event_loop;
 pub mod globals;
 pub mod output;
 pub mod registry;
