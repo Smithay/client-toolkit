@@ -358,20 +358,57 @@ where
 pub struct ThemedPointer {
     pub(super) themes: Arc<Mutex<Themes>>,
     pub(super) pointer: wl_pointer::WlPointer,
-    pub(super) current_ptr: String,
     pub(super) scale: i32,
 }
 
 impl ThemedPointer {
     pub fn set_cursor(
-        &mut self,
+        &self,
         conn: &Connection,
         name: &str,
         shm: &wl_shm::WlShm,
         surface: &wl_surface::WlSurface,
     ) -> Result<(), PointerThemeError> {
-        self.current_ptr = name.into();
-        self.update_cursor(conn, shm, surface)
+        let mut themes = self.themes.lock().unwrap();
+
+        let cursor = themes
+            .get_cursor(conn, name, self.scale as u32, shm)
+            .map_err(PointerThemeError::InvalidId)?
+            .ok_or(PointerThemeError::CursorNotFound)?;
+
+        let image = &cursor[0];
+        let (w, h) = image.dimensions();
+        let (hx, hy) = image.hotspot();
+
+        surface.set_buffer_scale(self.scale);
+        surface.attach(Some(image), 0, 0);
+
+        if surface.version() >= 4 {
+            surface.damage_buffer(0, 0, w as i32, h as i32);
+        } else {
+            // surface is old and does not support damage_buffer, so we damage
+            // in surface coordinates and hope it is not rescaled
+            surface.damage(0, 0, w as i32 / self.scale, h as i32 / self.scale);
+        }
+
+        // Commit the surface to place the cursor image in the compositor's memory.
+        surface.commit();
+
+        // Set the pointer surface to change the pointer.
+        let serial = if let Some(serial) = self
+            .pointer
+            .data::<PointerData>()
+            .and_then(|ptr_data| ptr_data.inner.lock().ok())
+            .and_then(|data_inner| data_inner.latest_enter)
+        {
+            serial
+        } else {
+            return Err(PointerThemeError::MissingEnterSerial);
+        };
+
+        self.pointer.set_cursor(serial, Some(surface), hx as i32, hy as i32);
+
+        Ok(())
     }
 
     pub fn pointer(&self) -> &wl_pointer::WlPointer {
@@ -479,55 +516,5 @@ impl Themes {
         let theme = self.themes.get_mut(&scale).unwrap();
 
         Ok(theme.get_cursor(name))
-    }
-}
-
-impl ThemedPointer {
-    fn update_cursor(
-        &self,
-        conn: &Connection,
-        shm: &wl_shm::WlShm,
-        surface: &wl_surface::WlSurface,
-    ) -> Result<(), PointerThemeError> {
-        let mut themes = self.themes.lock().unwrap();
-
-        let cursor = themes
-            .get_cursor(conn, &self.current_ptr, self.scale as u32, shm)
-            .map_err(PointerThemeError::InvalidId)?
-            .ok_or(PointerThemeError::CursorNotFound)?;
-
-        let image = &cursor[0];
-        let (w, h) = image.dimensions();
-        let (hx, hy) = image.hotspot();
-
-        surface.set_buffer_scale(self.scale);
-        surface.attach(Some(image), 0, 0);
-
-        if surface.version() >= 4 {
-            surface.damage_buffer(0, 0, w as i32, h as i32);
-        } else {
-            // surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
-            surface.damage(0, 0, w as i32 / self.scale, h as i32 / self.scale);
-        }
-
-        // Commit the surface to place the cursor image in the compositor's memory.
-        surface.commit();
-
-        // Set the pointer surface to change the pointer.
-        let serial = if let Some(serial) = self
-            .pointer
-            .data::<PointerData>()
-            .and_then(|ptr_data| ptr_data.inner.lock().ok())
-            .and_then(|data_inner| data_inner.latest_enter)
-        {
-            serial
-        } else {
-            return Err(PointerThemeError::MissingEnterSerial);
-        };
-
-        self.pointer.set_cursor(serial, Some(surface), hx as i32, hy as i32);
-
-        Ok(())
     }
 }
