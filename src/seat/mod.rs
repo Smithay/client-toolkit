@@ -196,7 +196,6 @@ impl SeatState {
             ThemedPointer {
                 themes: Arc::new(Mutex::new(Themes::new(theme))),
                 pointer: wl_ptr,
-                current_ptr: "left_ptr".to_string(),
                 scale,
             },
         ))
