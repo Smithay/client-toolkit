@@ -119,6 +119,13 @@ pub struct PointerData {
     pub(crate) inner: Mutex<PointerDataInner>,
 }
 
+impl PointerData {
+    /// The latest serial from the `Enter` event.
+    pub fn latest_enter_serial(&self) -> Option<u32> {
+        self.inner.lock().unwrap().latest_enter
+    }
+}
+
 pub trait PointerDataExt: Send + Sync {
     fn pointer_data(&self) -> &PointerData;
 }
@@ -153,13 +160,14 @@ macro_rules! delegate_pointer {
 pub(crate) struct PointerDataInner {
     /// Surface the pointer most recently entered
     pub(crate) surface: Option<wl_surface::WlSurface>,
+
     /// Position relative to the surface
     pub(crate) position: (f64, f64),
 
     /// List of pending events.  Only used for version >= 5.
     pub(crate) pending: SmallVec<[PointerEvent; 3]>,
 
-    /// the serial of the latest enter event for the pointer
+    /// The serial of the latest enter event for the pointer
     pub(crate) latest_enter: Option<u32>,
 }
 
