@@ -518,19 +518,6 @@
 <span id="518">518</span>
 <span id="519">519</span>
 <span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap},
     env, mem,
@@ -891,20 +878,57 @@
 </span><span class="kw">pub struct </span>ThemedPointer {
     <span class="kw">pub</span>(<span class="kw">super</span>) themes: Arc&lt;Mutex&lt;Themes&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) pointer: wl_pointer::WlPointer,
-    <span class="kw">pub</span>(<span class="kw">super</span>) current_ptr: String,
     <span class="kw">pub</span>(<span class="kw">super</span>) scale: i32,
 }
 
 <span class="kw">impl </span>ThemedPointer {
     <span class="kw">pub fn </span>set_cursor(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         conn: <span class="kw-2">&amp;</span>Connection,
         name: <span class="kw-2">&amp;</span>str,
         shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
         surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
-        <span class="self">self</span>.current_ptr = name.into();
-        <span class="self">self</span>.update_cursor(conn, shm, surface)
+        <span class="kw">let </span><span class="kw-2">mut </span>themes = <span class="self">self</span>.themes.lock().unwrap();
+
+        <span class="kw">let </span>cursor = themes
+            .get_cursor(conn, name, <span class="self">self</span>.scale <span class="kw">as </span>u32, shm)
+            .map_err(PointerThemeError::InvalidId)<span class="question-mark">?
+            </span>.ok_or(PointerThemeError::CursorNotFound)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>image = <span class="kw-2">&amp;</span>cursor[<span class="number">0</span>];
+        <span class="kw">let </span>(w, h) = image.dimensions();
+        <span class="kw">let </span>(hx, hy) = image.hotspot();
+
+        surface.set_buffer_scale(<span class="self">self</span>.scale);
+        surface.attach(<span class="prelude-val">Some</span>(image), <span class="number">0</span>, <span class="number">0</span>);
+
+        <span class="kw">if </span>surface.version() &gt;= <span class="number">4 </span>{
+            surface.damage_buffer(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32, h <span class="kw">as </span>i32);
+        } <span class="kw">else </span>{
+            <span class="comment">// surface is old and does not support damage_buffer, so we damage
+            // in surface coordinates and hope it is not rescaled
+            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / <span class="self">self</span>.scale, h <span class="kw">as </span>i32 / <span class="self">self</span>.scale);
+        }
+
+        <span class="comment">// Commit the surface to place the cursor image in the compositor&#39;s memory.
+        </span>surface.commit();
+
+        <span class="comment">// Set the pointer surface to change the pointer.
+        </span><span class="kw">let </span>serial = <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = <span class="self">self
+            </span>.pointer
+            .data::&lt;PointerData&gt;()
+            .and_then(|ptr_data| ptr_data.inner.lock().ok())
+            .and_then(|data_inner| data_inner.latest_enter)
+        {
+            serial
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial);
+        };
+
+        <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32, hy <span class="kw">as </span>i32);
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">pub fn </span>pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_pointer::WlPointer {
@@ -1012,56 +1036,6 @@
         <span class="kw">let </span>theme = <span class="self">self</span>.themes.get_mut(<span class="kw-2">&amp;</span>scale).unwrap();
 
         <span class="prelude-val">Ok</span>(theme.get_cursor(name))
-    }
-}
-
-<span class="kw">impl </span>ThemedPointer {
-    <span class="kw">fn </span>update_cursor(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        conn: <span class="kw-2">&amp;</span>Connection,
-        shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
-        surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>themes = <span class="self">self</span>.themes.lock().unwrap();
-
-        <span class="kw">let </span>cursor = themes
-            .get_cursor(conn, <span class="kw-2">&amp;</span><span class="self">self</span>.current_ptr, <span class="self">self</span>.scale <span class="kw">as </span>u32, shm)
-            .map_err(PointerThemeError::InvalidId)<span class="question-mark">?
-            </span>.ok_or(PointerThemeError::CursorNotFound)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>image = <span class="kw-2">&amp;</span>cursor[<span class="number">0</span>];
-        <span class="kw">let </span>(w, h) = image.dimensions();
-        <span class="kw">let </span>(hx, hy) = image.hotspot();
-
-        surface.set_buffer_scale(<span class="self">self</span>.scale);
-        surface.attach(<span class="prelude-val">Some</span>(image), <span class="number">0</span>, <span class="number">0</span>);
-
-        <span class="kw">if </span>surface.version() &gt;= <span class="number">4 </span>{
-            surface.damage_buffer(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32, h <span class="kw">as </span>i32);
-        } <span class="kw">else </span>{
-            <span class="comment">// surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
-            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / <span class="self">self</span>.scale, h <span class="kw">as </span>i32 / <span class="self">self</span>.scale);
-        }
-
-        <span class="comment">// Commit the surface to place the cursor image in the compositor&#39;s memory.
-        </span>surface.commit();
-
-        <span class="comment">// Set the pointer surface to change the pointer.
-        </span><span class="kw">let </span>serial = <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = <span class="self">self
-            </span>.pointer
-            .data::&lt;PointerData&gt;()
-            .and_then(|ptr_data| ptr_data.inner.lock().ok())
-            .and_then(|data_inner| data_inner.latest_enter)
-        {
-            serial
-        } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial);
-        };
-
-        <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32, hy <span class="kw">as </span>i32);
-
-        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

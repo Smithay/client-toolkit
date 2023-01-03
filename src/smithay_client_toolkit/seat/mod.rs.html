@@ -478,7 +478,6 @@
 <span id="478">478</span>
 <span id="479">479</span>
 <span id="480">480</span>
-<span id="481">481</span>
 </pre><pre class="rust"><code><span class="attribute">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
 </span><span class="kw">pub mod </span>keyboard;
 <span class="kw">pub mod </span>pointer;
@@ -677,7 +676,6 @@
             ThemedPointer {
                 themes: Arc::new(Mutex::new(Themes::new(theme))),
                 pointer: wl_ptr,
-                current_ptr: <span class="string">&quot;left_ptr&quot;</span>.to_string(),
                 scale,
             },
         ))
