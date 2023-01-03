@@ -159,8 +159,8 @@ impl EventSource for KeyRepeatSource {
                                 match info {
                                     // Store the repeat time, using it for the next repeat sequence.
                                     RepeatInfo::Repeat { rate, delay } => {
-                                        // Number of repetitions per second / 1000 ms
-                                        *gap = (rate.get() / 1000) as u64;
+                                        // Use the gap in microseconds.
+                                        *gap = (1_000_000 / rate.get()) as u64;
                                         *delay_mut = delay as u64;
                                         *disabled = false;
                                         timer.set_duration(Duration::from_millis(*delay_mut));
@@ -201,7 +201,7 @@ impl EventSource for KeyRepeatSource {
             callback(key.clone().unwrap(), &mut ());
 
             // Update time for next event
-            event += Duration::from_millis(*gap);
+            event += Duration::from_micros(*gap);
             // Schedule the next key press
             TimeoutAction::ToDuration(Duration::from_micros(*gap))
         })?;
