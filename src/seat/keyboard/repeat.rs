@@ -31,9 +31,8 @@ pub(crate) enum RepeatMessage {
 pub struct KeyRepeatSource {
     channel: Channel<RepeatMessage>,
     timer: Timer,
-    /// Gap in time to the next key event in milliseconds.
-    gap: u64,
-    delay: u64,
+    gap: Duration,
+    delay: Duration,
     disabled: bool,
     key: Option<KeyEvent>,
 }
@@ -99,8 +98,8 @@ impl SeatState {
         let repeat = KeyRepeatSource {
             channel,
             timer: Timer::immediate(),
-            gap: 0,
-            delay: 0,
+            gap: Duration::ZERO,
+            delay: Duration::ZERO,
             key: None,
             disabled: true,
         };
@@ -146,24 +145,23 @@ impl EventSource for KeyRepeatSource {
                             }
 
                             RepeatMessage::StartRepeat(mut event) => {
-                                // Update time for next event
-                                event.time += *delay_mut as u32;
+                                // Update time for next event, the timestamps are in ms.
+                                event.time += delay_mut.as_millis() as u32;
                                 key.replace(event);
                                 reregister = true;
 
                                 // Schedule a new press event in the timer.
-                                timer.set_duration(Duration::from_millis(*delay_mut));
+                                timer.set_duration(*delay_mut);
                             }
 
                             RepeatMessage::RepeatInfo(info) => {
                                 match info {
-                                    // Store the repeat time, using it for the next repeat sequence.
+                                    // Store the repeat time, using it for the next repeat sequence
                                     RepeatInfo::Repeat { rate, delay } => {
-                                        // Use the gap in microseconds.
-                                        *gap = (1_000_000 / rate.get()) as u64;
-                                        *delay_mut = delay as u64;
+                                        *gap = Duration::from_micros(1_000_000 / rate.get() as u64);
+                                        *delay_mut = Duration::from_millis(delay as u64);
                                         *disabled = false;
-                                        timer.set_duration(Duration::from_millis(*delay_mut));
+                                        timer.set_duration(*delay_mut);
                                     }
 
                                     RepeatInfo::Disable => {
@@ -197,13 +195,15 @@ impl EventSource for KeyRepeatSource {
             if self.disabled || key.is_none() {
                 return TimeoutAction::Drop;
             }
+
             // Invoke the event
             callback(key.clone().unwrap(), &mut ());
 
             // Update time for next event
-            event += Duration::from_micros(*gap);
+            event += *gap;
+
             // Schedule the next key press
-            TimeoutAction::ToDuration(Duration::from_micros(*gap))
+            TimeoutAction::ToDuration(*gap)
         })?;
 
         // Only disable or remove if both want to, otherwise continue or re-register
