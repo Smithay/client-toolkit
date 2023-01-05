@@ -240,10 +240,19 @@ impl OutputData {
         OutputData(Arc::new(Mutex::new(OutputInfo::new(name))))
     }
 
+    /// Get the output scale factor.
     pub fn scale_factor(&self) -> i32 {
         let guard = self.0.lock().unwrap();
 
         guard.scale_factor
+    }
+
+    /// Access the underlying [`OutputInfo`].
+    ///
+    /// Reentrant calls within the `callback` will deadlock.
+    pub fn with_output_info<T, F: FnOnce(&OutputInfo) -> T>(&self, callback: F) -> T {
+        let guard = self.0.lock().unwrap();
+        callback(&guard)
     }
 }
 
