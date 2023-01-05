@@ -518,6 +518,14 @@
 <span id="518">518</span>
 <span id="519">519</span>
 <span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap},
     env, mem,
@@ -639,6 +647,13 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) inner: Mutex&lt;PointerDataInner&gt;,
 }
 
+<span class="kw">impl </span>PointerData {
+    <span class="doccomment">/// The latest serial from the `Enter` event.
+    </span><span class="kw">pub fn </span>latest_enter_serial(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
+        <span class="self">self</span>.inner.lock().unwrap().latest_enter
+    }
+}
+
 <span class="kw">pub trait </span>PointerDataExt: Send + Sync {
     <span class="kw">fn </span>pointer_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PointerData;
 }
@@ -673,13 +688,14 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PointerDataInner {
     <span class="doccomment">/// Surface the pointer most recently entered
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) surface: <span class="prelude-ty">Option</span>&lt;wl_surface::WlSurface&gt;,
+
     <span class="doccomment">/// Position relative to the surface
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) position: (f64, f64),
 
     <span class="doccomment">/// List of pending events.  Only used for version &gt;= 5.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) pending: SmallVec&lt;[PointerEvent; <span class="number">3</span>]&gt;,
 
-    <span class="doccomment">/// the serial of the latest enter event for the pointer
+    <span class="doccomment">/// The serial of the latest enter event for the pointer
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) latest_enter: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
