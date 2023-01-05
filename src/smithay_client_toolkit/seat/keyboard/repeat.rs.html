@@ -271,9 +271,8 @@
 </span><span class="kw">pub struct </span>KeyRepeatSource {
     channel: Channel&lt;RepeatMessage&gt;,
     timer: Timer,
-    <span class="doccomment">/// Gap in time to the next key event in milliseconds.
-    </span>gap: u64,
-    delay: u64,
+    gap: Duration,
+    delay: Duration,
     disabled: bool,
     key: <span class="prelude-ty">Option</span>&lt;KeyEvent&gt;,
 }
@@ -339,8 +338,8 @@
         <span class="kw">let </span>repeat = KeyRepeatSource {
             channel,
             timer: Timer::immediate(),
-            gap: <span class="number">0</span>,
-            delay: <span class="number">0</span>,
+            gap: Duration::ZERO,
+            delay: Duration::ZERO,
             key: <span class="prelude-val">None</span>,
             disabled: <span class="bool-val">true</span>,
         };
@@ -386,24 +385,23 @@
                             }
 
                             RepeatMessage::StartRepeat(<span class="kw-2">mut </span>event) =&gt; {
-                                <span class="comment">// Update time for next event
-                                </span>event.time += <span class="kw-2">*</span>delay_mut <span class="kw">as </span>u32;
+                                <span class="comment">// Update time for next event, the timestamps are in ms.
+                                </span>event.time += delay_mut.as_millis() <span class="kw">as </span>u32;
                                 key.replace(event);
                                 reregister = <span class="bool-val">true</span>;
 
                                 <span class="comment">// Schedule a new press event in the timer.
-                                </span>timer.set_duration(Duration::from_millis(<span class="kw-2">*</span>delay_mut));
+                                </span>timer.set_duration(<span class="kw-2">*</span>delay_mut);
                             }
 
                             RepeatMessage::RepeatInfo(info) =&gt; {
                                 <span class="kw">match </span>info {
-                                    <span class="comment">// Store the repeat time, using it for the next repeat sequence.
+                                    <span class="comment">// Store the repeat time, using it for the next repeat sequence
                                     </span>RepeatInfo::Repeat { rate, delay } =&gt; {
-                                        <span class="comment">// Use the gap in microseconds.
-                                        </span><span class="kw-2">*</span>gap = (<span class="number">1_000_000 </span>/ rate.get()) <span class="kw">as </span>u64;
-                                        <span class="kw-2">*</span>delay_mut = delay <span class="kw">as </span>u64;
+                                        <span class="kw-2">*</span>gap = Duration::from_micros(<span class="number">1_000_000 </span>/ rate.get() <span class="kw">as </span>u64);
+                                        <span class="kw-2">*</span>delay_mut = Duration::from_millis(delay <span class="kw">as </span>u64);
                                         <span class="kw-2">*</span>disabled = <span class="bool-val">false</span>;
-                                        timer.set_duration(Duration::from_millis(<span class="kw-2">*</span>delay_mut));
+                                        timer.set_duration(<span class="kw-2">*</span>delay_mut);
                                     }
 
                                     RepeatInfo::Disable =&gt; {
@@ -437,13 +435,15 @@
             <span class="kw">if </span><span class="self">self</span>.disabled || key.is_none() {
                 <span class="kw">return </span>TimeoutAction::Drop;
             }
+
             <span class="comment">// Invoke the event
             </span>callback(key.clone().unwrap(), <span class="kw-2">&amp;mut </span>());
 
             <span class="comment">// Update time for next event
-            </span>event += Duration::from_micros(<span class="kw-2">*</span>gap);
+            </span>event += <span class="kw-2">*</span>gap;
+
             <span class="comment">// Schedule the next key press
-            </span>TimeoutAction::ToDuration(Duration::from_micros(<span class="kw-2">*</span>gap))
+            </span>TimeoutAction::ToDuration(<span class="kw-2">*</span>gap)
         })<span class="question-mark">?</span>;
 
         <span class="comment">// Only disable or remove if both want to, otherwise continue or re-register
