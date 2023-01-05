@@ -727,6 +727,15 @@
 <span id="727">727</span>
 <span id="728">728</span>
 <span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     any::Any,
     fmt::{<span class="self">self</span>, Display, Formatter},
@@ -969,10 +978,19 @@
         OutputData(Arc::new(Mutex::new(OutputInfo::new(name))))
     }
 
-    <span class="kw">pub fn </span>scale_factor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i32 {
+    <span class="doccomment">/// Get the output scale factor.
+    </span><span class="kw">pub fn </span>scale_factor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i32 {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.lock().unwrap();
 
         guard.scale_factor
+    }
+
+    <span class="doccomment">/// Access the underlying [`OutputInfo`].
+    ///
+    /// Reentrant calls within the `callback` will deadlock.
+    </span><span class="kw">pub fn </span>with_output_info&lt;T, F: FnOnce(<span class="kw-2">&amp;</span>OutputInfo) -&gt; T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, callback: F) -&gt; T {
+        <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.lock().unwrap();
+        callback(<span class="kw-2">&amp;</span>guard)
     }
 }
 
