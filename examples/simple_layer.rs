@@ -68,6 +68,7 @@ fn main() {
     let layer = LayerSurface::builder()
         .size((256, 256))
         .anchor(Anchor::BOTTOM)
+        // INFO: you can set it to KeyboardInteractivity::None, then it will not be modal
         .keyboard_interactivity(KeyboardInteractivity::OnDemand)
         .namespace("sample_layer")
         .map(&qh, &simple_layer.layer_state, surface, Layer::Top)
@@ -277,7 +278,7 @@ impl KeyboardHandler for SimpleLayer {
         event: KeyEvent,
     ) {
         println!("Key press: {:?}", event);
-        // press 'q' to exit
+        // press 'esc' to exit
         if event.keysym == keysyms::KEY_Escape {
             self.exit = true;
         }
