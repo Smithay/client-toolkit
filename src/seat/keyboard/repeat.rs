@@ -18,11 +18,17 @@ use crate::seat::SeatState;
 /// Internal repeat message sent to the repeating mechanism.
 #[derive(Debug)]
 pub(crate) enum RepeatMessage {
+    /// Stop the key repeat.
     StopRepeat,
 
-    /// The key event should not have any time added, the repeating mechanism is responsible for that instead.
+    /// The key event should not have any time added, the repeating mechanism is responsible
+    /// for that instead.
     StartRepeat(KeyEvent),
 
+    /// Key has changed during the repeat, but the repeat shouldn't stop.
+    KeyChanged(KeyEvent),
+
+    /// The repeat info has changed.
     RepeatInfo(RepeatInfo),
 }
 
@@ -143,7 +149,6 @@ impl EventSource for KeyRepeatSource {
                             RepeatMessage::StopRepeat => {
                                 key.take();
                             }
-
                             RepeatMessage::StartRepeat(mut event) => {
                                 // Update time for next event, the timestamps are in ms.
                                 event.time += delay_mut.as_millis() as u32;
@@ -153,7 +158,9 @@ impl EventSource for KeyRepeatSource {
                                 // Schedule a new press event in the timer.
                                 timer.set_duration(*delay_mut);
                             }
-
+                            RepeatMessage::KeyChanged(new_event) => {
+                                key.replace(new_event);
+                            }
                             RepeatMessage::RepeatInfo(info) => {
                                 match info {
                                     // Store the repeat time, using it for the next repeat sequence

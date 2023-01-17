@@ -683,59 +683,53 @@ where
             } => {
                 let mut guard = udata.xkb_state.lock().unwrap();
 
-                let mask = match guard.as_mut() {
-                    Some(state) => {
-                        let mask = state.update_mask(
-                            mods_depressed,
-                            mods_latched,
-                            mods_locked,
-                            0,
-                            0,
-                            group,
-                        );
-
-                        // update current repeating key
-                        let mut current_event = udata.current_repeat.lock().unwrap();
-                        if let Some(mut event) = current_event.take() {
-                            if let Some(repeat_sender) = &udata.repeat_sender {
-                                // apply new modifiers to get new utf8
-                                let utf8 = {
-                                    let mut compose = udata.xkb_compose.lock().unwrap();
-
-                                    match compose.as_mut() {
-                                        Some(compose) => match compose.feed(event.keysym) {
-                                            xkb::FeedResult::Ignored => None,
-                                            xkb::FeedResult::Accepted => match compose.status() {
-                                                xkb::Status::Composed => compose.utf8(),
-                                                xkb::Status::Nothing => {
-                                                    Some(state.key_get_utf8(event.raw_code + 8))
-                                                }
-                                                _ => None,
-                                            },
-                                        },
-
-                                        // No compose
-                                        None => Some(state.key_get_utf8(event.raw_code + 8)),
-                                    }
-                                };
-                                event.utf8 = utf8;
-
-                                current_event.replace(event.clone());
-                                let _ = repeat_sender.send(RepeatMessage::StartRepeat(event));
-                            }
-                        }
-                        mask
-                    }
+                let state = match guard.as_mut() {
+                    Some(state) => state,
                     None => return,
                 };
+
+                // Apply the new xkb state with the new modifiers.
+                let _ = state.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
+
+                // Update the currently repeating key if any.
+                if let Some(repeat_sender) = udata.repeat_sender.as_ref() {
+                    let mut current_event = udata.current_repeat.lock().unwrap();
+                    if let Some(mut event) = current_event.take() {
+                        // Apply new modifiers to get new utf8.
+                        event.utf8 = {
+                            let mut compose = udata.xkb_compose.lock().unwrap();
+
+                            match compose.as_mut() {
+                                Some(compose) => match compose.feed(event.keysym) {
+                                    xkb::FeedResult::Ignored => None,
+                                    xkb::FeedResult::Accepted => match compose.status() {
+                                        xkb::Status::Composed => compose.utf8(),
+                                        xkb::Status::Nothing => {
+                                            Some(state.key_get_utf8(event.raw_code + 8))
+                                        }
+                                        _ => None,
+                                    },
+                                },
+
+                                // No compose
+                                None => Some(state.key_get_utf8(event.raw_code + 8)),
+                            }
+                        };
+
+                        // Update the stored event.
+                        current_event.replace(event.clone());
+
+                        // Don't reset the repeat when just changing the modifiers state.
+                        let _ = repeat_sender.send(RepeatMessage::KeyChanged(event));
+                    }
+                }
 
                 // Drop guard before calling user code.
                 drop(guard);
 
-                if mask & xkb::STATE_MODS_EFFECTIVE != 0 {
-                    let modifiers = udata.update_modifiers();
-                    data.update_modifiers(conn, qh, keyboard, serial, modifiers);
-                }
+                // Always issue the modifiers update for the user.
+                let modifiers = udata.update_modifiers();
+                data.update_modifiers(conn, qh, keyboard, serial, modifiers);
             }
 
             wl_keyboard::Event::RepeatInfo { rate, delay } => {
