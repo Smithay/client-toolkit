@@ -238,6 +238,13 @@
 <span id="238">238</span>
 <span id="239">239</span>
 <span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>calloop::{
@@ -258,12 +265,18 @@
 <span class="doccomment">/// Internal repeat message sent to the repeating mechanism.
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>RepeatMessage {
-    StopRepeat,
+    <span class="doccomment">/// Stop the key repeat.
+    </span>StopRepeat,
 
-    <span class="doccomment">/// The key event should not have any time added, the repeating mechanism is responsible for that instead.
+    <span class="doccomment">/// The key event should not have any time added, the repeating mechanism is responsible
+    /// for that instead.
     </span>StartRepeat(KeyEvent),
 
-    RepeatInfo(RepeatInfo),
+    <span class="doccomment">/// Key has changed during the repeat, but the repeat shouldn&#39;t stop.
+    </span>KeyChanged(KeyEvent),
+
+    <span class="doccomment">/// The repeat info has changed.
+    </span>RepeatInfo(RepeatInfo),
 }
 
 <span class="doccomment">/// [`EventSource`] used to emit key repeat events.
@@ -383,7 +396,6 @@
                             RepeatMessage::StopRepeat =&gt; {
                                 key.take();
                             }
-
                             RepeatMessage::StartRepeat(<span class="kw-2">mut </span>event) =&gt; {
                                 <span class="comment">// Update time for next event, the timestamps are in ms.
                                 </span>event.time += delay_mut.as_millis() <span class="kw">as </span>u32;
@@ -393,7 +405,9 @@
                                 <span class="comment">// Schedule a new press event in the timer.
                                 </span>timer.set_duration(<span class="kw-2">*</span>delay_mut);
                             }
-
+                            RepeatMessage::KeyChanged(new_event) =&gt; {
+                                key.replace(new_event);
+                            }
                             RepeatMessage::RepeatInfo(info) =&gt; {
                                 <span class="kw">match </span>info {
                                     <span class="comment">// Store the repeat time, using it for the next repeat sequence

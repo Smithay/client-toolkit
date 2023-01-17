@@ -756,12 +756,6 @@
 <span id="756">756</span>
 <span id="757">757</span>
 <span id="758">758</span>
-<span id="759">759</span>
-<span id="760">760</span>
-<span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
 </pre><pre class="rust"><code><span class="attribute">#[rustfmt::skip]
 </span><span class="kw">pub mod </span>keysyms;
 
@@ -1447,59 +1441,53 @@
             } =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.xkb_state.lock().unwrap();
 
-                <span class="kw">let </span>mask = <span class="kw">match </span>guard.as_mut() {
-                    <span class="prelude-val">Some</span>(state) =&gt; {
-                        <span class="kw">let </span>mask = state.update_mask(
-                            mods_depressed,
-                            mods_latched,
-                            mods_locked,
-                            <span class="number">0</span>,
-                            <span class="number">0</span>,
-                            group,
-                        );
-
-                        <span class="comment">// update current repeating key
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>current_event = udata.current_repeat.lock().unwrap();
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>event) = current_event.take() {
-                            <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
-                                <span class="comment">// apply new modifiers to get new utf8
-                                </span><span class="kw">let </span>utf8 = {
-                                    <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
-
-                                    <span class="kw">match </span>compose.as_mut() {
-                                        <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.keysym) {
-                                            xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
-                                            xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
-                                                xkb::Status::Composed =&gt; compose.utf8(),
-                                                xkb::Status::Nothing =&gt; {
-                                                    <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>))
-                                                }
-                                                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-                                            },
-                                        },
-
-                                        <span class="comment">// No compose
-                                        </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>)),
-                                    }
-                                };
-                                event.utf8 = utf8;
-
-                                current_event.replace(event.clone());
-                                <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::StartRepeat(event));
-                            }
-                        }
-                        mask
-                    }
+                <span class="kw">let </span>state = <span class="kw">match </span>guard.as_mut() {
+                    <span class="prelude-val">Some</span>(state) =&gt; state,
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
                 };
+
+                <span class="comment">// Apply the new xkb state with the new modifiers.
+                </span><span class="kw">let _ </span>= state.update_mask(mods_depressed, mods_latched, mods_locked, <span class="number">0</span>, <span class="number">0</span>, group);
+
+                <span class="comment">// Update the currently repeating key if any.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = udata.repeat_sender.as_ref() {
+                    <span class="kw">let </span><span class="kw-2">mut </span>current_event = udata.current_repeat.lock().unwrap();
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>event) = current_event.take() {
+                        <span class="comment">// Apply new modifiers to get new utf8.
+                        </span>event.utf8 = {
+                            <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
+
+                            <span class="kw">match </span>compose.as_mut() {
+                                <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.keysym) {
+                                    xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
+                                    xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
+                                        xkb::Status::Composed =&gt; compose.utf8(),
+                                        xkb::Status::Nothing =&gt; {
+                                            <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>))
+                                        }
+                                        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                                    },
+                                },
+
+                                <span class="comment">// No compose
+                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>)),
+                            }
+                        };
+
+                        <span class="comment">// Update the stored event.
+                        </span>current_event.replace(event.clone());
+
+                        <span class="comment">// Don&#39;t reset the repeat when just changing the modifiers state.
+                        </span><span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::KeyChanged(event));
+                    }
+                }
 
                 <span class="comment">// Drop guard before calling user code.
                 </span>drop(guard);
 
-                <span class="kw">if </span>mask &amp; xkb::STATE_MODS_EFFECTIVE != <span class="number">0 </span>{
-                    <span class="kw">let </span>modifiers = udata.update_modifiers();
-                    data.update_modifiers(conn, qh, keyboard, serial, modifiers);
-                }
+                <span class="comment">// Always issue the modifiers update for the user.
+                </span><span class="kw">let </span>modifiers = udata.update_modifiers();
+                data.update_modifiers(conn, qh, keyboard, serial, modifiers);
             }
 
             wl_keyboard::Event::RepeatInfo { rate, delay } =&gt; {
