@@ -25,6 +25,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
+use xkbcommon::xkb::keysyms;
 
 fn main() {
     env_logger::init();
@@ -67,6 +68,7 @@ fn main() {
     let layer = LayerSurface::builder()
         .size((256, 256))
         .anchor(Anchor::BOTTOM)
+        // INFO: you can set it to KeyboardInteractivity::None, then it will not be modal
         .keyboard_interactivity(KeyboardInteractivity::OnDemand)
         .namespace("sample_layer")
         .map(&qh, &simple_layer.layer_state, surface, Layer::Top)
@@ -276,6 +278,10 @@ impl KeyboardHandler for SimpleLayer {
         event: KeyEvent,
     ) {
         println!("Key press: {:?}", event);
+        // press 'esc' to exit
+        if event.keysym == keysyms::KEY_Escape {
+            self.exit = true;
+        }
     }
 
     fn release_key(
