@@ -31,10 +31,12 @@ wayland-cursor = "0.30.0"
 wayland-scanner = "0.30.0"
 
 xkbcommon = { version = "0.5", optional = true, features = ["wayland"] }
-calloop = { version = "0.10.0", optional = true }
+calloop = { version = "0.10.5", optional = true }
 
 [features]
 default = ["calloop", "xkbcommon"]
+# TODO remove `log` once wayland-client fixed
+calloop = ["dep:calloop", "wayland-client/calloop", "wayland-client/log"]
 
 [build-dependencies]
 pkg-config = "0.3"
