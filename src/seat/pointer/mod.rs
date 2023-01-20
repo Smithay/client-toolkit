@@ -363,13 +363,14 @@ where
 
 /// Pointer themeing
 #[derive(Debug)]
-pub struct ThemedPointer {
+pub struct ThemedPointer<U = PointerData> {
     pub(super) themes: Arc<Mutex<Themes>>,
     pub(super) pointer: wl_pointer::WlPointer,
     pub(super) scale: i32,
+    pub(super) _marker: std::marker::PhantomData<U>,
 }
 
-impl ThemedPointer {
+impl<U: PointerDataExt + 'static> ThemedPointer<U> {
     pub fn set_cursor(
         &self,
         conn: &Connection,
@@ -403,20 +404,13 @@ impl ThemedPointer {
         surface.commit();
 
         // Set the pointer surface to change the pointer.
-        let serial = if let Some(serial) = self
-            .pointer
-            .data::<PointerData>()
-            .and_then(|ptr_data| ptr_data.inner.lock().ok())
-            .and_then(|data_inner| data_inner.latest_enter)
-        {
-            serial
+        let data = self.pointer.data::<U>();
+        if let Some(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
+            self.pointer.set_cursor(serial, Some(surface), hx as i32, hy as i32);
+            Ok(())
         } else {
-            return Err(PointerThemeError::MissingEnterSerial);
-        };
-
-        self.pointer.set_cursor(serial, Some(surface), hx as i32, hy as i32);
-
-        Ok(())
+            Err(PointerThemeError::MissingEnterSerial)
+        }
     }
 
     pub fn pointer(&self) -> &wl_pointer::WlPointer {
