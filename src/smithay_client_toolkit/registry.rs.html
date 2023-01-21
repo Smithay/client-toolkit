@@ -542,14 +542,6 @@
 <span id="542">542</span>
 <span id="543">543</span>
 <span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Utilities for binding globals with [`wl_registry`] in delegates.
 //!
 //! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].
@@ -896,9 +888,6 @@
 /// that cache a bound global.
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub enum </span>GlobalProxy&lt;I&gt; {
-    <span class="doccomment">/// Initial state: registry has not yet finished enumeration or there is a missing
-    /// [RegistryHandler] delegtation.
-    </span>NotReady,
     <span class="doccomment">/// The requested global was not present after a complete enumeration.
     </span>NotPresent,
     <span class="doccomment">/// The cached global.
@@ -915,10 +904,6 @@
 }
 
 <span class="kw">impl</span>&lt;I: Proxy&gt; GlobalProxy&lt;I&gt; {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        GlobalProxy::NotReady
-    }
-
     <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>I, GlobalError&gt; {
         <span class="self">self</span>.with_min_version(<span class="number">0</span>)
     }
@@ -937,7 +922,6 @@
                 }
             }
             GlobalProxy::NotPresent =&gt; <span class="prelude-val">Err</span>(GlobalError::MissingGlobal(I::interface().name)),
-            GlobalProxy::NotReady =&gt; <span class="prelude-val">Err</span>(GlobalError::NotReady),
         }
     }
 }

@@ -9,10 +9,6 @@
 <span id="9">9</span>
 <span id="10">10</span>
 <span id="11">11</span>
-<span id="12">12</span>
-<span id="13">13</span>
-<span id="14">14</span>
-<span id="15">15</span>
 </pre><pre class="rust"><code><span class="doccomment">/// An error that may occur when creating objects using a global.
 </span><span class="attribute">#[derive(Debug, thiserror::Error)]
 </span><span class="kw">pub enum </span>GlobalError {
@@ -23,10 +19,6 @@
     <span class="doccomment">/// A compositor global was available, but did not support the given minimum version
     </span><span class="attribute">#[error(<span class="string">&quot;the &#39;{name}&#39; global does not support interface version {required} (using version {available})&quot;</span>)]
     </span>InvalidVersion { name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, required: u32, available: u32 },
-
-    <span class="doccomment">/// This is likely a programming error due to a missing entry in the registry_handlers! macro.
-    </span><span class="attribute">#[error(<span class="string">&quot;global enumeration is not finished or missing ProvidesRegistryState delegation&quot;</span>)]
-    </span>NotReady,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="smithay_client_toolkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>
