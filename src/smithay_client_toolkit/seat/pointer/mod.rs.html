@@ -520,12 +520,6 @@
 <span id="520">520</span>
 <span id="521">521</span>
 <span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap},
     env, mem,
@@ -891,13 +885,14 @@
 
 <span class="doccomment">/// Pointer themeing
 </span><span class="attribute">#[derive(Debug)]
-</span><span class="kw">pub struct </span>ThemedPointer {
+</span><span class="kw">pub struct </span>ThemedPointer&lt;U = PointerData&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) themes: Arc&lt;Mutex&lt;Themes&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) pointer: wl_pointer::WlPointer,
     <span class="kw">pub</span>(<span class="kw">super</span>) scale: i32,
+    <span class="kw">pub</span>(<span class="kw">super</span>) _marker: std::marker::PhantomData&lt;U&gt;,
 }
 
-<span class="kw">impl </span>ThemedPointer {
+<span class="kw">impl</span>&lt;U: PointerDataExt + <span class="lifetime">&#39;static</span>&gt; ThemedPointer&lt;U&gt; {
     <span class="kw">pub fn </span>set_cursor(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         conn: <span class="kw-2">&amp;</span>Connection,
@@ -931,20 +926,13 @@
         </span>surface.commit();
 
         <span class="comment">// Set the pointer surface to change the pointer.
-        </span><span class="kw">let </span>serial = <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = <span class="self">self
-            </span>.pointer
-            .data::&lt;PointerData&gt;()
-            .and_then(|ptr_data| ptr_data.inner.lock().ok())
-            .and_then(|data_inner| data_inner.latest_enter)
-        {
-            serial
+        </span><span class="kw">let </span>data = <span class="self">self</span>.pointer.data::&lt;U&gt;();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
+            <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32, hy <span class="kw">as </span>i32);
+            <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial);
-        };
-
-        <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32, hy <span class="kw">as </span>i32);
-
-        <span class="prelude-val">Ok</span>(())
+            <span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial)
+        }
     }
 
     <span class="kw">pub fn </span>pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_pointer::WlPointer {
