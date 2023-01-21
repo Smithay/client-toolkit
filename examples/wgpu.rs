@@ -31,7 +31,7 @@ fn main() {
     let xdg_shell_state = XdgShellState::bind(&globals, &qh).expect("xdg shell not available");
     let mut xdg_window_state = XdgWindowState::bind(&globals, &qh);
 
-    let surface = compositor_state.create_surface(&qh).expect("Failed to create surface");
+    let surface = compositor_state.create_surface(&qh);
     // Create the window for adapter selection
     let window = Window::builder()
         .title("wgpu wayland window")
