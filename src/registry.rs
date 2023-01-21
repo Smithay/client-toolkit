@@ -344,9 +344,6 @@ where
 /// that cache a bound global.
 #[derive(Debug)]
 pub enum GlobalProxy<I> {
-    /// Initial state: registry has not yet finished enumeration or there is a missing
-    /// [RegistryHandler] delegtation.
-    NotReady,
     /// The requested global was not present after a complete enumeration.
     NotPresent,
     /// The cached global.
@@ -363,10 +360,6 @@ impl<I> From<Result<I, BindError>> for GlobalProxy<I> {
 }
 
 impl<I: Proxy> GlobalProxy<I> {
-    pub fn new() -> Self {
-        GlobalProxy::NotReady
-    }
-
     pub fn get(&self) -> Result<&I, GlobalError> {
         self.with_min_version(0)
     }
@@ -385,7 +378,6 @@ impl<I: Proxy> GlobalProxy<I> {
                 }
             }
             GlobalProxy::NotPresent => Err(GlobalError::MissingGlobal(I::interface().name)),
-            GlobalProxy::NotReady => Err(GlobalError::NotReady),
         }
     }
 }
