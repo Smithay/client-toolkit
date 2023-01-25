@@ -1,6 +1,7 @@
 #[cfg(feature = "xkbcommon")]
 pub mod keyboard;
 pub mod pointer;
+pub mod pointer_constraints;
 pub mod relative_pointer;
 pub mod touch;
 
