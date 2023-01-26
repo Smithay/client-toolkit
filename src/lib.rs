@@ -16,6 +16,7 @@ pub mod reexports {
 }
 
 pub mod compositor;
+pub mod data_device_manager;
 pub mod error;
 pub mod globals;
 pub mod output;
