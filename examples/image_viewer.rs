@@ -187,21 +187,20 @@ impl WindowHandler for State {
         configure: WindowConfigure,
         _serial: u32,
     ) {
-        for viewer in &mut self.windows {
-            if viewer.window != *window {
-                continue;
-            }
-            if let Some(size) = configure.new_size {
-                viewer.width = size.0;
-                viewer.height = size.1;
-                viewer.buffer = None;
-                viewer.damaged = true;
-            }
+        let viewer = self.windows.iter_mut().find(|v| &v.window == window).unwrap();
 
+        if let Some(size) = configure.new_size {
+            viewer.width = size.0;
+            viewer.height = size.1;
+            viewer.buffer = None;
+            viewer.damaged = true;
+        }
+
+        if viewer.first_configure {
             // Initiate the first draw.
             viewer.first_configure = false;
+            self.draw(conn, qh);
         }
-        self.draw(conn, qh);
     }
 }
 
@@ -214,69 +213,76 @@ impl ShmHandler for State {
 impl State {
     pub fn draw(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
         for viewer in &mut self.windows {
-            if viewer.first_configure || !viewer.damaged {
+            if viewer.first_configure {
                 continue;
             }
             let window = &viewer.window;
-            let width = viewer.width;
-            let height = viewer.height;
-            let stride = viewer.width as i32 * 4;
-            let pool = self.pool.as_mut().unwrap();
+            if viewer.damaged {
+                let width = viewer.width;
+                let height = viewer.height;
+                let stride = viewer.width as i32 * 4;
+                let pool = self.pool.as_mut().unwrap();
 
-            let buffer = viewer.buffer.get_or_insert_with(|| {
-                pool.create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
+                let buffer = viewer.buffer.get_or_insert_with(|| {
+                    pool.create_buffer(
+                        width as i32,
+                        height as i32,
+                        stride,
+                        wl_shm::Format::Argb8888,
+                    )
                     .expect("create buffer")
                     .0
-            });
+                });
 
-            let canvas = match pool.canvas(buffer) {
-                Some(canvas) => canvas,
-                None => {
-                    // This should be rare, but if the compositor has not released the previous
-                    // buffer, we need double-buffering.
-                    let (second_buffer, canvas) = pool
-                        .create_buffer(
-                            viewer.width as i32,
-                            viewer.height as i32,
-                            stride,
-                            wl_shm::Format::Argb8888,
-                        )
-                        .expect("create buffer");
-                    *buffer = second_buffer;
-                    canvas
+                let canvas = match pool.canvas(buffer) {
+                    Some(canvas) => canvas,
+                    None => {
+                        // This should be rare, but if the compositor has not released the previous
+                        // buffer, we need double-buffering.
+                        let (second_buffer, canvas) = pool
+                            .create_buffer(
+                                viewer.width as i32,
+                                viewer.height as i32,
+                                stride,
+                                wl_shm::Format::Argb8888,
+                            )
+                            .expect("create buffer");
+                        *buffer = second_buffer;
+                        canvas
+                    }
+                };
+
+                // Draw to the window:
+                {
+                    let image = image::imageops::resize(
+                        &viewer.image,
+                        viewer.width,
+                        viewer.height,
+                        image::imageops::FilterType::Nearest,
+                    );
+
+                    for (pixel, argb) in image.pixels().zip(canvas.chunks_exact_mut(4)) {
+                        // We do this in an horribly inefficient manner, for the sake of simplicity.
+                        // We'll send pixels to the server in ARGB8888 format (this is one of the only
+                        // formats that are guaranteed to be supported), but image provides it in
+                        // big-endian RGBA8888, so we need to do the conversion.
+                        argb[3] = pixel.0[3];
+                        argb[2] = pixel.0[0];
+                        argb[1] = pixel.0[1];
+                        argb[0] = pixel.0[2];
+                    }
                 }
-            };
 
-            // Draw to the window:
-            {
-                let image = image::imageops::resize(
-                    &viewer.image,
-                    viewer.width,
-                    viewer.height,
-                    image::imageops::FilterType::Nearest,
-                );
-
-                for (pixel, argb) in image.pixels().zip(canvas.chunks_exact_mut(4)) {
-                    // We do this in an horribly inefficient manner, for the sake of simplicity.
-                    // We'll send pixels to the server in ARGB8888 format (this is one of the only
-                    // formats that are guaranteed to be supported), but image provides it in
-                    // big-endian RGBA8888, so we need to do the conversion.
-                    argb[3] = pixel.0[3];
-                    argb[2] = pixel.0[0];
-                    argb[1] = pixel.0[1];
-                    argb[0] = pixel.0[2];
-                }
+                // Damage the entire window
+                buffer.attach_to(window.wl_surface()).expect("buffer attach");
+                window.wl_surface().damage_buffer(0, 0, viewer.width as i32, viewer.height as i32);
+                viewer.damaged = false;
             }
-
-            // Damage the entire window
-            window.wl_surface().damage_buffer(0, 0, viewer.width as i32, viewer.height as i32);
-            viewer.damaged = false;
 
             // Request our next frame
             window.wl_surface().frame(qh, window.wl_surface().clone());
 
-            // Attach and commit to present.
-            buffer.attach_to(window.wl_surface()).expect("buffer attach");
+            // Commit to present.
             window.wl_surface().commit();
         }
     }
