@@ -134,12 +134,11 @@ impl SeatState {
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         theme: ThemeSpec,
-        scale: i32,
     ) -> Result<ThemedPointer<PointerData>, SeatError>
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
-        self.get_pointer_with_theme_and_data(qh, seat, theme, scale, PointerData::new(seat.clone()))
+        self.get_pointer_with_theme_and_data(qh, seat, theme, PointerData::new(seat.clone()))
     }
 
     /// Creates a pointer from a seat.
@@ -177,7 +176,6 @@ impl SeatState {
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         theme: ThemeSpec,
-        scale: i32,
         pointer_data: U,
     ) -> Result<ThemedPointer<U>, SeatError>
     where
@@ -195,7 +193,6 @@ impl SeatState {
         Ok(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
             pointer: wl_ptr,
-            scale,
             _marker: std::marker::PhantomData,
         })
     }
