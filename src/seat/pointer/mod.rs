@@ -376,7 +376,6 @@ where
 pub struct ThemedPointer<U = PointerData> {
     pub(super) themes: Arc<Mutex<Themes>>,
     pub(super) pointer: wl_pointer::WlPointer,
-    pub(super) scale: i32,
     pub(super) _marker: std::marker::PhantomData<U>,
 }
 
@@ -387,11 +386,12 @@ impl<U: PointerDataExt + 'static> ThemedPointer<U> {
         name: &str,
         shm: &wl_shm::WlShm,
         surface: &wl_surface::WlSurface,
+        scale: i32,
     ) -> Result<(), PointerThemeError> {
         let mut themes = self.themes.lock().unwrap();
 
         let cursor = themes
-            .get_cursor(conn, name, self.scale as u32, shm)
+            .get_cursor(conn, name, scale as u32, shm)
             .map_err(PointerThemeError::InvalidId)?
             .ok_or(PointerThemeError::CursorNotFound)?;
 
@@ -399,7 +399,7 @@ impl<U: PointerDataExt + 'static> ThemedPointer<U> {
         let (w, h) = image.dimensions();
         let (hx, hy) = image.hotspot();
 
-        surface.set_buffer_scale(self.scale);
+        surface.set_buffer_scale(scale);
         surface.attach(Some(image), 0, 0);
 
         if surface.version() >= 4 {
@@ -407,7 +407,7 @@ impl<U: PointerDataExt + 'static> ThemedPointer<U> {
         } else {
             // surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            surface.damage(0, 0, w as i32 / self.scale, h as i32 / self.scale);
+            surface.damage(0, 0, w as i32 / scale, h as i32 / scale);
         }
 
         // Commit the surface to place the cursor image in the compositor's memory.

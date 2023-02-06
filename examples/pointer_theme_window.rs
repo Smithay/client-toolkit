@@ -231,7 +231,7 @@ impl SeatHandler for SimpleWindow {
             println!("Creating pointer theme");
             let themed_pointer = self
                 .seat_state
-                .get_pointer_with_theme(qh, &seat, ThemeSpec::default(), 1)
+                .get_pointer_with_theme(qh, &seat, ThemeSpec::default())
                 .expect("Failed to create pointer");
             self.themed_pointer.replace(themed_pointer);
         }
@@ -375,6 +375,7 @@ impl SimpleWindow {
                 "diamond_cross",
                 self.shm_state.wl_shm(),
                 &self.pointer_surface,
+                1,
             );
             self.set_cursor = false;
         }
