@@ -135,7 +135,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
         theme: ThemeSpec,
         scale: i32,
-    ) -> Result<(wl_pointer::WlPointer, ThemedPointer<PointerData>), SeatError>
+    ) -> Result<ThemedPointer<PointerData>, SeatError>
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
@@ -179,7 +179,7 @@ impl SeatState {
         theme: ThemeSpec,
         scale: i32,
         pointer_data: U,
-    ) -> Result<(wl_pointer::WlPointer, ThemedPointer<U>), SeatError>
+    ) -> Result<ThemedPointer<U>, SeatError>
     where
         D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
         U: PointerDataExt + 'static,
@@ -192,15 +192,12 @@ impl SeatState {
         }
 
         let wl_ptr = seat.get_pointer(qh, pointer_data);
-        Ok((
-            wl_ptr.clone(),
-            ThemedPointer {
-                themes: Arc::new(Mutex::new(Themes::new(theme))),
-                pointer: wl_ptr,
-                scale,
-                _marker: std::marker::PhantomData,
-            },
-        ))
+        Ok(ThemedPointer {
+            themes: Arc::new(Mutex::new(Themes::new(theme))),
+            pointer: wl_ptr,
+            scale,
+            _marker: std::marker::PhantomData,
+        })
     }
 
     /// Creates a touch handle from a seat.

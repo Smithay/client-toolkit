@@ -79,7 +79,6 @@ fn main() {
         pointer_surface,
         keyboard: None,
         keyboard_focus: false,
-        pointer: None,
         themed_pointer: None,
         set_cursor: false,
     };
@@ -116,7 +115,6 @@ struct SimpleWindow {
     pointer_surface: wl_surface::WlSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
-    pointer: Option<wl_pointer::WlPointer>,
     themed_pointer: Option<ThemedPointer>,
     set_cursor: bool,
 }
@@ -228,14 +226,13 @@ impl SeatHandler for SimpleWindow {
             self.keyboard = Some(keyboard);
         }
 
-        if capability == Capability::Pointer && self.pointer.is_none() {
+        if capability == Capability::Pointer && self.themed_pointer.is_none() {
             println!("Set pointer capability");
             println!("Creating pointer theme");
-            let (pointer, themed_pointer) = self
+            let themed_pointer = self
                 .seat_state
                 .get_pointer_with_theme(qh, &seat, ThemeSpec::default(), 1)
                 .expect("Failed to create pointer");
-            self.pointer = Some(pointer);
             self.themed_pointer.replace(themed_pointer);
         }
     }
@@ -252,9 +249,9 @@ impl SeatHandler for SimpleWindow {
             self.keyboard.take().unwrap().release();
         }
 
-        if capability == Capability::Pointer && self.pointer.is_some() {
+        if capability == Capability::Pointer && self.themed_pointer.is_some() {
             println!("Unset pointer capability");
-            self.pointer.take().unwrap().release();
+            self.themed_pointer.take().unwrap().pointer().release();
         }
     }
 
