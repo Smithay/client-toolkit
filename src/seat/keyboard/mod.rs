@@ -17,6 +17,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
+
 use xkbcommon::xkb;
 
 use super::{Capability, SeatError, SeatHandler, SeatState};
@@ -63,8 +64,8 @@ impl SeatState {
             + 'static,
     {
         let udata = match rmlvo {
-            Some(rmlvo) => KeyboardData::from_rmlvo(rmlvo)?,
-            None => KeyboardData::default(),
+            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo)?,
+            None => KeyboardData::new(seat.clone()),
         };
 
         self.get_keyboard_with_data(qh, seat, udata)
@@ -308,6 +309,7 @@ pub struct RMLVO {
 }
 
 pub struct KeyboardData {
+    seat: wl_seat::WlSeat,
     first_event: AtomicBool,
     xkb_context: Mutex<xkb::Context>,
     /// If the user manually specified the RMLVO to use.
@@ -350,10 +352,11 @@ unsafe impl Send for KeyboardData {}
 // SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
 unsafe impl Sync for KeyboardData {}
 
-impl Default for KeyboardData {
-    fn default() -> Self {
+impl KeyboardData {
+    pub fn new(seat: wl_seat::WlSeat) -> Self {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let udata = KeyboardData {
+            seat,
             first_event: AtomicBool::new(false),
             xkb_context: Mutex::new(xkb_context),
             xkb_state: Mutex::new(None),
@@ -367,10 +370,12 @@ impl Default for KeyboardData {
 
         udata
     }
-}
 
-impl KeyboardData {
-    pub fn from_rmlvo(rmlvo: RMLVO) -> Result<Self, KeyboardError> {
+    pub fn seat(&self) -> &wl_seat::WlSeat {
+        &self.seat
+    }
+
+    pub fn from_rmlvo(seat: wl_seat::WlSeat, rmlvo: RMLVO) -> Result<Self, KeyboardError> {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let keymap = xkb::Keymap::new_from_names(
             &xkb_context,
@@ -389,6 +394,7 @@ impl KeyboardData {
         let xkb_state = Some(xkb::State::new(&keymap.unwrap()));
 
         let udata = KeyboardData {
+            seat,
             first_event: AtomicBool::new(false),
             xkb_context: Mutex::new(xkb_context),
             xkb_state: Mutex::new(xkb_state),
