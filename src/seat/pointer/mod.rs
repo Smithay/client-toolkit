@@ -6,7 +6,7 @@ use std::{
 use wayland_backend::{client::InvalidId, smallvec::SmallVec};
 
 use wayland_client::{
-    protocol::{wl_pointer, wl_shm, wl_surface},
+    protocol::{wl_pointer, wl_seat::WlSeat, wl_shm, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_cursor::{Cursor, CursorTheme};
@@ -114,12 +114,22 @@ pub trait PointerHandler: Sized {
     );
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PointerData {
+    seat: WlSeat,
     pub(crate) inner: Mutex<PointerDataInner>,
 }
 
 impl PointerData {
+    pub fn new(seat: WlSeat) -> Self {
+        Self { seat, inner: Default::default() }
+    }
+
+    /// The seat associated with this pointer.
+    pub fn seat(&self) -> &WlSeat {
+        &self.seat
+    }
+
     /// The latest serial from the `Enter` event.
     pub fn latest_enter_serial(&self) -> Option<u32> {
         self.inner.lock().unwrap().latest_enter

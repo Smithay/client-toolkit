@@ -66,8 +66,8 @@ impl SeatState {
         D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData> + KeyboardHandler + 'static,
     {
         let udata = match rmlvo {
-            Some(rmlvo) => KeyboardData::from_rmlvo(rmlvo)?,
-            None => KeyboardData::default(),
+            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo)?,
+            None => KeyboardData::new(seat.clone()),
         };
 
         self.get_keyboard_with_repeat_with_data(qh, seat, udata)

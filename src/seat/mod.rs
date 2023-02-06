@@ -121,7 +121,7 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
-        self.get_pointer_with_data(qh, seat, PointerData::default())
+        self.get_pointer_with_data(qh, seat, PointerData::new(seat.clone()))
     }
 
     /// Creates a pointer from a seat with the provided theme.
@@ -139,7 +139,7 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
     {
-        self.get_pointer_with_theme_and_data(qh, seat, theme, scale, Default::default())
+        self.get_pointer_with_theme_and_data(qh, seat, theme, scale, PointerData::new(seat.clone()))
     }
 
     /// Creates a pointer from a seat.
@@ -216,7 +216,7 @@ impl SeatState {
     where
         D: Dispatch<wl_touch::WlTouch, TouchData> + TouchHandler + 'static,
     {
-        self.get_touch_with_data(qh, seat, TouchData::default())
+        self.get_touch_with_data(qh, seat, TouchData::new(seat.clone()))
     }
 
     /// Creates a touch handle from a seat.

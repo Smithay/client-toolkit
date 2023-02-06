@@ -1,14 +1,30 @@
 use std::sync::Mutex;
 
+use wayland_client::protocol::wl_seat::WlSeat;
+
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
 use wayland_client::{Connection, Dispatch, QueueHandle};
 
 use crate::seat::SeatState;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TouchData {
+    seat: WlSeat,
+
     inner: Mutex<TouchDataInner>,
+}
+
+impl TouchData {
+    /// Create the new touch data associated with the given seat.
+    pub fn new(seat: WlSeat) -> Self {
+        Self { seat, inner: Default::default() }
+    }
+
+    /// Get the associated seat from the data.
+    pub fn seat(&self) -> &WlSeat {
+        &self.seat
+    }
 }
 
 #[derive(Debug, Default)]
