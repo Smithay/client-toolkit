@@ -1,3 +1,4 @@
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use calloop::{
@@ -11,7 +12,8 @@ use wayland_client::{
 };
 
 use super::{
-    KeyEvent, KeyboardData, KeyboardDataExt, KeyboardError, KeyboardHandler, RepeatInfo, RMLVO,
+    Capability, KeyEvent, KeyboardData, KeyboardDataExt, KeyboardError, KeyboardHandler,
+    RepeatInfo, SeatError, RMLVO,
 };
 use crate::seat::SeatState;
 
@@ -95,6 +97,13 @@ impl SeatState {
         D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
         U: KeyboardDataExt + 'static,
     {
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_pointer.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Pointer).into());
+        }
+
         let (repeat_sender, channel) = channel::channel();
 
         let kbd_data = udata.keyboard_data_mut();
