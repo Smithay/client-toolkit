@@ -250,7 +250,7 @@ impl KeyboardHandler for SimpleLayer {
         keysyms: &[u32],
     ) {
         if self.layer.as_ref().map(LayerSurface::wl_surface) == Some(surface) {
-            println!("Keyboard focus on window with pressed syms: {:?}", keysyms);
+            println!("Keyboard focus on window with pressed syms: {keysyms:?}");
             self.keyboard_focus = true;
         }
     }
@@ -277,7 +277,7 @@ impl KeyboardHandler for SimpleLayer {
         _: u32,
         event: KeyEvent,
     ) {
-        println!("Key press: {:?}", event);
+        println!("Key press: {event:?}");
         // press 'esc' to exit
         if event.keysym == keysyms::KEY_Escape {
             self.exit = true;
@@ -292,7 +292,7 @@ impl KeyboardHandler for SimpleLayer {
         _: u32,
         event: KeyEvent,
     ) {
-        println!("Key release: {:?}", event);
+        println!("Key release: {event:?}");
     }
 
     fn update_modifiers(
@@ -303,7 +303,7 @@ impl KeyboardHandler for SimpleLayer {
         _serial: u32,
         modifiers: Modifiers,
     ) {
-        println!("Update modifiers: {:?}", modifiers);
+        println!("Update modifiers: {modifiers:?}");
     }
 }
 
@@ -337,7 +337,7 @@ impl PointerHandler for SimpleLayer {
                     println!("Release {:x} @ {:?}", button, event.position);
                 }
                 Axis { horizontal, vertical, .. } => {
-                    println!("Scroll H:{:?}, V:{:?}", horizontal, vertical);
+                    println!("Scroll H:{horizontal:?}, V:{vertical:?}");
                 }
             }
         }

@@ -35,7 +35,7 @@ fn main() {
     println!("Supported formats:");
 
     for format in list_formats.shm_state.formats() {
-        println!("{:?}", format);
+        println!("{format:?}");
     }
 }
 

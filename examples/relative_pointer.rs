@@ -230,7 +230,7 @@ impl RelativePointerHandler for SimpleWindow {
         _pointer: &wl_pointer::WlPointer,
         event: RelativeMotionEvent,
     ) {
-        println!("{:?}", event);
+        println!("{event:?}");
     }
 }
 

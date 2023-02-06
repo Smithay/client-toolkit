@@ -270,7 +270,7 @@ impl<T: Test + 'static> KeyboardHandler for SimpleWindow<T> {
         keysyms: &[u32],
     ) {
         if self.window.as_ref().map(Window::wl_surface) == Some(surface) {
-            println!("Keyboard focus on window with pressed syms: {:?}", keysyms);
+            println!("Keyboard focus on window with pressed syms: {keysyms:?}");
             self.keyboard_focus = true;
         }
     }
@@ -297,7 +297,7 @@ impl<T: Test + 'static> KeyboardHandler for SimpleWindow<T> {
         _: u32,
         event: KeyEvent,
     ) {
-        println!("Key press: {:?}", event);
+        println!("Key press: {event:?}");
     }
 
     fn release_key(
@@ -308,7 +308,7 @@ impl<T: Test + 'static> KeyboardHandler for SimpleWindow<T> {
         _: u32,
         event: KeyEvent,
     ) {
-        println!("Key release: {:?}", event);
+        println!("Key release: {event:?}");
     }
 
     fn update_modifiers(
@@ -319,7 +319,7 @@ impl<T: Test + 'static> KeyboardHandler for SimpleWindow<T> {
         _serial: u32,
         modifiers: Modifiers,
     ) {
-        println!("Update modifiers: {:?}", modifiers);
+        println!("Update modifiers: {modifiers:?}");
     }
 }
 
@@ -353,7 +353,7 @@ impl<T: Test + 'static> PointerHandler for SimpleWindow<T> {
                     println!("Release {:x} @ {:?}", button, event.position);
                 }
                 Axis { horizontal, vertical, .. } => {
-                    println!("Scroll H:{:?}, V:{:?}", horizontal, vertical);
+                    println!("Scroll H:{horizontal:?}, V:{vertical:?}");
                 }
             }
         }

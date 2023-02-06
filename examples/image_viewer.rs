@@ -50,7 +50,7 @@ fn main() {
             Ok(i) => i,
             Err(e) => {
                 println!("Failed to open image {}.", path.to_string_lossy());
-                println!("Error was: {:?}", e);
+                println!("Error was: {e:?}");
                 return;
             }
         };

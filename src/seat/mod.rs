@@ -302,7 +302,7 @@ pub struct SeatInfo {
 impl Display for SeatInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if let Some(ref name) = self.name {
-            write!(f, "name: \"{}\" ", name)?;
+            write!(f, "name: \"{name}\" ")?;
         }
 
         write!(f, "capabilities: (")?;

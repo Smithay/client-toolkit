@@ -25,7 +25,7 @@ fn main() {
 
     for seat in list_seats.seat_state.seats() {
         if let Some(info) = list_seats.seat_state.info(&seat) {
-            println!("{}", info);
+            println!("{info}");
         }
     }
 }
