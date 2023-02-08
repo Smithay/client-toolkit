@@ -134,11 +134,11 @@ fn print_output(info: &OutputInfo) {
     println!("{}", info.model);
 
     if let Some(name) = info.name.as_ref() {
-        println!("\tname: {}", name);
+        println!("\tname: {name}");
     }
 
     if let Some(description) = info.description.as_ref() {
-        println!("\tdescription: {}", description);
+        println!("\tdescription: {description}");
     }
 
     println!("\tmake: {}", info.make);
@@ -146,14 +146,14 @@ fn print_output(info: &OutputInfo) {
     println!("\tsubpixel: {:?}", info.subpixel);
     println!("\tphysical_size: {}×{}mm", info.physical_size.0, info.physical_size.1);
     if let Some((x, y)) = info.logical_position.as_ref() {
-        println!("\tlogical x: {}, y: {}", x, y);
+        println!("\tlogical x: {x}, y: {y}");
     }
     if let Some((width, height)) = info.logical_size.as_ref() {
-        println!("\tlogical width: {}, height: {}", width, height);
+        println!("\tlogical width: {width}, height: {height}");
     }
     println!("\tmodes:");
 
     for mode in &info.modes {
-        println!("\t\t{}", mode);
+        println!("\t\t{mode}");
     }
 }

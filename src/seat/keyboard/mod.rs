@@ -205,12 +205,12 @@ pub trait KeyboardHandler: Sized {
     /// counting. But can be used to create an independent `Keymap`.
     ///
     /// This is called after the default handler for keymap changes and does nothing by default.
-    fn update_keymap<'a>(
+    fn update_keymap(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _keyboard: &wl_keyboard::WlKeyboard,
-        _keymap: Keymap<'a>,
+        _keymap: Keymap<'_>,
     ) {
     }
 }
