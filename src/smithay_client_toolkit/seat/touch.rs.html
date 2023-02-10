@@ -203,7 +203,25 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::sync::Mutex;
+
+<span class="kw">use </span>wayland_client::protocol::wl_seat::WlSeat;
 
 <span class="kw">use </span>wayland_client::protocol::wl_surface::WlSurface;
 <span class="kw">use </span>wayland_client::protocol::wl_touch::{Event <span class="kw">as </span>TouchEvent, WlTouch};
@@ -211,9 +229,23 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::seat::SeatState;
 
-<span class="attr">#[derive(Debug, Default)]
+<span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>TouchData {
+    seat: WlSeat,
+
     inner: Mutex&lt;TouchDataInner&gt;,
+}
+
+<span class="kw">impl </span>TouchData {
+    <span class="doccomment">/// Create the new touch data associated with the given seat.
+    </span><span class="kw">pub fn </span>new(seat: WlSeat) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ seat, inner: Default::default() }
+    }
+
+    <span class="doccomment">/// Get the associated seat from the data.
+    </span><span class="kw">pub fn </span>seat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>WlSeat {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.seat
+    }
 }
 
 <span class="attr">#[derive(Debug, Default)]
@@ -409,4 +441,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

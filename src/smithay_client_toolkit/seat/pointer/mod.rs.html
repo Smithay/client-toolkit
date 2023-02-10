@@ -520,6 +520,16 @@
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap},
     env, mem,
@@ -528,7 +538,7 @@
 <span class="kw">use </span>wayland_backend::{client::InvalidId, smallvec::SmallVec};
 
 <span class="kw">use </span>wayland_client::{
-    protocol::{wl_pointer, wl_shm, wl_surface},
+    protocol::{wl_pointer, wl_seat::WlSeat, wl_shm, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 <span class="kw">use </span>wayland_cursor::{Cursor, CursorTheme};
@@ -636,12 +646,22 @@
     );
 }
 
-<span class="attr">#[derive(Debug, Default)]
+<span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>PointerData {
+    seat: WlSeat,
     <span class="kw">pub</span>(<span class="kw">crate</span>) inner: Mutex&lt;PointerDataInner&gt;,
 }
 
 <span class="kw">impl </span>PointerData {
+    <span class="kw">pub fn </span>new(seat: WlSeat) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ seat, inner: Default::default() }
+    }
+
+    <span class="doccomment">/// The seat associated with this pointer.
+    </span><span class="kw">pub fn </span>seat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>WlSeat {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.seat
+    }
+
     <span class="doccomment">/// The latest serial from the `Enter` event.
     </span><span class="kw">pub fn </span>latest_enter_serial(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
         <span class="self">self</span>.inner.lock().unwrap().latest_enter
@@ -1043,4 +1063,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

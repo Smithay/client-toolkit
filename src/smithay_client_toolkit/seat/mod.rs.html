@@ -603,7 +603,7 @@
     <span class="kw">where
         </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.get_pointer_with_data(qh, seat, PointerData::default())
+        <span class="self">self</span>.get_pointer_with_data(qh, seat, PointerData::new(seat.clone()))
     }
 
     <span class="doccomment">/// Creates a pointer from a seat with the provided theme.
@@ -621,7 +621,7 @@
     <span class="kw">where
         </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.get_pointer_with_theme_and_data(qh, seat, theme, scale, Default::default())
+        <span class="self">self</span>.get_pointer_with_theme_and_data(qh, seat, theme, scale, PointerData::new(seat.clone()))
     }
 
     <span class="doccomment">/// Creates a pointer from a seat.
@@ -698,7 +698,7 @@
     <span class="kw">where
         </span>D: Dispatch&lt;wl_touch::WlTouch, TouchData&gt; + TouchHandler + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.get_touch_with_data(qh, seat, TouchData::default())
+        <span class="self">self</span>.get_touch_with_data(qh, seat, TouchData::new(seat.clone()))
     }
 
     <span class="doccomment">/// Creates a touch handle from a seat.
@@ -963,4 +963,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

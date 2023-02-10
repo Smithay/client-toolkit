@@ -756,6 +756,12 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
 </pre><pre class="rust"><code><span class="attr">#[rustfmt::skip]
 </span><span class="kw">pub mod </span>keysyms;
 
@@ -775,6 +781,7 @@
     protocol::{wl_keyboard, wl_seat, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
+
 <span class="kw">use </span>xkbcommon::xkb;
 
 <span class="kw">use super</span>::{Capability, SeatError, SeatHandler, SeatState};
@@ -821,8 +828,8 @@
             + <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let </span>udata = <span class="kw">match </span>rmlvo {
-            <span class="prelude-val">Some</span>(rmlvo) =&gt; KeyboardData::from_rmlvo(rmlvo)<span class="question-mark">?</span>,
-            <span class="prelude-val">None </span>=&gt; KeyboardData::default(),
+            <span class="prelude-val">Some</span>(rmlvo) =&gt; KeyboardData::from_rmlvo(seat.clone(), rmlvo)<span class="question-mark">?</span>,
+            <span class="prelude-val">None </span>=&gt; KeyboardData::new(seat.clone()),
         };
 
         <span class="self">self</span>.get_keyboard_with_data(qh, seat, udata)
@@ -1066,6 +1073,7 @@
 }
 
 <span class="kw">pub struct </span>KeyboardData {
+    seat: wl_seat::WlSeat,
     first_event: AtomicBool,
     xkb_context: Mutex&lt;xkb::Context&gt;,
     <span class="doccomment">/// If the user manually specified the RMLVO to use.
@@ -1108,10 +1116,11 @@
 <span class="comment">// SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
 </span><span class="kw">unsafe impl </span>Sync <span class="kw">for </span>KeyboardData {}
 
-<span class="kw">impl </span>Default <span class="kw">for </span>KeyboardData {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>KeyboardData {
+    <span class="kw">pub fn </span>new(seat: wl_seat::WlSeat) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         <span class="kw">let </span>udata = KeyboardData {
+            seat,
             first_event: AtomicBool::new(<span class="bool-val">false</span>),
             xkb_context: Mutex::new(xkb_context),
             xkb_state: Mutex::new(<span class="prelude-val">None</span>),
@@ -1125,10 +1134,12 @@
 
         udata
     }
-}
 
-<span class="kw">impl </span>KeyboardData {
-    <span class="kw">pub fn </span>from_rmlvo(rmlvo: RMLVO) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyboardError&gt; {
+    <span class="kw">pub fn </span>seat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_seat::WlSeat {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.seat
+    }
+
+    <span class="kw">pub fn </span>from_rmlvo(seat: wl_seat::WlSeat, rmlvo: RMLVO) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyboardError&gt; {
         <span class="kw">let </span>xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         <span class="kw">let </span>keymap = xkb::Keymap::new_from_names(
             <span class="kw-2">&amp;</span>xkb_context,
@@ -1147,6 +1158,7 @@
         <span class="kw">let </span>xkb_state = <span class="prelude-val">Some</span>(xkb::State::new(<span class="kw-2">&amp;</span>keymap.unwrap()));
 
         <span class="kw">let </span>udata = KeyboardData {
+            seat,
             first_event: AtomicBool::new(<span class="bool-val">false</span>),
             xkb_context: Mutex::new(xkb_context),
             xkb_state: Mutex::new(xkb_state),
@@ -1515,4 +1527,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
