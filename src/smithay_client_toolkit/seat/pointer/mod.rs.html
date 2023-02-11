@@ -908,7 +908,6 @@
 </span><span class="kw">pub struct </span>ThemedPointer&lt;U = PointerData&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) themes: Arc&lt;Mutex&lt;Themes&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) pointer: wl_pointer::WlPointer,
-    <span class="kw">pub</span>(<span class="kw">super</span>) scale: i32,
     <span class="kw">pub</span>(<span class="kw">super</span>) _marker: std::marker::PhantomData&lt;U&gt;,
 }
 
@@ -919,11 +918,12 @@
         name: <span class="kw-2">&amp;</span>str,
         shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
         surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
+        scale: i32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>themes = <span class="self">self</span>.themes.lock().unwrap();
 
         <span class="kw">let </span>cursor = themes
-            .get_cursor(conn, name, <span class="self">self</span>.scale <span class="kw">as </span>u32, shm)
+            .get_cursor(conn, name, scale <span class="kw">as </span>u32, shm)
             .map_err(PointerThemeError::InvalidId)<span class="question-mark">?
             </span>.ok_or(PointerThemeError::CursorNotFound)<span class="question-mark">?</span>;
 
@@ -931,7 +931,7 @@
         <span class="kw">let </span>(w, h) = image.dimensions();
         <span class="kw">let </span>(hx, hy) = image.hotspot();
 
-        surface.set_buffer_scale(<span class="self">self</span>.scale);
+        surface.set_buffer_scale(scale);
         surface.attach(<span class="prelude-val">Some</span>(image), <span class="number">0</span>, <span class="number">0</span>);
 
         <span class="kw">if </span>surface.version() &gt;= <span class="number">4 </span>{
@@ -939,7 +939,7 @@
         } <span class="kw">else </span>{
             <span class="comment">// surface is old and does not support damage_buffer, so we damage
             // in surface coordinates and hope it is not rescaled
-            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / <span class="self">self</span>.scale, h <span class="kw">as </span>i32 / <span class="self">self</span>.scale);
+            </span>surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / scale, h <span class="kw">as </span>i32 / scale);
         }
 
         <span class="comment">// Commit the surface to place the cursor image in the compositor&#39;s memory.

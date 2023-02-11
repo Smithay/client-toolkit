@@ -474,9 +474,6 @@
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
 </pre><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
 </span><span class="kw">pub mod </span>keyboard;
 <span class="kw">pub mod </span>pointer;
@@ -613,12 +610,11 @@
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
         theme: ThemeSpec,
-        scale: i32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ThemedPointer&lt;PointerData&gt;, SeatError&gt;
     <span class="kw">where
         </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.get_pointer_with_theme_and_data(qh, seat, theme, scale, PointerData::new(seat.clone()))
+        <span class="self">self</span>.get_pointer_with_theme_and_data(qh, seat, theme, PointerData::new(seat.clone()))
     }
 
     <span class="doccomment">/// Creates a pointer from a seat.
@@ -656,7 +652,6 @@
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
         theme: ThemeSpec,
-        scale: i32,
         pointer_data: U,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ThemedPointer&lt;U&gt;, SeatError&gt;
     <span class="kw">where
@@ -674,7 +669,6 @@
         <span class="prelude-val">Ok</span>(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
             pointer: wl_ptr,
-            scale,
             _marker: std::marker::PhantomData,
         })
     }
