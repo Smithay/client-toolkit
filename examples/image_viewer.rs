@@ -7,13 +7,16 @@ use smithay_client_toolkit::{
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
-    shell::xdg::{
-        window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellState,
+    shell::{
+        xdg::{
+            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
+            XdgShell,
+        },
+        WaylandSurface,
     },
     shm::{
         slot::{Buffer, SlotPool},
-        ShmHandler, ShmState,
+        Shm, ShmHandler,
     },
 };
 use wayland_client::{
@@ -35,9 +38,8 @@ fn main() {
         output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
-        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
-        xdg_shell_state: XdgShellState::bind(&globals, &qh).expect("xdg shell not available"),
-        xdg_window_state: XdgWindowState::bind(&globals, &qh),
+        shm_state: Shm::bind(&globals, &qh).expect("wl_shm not available"),
+        xdg_shell_state: XdgShell::bind(&globals, &qh).expect("xdg shell not available"),
 
         pool: None,
         windows: Vec::new(),
@@ -62,12 +64,18 @@ fn main() {
 
         pool_size += image.width() * image.height() * 4;
 
-        let window = Window::builder()
-            .title("A wayland window")
-            // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-            .app_id("io.github.smithay.client-toolkit.ImageViewer")
-            .map(&qh, &state.xdg_shell_state, &mut state.xdg_window_state, surface)
-            .expect("window creation");
+        let window =
+            state.xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
+        window.set_title("A wayland window");
+        // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
+        window.set_app_id("io.github.smithay.client-toolkit.ImageViewer");
+
+        // In order for the window to be mapped, we need to perform an initial commit with no attached buffer.
+        // For more info, see WaylandSurface::commit
+        //
+        // The compositor will respond with an initial configure that we can then use to present to the window with
+        // the correct options.
+        window.commit();
 
         state.windows.push(ImageViewer {
             width: image.width(),
@@ -104,9 +112,8 @@ struct State {
     registry_state: RegistryState,
     output_state: OutputState,
     compositor_state: CompositorState,
-    shm_state: ShmState,
-    xdg_shell_state: XdgShellState,
-    xdg_window_state: XdgWindowState,
+    shm_state: Shm,
+    xdg_shell_state: XdgShell,
 
     pool: Option<SlotPool>,
     windows: Vec<ImageViewer>,
@@ -206,7 +213,7 @@ impl WindowHandler for State {
 }
 
 impl ShmHandler for State {
-    fn shm_state(&mut self) -> &mut ShmState {
+    fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm_state
     }
 }

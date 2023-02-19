@@ -9,7 +9,7 @@ use smithay_client_toolkit::{
     seat::{Capability, SeatHandler, SeatState},
     shell::xdg::{
         window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellState,
+        XdgShell,
     },
 };
 use wayland_client::{
@@ -28,7 +28,7 @@ fn main() {
     // Initialize xdg_shell handlers so we can select the correct adapter
     let compositor_state =
         CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
-    let xdg_shell_state = XdgShellState::bind(&globals, &qh).expect("xdg shell not available");
+    let xdg_shell_state = XdgShell::bind(&globals, &qh).expect("xdg shell not available");
     let mut xdg_window_state = XdgWindowState::bind(&globals, &qh);
 
     let surface = compositor_state.create_surface(&qh);

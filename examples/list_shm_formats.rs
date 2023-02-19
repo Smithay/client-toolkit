@@ -1,7 +1,7 @@
 /// Example app showing how to use delegate types from Smithay's client toolkit and initializing state.
 use smithay_client_toolkit::{
     delegate_shm,
-    shm::{ShmHandler, ShmState},
+    shm::{Shm, ShmHandler},
 };
 use wayland_client::{
     globals::{registry_queue_init, GlobalListContents},
@@ -10,7 +10,7 @@ use wayland_client::{
 };
 
 struct ListShmFormats {
-    shm_state: ShmState,
+    shm_state: Shm,
 }
 
 fn main() {
@@ -27,7 +27,7 @@ fn main() {
     // Create the state to dispatch.
     let mut list_formats = ListShmFormats {
         // Bind ShmState to implement wl_shm handling.
-        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm is not available"),
+        shm_state: Shm::bind(&globals, &qh).expect("wl_shm is not available"),
     };
 
     // Roundtrip to get the supported wl_shm formats.
@@ -40,7 +40,7 @@ fn main() {
 }
 
 impl ShmHandler for ListShmFormats {
-    fn shm_state(&mut self) -> &mut ShmState {
+    fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm_state
     }
 }

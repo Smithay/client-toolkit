@@ -3,10 +3,7 @@ use std::{
     sync::Mutex,
 };
 
-use wayland_client::{
-    protocol::{wl_output, wl_seat},
-    Connection, Dispatch, QueueHandle,
-};
+use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
         zxdg_decoration_manager_v1,
@@ -21,10 +18,10 @@ use wayland_protocols::{
 use crate::{
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
-    shell::xdg::XdgShellSurface,
+    shell::xdg::{XdgShell, XdgShellSurface},
 };
 
-use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, XdgWindowState};
+use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler};
 
 impl Drop for WindowInner {
     fn drop(&mut self) {
@@ -42,74 +39,13 @@ impl Drop for WindowInner {
 
 #[derive(Debug)]
 pub struct WindowInner {
-    pub(super) xdg_surface: XdgShellSurface,
-    pub(super) xdg_toplevel: xdg_toplevel::XdgToplevel,
-    pub(super) toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
-    pub(super) pending_configure: Mutex<WindowConfigure>,
+    pub xdg_surface: XdgShellSurface,
+    pub xdg_toplevel: xdg_toplevel::XdgToplevel,
+    pub toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
+    pub pending_configure: Mutex<WindowConfigure>,
 }
 
-impl WindowInner {
-    pub fn set_title(&self, title: String) {
-        self.xdg_toplevel.set_title(title);
-        // TODO: Store name for client side frame.
-    }
-
-    pub fn set_app_id(&self, app_id: String) {
-        self.xdg_toplevel.set_app_id(app_id);
-    }
-
-    pub fn set_min_size(&self, min_size: Option<(u32, u32)>) {
-        let min_size = min_size.unwrap_or((0, 0));
-        self.xdg_toplevel.set_min_size(min_size.0 as i32, min_size.1 as i32)
-    }
-
-    pub fn set_max_size(&self, max_size: Option<(u32, u32)>) {
-        let max_size = max_size.unwrap_or((0, 0));
-        self.xdg_toplevel.set_max_size(max_size.0 as i32, max_size.1 as i32)
-    }
-
-    pub fn set_parent(&self, parent: Option<&Window>) {
-        self.xdg_toplevel.set_parent(parent.map(Window::xdg_toplevel))
-    }
-
-    pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, x: u32, y: u32) {
-        self.xdg_toplevel.show_window_menu(seat, serial, x as i32, y as i32)
-    }
-
-    pub fn set_maximized(&self) {
-        self.xdg_toplevel.set_maximized()
-    }
-
-    pub fn unset_maximized(&self) {
-        self.xdg_toplevel.unset_maximized()
-    }
-
-    pub fn set_minmized(&self) {
-        self.xdg_toplevel.set_minimized()
-    }
-
-    pub fn set_fullscreen(&self, output: Option<&wl_output::WlOutput>) {
-        self.xdg_toplevel.set_fullscreen(output)
-    }
-
-    pub fn unset_fullscreen(&self) {
-        self.xdg_toplevel.unset_fullscreen()
-    }
-
-    pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
-        if let Some(toplevel_decoration) = &self.toplevel_decoration {
-            match mode {
-                Some(DecorationMode::Client) => toplevel_decoration.set_mode(Mode::ClientSide),
-                Some(DecorationMode::Server) => toplevel_decoration.set_mode(Mode::ServerSide),
-                None => toplevel_decoration.unset_mode(),
-            }
-        }
-    }
-}
-
-impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
-    for XdgWindowState
-{
+impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1> for XdgShell {
     fn bound_global(
         &self,
     ) -> Result<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalError> {
@@ -117,7 +53,7 @@ impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
     }
 }
 
-impl<D> Dispatch<xdg_surface::XdgSurface, WindowData, D> for XdgWindowState
+impl<D> Dispatch<xdg_surface::XdgSurface, WindowData, D> for XdgShell
 where
     D: Dispatch<xdg_surface::XdgSurface, WindowData> + WindowHandler,
 {
@@ -145,7 +81,7 @@ where
     }
 }
 
-impl<D> Dispatch<xdg_toplevel::XdgToplevel, WindowData, D> for XdgWindowState
+impl<D> Dispatch<xdg_toplevel::XdgToplevel, WindowData, D> for XdgShell
 where
     D: Dispatch<xdg_toplevel::XdgToplevel, WindowData> + WindowHandler,
 {
@@ -201,8 +137,7 @@ where
 
 // XDG decoration
 
-impl<D> Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D>
-    for XdgWindowState
+impl<D> Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D> for XdgShell
 where
     D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData> + WindowHandler,
 {
@@ -218,8 +153,7 @@ where
     }
 }
 
-impl<D> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D>
-    for XdgWindowState
+impl<D> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D> for XdgShell
 where
     D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData> + WindowHandler,
 {

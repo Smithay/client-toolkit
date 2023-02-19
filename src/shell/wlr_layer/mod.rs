@@ -14,10 +14,9 @@ use wayland_client::{
 use wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup;
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
-use crate::{
-    error::GlobalError,
-    globals::{GlobalData, ProvidesBoundGlobal},
-};
+use crate::{compositor::Surface, globals::GlobalData};
+
+use super::WaylandSurface;
 
 #[derive(Debug)]
 pub struct LayerShell {
@@ -25,6 +24,11 @@ pub struct LayerShell {
 }
 
 impl LayerShell {
+    /// Binds the wlr layer shell global, `zwlr_layer_shell_v1`.
+    ///
+    /// # Errors
+    ///
+    /// This function will return [`Err`] if the `zwlr_layer_shell_v1` global is not available.
     pub fn bind<State>(
         globals: &GlobalList,
         qh: &QueueHandle<State>,
@@ -36,6 +40,40 @@ impl LayerShell {
     {
         let wlr_layer_shell = globals.bind(qh, 1..=4, GlobalData)?;
         Ok(LayerShell { wlr_layer_shell })
+    }
+
+    #[must_use]
+    pub fn create_layer_surface<State>(
+        &self,
+        qh: &QueueHandle<State>,
+        surface: impl Into<Surface>,
+        layer: Layer,
+        namespace: Option<impl Into<String>>,
+        output: Option<&wl_output::WlOutput>,
+    ) -> LayerSurface
+    where
+        State: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData> + 'static,
+    {
+        // Freeze the queue during the creation of the Arc to avoid a race between events on the
+        // new objects being processed and the Weak in the PopupData becoming usable.
+        let freeze = qh.freeze();
+        let surface = surface.into();
+
+        let inner = Arc::new_cyclic(|weak| {
+            let layer_surface = self.wlr_layer_shell.get_layer_surface(
+                surface.wl_surface(),
+                output,
+                layer.into(),
+                namespace.map(Into::into).unwrap_or_default(),
+                qh,
+                LayerSurfaceData { inner: weak.clone() },
+            );
+
+            LayerSurfaceInner { wl_surface: surface, kind: SurfaceKind::Wlr(layer_surface) }
+        });
+        drop(freeze);
+
+        LayerSurface(inner)
     }
 }
 
@@ -60,126 +98,6 @@ pub trait LayerShellHandler: Sized {
     );
 }
 
-#[derive(Debug)]
-pub struct LayerSurfaceBuilder {
-    output: Option<wl_output::WlOutput>,
-    namespace: Option<String>,
-    size: Option<(u32, u32)>,
-    anchor: Option<Anchor>,
-    zone: Option<i32>,
-    // top, right, bottom, left
-    margin: Option<(i32, i32, i32, i32)>,
-    interactivity: Option<KeyboardInteractivity>,
-}
-
-impl LayerSurfaceBuilder {
-    pub fn namespace(self, namespace: impl Into<String>) -> Self {
-        Self { namespace: Some(namespace.into()), ..self }
-    }
-
-    pub fn output(self, output: &wl_output::WlOutput) -> Self {
-        Self { output: Some(output.clone()), ..self }
-    }
-
-    pub fn size(self, size: (u32, u32)) -> Self {
-        Self { size: Some(size), ..self }
-    }
-
-    pub fn anchor(self, anchor: Anchor) -> Self {
-        Self { anchor: Some(anchor), ..self }
-    }
-
-    pub fn exclusive_zone(self, zone: i32) -> Self {
-        Self { zone: Some(zone), ..self }
-    }
-
-    pub fn margin(self, top: i32, right: i32, bottom: i32, left: i32) -> Self {
-        Self { margin: Some((top, right, bottom, left)), ..self }
-    }
-
-    pub fn keyboard_interactivity(self, interactivity: KeyboardInteractivity) -> Self {
-        Self { interactivity: Some(interactivity), ..self }
-    }
-
-    /// Build and map the layer
-    ///
-    /// This function will create the layer and send the initial commit.
-    ///
-    /// # Protocol errors
-    ///
-    /// If the surface already has a role object, the compositor will raise a protocol error.
-    ///
-    /// A surface is considered to have a role object if some other type of surface was created using the
-    /// surface. For example, creating a window, popup, layer or subsurface all assign a role object to a
-    /// surface.
-    ///
-    /// The function here takes an owned reference to the surface to hint the surface will be consumed by the
-    /// layer.
-    ///
-    /// [`WlSurface`]: wl_surface::WlSurface
-    #[must_use = "The layer is destroyed if dropped"]
-    pub fn map<D>(
-        self,
-        qh: &QueueHandle<D>,
-        shell: &impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4>,
-        surface: wl_surface::WlSurface,
-        layer: Layer,
-    ) -> Result<LayerSurface, GlobalError>
-    where
-        D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData> + 'static,
-    {
-        // The layer is required in ext-layer-shell-v1 but is not part of the factory request. So the param
-        // will stay for ext-layer-shell-v1 support.
-        let layer_shell = shell.bound_global()?;
-        // Freeze the queue during the creation of the Arc to avoid a race between events on the
-        // new objects being processed and the Weak in the PopupData becoming usable.
-        let freeze = qh.freeze();
-
-        let inner = Arc::new_cyclic(|weak| {
-            let layer_surface = layer_shell.get_layer_surface(
-                &surface,
-                self.output.as_ref(),
-                layer.into(),
-                self.namespace.unwrap_or_default(),
-                qh,
-                LayerSurfaceData { inner: weak.clone() },
-            );
-
-            LayerSurfaceInner { wl_surface: surface.clone(), kind: SurfaceKind::Wlr(layer_surface) }
-        });
-        drop(freeze);
-
-        let layer_surface = LayerSurface(inner);
-
-        // Set data for initial commit
-        if let Some(size) = self.size {
-            layer_surface.set_size(size.0, size.1);
-        }
-
-        if let Some(anchor) = self.anchor {
-            // We currently rely on the bitsets matching
-            layer_surface.set_anchor(anchor);
-        }
-
-        if let Some(zone) = self.zone {
-            layer_surface.set_exclusive_zone(zone);
-        }
-
-        if let Some(margin) = self.margin {
-            layer_surface.set_margin(margin.0, margin.1, margin.2, margin.3);
-        }
-
-        if let Some(interactivity) = self.interactivity {
-            layer_surface.set_keyboard_interactivity(interactivity);
-        }
-
-        // Initial commit
-        surface.commit();
-
-        Ok(layer_surface)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct LayerSurface(Arc<LayerSurfaceInner>);
 
@@ -194,20 +112,6 @@ impl LayerSurface {
         surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
     ) -> Option<LayerSurface> {
         surface.data::<LayerSurfaceData>().and_then(|data| data.inner.upgrade()).map(LayerSurface)
-    }
-
-    // TODO(from_wl_surface): This will require us to initialize the surface.
-
-    pub fn builder() -> LayerSurfaceBuilder {
-        LayerSurfaceBuilder {
-            output: None,
-            namespace: None,
-            size: None,
-            anchor: None,
-            zone: None,
-            margin: None,
-            interactivity: None,
-        }
     }
 
     pub fn get_popup(&self, popup: &XdgPopup) {
@@ -260,9 +164,11 @@ impl LayerSurface {
     pub fn kind(&self) -> &SurfaceKind {
         &self.0.kind
     }
+}
 
-    pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        &self.0.wl_surface
+impl WaylandSurface for LayerSurface {
+    fn wl_surface(&self) -> &wl_surface::WlSurface {
+        self.0.wl_surface.wl_surface()
     }
 }
 
@@ -378,16 +284,16 @@ macro_rules! delegate_layer {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData
-        ] => $crate::shell::layer::LayerShell);
+        ] => $crate::shell::wlr_layer::LayerShell);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::layer::LayerSurfaceData
-        ] => $crate::shell::layer::LayerShell);
+            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::wlr_layer::LayerSurfaceData
+        ] => $crate::shell::wlr_layer::LayerShell);
     };
 }
 
 #[derive(Debug)]
 struct LayerSurfaceInner {
-    wl_surface: wl_surface::WlSurface,
+    wl_surface: Surface,
     kind: SurfaceKind,
 }
 
@@ -437,6 +343,7 @@ impl Drop for LayerSurfaceInner {
             SurfaceKind::Wlr(ref wlr) => wlr.destroy(),
         }
 
-        self.wl_surface.destroy();
+        // Surface will destroy the wl_surface
+        // self.wl_surface.destroy();
     }
 }

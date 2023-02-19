@@ -11,11 +11,14 @@ use smithay_client_toolkit::{
         relative_pointer::{RelativeMotionEvent, RelativePointerHandler, RelativePointerState},
         Capability, SeatHandler, SeatState,
     },
-    shell::xdg::{
-        window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellState,
+    shell::{
+        xdg::{
+            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
+            XdgShell,
+        },
+        WaylandSurface,
     },
-    shm::{slot::SlotPool, ShmHandler, ShmState},
+    shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
     globals::registry_queue_init,
@@ -38,9 +41,8 @@ fn main() {
         output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
-        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
-        xdg_shell_state: XdgShellState::bind(&globals, &qh).expect("xdg shell not available"),
-        xdg_window_state: XdgWindowState::bind(&globals, &qh),
+        shm_state: Shm::bind(&globals, &qh).expect("wl_shm not available"),
+        xdg_shell_state: XdgShell::bind(&globals, &qh).expect("xdg shell not available"),
         relative_pointer_state: RelativePointerState::bind(&globals, &qh),
 
         exit: false,
@@ -53,13 +55,14 @@ fn main() {
 
     let surface = simple_window.compositor_state.create_surface(&qh);
 
-    let window = Window::builder()
-        .title("A wayland window")
-        // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-        .app_id("io.github.smithay.client-toolkit.RelativePointer")
-        .min_size((256, 256))
-        .map(&qh, &simple_window.xdg_shell_state, &mut simple_window.xdg_window_state, surface)
-        .expect("window creation");
+    let window =
+        simple_window.xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
+
+    window.set_title("A wayland window");
+    window.set_app_id("io.github.smithay.client-toolkit.RelativePointer");
+    window.set_min_size(Some((256, 256)));
+
+    window.commit();
 
     simple_window.window = Some(window);
 
@@ -73,9 +76,8 @@ struct SimpleWindow {
     seat_state: SeatState,
     output_state: OutputState,
     compositor_state: CompositorState,
-    shm_state: ShmState,
-    xdg_shell_state: XdgShellState,
-    xdg_window_state: XdgWindowState,
+    shm_state: Shm,
+    xdg_shell_state: XdgShell,
     relative_pointer_state: RelativePointerState,
 
     exit: bool,
@@ -235,7 +237,7 @@ impl RelativePointerHandler for SimpleWindow {
 }
 
 impl ShmHandler for SimpleWindow {
-    fn shm_state(&mut self) -> &mut ShmState {
+    fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm_state
     }
 }

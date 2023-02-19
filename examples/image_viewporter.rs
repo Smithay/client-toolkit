@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, path::Path};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
@@ -7,11 +7,14 @@ use smithay_client_toolkit::{
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState, SimpleGlobal},
     registry_handlers,
-    shell::xdg::{
-        window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellState,
+    shell::{
+        xdg::{
+            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
+            XdgShell,
+        },
+        WaylandSurface,
     },
-    shm::{slot::SlotPool, ShmHandler, ShmState},
+    shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
     globals::registry_queue_init,
@@ -20,30 +23,34 @@ use wayland_client::{
 };
 use wayland_protocols::wp::viewporter::client::{
     wp_viewport::{self, WpViewport},
-    wp_viewporter::WpViewporter,
+    wp_viewporter::{self, WpViewporter},
 };
 
 fn main() {
     env_logger::init();
 
+    // All Wayland apps start by connecting the compositor (server).
     let conn = Connection::connect_to_env().unwrap();
 
+    // Enumerate the list of globals to get the protocols the server implements.
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    let mut state = State {
-        registry_state: RegistryState::new(&globals),
-        output_state: OutputState::new(&globals, &qh),
-        compositor_state: CompositorState::bind(&globals, &qh)
-            .expect("wl_compositor not available"),
-        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm not available"),
-        xdg_shell_state: XdgShellState::bind(&globals, &qh).expect("xdg shell not available"),
-        xdg_window_state: XdgWindowState::bind(&globals, &qh),
-        viewporter: SimpleGlobal::bind(&globals, &qh).expect("wl_viewporter not available"),
+    // The compositor (not to be confused with the server which is commonly called the compositor) allows
+    // configuring surfaces to be presented.
+    let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
+    // For desktop platforms, the XDG shell is the standard protocol for creating desktop windows.
+    let xdg_shell = XdgShell::bind(&globals, &qh).expect("xdg shell is not available");
+    // Since we are not using the GPU in this example, we use wl_shm to allow software rendering to a buffer
+    // we share with the compositor process.
+    let shm = Shm::bind(&globals, &qh).expect("wl shm is not available.");
+    // In this example, we use the viewporter to allow the compositor to scale and crop presented images.
+    //
+    // Since the wp_viewporter protocol has no events, we can use SimpleGlobal.
+    let wp_viewporter = SimpleGlobal::<wp_viewporter::WpViewporter, 1>::bind(&globals, &qh)
+        .expect("wp_viewporter not available");
 
-        pool: None,
-        windows: Vec::new(),
-    };
+    let mut windows = Vec::new();
 
     let mut pool_size = 0;
 
@@ -60,24 +67,35 @@ fn main() {
         // We'll need the image in RGBA for drawing it
         let image = image.to_rgba8();
 
-        let surface = state.compositor_state.create_surface(&qh);
-
         pool_size += image.width() * image.height() * 4;
 
-        let window = Window::builder()
-            .title("A wayland window")
-            // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-            .app_id("io.github.smithay.client-toolkit.ImageViewer")
-            .map(&qh, &state.xdg_shell_state, &mut state.xdg_window_state, surface)
-            .expect("window creation");
+        // A window is created from a surface.
+        let surface = compositor.create_surface(&qh);
+        // And then we can create the window.
+        let window = xdg_shell.create_window(surface, WindowDecorations::RequestServer, &qh);
+        // Configure the window, this may include hints to the compositor about the desired minimum size of the
+        // window, app id for WM identification, the window title, etc.
+        // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
+        window.set_app_id("io.github.smithay.client-toolkit.ImageViewer");
+        window.set_min_size(Some((256, 256)));
+        let path: &Path = path.as_os_str().as_ref();
+        window.set_title(path.components().last().unwrap().as_os_str().to_string_lossy());
 
-        let viewport = state.viewporter.get().expect("Requires wp_viewporter").get_viewport(
+        // In order for the window to be mapped, we need to perform an initial commit with no attached buffer.
+        // For more info, see WaylandSurface::commit
+        //
+        // The compositor will respond with an initial configure that we can then use to present to the window with
+        // the correct options.
+        window.commit();
+
+        // For scaling, create a viewport for the window.
+        let viewport = wp_viewporter.get().expect("Requires wp_viewporter").get_viewport(
             window.wl_surface(),
             &qh,
             (),
         );
 
-        state.windows.push(ImageViewer {
+        windows.push(ImageViewer {
             width: image.width(),
             height: image.height(),
             window,
@@ -88,13 +106,21 @@ fn main() {
         });
     }
 
-    let pool = SlotPool::new(pool_size as usize, &state.shm_state).expect("Failed to create pool");
-    state.pool = Some(pool);
-
-    if state.windows.is_empty() {
+    if windows.is_empty() {
         println!("USAGE: ./image_viewer <PATH> [<PATH>]...");
         return;
     }
+
+    let pool = SlotPool::new(pool_size as usize, &shm).expect("Failed to create pool");
+
+    let mut state = State {
+        registry_state: RegistryState::new(&globals),
+        output_state: OutputState::new(&globals, &qh),
+        shm,
+        wp_viewporter,
+        pool,
+        windows,
+    };
 
     // We don't draw immediately, the configure will notify us when to first draw.
 
@@ -111,13 +137,10 @@ fn main() {
 struct State {
     registry_state: RegistryState,
     output_state: OutputState,
-    compositor_state: CompositorState,
-    shm_state: ShmState,
-    xdg_shell_state: XdgShellState,
-    xdg_window_state: XdgWindowState,
-    viewporter: SimpleGlobal<WpViewporter, 1>,
+    shm: Shm,
+    wp_viewporter: SimpleGlobal<WpViewporter, 1>,
 
-    pool: Option<SlotPool>,
+    pool: SlotPool,
     windows: Vec<ImageViewer>,
 }
 
@@ -205,7 +228,7 @@ impl WindowHandler for State {
                 viewer.height = size.1;
                 viewer.viewport.set_destination(size.0 as _, size.1 as _);
                 if !viewer.first_configure {
-                    viewer.window.wl_surface().commit();
+                    viewer.window.commit();
                 }
             }
 
@@ -217,8 +240,8 @@ impl WindowHandler for State {
 }
 
 impl ShmHandler for State {
-    fn shm_state(&mut self) -> &mut ShmState {
-        &mut self.shm_state
+    fn shm_state(&mut self) -> &mut Shm {
+        &mut self.shm
     }
 }
 
@@ -232,9 +255,9 @@ impl State {
             let width = viewer.image.width();
             let height = viewer.image.height();
             let stride = width as i32 * 4;
-            let pool = self.pool.as_mut().unwrap();
 
-            let (buffer, canvas) = pool
+            let (buffer, canvas) = self
+                .pool
                 .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
                 .expect("create buffer");
 
@@ -286,7 +309,7 @@ impl ProvidesRegistryState for State {
 
 impl AsMut<SimpleGlobal<WpViewporter, 1>> for State {
     fn as_mut(&mut self) -> &mut SimpleGlobal<WpViewporter, 1> {
-        &mut self.viewporter
+        &mut self.wp_viewporter
     }
 }
 

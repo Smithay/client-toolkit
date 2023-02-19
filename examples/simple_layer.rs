@@ -14,11 +14,14 @@ use smithay_client_toolkit::{
         pointer::{PointerEvent, PointerEventKind, PointerHandler},
         Capability, SeatHandler, SeatState,
     },
-    shell::layer::{
-        Anchor, KeyboardInteractivity, Layer, LayerShell, LayerShellHandler, LayerSurface,
-        LayerSurfaceConfigure,
+    shell::{
+        wlr_layer::{
+            Anchor, KeyboardInteractivity, Layer, LayerShell, LayerShellHandler, LayerSurface,
+            LayerSurfaceConfigure,
+        },
+        WaylandSurface,
     },
-    shm::{slot::SlotPool, ShmHandler, ShmState},
+    shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
     globals::registry_queue_init,
@@ -30,54 +33,66 @@ use xkbcommon::xkb::keysyms;
 fn main() {
     env_logger::init();
 
+    // All Wayland apps start by connecting the compositor (server).
     let conn = Connection::connect_to_env().unwrap();
 
+    // Enumerate the list of globals to get the protocols the server implements.
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
+    // The compositor (not to be confused with the server which is commonly called the compositor) allows
+    // configuring surfaces to be presented.
+    let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor is not available");
+    // This app uses the wlr layer shell, which may not be available with every compositor.
+    let layer_shell = LayerShell::bind(&globals, &qh).expect("layer shell is not available");
+    // Since we are not using the GPU in this example, we use wl_shm to allow software rendering to a buffer
+    // we share with the compositor process.
+    let shm = Shm::bind(&globals, &qh).expect("wl_shm is not available");
+
+    // A layer surface is created from a surface.
+    let surface = compositor.create_surface(&qh);
+
+    // And then we create the layer shell.
+    let layer =
+        layer_shell.create_layer_surface(&qh, surface, Layer::Top, Some("simple_layer"), None);
+    // Configure the layer surface, providing things like the anchor on screen, desired size and the keyboard
+    // interactivity
+    layer.set_anchor(Anchor::BOTTOM);
+    layer.set_keyboard_interactivity(KeyboardInteractivity::OnDemand);
+    layer.set_size(256, 256);
+
+    // In order for the layer surface to be mapped, we need to perform an initial commit with no attached\
+    // buffer. For more info, see WaylandSurface::commit
+    //
+    // The compositor will respond with an initial configure that we can then use to present to the layer
+    // surface with the correct options.
+    layer.commit();
+
+    // We don't know how large the window will be yet, so lets assume the minimum size we suggested for the
+    // initial memory allocation.
+    let pool = SlotPool::new(256 * 256 * 4, &shm).expect("Failed to create pool");
+
     let mut simple_layer = SimpleLayer {
+        // Seats and outputs may be hotplugged at runtime, therefore we need to setup a registry state to
+        // listen for seats and outputs.
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
-        compositor_state: CompositorState::bind(&globals, &qh)
-            .expect("wl_compositor is not available"),
-        shm_state: ShmState::bind(&globals, &qh).expect("wl_shm is not available"),
-        layer_state: LayerShell::bind(&globals, &qh).expect("layer shell is not available"),
+        shm,
 
         exit: false,
         first_configure: true,
-        pool: None,
+        pool,
         width: 256,
         height: 256,
         shift: None,
-        layer: None,
+        layer,
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
     };
 
-    let pool = SlotPool::new(
-        simple_layer.width as usize * simple_layer.height as usize * 4,
-        &simple_layer.shm_state,
-    )
-    .expect("Failed to create pool");
-    simple_layer.pool = Some(pool);
-
-    let surface = simple_layer.compositor_state.create_surface(&qh);
-
-    let layer = LayerSurface::builder()
-        .size((256, 256))
-        .anchor(Anchor::BOTTOM)
-        // INFO: you can set it to KeyboardInteractivity::None, then it will not be modal
-        .keyboard_interactivity(KeyboardInteractivity::OnDemand)
-        .namespace("sample_layer")
-        .map(&qh, &simple_layer.layer_state, surface, Layer::Top)
-        .expect("layer surface creation");
-
-    simple_layer.layer = Some(layer);
-
     // We don't draw immediately, the configure will notify us when to first draw.
-
     loop {
         event_queue.blocking_dispatch(&mut simple_layer).unwrap();
 
@@ -92,17 +107,15 @@ struct SimpleLayer {
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
-    compositor_state: CompositorState,
-    shm_state: ShmState,
-    layer_state: LayerShell,
+    shm: Shm,
 
     exit: bool,
     first_configure: bool,
-    pool: Option<SlotPool>,
+    pool: SlotPool,
     width: u32,
     height: u32,
     shift: Option<u32>,
-    layer: Option<LayerSurface>,
+    layer: LayerSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     pointer: Option<wl_pointer::WlPointer>,
@@ -249,8 +262,8 @@ impl KeyboardHandler for SimpleLayer {
         _: &[u32],
         keysyms: &[u32],
     ) {
-        if self.layer.as_ref().map(LayerSurface::wl_surface) == Some(surface) {
-            println!("Keyboard focus on window with pressed syms: {keysyms:?}");
+        if self.layer.wl_surface() == surface {
+            println!("Keyboard focus on window with pressed syms: {:?}", keysyms);
             self.keyboard_focus = true;
         }
     }
@@ -263,7 +276,7 @@ impl KeyboardHandler for SimpleLayer {
         surface: &wl_surface::WlSurface,
         _: u32,
     ) {
-        if self.layer.as_ref().map(LayerSurface::wl_surface) == Some(surface) {
+        if self.layer.wl_surface() == surface {
             println!("Release keyboard focus on window");
             self.keyboard_focus = false;
         }
@@ -318,7 +331,7 @@ impl PointerHandler for SimpleLayer {
         use PointerEventKind::*;
         for event in events {
             // Ignore events for other surfaces
-            if Some(&event.surface) != self.layer.as_ref().map(LayerSurface::wl_surface) {
+            if &event.surface != self.layer.wl_surface() {
                 continue;
             }
             match event.kind {
@@ -345,59 +358,57 @@ impl PointerHandler for SimpleLayer {
 }
 
 impl ShmHandler for SimpleLayer {
-    fn shm_state(&mut self) -> &mut ShmState {
-        &mut self.shm_state
+    fn shm_state(&mut self) -> &mut Shm {
+        &mut self.shm
     }
 }
 
 impl SimpleLayer {
     pub fn draw(&mut self, qh: &QueueHandle<Self>) {
-        if let Some(window) = self.layer.as_ref() {
-            let width = self.width;
-            let height = self.height;
-            let stride = self.width as i32 * 4;
-            let pool = self.pool.as_mut().unwrap();
+        let width = self.width;
+        let height = self.height;
+        let stride = self.width as i32 * 4;
 
-            let (buffer, canvas) = pool
-                .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
-                .expect("create buffer");
+        let (buffer, canvas) = self
+            .pool
+            .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
+            .expect("create buffer");
 
-            // Draw to the window:
-            {
-                let shift = self.shift.unwrap_or(0);
-                canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
-                    let x = ((index + shift as usize) % width as usize) as u32;
-                    let y = (index / width as usize) as u32;
+        // Draw to the window:
+        {
+            let shift = self.shift.unwrap_or(0);
+            canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
+                let x = ((index + shift as usize) % width as usize) as u32;
+                let y = (index / width as usize) as u32;
 
-                    let a = 0xFF;
-                    let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
-                    let g = u32::min((x * 0xFF) / width, ((height - y) * 0xFF) / height);
-                    let b = u32::min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
-                    let color = (a << 24) + (r << 16) + (g << 8) + b;
+                let a = 0xFF;
+                let r = u32::min(((width - x) * 0xFF) / width, ((height - y) * 0xFF) / height);
+                let g = u32::min((x * 0xFF) / width, ((height - y) * 0xFF) / height);
+                let b = u32::min(((width - x) * 0xFF) / width, (y * 0xFF) / height);
+                let color = (a << 24) + (r << 16) + (g << 8) + b;
 
-                    let array: &mut [u8; 4] = chunk.try_into().unwrap();
-                    *array = color.to_le_bytes();
-                });
+                let array: &mut [u8; 4] = chunk.try_into().unwrap();
+                *array = color.to_le_bytes();
+            });
 
-                if let Some(shift) = &mut self.shift {
-                    *shift = (*shift + 1) % width;
-                }
+            if let Some(shift) = &mut self.shift {
+                *shift = (*shift + 1) % width;
             }
-
-            // Damage the entire window
-            window.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
-
-            // Request our next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone());
-
-            // Attach and commit to present.
-            buffer.attach_to(window.wl_surface()).expect("buffer attach");
-            window.wl_surface().commit();
-
-            // TODO save and reuse buffer when the window size is unchanged.  This is especially
-            // useful if you do damage tracking, since you don't need to redraw the undamaged parts
-            // of the canvas.
         }
+
+        // Damage the entire window
+        self.layer.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
+
+        // Request our next frame
+        self.layer.wl_surface().frame(qh, self.layer.wl_surface().clone());
+
+        // Attach and commit to present.
+        buffer.attach_to(self.layer.wl_surface()).expect("buffer attach");
+        self.layer.commit();
+
+        // TODO save and reuse buffer when the window size is unchanged.  This is especially
+        // useful if you do damage tracking, since you don't need to redraw the undamaged parts
+        // of the canvas.
     }
 }
 
