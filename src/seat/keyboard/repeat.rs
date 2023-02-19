@@ -100,8 +100,8 @@ impl SeatState {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
 
-        if !inner.data.has_pointer.load(Ordering::SeqCst) {
-            return Err(SeatError::UnsupportedCapability(Capability::Pointer).into());
+        if !inner.data.has_keyboard.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
 
         let (repeat_sender, channel) = channel::channel();
