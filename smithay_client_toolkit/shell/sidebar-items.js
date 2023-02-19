@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["layer",""],["xdg","Cross desktop group (XDG) shell"]]};
+window.SIDEBAR_ITEMS = {"mod":[["wlr_layer",""],["xdg","Cross desktop group (XDG) shell"]],"struct":[["Unsupported","An unsupported operation, often due to the version of the protocol."]],"trait":[["WaylandSurface","Functionality shared by all [`WlSurface`] backed shell role objects."]]};

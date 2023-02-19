@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["popup",""],["window",""]],"struct":[["XdgPositioner","A trivial wrapper for an [`xdg_positioner::XdgPositioner`]."],["XdgShellState",""],["XdgShellSurface",""]]};
+window.SIDEBAR_ITEMS = {"mod":[["popup",""],["window","XDG shell windows."]],"struct":[["XdgPositioner","A trivial wrapper for an [`xdg_positioner::XdgPositioner`]."],["XdgShell","The xdg shell globals."],["XdgShellSurface","A surface role for functionality common in desktop-like surfaces."]],"trait":[["XdgSurface",""]]};

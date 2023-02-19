@@ -160,29 +160,29 @@
 };
 
 <span class="kw">pub trait </span>ShmHandler {
-    <span class="kw">fn </span>shm_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ShmState;
+    <span class="kw">fn </span>shm_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Shm;
 }
 
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>ShmState {
+</span><span class="kw">pub struct </span>Shm {
     wl_shm: wl_shm::WlShm,
     formats: Vec&lt;wl_shm::Format&gt;,
 }
 
-<span class="kw">impl </span>From&lt;wl_shm::WlShm&gt; <span class="kw">for </span>ShmState {
+<span class="kw">impl </span>From&lt;wl_shm::WlShm&gt; <span class="kw">for </span>Shm {
     <span class="kw">fn </span>from(wl_shm: wl_shm::WlShm) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ wl_shm, formats: Vec::new() }
     }
 }
 
-<span class="kw">impl </span>ShmState {
-    <span class="kw">pub fn </span>bind&lt;State&gt;(globals: <span class="kw-2">&amp;</span>GlobalList, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ShmState, BindError&gt;
+<span class="kw">impl </span>Shm {
+    <span class="kw">pub fn </span>bind&lt;State&gt;(globals: <span class="kw-2">&amp;</span>GlobalList, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Shm, BindError&gt;
     <span class="kw">where
         </span>State: Dispatch&lt;wl_shm::WlShm, GlobalData, State&gt; + ShmHandler + <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let </span>wl_shm = globals.bind(qh, <span class="number">1</span>..=<span class="number">1</span>, GlobalData)<span class="question-mark">?</span>;
         <span class="comment">// Compositors must advertise Argb8888 and Xrgb8888, so let&#39;s reserve space for those formats.
-        </span><span class="prelude-val">Ok</span>(ShmState { wl_shm, formats: Vec::with_capacity(<span class="number">2</span>) })
+        </span><span class="prelude-val">Ok</span>(Shm { wl_shm, formats: Vec::with_capacity(<span class="number">2</span>) })
     }
 
     <span class="kw">pub fn </span>wl_shm(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_shm::WlShm {
@@ -195,7 +195,7 @@
     }
 }
 
-<span class="kw">impl </span>ProvidesBoundGlobal&lt;wl_shm::WlShm, <span class="number">1</span>&gt; <span class="kw">for </span>ShmState {
+<span class="kw">impl </span>ProvidesBoundGlobal&lt;wl_shm::WlShm, <span class="number">1</span>&gt; <span class="kw">for </span>Shm {
     <span class="kw">fn </span>bound_global(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;wl_shm::WlShm, GlobalError&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.wl_shm.clone())
     }
@@ -225,12 +225,12 @@
 /// to obtain the state object.
 ///
 /// ```
-/// use smithay_client_toolkit::shm::{ShmHandler, ShmState};
+/// use smithay_client_toolkit::shm::{ShmHandler, Shm};
 /// use smithay_client_toolkit::delegate_shm;
 ///
 /// struct ExampleApp {
 ///     /// The state object that will be our delegate.
-///     shm: ShmState,
+///     shm: Shm,
 /// }
 ///
 /// // Use the macro to delegate wl_shm to ShmState.
@@ -238,7 +238,7 @@
 ///
 /// // You must implement the ShmHandler trait to provide a way to access the ShmState from your data type.
 /// impl ShmHandler for ExampleApp {
-///     fn shm_state(&amp;mut self) -&gt; &amp;mut ShmState {
+///     fn shm_state(&amp;mut self) -&gt; &amp;mut Shm {
 ///         &amp;mut self.shm
 ///     }
 /// }
@@ -248,12 +248,12 @@
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
                 <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_shm::WlShm</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
-            </span>] =&gt; <span class="macro-nonterminal">$crate::shm::ShmState
+            </span>] =&gt; <span class="macro-nonterminal">$crate::shm::Shm
         </span>);
     };
 }
 
-<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_shm::WlShm, GlobalData, D&gt; <span class="kw">for </span>ShmState
+<span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_shm::WlShm, GlobalData, D&gt; <span class="kw">for </span>Shm
 <span class="kw">where
     </span>D: Dispatch&lt;wl_shm::WlShm, GlobalData&gt; + ShmHandler,
 {
