@@ -356,8 +356,8 @@
         <span class="kw">let </span>inner =
             <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).ok_or(SeatError::DeadObject)<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>!inner.data.has_pointer.load(Ordering::SeqCst) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(SeatError::UnsupportedCapability(Capability::Pointer).into());
+        <span class="kw">if </span>!inner.data.has_keyboard.load(Ordering::SeqCst) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
 
         <span class="kw">let </span>(repeat_sender, channel) = channel::channel();
