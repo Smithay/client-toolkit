@@ -280,18 +280,18 @@ impl RegistryState {
 /// ```
 /// use smithay_client_toolkit::{
 ///     delegate_registry, delegate_shm, registry_handlers,
-///     shm::{ShmHandler, ShmState},
+///     shm::{ShmHandler, Shm},
 /// };
 ///
 /// struct ExampleApp {
-///     shm_state: ShmState,
+///     shm_state: Shm,
 /// }
 ///
 /// // Here is the implementation of wl_shm to compile:
 /// delegate_shm!(ExampleApp);
 ///
 /// impl ShmHandler for ExampleApp {
-///     fn shm_state(&mut self) -> &mut ShmState {
+///     fn shm_state(&mut self) -> &mut Shm {
 ///         &mut self.shm_state
 ///     }
 /// }

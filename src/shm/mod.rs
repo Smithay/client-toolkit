@@ -17,29 +17,29 @@ use crate::{
 };
 
 pub trait ShmHandler {
-    fn shm_state(&mut self) -> &mut ShmState;
+    fn shm_state(&mut self) -> &mut Shm;
 }
 
 #[derive(Debug)]
-pub struct ShmState {
+pub struct Shm {
     wl_shm: wl_shm::WlShm,
     formats: Vec<wl_shm::Format>,
 }
 
-impl From<wl_shm::WlShm> for ShmState {
+impl From<wl_shm::WlShm> for Shm {
     fn from(wl_shm: wl_shm::WlShm) -> Self {
         Self { wl_shm, formats: Vec::new() }
     }
 }
 
-impl ShmState {
-    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<ShmState, BindError>
+impl Shm {
+    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Shm, BindError>
     where
         State: Dispatch<wl_shm::WlShm, GlobalData, State> + ShmHandler + 'static,
     {
         let wl_shm = globals.bind(qh, 1..=1, GlobalData)?;
         // Compositors must advertise Argb8888 and Xrgb8888, so let's reserve space for those formats.
-        Ok(ShmState { wl_shm, formats: Vec::with_capacity(2) })
+        Ok(Shm { wl_shm, formats: Vec::with_capacity(2) })
     }
 
     pub fn wl_shm(&self) -> &wl_shm::WlShm {
@@ -52,7 +52,7 @@ impl ShmState {
     }
 }
 
-impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for ShmState {
+impl ProvidesBoundGlobal<wl_shm::WlShm, 1> for Shm {
     fn bound_global(&self) -> Result<wl_shm::WlShm, GlobalError> {
         Ok(self.wl_shm.clone())
     }
@@ -82,12 +82,12 @@ impl From<Errno> for CreatePoolError {
 /// to obtain the state object.
 ///
 /// ```
-/// use smithay_client_toolkit::shm::{ShmHandler, ShmState};
+/// use smithay_client_toolkit::shm::{ShmHandler, Shm};
 /// use smithay_client_toolkit::delegate_shm;
 ///
 /// struct ExampleApp {
 ///     /// The state object that will be our delegate.
-///     shm: ShmState,
+///     shm: Shm,
 /// }
 ///
 /// // Use the macro to delegate wl_shm to ShmState.
@@ -95,7 +95,7 @@ impl From<Errno> for CreatePoolError {
 ///
 /// // You must implement the ShmHandler trait to provide a way to access the ShmState from your data type.
 /// impl ShmHandler for ExampleApp {
-///     fn shm_state(&mut self) -> &mut ShmState {
+///     fn shm_state(&mut self) -> &mut Shm {
 ///         &mut self.shm
 ///     }
 /// }
@@ -105,12 +105,12 @@ macro_rules! delegate_shm {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_shm::WlShm: $crate::globals::GlobalData
-            ] => $crate::shm::ShmState
+            ] => $crate::shm::Shm
         );
     };
 }
 
-impl<D> Dispatch<wl_shm::WlShm, GlobalData, D> for ShmState
+impl<D> Dispatch<wl_shm::WlShm, GlobalData, D> for Shm
 where
     D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler,
 {

@@ -12,13 +12,16 @@ use smithay_client_toolkit::{
         pointer::{PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer},
         Capability, SeatHandler, SeatState,
     },
-    shell::xdg::{
-        window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShellState,
+    shell::{
+        xdg::{
+            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
+            XdgShell,
+        },
+        WaylandSurface,
     },
     shm::{
         slot::{Buffer, SlotPool},
-        ShmHandler, ShmState,
+        Shm, ShmHandler,
     },
 };
 use wayland_client::{
@@ -39,9 +42,8 @@ fn main() {
     let output_state = OutputState::new(&globals, &qh);
     let compositor_state =
         CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
-    let shm_state = ShmState::bind(&globals, &qh).expect("wl_shm not available");
-    let xdg_shell_state = XdgShellState::bind(&globals, &qh).expect("xdg shell not available");
-    let mut xdg_window_state = XdgWindowState::bind(&globals, &qh);
+    let shm_state = Shm::bind(&globals, &qh).expect("wl_shm not available");
+    let xdg_shell_state = XdgShell::bind(&globals, &qh).expect("xdg shell not available");
 
     let width = 256;
     let height = 256;
@@ -51,13 +53,19 @@ fn main() {
     let window_surface = compositor_state.create_surface(&qh);
     let pointer_surface = compositor_state.create_surface(&qh);
 
-    let window = Window::builder()
-        .title("A wayland window")
-        // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-        .app_id("io.github.smithay.client-toolkit.SimpleWindow")
-        .min_size((256, 256))
-        .map(&qh, &xdg_shell_state, &mut xdg_window_state, window_surface)
-        .expect("window creation");
+    let window =
+        xdg_shell_state.create_window(window_surface, WindowDecorations::ServerDefault, &qh);
+    window.set_title("A wayland window");
+    // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
+    window.set_app_id("io.github.smithay.client-toolkit.SimpleWindow");
+    window.set_min_size(Some((256, 256)));
+
+    // In order for the window to be mapped, we need to perform an initial commit with no attached buffer.
+    // For more info, see WaylandSurface::commit
+    //
+    // The compositor will respond with an initial configure that we can then use to present to the window with
+    // the correct options.
+    window.commit();
 
     let mut simple_window = SimpleWindow {
         registry_state,
@@ -66,7 +74,6 @@ fn main() {
         _compositor_state: compositor_state,
         shm_state,
         _xdg_shell_state: xdg_shell_state,
-        _xdg_window_state: xdg_window_state,
 
         exit: false,
         first_configure: true,
@@ -100,9 +107,8 @@ struct SimpleWindow {
     seat_state: SeatState,
     output_state: OutputState,
     _compositor_state: CompositorState,
-    shm_state: ShmState,
-    _xdg_shell_state: XdgShellState,
-    _xdg_window_state: XdgWindowState,
+    shm_state: Shm,
+    _xdg_shell_state: XdgShell,
 
     exit: bool,
     first_configure: bool,
@@ -362,7 +368,7 @@ impl PointerHandler for SimpleWindow {
 }
 
 impl ShmHandler for SimpleWindow {
-    fn shm_state(&mut self) -> &mut ShmState {
+    fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm_state
     }
 }
