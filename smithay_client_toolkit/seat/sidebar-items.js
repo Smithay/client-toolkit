@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Capability",""],["SeatError",""]],"mod":[["keyboard",""],["pointer",""],["relative_pointer",""],["touch",""]],"struct":[["SeatData",""],["SeatInfo","Description of a seat."],["SeatState",""]],"trait":[["SeatHandler",""]]};
+window.SIDEBAR_ITEMS = {"enum":[["Capability",""],["SeatError",""]],"mod":[["keyboard",""],["pointer",""],["pointer_constraints",""],["relative_pointer",""],["touch",""]],"struct":[["SeatData",""],["SeatInfo","Description of a seat."],["SeatState",""]],"trait":[["SeatHandler",""]]};
