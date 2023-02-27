@@ -7,9 +7,12 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
-    shell::xdg::{
-        window::{Window, WindowConfigure, WindowHandler, XdgWindowState},
-        XdgShell,
+    shell::{
+        xdg::{
+            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
+            XdgShell,
+        },
+        WaylandSurface,
     },
 };
 use wayland_client::{
@@ -29,17 +32,15 @@ fn main() {
     let compositor_state =
         CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     let xdg_shell_state = XdgShell::bind(&globals, &qh).expect("xdg shell not available");
-    let mut xdg_window_state = XdgWindowState::bind(&globals, &qh);
 
     let surface = compositor_state.create_surface(&qh);
     // Create the window for adapter selection
-    let window = Window::builder()
-        .title("wgpu wayland window")
-        // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-        .app_id("io.github.smithay.client-toolkit.WgpuExample")
-        .min_size((256, 256))
-        .map(&qh, &xdg_shell_state, &mut xdg_window_state, surface)
-        .expect("window creation");
+    let window = xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
+    window.set_title("wgpu wayland window");
+    // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
+    window.set_app_id("io.github.smithay.client-toolkit.WgpuExample");
+    window.set_min_size(Some((256, 256)));
+    window.commit();
 
     // Initialize wgpu
     let instance = wgpu::Instance::new(wgpu::Backends::all());
