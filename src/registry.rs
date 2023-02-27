@@ -93,8 +93,7 @@ where
     /// Called when a new global has been advertised by the compositor.
     ///
     /// The provided registry handle may be used to bind the global.  This is not called during
-    /// initial enumeration of globals, only for globals added after the calls to
-    /// [`RegistryHandler::ready`].  It is primarily useful for multi-instance globals such as
+    /// initial enumeration of globals. It is primarily useful for multi-instance globals such as
     /// `wl_output` and `wl_seat`.
     ///
     /// The default implementation does nothing.
@@ -179,8 +178,8 @@ impl RegistryState {
 
     /// Returns an iterator over all globals.
     ///
-    /// This list may be incomplete if [Self::ready] returns false, and may change later if the
-    /// compositor adds or removes globals after initial enumeration.
+    /// This list may change if the compositor adds or removes globals after initial
+    /// enumeration.
     ///
     /// No guarantees are provided about the ordering of the globals in this iterator.
     pub fn globals(&self) -> impl Iterator<Item = &Global> + '_ {
