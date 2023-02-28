@@ -264,7 +264,7 @@ impl Window {
         }
     }
 
-    pub fn r#move(&self, seat: &wl_seat::WlSeat, serial: u32) {
+    pub fn move_(&self, seat: &wl_seat::WlSeat, serial: u32) {
         self.xdg_toplevel()._move(seat, serial)
     }
 
