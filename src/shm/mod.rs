@@ -76,9 +76,9 @@ impl From<Errno> for CreatePoolError {
     }
 }
 
-/// Delegates the handling of [`wl_shm`] to some [`ShmState`].
+/// Delegates the handling of [`wl_shm`] to some [`Shm`].
 ///
-/// This macro requires two things, the type that will delegate to [`ShmState`] and a closure specifying how
+/// This macro requires two things, the type that will delegate to [`Shm`] and a closure specifying how
 /// to obtain the state object.
 ///
 /// ```
@@ -90,10 +90,10 @@ impl From<Errno> for CreatePoolError {
 ///     shm: Shm,
 /// }
 ///
-/// // Use the macro to delegate wl_shm to ShmState.
+/// // Use the macro to delegate wl_shm to Shm.
 /// delegate_shm!(ExampleApp);
 ///
-/// // You must implement the ShmHandler trait to provide a way to access the ShmState from your data type.
+/// // You must implement the ShmHandler trait to provide a way to access the Shm from your data type.
 /// impl ShmHandler for ExampleApp {
 ///     fn shm_state(&mut self) -> &mut Shm {
 ///         &mut self.shm
