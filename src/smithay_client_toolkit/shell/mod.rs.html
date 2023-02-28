@@ -158,7 +158,7 @@
 //! at some specific z-depth relative to other layers. A layer may also be anchored to some edge and corner of
 //! the screen.
 //!
-//! The layer shell defines one type of surface: the [`LayerSurface`].
+//! The layer shell defines one type of surface: the [`wlr_layer::LayerSurface`].
 //!
 //! There is no guarantee that the layer shell will be available in every compositor.
 //!
@@ -188,7 +188,7 @@
 </span><span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">pub struct </span>Unsupported;
 
-<span class="doccomment">/// Functionality shared by all [`WlSurface`] backed shell role objects.
+<span class="doccomment">/// Functionality shared by all [`wl_surface::WlSurface`] backed shell role objects.
 </span><span class="kw">pub trait </span>WaylandSurface: Sized {
     <span class="doccomment">/// The underlying [`WlSurface`](wl_surface::WlSurface).
     </span><span class="kw">fn </span>wl_surface(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_surface::WlSurface;
