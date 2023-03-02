@@ -26,6 +26,7 @@ use self::window::{
 
 use super::WaylandSurface;
 
+pub mod frame;
 pub mod popup;
 pub mod window;
 

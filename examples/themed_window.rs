@@ -1,21 +1,26 @@
-use std::convert::TryInto;
+use std::sync::Arc;
+use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
-    delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    delegate_seat, delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers},
-        pointer::{PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer},
+        pointer::{
+            PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer,
+        },
         Capability, SeatHandler, SeatState,
     },
     shell::{
         xdg::{
-            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
-            XdgShell,
+            frame::fallback_frame::FallbackFrame,
+            frame::{DecorationsFrame, FrameAction, FrameClick},
+            window::{DecorationMode, Window, WindowConfigure, WindowDecorations, WindowHandler},
+            XdgShell, XdgSurface,
         },
         WaylandSurface,
     },
@@ -23,11 +28,12 @@ use smithay_client_toolkit::{
         slot::{Buffer, SlotPool},
         Shm, ShmHandler,
     },
+    subcompositor::SubcompositorState,
 };
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    Connection, Proxy, QueueHandle,
 };
 
 fn main() {
@@ -42,12 +48,15 @@ fn main() {
     let output_state = OutputState::new(&globals, &qh);
     let compositor_state =
         CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
+    let subcompositor_state =
+        SubcompositorState::bind(compositor_state.wl_compositor().clone(), &globals, &qh)
+            .expect("wl_subcompositor not available");
     let shm_state = Shm::bind(&globals, &qh).expect("wl_shm not available");
     let xdg_shell_state = XdgShell::bind(&globals, &qh).expect("xdg shell not available");
 
-    let width = 256;
-    let height = 256;
-    let pool = SlotPool::new(width as usize * height as usize * 4, &shm_state)
+    let width = NonZeroU32::new(256).unwrap();
+    let height = NonZeroU32::new(256).unwrap();
+    let pool = SlotPool::new(width.get() as usize * height.get() as usize * 4, &shm_state)
         .expect("Failed to create pool");
 
     let window_surface = compositor_state.create_surface(&qh);
@@ -58,7 +67,7 @@ fn main() {
     window.set_title("A wayland window");
     // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
     window.set_app_id("io.github.smithay.client-toolkit.SimpleWindow");
-    window.set_min_size(Some((256, 256)));
+    window.set_min_size(Some((width.get(), height.get())));
 
     // In order for the window to be mapped, we need to perform an initial commit with no attached buffer.
     // For more info, see WaylandSurface::commit
@@ -72,6 +81,7 @@ fn main() {
         seat_state,
         output_state,
         _compositor_state: compositor_state,
+        subcompositor_state: Arc::new(subcompositor_state),
         shm_state,
         _xdg_shell_state: xdg_shell_state,
 
@@ -83,11 +93,13 @@ fn main() {
         shift: None,
         buffer: None,
         window,
+        window_frame: None,
         pointer_surface,
         keyboard: None,
         keyboard_focus: false,
         themed_pointer: None,
         set_cursor: false,
+        cursor_icon: String::from("diamond_cross"),
     };
 
     // We don't draw immediately, the configure will notify us when to first draw.
@@ -107,22 +119,25 @@ struct SimpleWindow {
     seat_state: SeatState,
     output_state: OutputState,
     _compositor_state: CompositorState,
+    subcompositor_state: Arc<SubcompositorState>,
     shm_state: Shm,
     _xdg_shell_state: XdgShell,
 
     exit: bool,
     first_configure: bool,
     pool: SlotPool,
-    width: u32,
-    height: u32,
+    width: NonZeroU32,
+    height: NonZeroU32,
     shift: Option<u32>,
     buffer: Option<Buffer>,
     window: Window,
+    window_frame: Option<FallbackFrame<Self>>,
     pointer_surface: wl_surface::WlSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     themed_pointer: Option<ThemedPointer>,
     set_cursor: bool,
+    cursor_icon: String,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -186,13 +201,84 @@ impl WindowHandler for SimpleWindow {
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
-        _window: &Window,
+        window: &Window,
         configure: WindowConfigure,
         _serial: u32,
     ) {
         self.buffer = None;
-        self.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
-        self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
+
+        println!(
+            "Configure size {:?}, decorations: {:?}",
+            configure.new_size, configure.decoration_mode
+        );
+
+        let (width, height) = if configure.decoration_mode == DecorationMode::Client {
+            let window_frame = self.window_frame.get_or_insert_with(|| {
+                FallbackFrame::new(
+                    &self.window,
+                    &self.shm_state,
+                    self.subcompositor_state.clone(),
+                    qh.clone(),
+                )
+                .expect("failed to create client side decorations frame.")
+            });
+
+            // Un-hide the frame.
+            window_frame.set_hidden(false);
+
+            // Configure state before touching any resizing.
+            window_frame.update_state(configure.state);
+
+            // Update the capabilities.
+            window_frame.update_wm_capabilities(configure.capabilities);
+
+            let (width, height) = match configure.new_size {
+                (Some(width), Some(height)) => {
+                    // The size could be 0.
+                    window_frame.subtract_borders(width, height)
+                }
+                _ => {
+                    // You might want to consider checking for configure bounds.
+                    (Some(self.width), Some(self.height))
+                }
+            };
+
+            // Clamp the size to at least one pixel.
+            let width = width.unwrap_or(NonZeroU32::new(1).unwrap());
+            let height = height.unwrap_or(NonZeroU32::new(1).unwrap());
+
+            println!("{width}, {height}");
+            window_frame.resize(width, height);
+
+            let (x, y) = window_frame.location();
+            let outer_size = window_frame.add_borders(width.get(), height.get());
+            window.xdg_surface().set_window_geometry(
+                x,
+                y,
+                outer_size.0 as i32,
+                outer_size.1 as i32,
+            );
+
+            (width, height)
+        } else {
+            // Hide the frame, if any.
+            if let Some(frame) = self.window_frame.as_mut() {
+                frame.set_hidden(true)
+            }
+            let width = configure.new_size.0.unwrap_or(self.width);
+            let height = configure.new_size.1.unwrap_or(self.height);
+            self.window.xdg_surface().set_window_geometry(
+                0,
+                0,
+                width.get() as i32,
+                height.get() as i32,
+            );
+            (width, height)
+        };
+
+        // Update new width and height;
+        self.width = width;
+        self.height = height;
 
         // Initiate the first draw.
         if self.first_configure {
@@ -325,35 +411,86 @@ impl PointerHandler for SimpleWindow {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
+        pointer: &wl_pointer::WlPointer,
         events: &[PointerEvent],
     ) {
         use PointerEventKind::*;
         for event in events {
-            // Ignore events for other surfaces
-            if &event.surface != self.window.wl_surface() {
-                continue;
-            }
+            let (x, y) = event.position;
             match event.kind {
                 Enter { .. } => {
-                    println!("Pointer entered @{:?}", event.position);
                     self.set_cursor = true;
+                    self.cursor_icon = self
+                        .window_frame
+                        .as_mut()
+                        .and_then(|frame| frame.click_point_moved(&event.surface, x, y))
+                        .unwrap_or("diamond_cross")
+                        .to_owned();
+
+                    if &event.surface == self.window.wl_surface() {
+                        println!("Pointer entered @{:?}", event.position);
+                    }
                 }
                 Leave { .. } => {
+                    if &event.surface != self.window.wl_surface() {
+                        if let Some(window_frame) = self.window_frame.as_mut() {
+                            window_frame.click_point_left();
+                        }
+                    }
                     println!("Pointer left");
                 }
-                Motion { .. } => {}
-                Press { button, .. } => {
-                    println!("Press {:x} @ {:?}", button, event.position);
-                    self.shift = self.shift.xor(Some(0));
+                Motion { .. } => {
+                    if let Some(new_cursor) = self
+                        .window_frame
+                        .as_mut()
+                        .and_then(|frame| frame.click_point_moved(&event.surface, x, y))
+                    {
+                        self.set_cursor = true;
+                        self.cursor_icon = new_cursor.to_owned();
+                    }
                 }
-                Release { button, .. } => {
-                    println!("Release {:x} @ {:?}", button, event.position);
+                Press { button, serial, .. } | Release { button, serial, .. } => {
+                    let pressed = if matches!(event.kind, Press { .. }) { true } else { false };
+                    if &event.surface != self.window.wl_surface() {
+                        let click = match button {
+                            0x110 => FrameClick::Normal,
+                            0x111 => FrameClick::Alternate,
+                            _ => continue,
+                        };
+
+                        if let Some(action) = self
+                            .window_frame
+                            .as_mut()
+                            .and_then(|frame| frame.on_click(click, pressed))
+                        {
+                            self.frame_action(pointer, serial, action);
+                        }
+                    } else if pressed {
+                        println!("Press {:x} @ {:?}", button, event.position);
+                        self.shift = self.shift.xor(Some(0));
+                    }
                 }
                 Axis { horizontal, vertical, .. } => {
-                    println!("Scroll H:{horizontal:?}, V:{vertical:?}");
+                    if &event.surface == self.window.wl_surface() {
+                        println!("Scroll H:{horizontal:?}, V:{vertical:?}");
+                    }
                 }
             }
+        }
+    }
+}
+impl SimpleWindow {
+    fn frame_action(&mut self, pointer: &wl_pointer::WlPointer, serial: u32, action: FrameAction) {
+        let pointer_data = pointer.data::<PointerData>().unwrap();
+        let seat = pointer_data.seat();
+        match action {
+            FrameAction::Close => self.exit = true,
+            FrameAction::Minimize => self.window.set_minimized(),
+            FrameAction::Maximize => self.window.set_maximized(),
+            FrameAction::UnMaximize => self.window.unset_maximized(),
+            FrameAction::ShowMenu(x, y) => self.window.show_window_menu(seat, serial, (x, y)),
+            FrameAction::Resize(edge) => self.window.resize(seat, serial, edge),
+            FrameAction::Move => self.window.move_(seat, serial),
         }
     }
 }
@@ -369,7 +506,7 @@ impl SimpleWindow {
         if self.set_cursor {
             let _ = self.themed_pointer.as_mut().unwrap().set_cursor(
                 conn,
-                "diamond_cross",
+                &self.cursor_icon,
                 self.shm_state.wl_shm(),
                 &self.pointer_surface,
                 1,
@@ -377,9 +514,9 @@ impl SimpleWindow {
             self.set_cursor = false;
         }
 
-        let width = self.width;
-        let height = self.height;
-        let stride = self.width as i32 * 4;
+        let width = self.width.get();
+        let height = self.height.get();
+        let stride = self.width.get() as i32 * 4;
 
         let buffer = self.buffer.get_or_insert_with(|| {
             self.pool
@@ -395,12 +532,7 @@ impl SimpleWindow {
                 // buffer, we need double-buffering.
                 let (second_buffer, canvas) = self
                     .pool
-                    .create_buffer(
-                        self.width as i32,
-                        self.height as i32,
-                        stride,
-                        wl_shm::Format::Argb8888,
-                    )
+                    .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
                     .expect("create buffer");
                 *buffer = second_buffer;
                 canvas
@@ -429,8 +561,15 @@ impl SimpleWindow {
             }
         }
 
+        // Draw the decorations frame.
+        self.window_frame.as_mut().map(|frame| {
+            if frame.is_dirty() && !frame.is_hidden() {
+                frame.draw();
+            }
+        });
+
         // Damage the entire window
-        self.window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
+        self.window.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
 
         // Request our next frame
         self.window.wl_surface().frame(qh, self.window.wl_surface().clone());
@@ -442,6 +581,7 @@ impl SimpleWindow {
 }
 
 delegate_compositor!(SimpleWindow);
+delegate_subcompositor!(SimpleWindow);
 delegate_output!(SimpleWindow);
 delegate_shm!(SimpleWindow);
 
