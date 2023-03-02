@@ -5,7 +5,10 @@ use std::sync::{
 
 use wayland_client::{
     globals::{BindError, GlobalList},
-    protocol::{wl_callback, wl_compositor, wl_output, wl_region, wl_surface},
+    protocol::{
+        wl_callback, wl_compositor, wl_output, wl_region,
+        wl_surface::{self, WlSurface},
+    },
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
@@ -95,6 +98,12 @@ pub struct SurfaceData {
     /// The scale factor of the output with the highest scale factor.
     pub(crate) scale_factor: AtomicI32,
 
+    /// Parent surface used when creating subsurfaces.
+    ///
+    /// For top-level surfaces this is always `None`.
+    pub(crate) parent_surface: Option<WlSurface>,
+
+    /// The inner mutable storage.
     inner: Mutex<SurfaceDataInner>,
 }
 
@@ -108,14 +117,26 @@ struct SurfaceDataInner {
 }
 
 impl SurfaceData {
-    /// Create a new surface that initially reports the given scale factor.
-    pub fn with_initial_scale(scale_factor: i32) -> Self {
-        Self { scale_factor: AtomicI32::new(scale_factor), inner: Default::default() }
+    /// Create a new surface that initially reports the given scale factor and parent.
+    pub fn new(parent_surface: Option<WlSurface>, scale_factor: i32) -> Self {
+        Self {
+            scale_factor: AtomicI32::new(scale_factor),
+            parent_surface,
+            inner: Default::default(),
+        }
     }
 
     /// The scale factor of the output with the highest scale factor.
     pub fn scale_factor(&self) -> i32 {
         self.scale_factor.load(Ordering::Relaxed)
+    }
+
+    /// The parent surface used for this surface.
+    ///
+    /// The surface is `Some` for primarily for subsurfaces,
+    /// since they must have a parent surface.
+    pub fn parent_surface(&self) -> Option<&WlSurface> {
+        self.parent_surface.as_ref()
     }
 
     /// The outputs the surface is currently inside.
@@ -126,7 +147,7 @@ impl SurfaceData {
 
 impl Default for SurfaceData {
     fn default() -> Self {
-        Self::with_initial_scale(1)
+        Self::new(None, 1)
     }
 }
 
