@@ -258,8 +258,8 @@ impl Window {
         decoration.data::<WindowData>().and_then(|data| data.0.upgrade()).map(Window)
     }
 
-    pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, position: (u32, u32)) {
-        self.xdg_toplevel().show_window_menu(seat, serial, position.0 as i32, position.1 as i32);
+    pub fn show_window_menu(&self, seat: &wl_seat::WlSeat, serial: u32, position: (i32, i32)) {
+        self.xdg_toplevel().show_window_menu(seat, serial, position.0, position.1);
     }
 
     pub fn set_title(&self, title: impl Into<String>) {
