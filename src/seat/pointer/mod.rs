@@ -416,7 +416,7 @@ impl<U: PointerDataExt + 'static> ThemedPointer<U> {
         // Set the pointer surface to change the pointer.
         let data = self.pointer.data::<U>();
         if let Some(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
-            self.pointer.set_cursor(serial, Some(surface), hx as i32, hy as i32);
+            self.pointer.set_cursor(serial, Some(surface), hx as i32 / scale, hy as i32 / scale);
             Ok(())
         } else {
             Err(PointerThemeError::MissingEnterSerial)
