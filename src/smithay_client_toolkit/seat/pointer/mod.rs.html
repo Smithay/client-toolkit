@@ -948,7 +948,7 @@
         <span class="comment">// Set the pointer surface to change the pointer.
         </span><span class="kw">let </span>data = <span class="self">self</span>.pointer.data::&lt;U&gt;();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
-            <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32, hy <span class="kw">as </span>i32);
+            <span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(surface), hx <span class="kw">as </span>i32 / scale, hy <span class="kw">as </span>i32 / scale);
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial)
