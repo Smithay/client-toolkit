@@ -51,7 +51,7 @@ pub trait DataDeviceDataExt: Send + Sync {
 
     fn data_device_data(&self) -> &DataDeviceData;
 
-    /// get the active dnd offer if it exists
+    /// Get the active dnd offer if it exists.
     fn drag_offer(&self) -> Option<DragOffer> {
         let inner = self.data_device_data();
         inner.inner.lock().unwrap().drag_offer.lock().unwrap().as_ref().and_then(|offer| {
@@ -60,7 +60,7 @@ pub trait DataDeviceDataExt: Send + Sync {
         })
     }
 
-    /// get the active selection offer if it exists
+    /// Get the active selection offer if it exists.
     fn selection_offer(&self) -> Option<SelectionOffer> {
         let inner = self.data_device_data();
         inner.inner.lock().unwrap().selection_offer.lock().unwrap().as_ref().and_then(|offer| {
@@ -101,18 +101,18 @@ pub trait DataDeviceHandler: Sized {
     /// The data device pointer has entered a surface at the provided location
     fn enter(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: DataDevice);
 
-    /// The drag and drop pointer has left the surface and the session ends
-    /// The offer will be destroyed
+    /// The drag and drop pointer has left the surface and the session ends.
+    /// The offer will be destroyed.
     fn leave(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: DataDevice);
 
-    /// Drag and Drop motion
+    /// Drag and Drop motion.
     fn motion(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: DataDevice);
 
-    /// Advertises a new selection
+    /// Advertises a new selection.
     fn selection(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: DataDevice);
 
-    /// drop performed
-    /// after the next data offer action event, data may be able to be received, unless the action is "ask"
+    /// Drop performed.
+    /// After the next data offer action event, data may be able to be received, unless the action is "ask".
     fn drop_performed(
         &mut self,
         conn: &Connection,
@@ -148,13 +148,13 @@ where
 
         match event {
             wayland_client::protocol::wl_data_device::Event::DataOffer { id } => {
-                // XXX drop done here to prevent Mutex deadlocks
+                // XXX Drop done here to prevent Mutex deadlocks.S
 
                 inner.undetermined_offers.lock().unwrap().push(id.clone());
                 let data = id.data::<V>().unwrap().data_offer_data();
                 data.init_undetermined_offer(&id);
 
-                // append the data offer to our list of offers
+                // Append the data offer to our list of offers.
                 drop(inner);
             }
             wayland_client::protocol::wl_data_device::Event::Enter {
@@ -176,17 +176,17 @@ where
                     let data = offer.data::<V>().unwrap().data_offer_data();
                     data.to_dnd_offer(serial, surface, x, y, None);
 
-                    // XXX drop done here to prevent Mutex deadlocks
-                    drag_offer.replace(offer.clone());
+                    // XXX Drop done here to prevent Mutex deadlocks.
+                    *drag_offer = Some(offer.clone());
                     drop(drag_offer);
                     drop(inner);
                     state.enter(conn, qh, DataDevice { device: data_device.clone() });
                 } else {
-                    drag_offer.take();
+                    *drag_offer = None;
                 }
             }
             wayland_client::protocol::wl_data_device::Event::Leave => {
-                // XXX drop done here to prevent Mutex deadlocks
+                // XXX Drop done here to prevent Mutex deadlocks.
                 inner.drag_offer.lock().unwrap().take();
                 drop(inner);
                 state.leave(conn, qh, DataDevice { device: data_device.clone() });
@@ -196,17 +196,17 @@ where
                 if let Some(offer) = drag.take() {
                     let data = offer.data::<V>().unwrap().data_offer_data();
                     data.motion(x, y, time);
-                    drag.replace(offer);
+                    *drag = Some(offer);
                 }
-                // update the data offer location
-                // XXX drop done here to prevent Mutex deadlocks
+                // Update the data offer location.
+                // XXX Drop done here to prevent Mutex deadlocks.
                 drop(drag);
                 drop(inner);
                 state.motion(conn, qh, DataDevice { device: data_device.clone() });
             }
             wayland_client::protocol::wl_data_device::Event::Drop => {
-                // XXX drop done here to prevent Mutex deadlocks
-                // pass the info about the drop to the user
+                // XXX Drop done here to prevent Mutex deadlocks.
+                // Pass the info about the drop to the user.
                 drop(inner);
                 state.drop_performed(conn, qh, DataDevice { device: data_device.clone() });
             }
@@ -222,13 +222,13 @@ where
 
                     let data = offer.data::<V>().unwrap().data_offer_data();
                     data.to_selection_offer();
-                    // XXX drop done here to prevent Mutex deadlocks
-                    selection_offer.replace(offer.clone());
+                    // XXX Drop done here to prevent Mutex deadlocks.
+                    *selection_offer = Some(offer.clone());
                     drop(selection_offer);
                     drop(inner);
                     state.selection(conn, qh, DataDevice { device: data_device.clone() });
                 } else {
-                    selection_offer.take();
+                    *selection_offer = None;
                 }
             }
             _ => unreachable!(),

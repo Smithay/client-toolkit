@@ -27,7 +27,7 @@ impl DataSourceDataExt for DataSourceData {
 ///
 /// The functions defined in this trait are called as DataSource events are received from the compositor.
 pub trait DataSourceHandler: Sized {
-    /// This may be called multiple times, once for each accepted mime type from the destination, if any
+    /// This may be called multiple times, once for each accepted mime type from the destination, if any.
     fn accept_mime(
         &mut self,
         conn: &Connection,
@@ -51,15 +51,15 @@ pub trait DataSourceHandler: Sized {
     /// Cleanup & destroy this resource
     fn cancelled(&mut self, conn: &Connection, qh: &QueueHandle<Self>, source: &WlDataSource);
 
-    /// A drop was performed
-    /// the data source will be used and should not be destroyed yet
+    /// A drop was performed.
+    /// The data source will be used and should not be destroyed yet
     fn dnd_dropped(&mut self, conn: &Connection, qh: &QueueHandle<Self>, source: &WlDataSource);
 
-    /// the dnd finished
-    /// the data source may be destroyed
+    /// The drag and drop finished.
+    /// The data source may be destroyed.
     fn dnd_finished(&mut self, conn: &Connection, qh: &QueueHandle<Self>, source: &WlDataSource);
 
-    /// an action was selected by the compositor
+    /// An action was selected by the compositor.
     fn action(
         &mut self,
         conn: &Connection,
@@ -115,12 +115,12 @@ pub struct CopyPasteSource {
 }
 
 impl CopyPasteSource {
-    /// set the selection of the provided data device as a response to the event with with provided serial
+    /// Set the selection of the provided data device as a response to the event with with provided serial.
     pub fn set_selection(&self, device: &DataDevice, serial: u32) {
         device.device.set_selection(Some(&self.inner), serial);
     }
 
-    /// unset the selection of the provided data device as a response to the event with with provided serial
+    /// Unset the selection of the provided data device as a response to the event with with provided serial.
     pub fn unset_selection(&self, device: &DataDevice, serial: u32) {
         device.device.set_selection(None, serial);
     }
@@ -142,9 +142,9 @@ pub struct DragSource {
 }
 
 impl DragSource {
-    /// start a normal drag and drop operation
-    /// this can be used for both intra-client DnD or inter-client Dnd
-    /// the drag is cancelled when the DragSource is dropped
+    /// Start a normal drag and drop operation.
+    /// This can be used for both intra-client DnD or inter-client Dnd.
+    /// The drag is cancelled when the DragSource is dropped.
     pub fn start_drag(
         &self,
         device: &DataDevice,
@@ -155,7 +155,7 @@ impl DragSource {
         device.device.start_drag(Some(&self.inner), origin, icon, serial);
     }
 
-    /// start an internal drag and drop operation
+    /// Start an internal drag and drop operation.
     /// This will pass a NULL source, and the client is expected to handle data passing internally.
     /// Only Enter, Leave, & Motion events will be sent to the client
     pub fn start_internal_drag(
@@ -167,6 +167,8 @@ impl DragSource {
         device.device.start_drag(None, origin, icon, serial);
     }
 
+    /// Set the actions that this drag source supports.
+    /// This can only be done once, and must be done before the drag is started.
     pub fn set_actions(&self, dnd_actions: DndAction) {
         if self.inner.version() >= 3 {
             self.inner.set_actions(dnd_actions);
@@ -174,6 +176,7 @@ impl DragSource {
         self.inner.set_actions(dnd_actions);
     }
 
+    /// Retrieve a reference to the inner wl_data_source.
     pub fn inner(&self) -> &WlDataSource {
         &self.inner
     }

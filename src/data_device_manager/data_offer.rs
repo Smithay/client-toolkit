@@ -96,6 +96,9 @@ impl DragOffer {
         }
     }
 
+    /// Set the accepted and preferred drag and drop actions.
+    /// This request determines the final result of the drag-and-drop operation.
+    /// If the end result is that no action is accepted, the drag source will receive wl_data_source.cancelled.
     pub fn set_actions(&self, actions: DndAction, preferred_action: DndAction) {
         if let Some(ref data_offer) = self.data_offer {
             if data_offer.version() >= 3 {
@@ -104,6 +107,9 @@ impl DragOffer {
         }
     }
 
+    /// Receive data with the given mime type.
+    /// This request may happen multiple times for different mime types, both before and after wl_data_device.drop.
+    /// Drag-and-drop destination clients may preemptively fetch data or examine it more closely to determine acceptance.
     pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
         if let Some(o) = self.data_offer.as_ref() {
             receive(o, mime_type)
@@ -112,6 +118,9 @@ impl DragOffer {
         }
     }
 
+    /// Accept the given mime type, or None to reject the offer.
+    /// In version 2, this request is used for feedback, but doesn't affect the final result of the drag-and-drop operation.
+    /// In version 3, this request determines the final result of the drag-and-drop operation.
     pub fn accept_mime_type(&mut self, serial: u32, mime_type: Option<String>) {
         if let Some(ref data_offer) = self.data_offer {
             self.accepted_mime_type = mime_type.clone();
@@ -119,12 +128,14 @@ impl DragOffer {
         }
     }
 
+    /// Destroy the data offer.
     pub fn destroy(&self) {
         if let Some(ref data_offer) = self.data_offer {
             data_offer.destroy();
         }
     }
 
+    /// Retrieve a reference to the inner wl_data_offer.
     pub fn inner(&self) -> Option<&WlDataOffer> {
         self.data_offer.as_ref()
     }
@@ -330,7 +341,7 @@ impl DataOfferData {
                 });
             }
             DataDeviceOffer::Undetermined(o) => {
-                o.data_offer.replace(offer.clone());
+                o.data_offer = Some(offer.clone());
             }
         }
     }
@@ -438,7 +449,7 @@ pub trait DataOfferHandler: Sized {
         mime_type: String,
     );
 
-    /// Called to advertise the available DnD Actions as set by the source
+    /// Called to advertise the available DnD Actions as set by the source.
     fn source_actions(
         &mut self,
         conn: &Connection,
@@ -448,12 +459,12 @@ pub trait DataOfferHandler: Sized {
     );
 
     /// Called to advertise the action selected by the compositor after matching the source/destination side actions.
-    /// Only one action or none will be selected in the actions sent by the compositor
-    /// This may be called multiple times during a DnD operation
+    /// Only one action or none will be selected in the actions sent by the compositor.
+    /// This may be called multiple times during a DnD operation.
     /// The most recent DndAction is the only valid one.
     ///
     /// At the time of a `drop` event on the data device, this action must be used except in the case of an ask action.
-    /// In the case that the last action received is `ask`, the destination asks the user for their preference, then calls set_actions & accept each one last time
+    /// In the case that the last action received is `ask`, the destination asks the user for their preference, then calls set_actions & accept each one last time.
     /// Finally, the destination may then request data to be sent and finishing the data offer
     ///
     fn actions(
@@ -491,7 +502,7 @@ where
                         data.set_source_action(a);
                         state.source_actions(conn, qh, &mut data.inner.lock().unwrap(), a);
                     }
-                    wayland_client::WEnum::Unknown(_) => {} // ignore
+                    wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
             }
             wl_data_offer::Event::Action { dnd_action } => {
@@ -500,7 +511,7 @@ where
                         data.set_selected_action(a);
                         state.actions(conn, qh, &mut data.inner.lock().unwrap(), a);
                     }
-                    wayland_client::WEnum::Unknown(_) => {} // ignore
+                    wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
             }
             _ => unimplemented!(),
@@ -508,7 +519,7 @@ where
     }
 }
 
-/// Request to receive the data of a given mime type
+/// Request to receive the data of a given mime type.
 ///
 /// You can do this several times, as a reaction to motion of
 /// the dnd cursor, or to inspect the data in order to choose your
