@@ -231,15 +231,19 @@ impl SeatHandler for SimpleWindow {
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             println!("Set keyboard capability");
-            let (keyboard, source) = self
+            let keyboard = self
                 .seat_state
-                .get_keyboard_with_repeat(qh, &seat, None)
+                .get_keyboard_with_repeat(
+                    qh,
+                    &seat,
+                    None,
+                    self.loop_handle.clone(),
+                    Box::new(|_state, _wl_kbd, event| {
+                        println!("Repeat: {:?} ", event);
+                    }),
+                )
                 .expect("Failed to create keyboard");
-            self.loop_handle
-                .insert_source(source, |e, _, _state| {
-                    dbg!(e);
-                })
-                .expect("Failed to insert the repeating keyboard into the event loop");
+
             self.keyboard = Some(keyboard);
         }
 

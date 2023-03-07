@@ -9,10 +9,12 @@ use std::{
     os::unix::io::AsRawFd,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Mutex,
+        Arc, Mutex,
     },
+    time::Duration,
 };
 
+use calloop::timer::{TimeoutAction, Timer};
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
@@ -20,12 +22,13 @@ use wayland_client::{
 
 use xkbcommon::xkb;
 
+#[cfg(feature = "calloop")]
+use repeat::{RepeatData, RepeatedKey};
+
 use super::{Capability, SeatError, SeatHandler, SeatState};
 
 #[cfg(feature = "calloop")]
 pub mod repeat;
-#[cfg(feature = "calloop")]
-use repeat::RepeatMessage;
 
 /// Error when creating a keyboard.
 #[must_use]
@@ -51,14 +54,14 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    pub fn get_keyboard<D>(
+    pub fn get_keyboard<D, T: 'static>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData>
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<T>>
             + SeatHandler
             + KeyboardHandler
             + 'static,
@@ -308,7 +311,7 @@ pub struct RMLVO {
     pub options: Option<String>,
 }
 
-pub struct KeyboardData {
+pub struct KeyboardData<T> {
     seat: wl_seat::WlSeat,
     first_event: AtomicBool,
     xkb_context: Mutex<xkb::Context>,
@@ -317,11 +320,10 @@ pub struct KeyboardData {
     xkb_state: Mutex<Option<xkb::State>>,
     xkb_compose: Mutex<Option<xkb::compose::State>>,
     #[cfg(feature = "calloop")]
-    repeat_sender: Option<calloop::channel::Sender<RepeatMessage>>,
-    current_repeat: Mutex<Option<KeyEvent>>,
+    repeat_data: Arc<Mutex<Option<RepeatData<T>>>>,
 }
 
-impl Debug for KeyboardData {
+impl<T> Debug for KeyboardData<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyboardData").finish_non_exhaustive()
     }
@@ -332,7 +334,7 @@ macro_rules! delegate_keyboard {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
-                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData
+                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData<$ty>
             ] => $crate::seat::SeatState
         );
     };
@@ -348,11 +350,11 @@ macro_rules! delegate_keyboard {
 }
 
 // SAFETY: The state does not share state with any other rust types.
-unsafe impl Send for KeyboardData {}
+unsafe impl<T> Send for KeyboardData<T> {}
 // SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
-unsafe impl Sync for KeyboardData {}
+unsafe impl<T> Sync for KeyboardData<T> {}
 
-impl KeyboardData {
+impl<T> KeyboardData<T> {
     pub fn new(seat: wl_seat::WlSeat) -> Self {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let udata = KeyboardData {
@@ -362,8 +364,8 @@ impl KeyboardData {
             xkb_state: Mutex::new(None),
             user_specified_rmlvo: false,
             xkb_compose: Mutex::new(None),
-            repeat_sender: None,
-            current_repeat: Mutex::new(None),
+            #[cfg(feature = "calloop")]
+            repeat_data: Arc::new(Mutex::new(None)),
         };
 
         udata.init_compose();
@@ -400,8 +402,8 @@ impl KeyboardData {
             xkb_state: Mutex::new(xkb_state),
             user_specified_rmlvo: true,
             xkb_compose: Mutex::new(None),
-            repeat_sender: None,
-            current_repeat: Mutex::new(None),
+            #[cfg(feature = "calloop")]
+            repeat_data: Arc::new(Mutex::new(None)),
         };
 
         udata.init_compose();
@@ -450,16 +452,19 @@ impl KeyboardData {
 }
 
 pub trait KeyboardDataExt: Send + Sync {
-    fn keyboard_data(&self) -> &KeyboardData;
-    fn keyboard_data_mut(&mut self) -> &mut KeyboardData;
+    type State: 'static;
+    fn keyboard_data(&self) -> &KeyboardData<Self::State>;
+    fn keyboard_data_mut(&mut self) -> &mut KeyboardData<Self::State>;
 }
 
-impl KeyboardDataExt for KeyboardData {
-    fn keyboard_data(&self) -> &KeyboardData {
+impl<T: 'static> KeyboardDataExt for KeyboardData<T> {
+    /// The type of the user defined state
+    type State = T;
+    fn keyboard_data(&self) -> &KeyboardData<T> {
         self
     }
 
-    fn keyboard_data_mut(&mut self) -> &mut KeyboardData {
+    fn keyboard_data_mut(&mut self) -> &mut KeyboardData<T> {
         self
     }
 }
@@ -586,8 +591,8 @@ where
                 // sent before entering a new surface.
                 #[cfg(feature = "calloop")]
                 {
-                    if let Some(repeat_sender) = &udata.repeat_sender {
-                        let _ = repeat_sender.send(RepeatMessage::StopRepeat);
+                    if let Some(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                        repeat_data.current_repeat.take();
                     }
                 }
 
@@ -631,14 +636,16 @@ where
                             wl_keyboard::KeyState::Released => {
                                 #[cfg(feature = "calloop")]
                                 {
-                                    if let Some(repeat_sender) = &udata.repeat_sender {
-                                        let mut current_repeat =
-                                            udata.current_repeat.lock().unwrap();
+                                    if let Some(repeat_data) =
+                                        udata.repeat_data.lock().unwrap().as_mut()
+                                    {
                                         if Some(event.raw_code)
-                                            == current_repeat.as_ref().map(|r| r.raw_code)
+                                            == repeat_data
+                                                .current_repeat
+                                                .as_ref()
+                                                .map(|r| r.key.raw_code)
                                         {
-                                            current_repeat.take();
-                                            let _ = repeat_sender.send(RepeatMessage::StopRepeat);
+                                            repeat_data.current_repeat = None;
                                         }
                                     }
                                 }
@@ -648,7 +655,10 @@ where
                             wl_keyboard::KeyState::Pressed => {
                                 #[cfg(feature = "calloop")]
                                 {
-                                    if let Some(repeat_sender) = &udata.repeat_sender {
+                                    if let Some(repeat_data) =
+                                        udata.repeat_data.lock().unwrap().as_mut()
+                                    {
+                                        let loop_handle = &mut repeat_data.loop_handle;
                                         let state_guard = udata.xkb_state.lock().unwrap();
                                         let key_repeats = state_guard
                                             .as_ref()
@@ -657,13 +667,59 @@ where
                                             })
                                             .unwrap_or_default();
                                         if key_repeats {
-                                            udata
-                                                .current_repeat
-                                                .lock()
-                                                .unwrap()
-                                                .replace(event.clone());
-                                            let _ = repeat_sender
-                                                .send(RepeatMessage::StartRepeat(event.clone()));
+                                            // Cancel the previous timer / repeat.
+                                            if let Some(token) = repeat_data.repeat_token.take() {
+                                                loop_handle.remove(token);
+                                            }
+
+                                            // Update the current repeat key.
+                                            repeat_data.current_repeat.replace(RepeatedKey {
+                                                key: event.clone(),
+                                                is_first: true,
+                                            });
+
+                                            let (delay, rate) = match repeat_data.repeat_info {
+                                                RepeatInfo::Disable => return,
+                                                RepeatInfo::Repeat { delay, rate } => (delay, rate),
+                                            };
+                                            let gap = Duration::from_micros(
+                                                1_000_000 / rate.get() as u64,
+                                            );
+                                            let timer = Timer::from_duration(
+                                                Duration::from_millis(delay as u64),
+                                            );
+                                            let repeat_data2 = udata.repeat_data.clone();
+
+                                            // Start the timer.
+                                            let kbd = keyboard.clone();
+                                            if let Ok(token) = loop_handle.insert_source(
+                                                timer,
+                                                move |_, _, state| {
+                                                    let mut repeat_data =
+                                                        repeat_data2.lock().unwrap();
+                                                    let repeat_data = match repeat_data.as_mut() {
+                                                        Some(repeat_data) => repeat_data,
+                                                        None => return TimeoutAction::Drop,
+                                                    };
+
+                                                    let callback = &mut repeat_data.callback;
+                                                    let key = &mut repeat_data.current_repeat;
+                                                    if key.is_none() {
+                                                        return TimeoutAction::Drop;
+                                                    }
+                                                    let key = key.as_mut().unwrap();
+                                                    key.key.time += if key.is_first {
+                                                        key.is_first = false;
+                                                        delay
+                                                    } else {
+                                                        gap.as_millis() as u32
+                                                    };
+                                                    callback(state, &kbd, key.key.clone());
+                                                    TimeoutAction::ToDuration(gap)
+                                                },
+                                            ) {
+                                                repeat_data.repeat_token = Some(token);
+                                            }
                                         }
                                     }
                                 }
@@ -698,35 +754,32 @@ where
                 let _ = state.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
 
                 // Update the currently repeating key if any.
-                if let Some(repeat_sender) = udata.repeat_sender.as_ref() {
-                    let mut current_event = udata.current_repeat.lock().unwrap();
-                    if let Some(mut event) = current_event.take() {
+                #[cfg(feature = "calloop")]
+                if let Some(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                    if let Some(mut event) = repeat_data.current_repeat.take() {
                         // Apply new modifiers to get new utf8.
-                        event.utf8 = {
+                        event.key.utf8 = {
                             let mut compose = udata.xkb_compose.lock().unwrap();
 
                             match compose.as_mut() {
-                                Some(compose) => match compose.feed(event.keysym) {
+                                Some(compose) => match compose.feed(event.key.keysym) {
                                     xkb::FeedResult::Ignored => None,
                                     xkb::FeedResult::Accepted => match compose.status() {
                                         xkb::Status::Composed => compose.utf8(),
                                         xkb::Status::Nothing => {
-                                            Some(state.key_get_utf8(event.raw_code + 8))
+                                            Some(state.key_get_utf8(event.key.raw_code + 8))
                                         }
                                         _ => None,
                                     },
                                 },
 
-                                // No compose
-                                None => Some(state.key_get_utf8(event.raw_code + 8)),
+                                // No compose.
+                                None => Some(state.key_get_utf8(event.key.raw_code + 8)),
                             }
                         };
 
                         // Update the stored event.
-                        current_event.replace(event.clone());
-
-                        // Don't reset the repeat when just changing the modifiers state.
-                        let _ = repeat_sender.send(RepeatMessage::KeyChanged(event));
+                        repeat_data.current_repeat = Some(event);
                     }
                 }
 
@@ -750,11 +803,10 @@ where
 
                 #[cfg(feature = "calloop")]
                 {
-                    if let Some(repeat_sender) = &udata.repeat_sender {
-                        let _ = repeat_sender.send(RepeatMessage::RepeatInfo(info));
+                    if let Some(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                        repeat_data.repeat_info = info;
                     }
                 }
-
                 data.update_repeat_info(conn, qh, keyboard, info);
             }
 
