@@ -36,9 +36,10 @@ calloop = { version = "0.10.5", optional = true }
 [features]
 default = ["calloop", "xkbcommon"]
 calloop = ["dep:calloop", "wayland-client/calloop"]
+xkbcommon = ["dep:xkbcommon", "pkg-config"]
 
 [build-dependencies]
-pkg-config = "0.3"
+pkg-config = { version = "0.3", optional = true }
 
 [dev-dependencies]
 bytemuck = "1.13.0"
