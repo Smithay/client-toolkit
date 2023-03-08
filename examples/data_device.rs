@@ -348,9 +348,16 @@ impl KeyboardHandler for DataDeviceWindow {
                 if let Some(data_device) =
                     self.data_devices.iter().find(|(_, d_kbd, ..)| d_kbd.as_ref() == Some(&kbd))
                 {
-                    let source = self
-                        .data_device_manager_state
-                        .create_copy_paste_source(qh, vec!["text/plain"]);
+                    let source = self.data_device_manager_state.create_copy_paste_source(
+                        qh,
+                        vec![
+                            "text/plain;charset=UTF-8",
+                            "UTF8_STRING",
+                            "STRING",
+                            "text/plain",
+                            "TEXT",
+                        ],
+                    );
                     source.set_selection(&data_device.3, serial);
                     self.copy_paste_sources.push(source);
                 }
@@ -409,7 +416,13 @@ impl PointerHandler for DataDeviceWindow {
                         self.shift = self.shift.xor(Some(0));
                         let source = self.data_device_manager_state.create_drag_and_drop_source(
                             qh,
-                            vec!["text/plain"],
+                            vec![
+                                "text/plain;charset=UTF-8",
+                                "UTF8_STRING",
+                                "STRING",
+                                "text/plain",
+                                "TEXT",
+                            ],
                             DndAction::Copy,
                         );
 
@@ -503,10 +516,12 @@ impl DataDeviceHandler for DataDeviceWindow {
         let mut drag_offer = data_device.drag_offer().unwrap();
         dbg!(drag_offer.x, drag_offer.y);
 
-        for mime in drag_offer.mime_types.clone() {
-            self.accept_counter += 1;
-            println!("mime: {}", mime);
-            drag_offer.accept_mime_type(self.accept_counter, Some(mime));
+        if let Some(m) = drag_offer
+            .mime_types
+            .iter()
+            .find(|m| m.as_str() == "text/plain;charset=UTF-8" || m.as_str() == "UTF8_STRING")
+        {
+            drag_offer.accept_mime_type(0, Some(m.clone()));
         }
     }
 
@@ -524,10 +539,13 @@ impl DataDeviceHandler for DataDeviceWindow {
         if let Some(offer) = data_device.selection_offer() {
             self.selection_offers.push((offer, String::new(), None));
             let cur_offer = self.selection_offers.last_mut().unwrap();
-            let mime_type = match cur_offer.0.mime_types.get(0) {
-                Some(mime) => mime,
-                None => return,
-            };
+            let mime_type =
+                match cur_offer.0.mime_types.iter().find(|m| {
+                    m.as_str() == "text/plain;charset=UTF-8" || m.as_str() == "UTF8_STRING"
+                }) {
+                    Some(mime) => mime,
+                    None => return,
+                };
 
             if let Ok(read_pipe) = cur_offer.0.receive(mime_type.clone()) {
                 let offer_clone = cur_offer.0.clone();
@@ -539,7 +557,11 @@ impl DataDeviceHandler for DataDeviceWindow {
                         .map(|p| state.selection_offers.remove(p))
                         .unwrap();
 
-                    f.read_to_string(&mut contents).unwrap();
+                    if let Err(err) = f.read_to_string(&mut contents) {
+                        eprintln!("{err:?}");
+                    } else {
+                        println!("TEXT FROM Selection: {contents}");
+                    }
                     println!("TEXT FROM Selection: {contents}");
                     state.loop_handle.remove(token.unwrap());
                 }) {
@@ -564,7 +586,13 @@ impl DataDeviceHandler for DataDeviceWindow {
             dbg!(&offer);
             self.dnd_offers.push((offer, String::new(), None));
             let cur_offer = self.dnd_offers.last_mut().unwrap();
-            let mime_type = match cur_offer.0.mime_types.get(0).cloned() {
+            let mime_type = match cur_offer
+                .0
+                .mime_types
+                .iter()
+                .find(|m| m.as_str() == "UTF8_STRING" || m.as_str() == "text/plain;charset=UTF-8")
+                .cloned()
+            {
                 Some(mime) => mime,
                 None => return,
             };
@@ -608,9 +636,10 @@ impl DataOfferHandler for DataDeviceWindow {
         offer: &mut DataDeviceOffer,
         mime_type: String,
     ) {
+        println!("Received offer with mime type: {mime_type}");
         let serial = self.accept_counter;
         self.accept_counter += 1;
-        if &mime_type == "text/plain" {
+        if &mime_type == "UTF8_STRING" || &mime_type == "text/plain;charset=UTF-8" {
             offer.accept_mime_type(serial, Some(mime_type.clone()));
         }
     }
@@ -644,8 +673,9 @@ impl DataSourceHandler for DataDeviceWindow {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _source: &wayland_client::protocol::wl_data_source::WlDataSource,
-        _mime: Option<String>,
+        mime: Option<String>,
     ) {
+        println!("Source mime type: {mime:?} was accepted");
     }
 
     fn send_request(
@@ -658,18 +688,17 @@ impl DataSourceHandler for DataDeviceWindow {
     ) {
         dbg!(&self.drag_sources);
 
-        if let Some(_) = self
-            .copy_paste_sources
-            .iter_mut()
-            .find(|s| s.inner() == source && mime == "text/plain".to_string())
-        {
+        if let Some(_) = self.copy_paste_sources.iter_mut().find(|s| {
+            s.inner() == source
+                && (mime == "UTF8_STRING".to_string() || mime == "text/plain;charset=UTF-8")
+        }) {
             let mut f = File::from(fd);
             writeln!(f, "Copied from selection via sctk").unwrap();
-        } else if let Some(_) = self
-            .drag_sources
-            .iter_mut()
-            .find(|s| s.0.inner() == source && mime == "text/plain".to_string() && s.1)
-        {
+        } else if let Some(_) = self.drag_sources.iter_mut().find(|s| {
+            s.0.inner() == source
+                && (mime == "UTF8_STRING".to_string() || mime == "text/plain;charset=UTF-8")
+                && s.1
+        }) {
             let mut f = File::from(fd);
             writeln!(f, "Dropped via sctk").unwrap();
         }
