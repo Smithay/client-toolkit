@@ -194,6 +194,8 @@ impl WindowHandler for SimpleWindow {
         configure: WindowConfigure,
         _serial: u32,
     ) {
+        println!("Window configured to: {:?}", configure);
+
         match configure.new_size {
             Some(size) => {
                 self.width = size.0;
