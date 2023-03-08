@@ -20,8 +20,7 @@ fn main() {
         _dummy: MyTest {},
     };
 
-    event_queue.blocking_dispatch(&mut list_seats).unwrap();
-    event_queue.blocking_dispatch(&mut list_seats).unwrap();
+    event_queue.roundtrip(&mut list_seats).unwrap();
 
     println!("Available seats:");
 
