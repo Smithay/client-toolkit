@@ -21,6 +21,7 @@ use crate::registry::GlobalProxy;
 use self::window::inner::WindowInner;
 use self::window::{
     DecorationMode, Window, WindowConfigure, WindowData, WindowDecorations, WindowHandler,
+    WindowState,
 };
 
 use super::WaylandSurface;
@@ -137,7 +138,7 @@ impl XdgShell {
                     suggested_bounds: None,
                     // Initial configure will indicate whether there are server side decorations.
                     decoration_mode: DecorationMode::Client,
-                    states: Vec::new(),
+                    state: WindowState::empty(),
                 }),
             }
         });

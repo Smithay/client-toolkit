@@ -263,7 +263,7 @@ impl KeyboardHandler for SimpleLayer {
         keysyms: &[u32],
     ) {
         if self.layer.wl_surface() == surface {
-            println!("Keyboard focus on window with pressed syms: {:?}", keysyms);
+            println!("Keyboard focus on window with pressed syms: {keysyms:?}");
             self.keyboard_focus = true;
         }
     }

@@ -2,16 +2,15 @@
 
 use std::sync::{Arc, Weak};
 
+use bitflags::bitflags;
+
 use wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
     Connection, Proxy, QueueHandle,
 };
 use wayland_protocols::{
     xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::{self, Mode},
-    xdg::shell::client::{
-        xdg_surface,
-        xdg_toplevel::{self, State},
-    },
+    xdg::shell::client::{xdg_surface, xdg_toplevel},
 };
 
 use crate::shell::WaylandSurface;
@@ -86,79 +85,106 @@ pub struct WindowConfigure {
     /// supported.
     pub decoration_mode: DecorationMode,
 
-    /// Window states.
+    /// The current state of the window.
     ///
-    /// Depending on which states are set, the allowed size of the window may change. States may also be
-    /// combined. For example, a window could be activated and maximized at the same time.
-    /// Along side this [`Vec`] of states, there are also helper functions that are part of [`WindowConfigure`]
-    /// to test if some particular state is set.
-    ///
-    /// Below is a table explains the constraints a window needs to obey depending on the set states:
-    ///
-    /// | State(s) | Any size | Notes |
-    /// |-------|----------|-------|
-    /// | No states | yes ||
-    /// | [`Maximized`](State::Maximized) | no | The window geometry must be obeyed. Drop shadows should also been hidden. |
-    /// | [`Fullscreen`](State::Fullscreen) | no[^fullscreen] | The window geometry is the maximum allowed size. |
-    /// | [`Resizing`](State::Resizing) | no[^resizing] | The window geometry is the maximum allowed size. |
-    /// | [`Activated`](State::Activated) | yes | If the client provides window decorations, the decorations should be drawn as if the window is active. |
-    ///
-    /// There are also states that indicate the sides of a window which are tiled. Tiling is a hint which
-    /// indicates what sides of a window should probably not be resized and may be used to hide shadows on tiled
-    /// edges.
-    ///
-    /// Tiling values include:
-    /// - [`Left`](State::TiledLeft)
-    /// - [`Right`](State::TiledRight)
-    /// - [`Top`](State::TiledTop)
-    /// - [`Bottom`](State::TiledBottom)
-    ///
-    /// [^fullscreen]: A smaller size buffer may be used, but letterboxing or cropping could occur.
-    ///
-    /// [^resizing]: If you have cell sizing or a fixed aspect ratio, a smaller size buffer may be used.
-    pub states: Vec<State>,
+    /// For more see [`WindowState`] documentation on the flag values.
+    pub state: WindowState,
     // TODO: wm capabilities added in version 5.
 }
 
 impl WindowConfigure {
-    /// Is [`State::Maximized`] the state is set.
+    /// Is [`State::Maximized`] state is set.
+    #[inline]
     pub fn is_maximized(&self) -> bool {
-        self.states.iter().any(|&state| state == State::Maximized)
+        self.state.contains(WindowState::MAXIMIZED)
     }
 
-    /// Is [`State::Fullscreen`] the state is set.
+    /// Is [`WindowState::FULLSCREEN`] state is set.
+    #[inline]
     pub fn is_fullscreen(&self) -> bool {
-        self.states.iter().any(|&state| state == State::Fullscreen)
+        self.state.contains(WindowState::FULLSCREEN)
     }
 
-    /// Is [`State::Resizing`] the state is set.
+    /// Is [`WindowState::Resizing`] state is set.
+    #[inline]
     pub fn is_resizing(&self) -> bool {
-        self.states.iter().any(|&state| state == State::Resizing)
+        self.state.contains(WindowState::RESIZING)
     }
 
-    /// Is [`State::Activated`] the state is set.
+    /// Is [`WindowState::TILED`] state is set.
+    #[inline]
+    pub fn is_tiled(&self) -> bool {
+        self.state.contains(WindowState::TILED)
+    }
+
+    /// Is [`WindowState::ACTIVATED`] state is set.
+    #[inline]
     pub fn is_activated(&self) -> bool {
-        self.states.iter().any(|&state| state == State::Activated)
+        self.state.contains(WindowState::ACTIVATED)
     }
 
-    /// Is [`State::TiledLeft`] the state is set.
+    /// Is [`WindowState::TILED_LEFT`] state is set.
+    #[inline]
     pub fn is_tiled_left(&self) -> bool {
-        self.states.iter().any(|&state| state == State::TiledLeft)
+        self.state.contains(WindowState::TILED_LEFT)
     }
 
-    /// Is [`State::TiledRight`] the state is set.
+    /// Is [`WindowState::TILED_RIGHT`] state is set.
+    #[inline]
     pub fn is_tiled_right(&self) -> bool {
-        self.states.iter().any(|&state| state == State::TiledRight)
+        self.state.contains(WindowState::TILED_RIGHT)
     }
 
-    /// Is [`State::TiledTop`] the state is set.
+    /// Is [`WindowState::TILED_TOP`] state is set.
+    #[inline]
     pub fn is_tiled_top(&self) -> bool {
-        self.states.iter().any(|&state| state == State::TiledTop)
+        self.state.contains(WindowState::TILED_TOP)
     }
 
-    /// Is [`State::TiledBottom`] the state is set.
+    /// Is [`WindowState::TILED_BOTTOM`] state is set.
+    #[inline]
     pub fn is_tiled_bottom(&self) -> bool {
-        self.states.iter().any(|&state| state == State::TiledBottom)
+        self.state.contains(WindowState::TILED_BOTTOM)
+    }
+}
+
+bitflags! {
+    /// The configured state of the window.
+    pub struct WindowState: u16 {
+        /// The surface is maximized. The window geometry specified in the
+        /// configure event must be obeyed by the client. The client should
+        /// draw without shadow or other decoration outside of the window
+        /// geometry.
+        const MAXIMIZED    = 0b0000_0000_0000_0001;
+        /// The surface is fullscreen. The window geometry specified in the
+        /// configure event is a maximum; the client cannot resize beyond it.
+        /// For a surface to cover the whole fullscreened area, the geometry
+        /// dimensions must be obeyed by the client. For more details, see
+        /// xdg_toplevel.set_fullscreen.
+        const FULLSCREEN   = 0b0000_0000_0000_0010;
+        /// The surface is being resized. The window geometry specified in the
+        /// configure event is a maximum; the client cannot resize beyond it.
+        /// Clients that have aspect ratio or cell sizing configuration can use
+        /// a smaller size, however.
+        const RESIZING     = 0b0000_0000_0000_0100;
+        /// Client window decorations should be painted as if the window is
+        /// active. Do not assume this means that the window actually has
+        /// keyboard or pointer focus.
+        const ACTIVATED    = 0b0000_0000_0000_1000;
+        /// The window is currently in a tiled layout and the left edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        const TILED_LEFT   = 0b0000_0000_0001_0000;
+        /// The window is currently in a tiled layout and the right edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        const TILED_RIGHT  = 0b0000_0000_0010_0000;
+        /// The window is currently in a tiled layout and the top edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        const TILED_TOP    = 0b0000_0000_0100_0000;
+        /// The window is currently in a tiled layout and the bottom edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        const TILED_BOTTOM = 0b0000_0000_1000_0000;
+        /// The window has any of the mentioned tiled bits set.
+        const TILED = Self::TILED_TOP.bits | Self::TILED_LEFT.bits | Self::TILED_RIGHT.bits | Self::TILED_BOTTOM.bits;
     }
 }
 
