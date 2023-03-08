@@ -333,9 +333,58 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
 </pre><pre class="rust"><code><span class="doccomment">//! XDG shell windows.
 
 </span><span class="kw">use </span>std::sync::{Arc, Weak};
+
+<span class="kw">use </span>bitflags::bitflags;
 
 <span class="kw">use </span>wayland_client::{
     protocol::{wl_output, wl_seat, wl_surface},
@@ -343,10 +392,7 @@
 };
 <span class="kw">use </span>wayland_protocols::{
     xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::{<span class="self">self</span>, Mode},
-    xdg::shell::client::{
-        xdg_surface,
-        xdg_toplevel::{<span class="self">self</span>, State},
-    },
+    xdg::shell::client::{xdg_surface, xdg_toplevel},
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::shell::WaylandSurface;
@@ -421,79 +467,110 @@
     /// supported.
     </span><span class="kw">pub </span>decoration_mode: DecorationMode,
 
-    <span class="doccomment">/// Window states.
+    <span class="doccomment">/// The current state of the window.
     ///
-    /// Depending on which states are set, the allowed size of the window may change. States may also be
-    /// combined. For example, a window could be activated and maximized at the same time.
-    /// Along side this [`Vec`] of states, there are also helper functions that are part of [`WindowConfigure`]
-    /// to test if some particular state is set.
+    /// For more see [`WindowState`] documentation on the flag values.
+    </span><span class="kw">pub </span>state: WindowState,
+
+    <span class="doccomment">/// The capabilities supported by the compositor.
     ///
-    /// Below is a table explains the constraints a window needs to obey depending on the set states:
-    ///
-    /// | State(s) | Any size | Notes |
-    /// |-------|----------|-------|
-    /// | No states | yes ||
-    /// | [`Maximized`](State::Maximized) | no | The window geometry must be obeyed. Drop shadows should also been hidden. |
-    /// | [`Fullscreen`](State::Fullscreen) | no[^fullscreen] | The window geometry is the maximum allowed size. |
-    /// | [`Resizing`](State::Resizing) | no[^resizing] | The window geometry is the maximum allowed size. |
-    /// | [`Activated`](State::Activated) | yes | If the client provides window decorations, the decorations should be drawn as if the window is active. |
-    ///
-    /// There are also states that indicate the sides of a window which are tiled. Tiling is a hint which
-    /// indicates what sides of a window should probably not be resized and may be used to hide shadows on tiled
-    /// edges.
-    ///
-    /// Tiling values include:
-    /// - [`Left`](State::TiledLeft)
-    /// - [`Right`](State::TiledRight)
-    /// - [`Top`](State::TiledTop)
-    /// - [`Bottom`](State::TiledBottom)
-    ///
-    /// [^fullscreen]: A smaller size buffer may be used, but letterboxing or cropping could occur.
-    ///
-    /// [^resizing]: If you have cell sizing or a fixed aspect ratio, a smaller size buffer may be used.
-    </span><span class="kw">pub </span>states: Vec&lt;State&gt;,
-    <span class="comment">// TODO: wm capabilities added in version 5.
-</span>}
+    /// For more see [`WindowManagerCapabilites`] documentation on the flag values.
+    </span><span class="kw">pub </span>capabilities: WindowManagerCapabilities,
+}
 
 <span class="kw">impl </span>WindowConfigure {
-    <span class="doccomment">/// Is [`State::Maximized`] the state is set.
+    <span class="doccomment">/// Is [`State::Maximized`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_maximized(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Maximized)
+        <span class="self">self</span>.state.contains(WindowState::MAXIMIZED)
     }
 
-    <span class="doccomment">/// Is [`State::Fullscreen`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::FULLSCREEN`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_fullscreen(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Fullscreen)
+        <span class="self">self</span>.state.contains(WindowState::FULLSCREEN)
     }
 
-    <span class="doccomment">/// Is [`State::Resizing`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::Resizing`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_resizing(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Resizing)
+        <span class="self">self</span>.state.contains(WindowState::RESIZING)
     }
 
-    <span class="doccomment">/// Is [`State::Activated`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::TILED`] state is set.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>is_tiled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.state.contains(WindowState::TILED)
+    }
+
+    <span class="doccomment">/// Is [`WindowState::ACTIVATED`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_activated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::Activated)
+        <span class="self">self</span>.state.contains(WindowState::ACTIVATED)
     }
 
-    <span class="doccomment">/// Is [`State::TiledLeft`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::TILED_LEFT`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_tiled_left(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledLeft)
+        <span class="self">self</span>.state.contains(WindowState::TILED_LEFT)
     }
 
-    <span class="doccomment">/// Is [`State::TiledRight`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::TILED_RIGHT`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_tiled_right(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledRight)
+        <span class="self">self</span>.state.contains(WindowState::TILED_RIGHT)
     }
 
-    <span class="doccomment">/// Is [`State::TiledTop`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::TILED_TOP`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_tiled_top(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledTop)
+        <span class="self">self</span>.state.contains(WindowState::TILED_TOP)
     }
 
-    <span class="doccomment">/// Is [`State::TiledBottom`] the state is set.
+    <span class="doccomment">/// Is [`WindowState::TILED_BOTTOM`] state is set.
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_tiled_bottom(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.states.iter().any(|<span class="kw-2">&amp;</span>state| state == State::TiledBottom)
+        <span class="self">self</span>.state.contains(WindowState::TILED_BOTTOM)
+    }
+}
+
+<span class="macro">bitflags! </span>{
+    <span class="doccomment">/// The configured state of the window.
+    </span><span class="kw">pub struct </span>WindowState: u16 {
+        <span class="doccomment">/// The surface is maximized. The window geometry specified in the
+        /// configure event must be obeyed by the client. The client should
+        /// draw without shadow or other decoration outside of the window
+        /// geometry.
+        </span><span class="kw">const </span>MAXIMIZED    = <span class="number">0b0000_0000_0000_0001</span>;
+        <span class="doccomment">/// The surface is fullscreen. The window geometry specified in the
+        /// configure event is a maximum; the client cannot resize beyond it.
+        /// For a surface to cover the whole fullscreened area, the geometry
+        /// dimensions must be obeyed by the client. For more details, see
+        /// xdg_toplevel.set_fullscreen.
+        </span><span class="kw">const </span>FULLSCREEN   = <span class="number">0b0000_0000_0000_0010</span>;
+        <span class="doccomment">/// The surface is being resized. The window geometry specified in the
+        /// configure event is a maximum; the client cannot resize beyond it.
+        /// Clients that have aspect ratio or cell sizing configuration can use
+        /// a smaller size, however.
+        </span><span class="kw">const </span>RESIZING     = <span class="number">0b0000_0000_0000_0100</span>;
+        <span class="doccomment">/// Client window decorations should be painted as if the window is
+        /// active. Do not assume this means that the window actually has
+        /// keyboard or pointer focus.
+        </span><span class="kw">const </span>ACTIVATED    = <span class="number">0b0000_0000_0000_1000</span>;
+        <span class="doccomment">/// The window is currently in a tiled layout and the left edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        </span><span class="kw">const </span>TILED_LEFT   = <span class="number">0b0000_0000_0001_0000</span>;
+        <span class="doccomment">/// The window is currently in a tiled layout and the right edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        </span><span class="kw">const </span>TILED_RIGHT  = <span class="number">0b0000_0000_0010_0000</span>;
+        <span class="doccomment">/// The window is currently in a tiled layout and the top edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        </span><span class="kw">const </span>TILED_TOP    = <span class="number">0b0000_0000_0100_0000</span>;
+        <span class="doccomment">/// The window is currently in a tiled layout and the bottom edge is
+        /// considered to be adjacent to another part of the tiling grid.
+        </span><span class="kw">const </span>TILED_BOTTOM = <span class="number">0b0000_0000_1000_0000</span>;
+        <span class="doccomment">/// The window has any of the mentioned tiled bits set.
+        </span><span class="kw">const </span>TILED = <span class="self">Self</span>::TILED_TOP.bits | <span class="self">Self</span>::TILED_LEFT.bits | <span class="self">Self</span>::TILED_RIGHT.bits | <span class="self">Self</span>::TILED_BOTTOM.bits;
     }
 }
 
@@ -523,6 +600,23 @@
 
     <span class="doccomment">/// The window should use server side decorations or draw any client side decorations.
     </span><span class="prelude-val">None</span>,
+}
+
+<span class="macro">bitflags! </span>{
+    <span class="doccomment">/// The capabilities of the window manager.
+    ///
+    /// This is a hint to hide UI elements which provide functionality
+    /// not supported by compositor.
+    </span><span class="kw">pub struct </span>WindowManagerCapabilities : u16 {
+        <span class="doccomment">/// `show_window_menu` is available.
+        </span><span class="kw">const </span>WINDOW_MENU = <span class="number">0b0000_0000_0000_0001</span>;
+        <span class="doccomment">/// Window can be maximized and unmaximized.
+        </span><span class="kw">const </span>MAXIMIZE = <span class="number">0b0000_0000_0000_0010</span>;
+        <span class="doccomment">/// Window can be fullscreened and unfullscreened.
+        </span><span class="kw">const </span>FULLSCREEN = <span class="number">0b0000_0000_0000_0100</span>;
+        <span class="doccomment">/// Window could be minimized.
+        </span><span class="kw">const </span>MINIMIZE = <span class="number">0b0000_0000_0000_1000</span>;
+    }
 }
 
 <span class="attr">#[derive(Debug, Clone)]
