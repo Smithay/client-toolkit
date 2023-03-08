@@ -11,7 +11,7 @@ use wayland_protocols::{
     },
     xdg::shell::client::{
         xdg_surface,
-        xdg_toplevel::{self, State},
+        xdg_toplevel::{self, State, WmCapabilities},
     },
 };
 
@@ -21,7 +21,10 @@ use crate::{
     shell::xdg::{XdgShell, XdgShellSurface},
 };
 
-use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, WindowState};
+use super::{
+    DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, WindowManagerCapabilities,
+    WindowState,
+};
 
 impl Drop for WindowInner {
     fn drop(&mut self) {
@@ -141,7 +144,32 @@ where
                         pending_configure.suggested_bounds = Some((width as u32, height as u32));
                     }
                 }
-
+                xdg_toplevel::Event::WmCapabilities { capabilities } => {
+                    let pending_configure = &mut window.0.pending_configure.lock().unwrap();
+                    pending_configure.capabilities = capabilities
+                        .chunks_exact(4)
+                        .flat_map(TryInto::<[u8; 4]>::try_into)
+                        .map(u32::from_ne_bytes)
+                        .flat_map(WmCapabilities::try_from)
+                        .fold(WindowManagerCapabilities::empty(), |mut acc, capability| {
+                            match capability {
+                                WmCapabilities::WindowMenu => {
+                                    acc.set(WindowManagerCapabilities::WINDOW_MENU, true)
+                                }
+                                WmCapabilities::Maximize => {
+                                    acc.set(WindowManagerCapabilities::MAXIMIZE, true)
+                                }
+                                WmCapabilities::Fullscreen => {
+                                    acc.set(WindowManagerCapabilities::FULLSCREEN, true)
+                                }
+                                WmCapabilities::Minimize => {
+                                    acc.set(WindowManagerCapabilities::MINIMIZE, true)
+                                }
+                                _ => (),
+                            }
+                            acc
+                        });
+                }
                 _ => unreachable!(),
             }
         }

@@ -21,7 +21,7 @@ use crate::registry::GlobalProxy;
 use self::window::inner::WindowInner;
 use self::window::{
     DecorationMode, Window, WindowConfigure, WindowData, WindowDecorations, WindowHandler,
-    WindowState,
+    WindowManagerCapabilities, WindowState,
 };
 
 use super::WaylandSurface;
@@ -51,7 +51,7 @@ impl XdgShell {
             + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State>
             + 'static,
     {
-        let xdg_wm_base = globals.bind(qh, 1..=4, GlobalData)?;
+        let xdg_wm_base = globals.bind(qh, 1..=5, GlobalData)?;
         let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Ok(Self { xdg_wm_base, xdg_decoration_manager })
     }
@@ -139,6 +139,8 @@ impl XdgShell {
                     // Initial configure will indicate whether there are server side decorations.
                     decoration_mode: DecorationMode::Client,
                     state: WindowState::empty(),
+                    // XXX by default we assume that everything is supported.
+                    capabilities: WindowManagerCapabilities::all(),
                 }),
             }
         });

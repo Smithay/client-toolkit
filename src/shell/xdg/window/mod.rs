@@ -89,7 +89,11 @@ pub struct WindowConfigure {
     ///
     /// For more see [`WindowState`] documentation on the flag values.
     pub state: WindowState,
-    // TODO: wm capabilities added in version 5.
+
+    /// The capabilities supported by the compositor.
+    ///
+    /// For more see [`WindowManagerCapabilites`] documentation on the flag values.
+    pub capabilities: WindowManagerCapabilities,
 }
 
 impl WindowConfigure {
@@ -214,6 +218,23 @@ pub enum WindowDecorations {
 
     /// The window should use server side decorations or draw any client side decorations.
     None,
+}
+
+bitflags! {
+    /// The capabilities of the window manager.
+    ///
+    /// This is a hint to hide UI elements which provide functionality
+    /// not supported by compositor.
+    pub struct WindowManagerCapabilities : u16 {
+        /// `show_window_menu` is available.
+        const WINDOW_MENU = 0b0000_0000_0000_0001;
+        /// Window can be maximized and unmaximized.
+        const MAXIMIZE = 0b0000_0000_0000_0010;
+        /// Window can be fullscreened and unfullscreened.
+        const FULLSCREEN = 0b0000_0000_0000_0100;
+        /// Window could be minimized.
+        const MINIMIZE = 0b0000_0000_0000_1000;
+    }
 }
 
 #[derive(Debug, Clone)]
