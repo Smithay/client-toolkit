@@ -21,7 +21,7 @@ use crate::{
     shell::xdg::{XdgShell, XdgShellSurface},
 };
 
-use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler};
+use super::{DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, WindowState};
 
 impl Drop for WindowInner {
     fn drop(&mut self) {
@@ -98,12 +98,25 @@ where
                 xdg_toplevel::Event::Configure { width, height, states } => {
                     // The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
                     // bytes.
-                    let states = states
+                    let new_state = states
                         .chunks_exact(4)
                         .flat_map(TryInto::<[u8; 4]>::try_into)
                         .map(u32::from_ne_bytes)
                         .flat_map(State::try_from)
-                        .collect::<Vec<_>>();
+                        .fold(WindowState::empty(), |mut acc, state| {
+                            match state {
+                                State::Maximized => acc.set(WindowState::MAXIMIZED, true),
+                                State::Fullscreen => acc.set(WindowState::FULLSCREEN, true),
+                                State::Resizing => acc.set(WindowState::RESIZING, true),
+                                State::Activated => acc.set(WindowState::ACTIVATED, true),
+                                State::TiledLeft => acc.set(WindowState::TILED_LEFT, true),
+                                State::TiledRight => acc.set(WindowState::TILED_RIGHT, true),
+                                State::TiledTop => acc.set(WindowState::TILED_TOP, true),
+                                State::TiledBottom => acc.set(WindowState::TILED_BOTTOM, true),
+                                _ => (),
+                            }
+                            acc
+                        });
 
                     let new_size = if width == 0 && height == 0 {
                         None
@@ -113,7 +126,7 @@ where
 
                     let pending_configure = &mut window.0.pending_configure.lock().unwrap();
                     pending_configure.new_size = new_size;
-                    pending_configure.states = states;
+                    pending_configure.state = new_state;
                 }
 
                 xdg_toplevel::Event::Close => {
