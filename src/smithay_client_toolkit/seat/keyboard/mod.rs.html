@@ -762,6 +762,63 @@
 <a href="#762" id="762">762</a>
 <a href="#763" id="763">763</a>
 <a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
 </pre><pre class="rust"><code><span class="attr">#[rustfmt::skip]
 </span><span class="kw">pub mod </span>keysyms;
 
@@ -769,14 +826,18 @@
     convert::TryInto,
     env,
     fmt::Debug,
+    marker::PhantomData,
     num::NonZeroU32,
     os::unix::io::AsRawFd,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Mutex,
+        Arc, Mutex,
     },
+    time::Duration,
 };
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+</span><span class="kw">use </span>calloop::timer::{TimeoutAction, Timer};
 <span class="kw">use </span>wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
@@ -784,12 +845,13 @@
 
 <span class="kw">use </span>xkbcommon::xkb;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+</span><span class="kw">use </span>repeat::{RepeatData, RepeatedKey};
+
 <span class="kw">use super</span>::{Capability, SeatError, SeatHandler, SeatState};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
 </span><span class="kw">pub mod </span>repeat;
-<span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
-</span><span class="kw">use </span>repeat::RepeatMessage;
 
 <span class="doccomment">/// Error when creating a keyboard.
 </span><span class="attr">#[must_use]
@@ -815,14 +877,14 @@
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    </span><span class="kw">pub fn </span>get_keyboard&lt;D&gt;(
+    </span><span class="kw">pub fn </span>get_keyboard&lt;D, T: <span class="lifetime">&#39;static</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
         rmlvo: <span class="prelude-ty">Option</span>&lt;RMLVO&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_keyboard::WlKeyboard, KeyboardError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, KeyboardData&gt;
+        </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, KeyboardData&lt;T&gt;&gt;
             + SeatHandler
             + KeyboardHandler
             + <span class="lifetime">&#39;static</span>,
@@ -1072,7 +1134,7 @@
     </span><span class="kw">pub </span>options: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">pub struct </span>KeyboardData {
+<span class="kw">pub struct </span>KeyboardData&lt;T&gt; {
     seat: wl_seat::WlSeat,
     first_event: AtomicBool,
     xkb_context: Mutex&lt;xkb::Context&gt;,
@@ -1081,11 +1143,11 @@
     xkb_state: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::State&gt;&gt;,
     xkb_compose: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::compose::State&gt;&gt;,
     <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
-    </span>repeat_sender: <span class="prelude-ty">Option</span>&lt;calloop::channel::Sender&lt;RepeatMessage&gt;&gt;,
-    current_repeat: Mutex&lt;<span class="prelude-ty">Option</span>&lt;KeyEvent&gt;&gt;,
+    </span>repeat_data: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;RepeatData&lt;T&gt;&gt;&gt;&gt;,
+    _phantom_data: PhantomData&lt;T&gt;,
 }
 
-<span class="kw">impl </span>Debug <span class="kw">for </span>KeyboardData {
+<span class="kw">impl</span>&lt;T&gt; Debug <span class="kw">for </span>KeyboardData&lt;T&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         f.debug_struct(<span class="string">&quot;KeyboardData&quot;</span>).finish_non_exhaustive()
     }
@@ -1096,8 +1158,8 @@
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
-                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_keyboard::WlKeyboard</span>: <span class="macro-nonterminal">$crate::seat::keyboard::KeyboardData
-            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_keyboard::WlKeyboard</span>: <span class="macro-nonterminal">$crate::seat::keyboard::KeyboardData</span>&lt;<span class="macro-nonterminal">$ty</span>&gt;
+            ] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
         </span>);
     };
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, keyboard: [$(<span class="macro-nonterminal">$udata</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
@@ -1112,11 +1174,11 @@
 }
 
 <span class="comment">// SAFETY: The state does not share state with any other rust types.
-</span><span class="kw">unsafe impl </span>Send <span class="kw">for </span>KeyboardData {}
+</span><span class="kw">unsafe impl</span>&lt;T&gt; Send <span class="kw">for </span>KeyboardData&lt;T&gt; {}
 <span class="comment">// SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
-</span><span class="kw">unsafe impl </span>Sync <span class="kw">for </span>KeyboardData {}
+</span><span class="kw">unsafe impl</span>&lt;T&gt; Sync <span class="kw">for </span>KeyboardData&lt;T&gt; {}
 
-<span class="kw">impl </span>KeyboardData {
+<span class="kw">impl</span>&lt;T&gt; KeyboardData&lt;T&gt; {
     <span class="kw">pub fn </span>new(seat: wl_seat::WlSeat) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         <span class="kw">let </span>udata = KeyboardData {
@@ -1126,8 +1188,9 @@
             xkb_state: Mutex::new(<span class="prelude-val">None</span>),
             user_specified_rmlvo: <span class="bool-val">false</span>,
             xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
-            repeat_sender: <span class="prelude-val">None</span>,
-            current_repeat: Mutex::new(<span class="prelude-val">None</span>),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+            </span>repeat_data: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
+            _phantom_data: PhantomData,
         };
 
         udata.init_compose();
@@ -1164,8 +1227,9 @@
             xkb_state: Mutex::new(xkb_state),
             user_specified_rmlvo: <span class="bool-val">true</span>,
             xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
-            repeat_sender: <span class="prelude-val">None</span>,
-            current_repeat: Mutex::new(<span class="prelude-val">None</span>),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+            </span>repeat_data: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
+            _phantom_data: PhantomData,
         };
 
         udata.init_compose();
@@ -1214,16 +1278,19 @@
 }
 
 <span class="kw">pub trait </span>KeyboardDataExt: Send + Sync {
-    <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData;
-    <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData;
+    <span class="kw">type </span>State: <span class="lifetime">&#39;static</span>;
+    <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData&lt;<span class="self">Self</span>::State&gt;;
+    <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData&lt;<span class="self">Self</span>::State&gt;;
 }
 
-<span class="kw">impl </span>KeyboardDataExt <span class="kw">for </span>KeyboardData {
-    <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData {
+<span class="kw">impl</span>&lt;T: <span class="lifetime">&#39;static</span>&gt; KeyboardDataExt <span class="kw">for </span>KeyboardData&lt;T&gt; {
+    <span class="doccomment">/// The type of the user defined state
+    </span><span class="kw">type </span>State = T;
+    <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData&lt;T&gt; {
         <span class="self">self
     </span>}
 
-    <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData {
+    <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData&lt;T&gt; {
         <span class="self">self
     </span>}
 }
@@ -1350,8 +1417,8 @@
                 // sent before entering a new surface.
                 </span><span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
                 </span>{
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
-                        <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::StopRepeat);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                        repeat_data.current_repeat.take();
                     }
                 }
 
@@ -1395,14 +1462,16 @@
                             wl_keyboard::KeyState::Released =&gt; {
                                 <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
                                 </span>{
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
-                                        <span class="kw">let </span><span class="kw-2">mut </span>current_repeat =
-                                            udata.current_repeat.lock().unwrap();
+                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) =
+                                        udata.repeat_data.lock().unwrap().as_mut()
+                                    {
                                         <span class="kw">if </span><span class="prelude-val">Some</span>(event.raw_code)
-                                            == current_repeat.as_ref().map(|r| r.raw_code)
+                                            == repeat_data
+                                                .current_repeat
+                                                .as_ref()
+                                                .map(|r| r.key.raw_code)
                                         {
-                                            current_repeat.take();
-                                            <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::StopRepeat);
+                                            repeat_data.current_repeat = <span class="prelude-val">None</span>;
                                         }
                                     }
                                 }
@@ -1412,7 +1481,10 @@
                             wl_keyboard::KeyState::Pressed =&gt; {
                                 <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
                                 </span>{
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
+                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) =
+                                        udata.repeat_data.lock().unwrap().as_mut()
+                                    {
+                                        <span class="kw">let </span>loop_handle = <span class="kw-2">&amp;mut </span>repeat_data.loop_handle;
                                         <span class="kw">let </span>state_guard = udata.xkb_state.lock().unwrap();
                                         <span class="kw">let </span>key_repeats = state_guard
                                             .as_ref()
@@ -1421,13 +1493,59 @@
                                             })
                                             .unwrap_or_default();
                                         <span class="kw">if </span>key_repeats {
-                                            udata
-                                                .current_repeat
-                                                .lock()
-                                                .unwrap()
-                                                .replace(event.clone());
-                                            <span class="kw">let _ </span>= repeat_sender
-                                                .send(RepeatMessage::StartRepeat(event.clone()));
+                                            <span class="comment">// Cancel the previous timer / repeat.
+                                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(token) = repeat_data.repeat_token.take() {
+                                                loop_handle.remove(token);
+                                            }
+
+                                            <span class="comment">// Update the current repeat key.
+                                            </span>repeat_data.current_repeat.replace(RepeatedKey {
+                                                key: event.clone(),
+                                                is_first: <span class="bool-val">true</span>,
+                                            });
+
+                                            <span class="kw">let </span>(delay, rate) = <span class="kw">match </span>repeat_data.repeat_info {
+                                                RepeatInfo::Disable =&gt; <span class="kw">return</span>,
+                                                RepeatInfo::Repeat { delay, rate } =&gt; (delay, rate),
+                                            };
+                                            <span class="kw">let </span>gap = Duration::from_micros(
+                                                <span class="number">1_000_000 </span>/ rate.get() <span class="kw">as </span>u64,
+                                            );
+                                            <span class="kw">let </span>timer = Timer::from_duration(
+                                                Duration::from_millis(delay <span class="kw">as </span>u64),
+                                            );
+                                            <span class="kw">let </span>repeat_data2 = udata.repeat_data.clone();
+
+                                            <span class="comment">// Start the timer.
+                                            </span><span class="kw">let </span>kbd = keyboard.clone();
+                                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(token) = loop_handle.insert_source(
+                                                timer,
+                                                <span class="kw">move </span>|<span class="kw">_</span>, <span class="kw">_</span>, state| {
+                                                    <span class="kw">let </span><span class="kw-2">mut </span>repeat_data =
+                                                        repeat_data2.lock().unwrap();
+                                                    <span class="kw">let </span>repeat_data = <span class="kw">match </span>repeat_data.as_mut() {
+                                                        <span class="prelude-val">Some</span>(repeat_data) =&gt; repeat_data,
+                                                        <span class="prelude-val">None </span>=&gt; <span class="kw">return </span>TimeoutAction::Drop,
+                                                    };
+
+                                                    <span class="kw">let </span>callback = <span class="kw-2">&amp;mut </span>repeat_data.callback;
+                                                    <span class="kw">let </span>key = <span class="kw-2">&amp;mut </span>repeat_data.current_repeat;
+                                                    <span class="kw">if </span>key.is_none() {
+                                                        <span class="kw">return </span>TimeoutAction::Drop;
+                                                    }
+                                                    <span class="kw">let </span>key = key.as_mut().unwrap();
+                                                    key.key.time += <span class="kw">if </span>key.is_first {
+                                                        key.is_first = <span class="bool-val">false</span>;
+                                                        delay
+                                                    } <span class="kw">else </span>{
+                                                        gap.as_millis() <span class="kw">as </span>u32
+                                                    };
+                                                    callback(state, <span class="kw-2">&amp;</span>kbd, key.key.clone());
+                                                    TimeoutAction::ToDuration(gap)
+                                                },
+                                            ) {
+                                                repeat_data.repeat_token = <span class="prelude-val">Some</span>(token);
+                                            }
                                         }
                                     }
                                 }
@@ -1462,35 +1580,32 @@
                 </span><span class="kw">let _ </span>= state.update_mask(mods_depressed, mods_latched, mods_locked, <span class="number">0</span>, <span class="number">0</span>, group);
 
                 <span class="comment">// Update the currently repeating key if any.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = udata.repeat_sender.as_ref() {
-                    <span class="kw">let </span><span class="kw-2">mut </span>current_event = udata.current_repeat.lock().unwrap();
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>event) = current_event.take() {
+                </span><span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>event) = repeat_data.current_repeat.take() {
                         <span class="comment">// Apply new modifiers to get new utf8.
-                        </span>event.utf8 = {
+                        </span>event.key.utf8 = {
                             <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
 
                             <span class="kw">match </span>compose.as_mut() {
-                                <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.keysym) {
+                                <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.key.keysym) {
                                     xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
                                     xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
                                         xkb::Status::Composed =&gt; compose.utf8(),
                                         xkb::Status::Nothing =&gt; {
-                                            <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>))
+                                            <span class="prelude-val">Some</span>(state.key_get_utf8(event.key.raw_code + <span class="number">8</span>))
                                         }
                                         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                                     },
                                 },
 
-                                <span class="comment">// No compose
-                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(state.key_get_utf8(event.raw_code + <span class="number">8</span>)),
+                                <span class="comment">// No compose.
+                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(state.key_get_utf8(event.key.raw_code + <span class="number">8</span>)),
                             }
                         };
 
                         <span class="comment">// Update the stored event.
-                        </span>current_event.replace(event.clone());
-
-                        <span class="comment">// Don&#39;t reset the repeat when just changing the modifiers state.
-                        </span><span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::KeyChanged(event));
+                        </span>repeat_data.current_repeat = <span class="prelude-val">Some</span>(event);
                     }
                 }
 
@@ -1514,11 +1629,10 @@
 
                 <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
                 </span>{
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_sender) = <span class="kw-2">&amp;</span>udata.repeat_sender {
-                        <span class="kw">let _ </span>= repeat_sender.send(RepeatMessage::RepeatInfo(info));
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                        repeat_data.repeat_info = info;
                     }
                 }
-
                 data.update_repeat_info(conn, qh, keyboard, info);
             }
 
