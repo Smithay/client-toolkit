@@ -22,5 +22,5 @@ The documentation for the releases can be found on [docs.rs](https://docs.rs/smi
 
 ## Requirements
 
-Requires at least rust 1.61 to be used and version 1.12 of the wayland system
+Requires at least rust 1.64 to be used and version 1.12 of the wayland system
 libraries.

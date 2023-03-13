@@ -1,4 +1,7 @@
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, WaylandHandle};
+use raw_window_handle::{
+    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
+    WaylandDisplayHandle, WaylandWindowHandle,
+};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_output, delegate_registry, delegate_seat, delegate_xdg_shell,
@@ -42,28 +45,43 @@ fn main() {
         .expect("window creation");
 
     // Initialize wgpu
-    let instance = wgpu::Instance::new(wgpu::Backends::all());
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
 
     // Create the raw window handle for the surface.
     let handle = {
-        let mut handle = WaylandHandle::empty();
+        let mut handle = WaylandDisplayHandle::empty();
         handle.display = conn.backend().display_ptr() as *mut _;
+        let display_handle = RawDisplayHandle::Wayland(handle);
+
+        let mut handle = WaylandWindowHandle::empty();
         handle.surface = window.wl_surface().id().as_ptr() as *mut _;
         let window_handle = RawWindowHandle::Wayland(handle);
 
         /// https://github.com/rust-windowing/raw-window-handle/issues/49
-        struct YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(RawWindowHandle);
+        struct YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(
+            RawDisplayHandle,
+            RawWindowHandle,
+        );
 
-        unsafe impl HasRawWindowHandle for YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound {
-            fn raw_window_handle(&self) -> RawWindowHandle {
+        unsafe impl HasRawDisplayHandle for YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound {
+            fn raw_display_handle(&self) -> RawDisplayHandle {
                 self.0
             }
         }
 
-        YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(window_handle)
+        unsafe impl HasRawWindowHandle for YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound {
+            fn raw_window_handle(&self) -> RawWindowHandle {
+                self.1
+            }
+        }
+
+        YesRawWindowHandleImplementingHasRawWindowHandleIsUnsound(display_handle, window_handle)
     };
 
-    let surface = unsafe { instance.create_surface(&handle) };
+    let surface = unsafe { instance.create_surface(&handle).unwrap() };
 
     // Pick a supported adapter
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -201,9 +219,12 @@ impl WindowHandler for Wgpu {
         let device = &self.device;
         let queue = &self.queue;
 
+        let cap = surface.get_capabilities(&adapter);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(adapter)[0],
+            format: cap.formats[0],
+            view_formats: vec![cap.formats[0]],
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
             width: self.width,
             height: self.height,
             // Wayland is inherently a mailbox system.
