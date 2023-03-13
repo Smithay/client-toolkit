@@ -5,6 +5,7 @@ use std::{
     convert::TryInto,
     env,
     fmt::Debug,
+    marker::PhantomData,
     num::NonZeroU32,
     os::unix::io::AsRawFd,
     sync::{
@@ -14,6 +15,7 @@ use std::{
     time::Duration,
 };
 
+#[cfg(feature = "calloop")]
 use calloop::timer::{TimeoutAction, Timer};
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
@@ -321,6 +323,7 @@ pub struct KeyboardData<T> {
     xkb_compose: Mutex<Option<xkb::compose::State>>,
     #[cfg(feature = "calloop")]
     repeat_data: Arc<Mutex<Option<RepeatData<T>>>>,
+    _phantom_data: PhantomData<T>,
 }
 
 impl<T> Debug for KeyboardData<T> {
@@ -366,6 +369,7 @@ impl<T> KeyboardData<T> {
             xkb_compose: Mutex::new(None),
             #[cfg(feature = "calloop")]
             repeat_data: Arc::new(Mutex::new(None)),
+            _phantom_data: PhantomData,
         };
 
         udata.init_compose();
@@ -404,6 +408,7 @@ impl<T> KeyboardData<T> {
             xkb_compose: Mutex::new(None),
             #[cfg(feature = "calloop")]
             repeat_data: Arc::new(Mutex::new(None)),
+            _phantom_data: PhantomData,
         };
 
         udata.init_compose();
