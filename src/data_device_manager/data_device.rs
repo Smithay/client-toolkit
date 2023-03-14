@@ -29,6 +29,11 @@ impl DataDevice {
     pub fn data(&self) -> Option<&DataDeviceData> {
         self.device.data()
     }
+
+    /// Unset the selection of the provided data device as a response to the event with with provided serial.
+    pub fn unset_selection(&self, serial: u32) {
+        self.device.set_selection(None, serial);
+    }
 }
 
 #[derive(Debug, Default)]

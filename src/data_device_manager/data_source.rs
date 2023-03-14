@@ -120,11 +120,6 @@ impl CopyPasteSource {
         device.device.set_selection(Some(&self.inner), serial);
     }
 
-    /// Unset the selection of the provided data device as a response to the event with with provided serial.
-    pub fn unset_selection(&self, device: &DataDevice, serial: u32) {
-        device.device.set_selection(None, serial);
-    }
-
     pub fn inner(&self) -> &WlDataSource {
         &self.inner
     }
