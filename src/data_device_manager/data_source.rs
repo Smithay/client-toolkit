@@ -109,7 +109,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CopyPasteSource {
     pub(crate) inner: WlDataSource,
 }
@@ -131,7 +131,7 @@ impl Drop for CopyPasteSource {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct DragSource {
     pub(crate) inner: WlDataSource,
 }
