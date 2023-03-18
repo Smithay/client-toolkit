@@ -66,9 +66,9 @@ pub trait DataDeviceDataExt: Send + Sync {
             .lock()
             .unwrap()
             .as_ref()
-            .and_then(|offer| {
+            .map(|offer| {
                 let data = offer.data::<Self::DataOfferInner>().unwrap();
-                Some(data.mime_types())
+                data.mime_types()
             })
             .unwrap_or_default()
     }
@@ -83,9 +83,9 @@ pub trait DataDeviceDataExt: Send + Sync {
             .lock()
             .unwrap()
             .as_ref()
-            .and_then(|offer| {
+            .map(|offer| {
                 let data = offer.data::<Self::DataOfferInner>().unwrap();
-                Some(data.mime_types())
+                data.mime_types()
             })
             .unwrap_or_default()
     }
