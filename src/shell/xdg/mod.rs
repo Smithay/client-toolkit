@@ -134,7 +134,7 @@ impl XdgShell {
                 xdg_toplevel,
                 toplevel_decoration,
                 pending_configure: Mutex::new(WindowConfigure {
-                    new_size: None,
+                    new_size: (None, None),
                     suggested_bounds: None,
                     // Initial configure will indicate whether there are server side decorations.
                     decoration_mode: DecorationMode::Client,

@@ -1,6 +1,9 @@
 //! XDG shell windows.
 
-use std::sync::{Arc, Weak};
+use std::{
+    num::NonZeroU32,
+    sync::{Arc, Weak},
+};
 
 use bitflags::bitflags;
 
@@ -70,7 +73,7 @@ pub struct WindowConfigure {
     /// The compositor suggested new size of the window in window geometry coordinates.
     ///
     /// If this value is [`None`], you may set the size of the window as you wish.
-    pub new_size: Option<(u32, u32)>,
+    pub new_size: (Option<NonZeroU32>, Option<NonZeroU32>),
 
     /// Compositor suggested maximum bounds for a window.
     ///

@@ -198,12 +198,11 @@ impl WindowHandler for State {
             if viewer.window != *window {
                 continue;
             }
-            if let Some(size) = configure.new_size {
-                viewer.width = size.0;
-                viewer.height = size.1;
-                viewer.buffer = None;
-                viewer.damaged = true;
-            }
+
+            viewer.buffer = None;
+            viewer.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
+            viewer.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
+            viewer.damaged = true;
 
             // Initiate the first draw.
             viewer.first_configure = false;

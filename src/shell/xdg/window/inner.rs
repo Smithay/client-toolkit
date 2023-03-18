@@ -1,5 +1,6 @@
 use std::{
     convert::{TryFrom, TryInto},
+    num::NonZeroU32,
     sync::Mutex,
 };
 
@@ -121,14 +122,13 @@ where
                             acc
                         });
 
-                    let new_size = if width == 0 && height == 0 {
-                        None
-                    } else {
-                        Some((width as u32, height as u32))
-                    };
+                    // XXX we do explicit convertion and sanity checking because compositor
+                    // could pass negative values which we should ignore all together.
+                    let width = u32::try_from(width).ok().and_then(NonZeroU32::new);
+                    let height = u32::try_from(height).ok().and_then(NonZeroU32::new);
 
                     let pending_configure = &mut window.0.pending_configure.lock().unwrap();
-                    pending_configure.new_size = new_size;
+                    pending_configure.new_size = (width, height);
                     pending_configure.state = new_state;
                 }
 

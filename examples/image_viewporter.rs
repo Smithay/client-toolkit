@@ -223,10 +223,10 @@ impl WindowHandler for State {
             if viewer.window != *window {
                 continue;
             }
-            if let Some(size) = configure.new_size {
-                viewer.width = size.0;
-                viewer.height = size.1;
-                viewer.viewport.set_destination(size.0 as _, size.1 as _);
+            if let (Some(width), Some(height)) = configure.new_size {
+                viewer.width = width.get();
+                viewer.height = height.get();
+                viewer.viewport.set_destination(width.get() as _, height.get() as _);
                 if !viewer.first_configure {
                     viewer.window.commit();
                 }

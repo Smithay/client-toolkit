@@ -191,16 +191,8 @@ impl WindowHandler for SimpleWindow {
         configure: WindowConfigure,
         _serial: u32,
     ) {
-        match configure.new_size {
-            Some(size) => {
-                self.width = size.0;
-                self.height = size.1;
-            }
-            None => {
-                self.width = 256;
-                self.height = 256;
-            }
-        }
+        self.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
+        self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
 
         self.draw(conn, qh);
     }

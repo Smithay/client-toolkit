@@ -196,18 +196,9 @@ impl WindowHandler for SimpleWindow {
     ) {
         println!("Window configured to: {:?}", configure);
 
-        match configure.new_size {
-            Some(size) => {
-                self.width = size.0;
-                self.height = size.1;
-                self.buffer = None;
-            }
-            None => {
-                self.width = 256;
-                self.height = 256;
-                self.buffer = None;
-            }
-        }
+        self.buffer = None;
+        self.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
+        self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
 
         // Initiate the first draw.
         if self.first_configure {
