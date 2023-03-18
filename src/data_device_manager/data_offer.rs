@@ -415,7 +415,7 @@ pub trait DataOfferHandler: Sized {
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
-        offer: &mut DataDeviceOffer,
+        offer: &mut DragOffer,
         actions: DndAction,
     );
 
@@ -432,7 +432,7 @@ pub trait DataOfferHandler: Sized {
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
-        offer: &mut DataDeviceOffer,
+        offer: &mut DragOffer,
         actions: DndAction,
     );
 }
@@ -461,7 +461,13 @@ where
                 match source_actions {
                     wayland_client::WEnum::Value(a) => {
                         data.set_source_action(a);
-                        state.source_actions(conn, qh, &mut data.inner.lock().unwrap().offer, a);
+                        match &mut data.inner.lock().unwrap().offer {
+                            DataDeviceOffer::Drag(o) => {
+                                state.source_actions(conn, qh, o, a);
+                            }
+                            DataDeviceOffer::Selection(_) => {}
+                            DataDeviceOffer::Undetermined(_) => {}
+                        }
                     }
                     wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
@@ -470,7 +476,13 @@ where
                 match dnd_action {
                     wayland_client::WEnum::Value(a) => {
                         data.set_selected_action(a);
-                        state.selected_action(conn, qh, &mut data.inner.lock().unwrap().offer, a);
+                        match &mut data.inner.lock().unwrap().offer {
+                            DataDeviceOffer::Drag(o) => {
+                                state.selected_action(conn, qh, o, a);
+                            }
+                            DataDeviceOffer::Selection(_) => {}
+                            DataDeviceOffer::Undetermined(_) => {}
+                        }
                     }
                     wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }

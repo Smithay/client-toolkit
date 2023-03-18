@@ -641,7 +641,7 @@ impl DataOfferHandler for DataDeviceWindow {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        offer: &mut DataDeviceOffer,
+        offer: &mut DragOffer,
         actions: wayland_client::protocol::wl_data_device_manager::DndAction,
     ) {
         dbg!(actions);
@@ -652,7 +652,7 @@ impl DataOfferHandler for DataDeviceWindow {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _offer: &mut DataDeviceOffer,
+        _offer: &mut DragOffer,
         actions: wayland_client::protocol::wl_data_device_manager::DndAction,
     ) {
         dbg!(actions);
