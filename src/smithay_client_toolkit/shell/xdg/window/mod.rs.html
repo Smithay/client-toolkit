@@ -380,9 +380,15 @@
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
 </pre><pre class="rust"><code><span class="doccomment">//! XDG shell windows.
 
-</span><span class="kw">use </span>std::sync::{Arc, Weak};
+</span><span class="kw">use </span>std::{
+    num::NonZeroU32,
+    sync::{Arc, Weak},
+};
 
 <span class="kw">use </span>bitflags::bitflags;
 
@@ -452,7 +458,7 @@
     <span class="doccomment">/// The compositor suggested new size of the window in window geometry coordinates.
     ///
     /// If this value is [`None`], you may set the size of the window as you wish.
-    </span><span class="kw">pub </span>new_size: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+    </span><span class="kw">pub </span>new_size: (<span class="prelude-ty">Option</span>&lt;NonZeroU32&gt;, <span class="prelude-ty">Option</span>&lt;NonZeroU32&gt;),
 
     <span class="doccomment">/// Compositor suggested maximum bounds for a window.
     ///

@@ -232,6 +232,7 @@
 <a href="#232" id="232">232</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{
     convert::{TryFrom, TryInto},
+    num::NonZeroU32,
     sync::Mutex,
 };
 
@@ -353,14 +354,13 @@
                             acc
                         });
 
-                    <span class="kw">let </span>new_size = <span class="kw">if </span>width == <span class="number">0 </span>&amp;&amp; height == <span class="number">0 </span>{
-                        <span class="prelude-val">None
-                    </span>} <span class="kw">else </span>{
-                        <span class="prelude-val">Some</span>((width <span class="kw">as </span>u32, height <span class="kw">as </span>u32))
-                    };
+                    <span class="comment">// XXX we do explicit convertion and sanity checking because compositor
+                    // could pass negative values which we should ignore all together.
+                    </span><span class="kw">let </span>width = u32::try_from(width).ok().and_then(NonZeroU32::new);
+                    <span class="kw">let </span>height = u32::try_from(height).ok().and_then(NonZeroU32::new);
 
                     <span class="kw">let </span>pending_configure = <span class="kw-2">&amp;mut </span>window.<span class="number">0</span>.pending_configure.lock().unwrap();
-                    pending_configure.new_size = new_size;
+                    pending_configure.new_size = (width, height);
                     pending_configure.state = new_state;
                 }
 
