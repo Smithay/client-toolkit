@@ -1,4 +1,3 @@
-use std::mem;
 use std::os::unix::io::AsRawFd;
 use std::{
     ops::{Deref, DerefMut},
@@ -20,8 +19,6 @@ use super::{DataDeviceManagerState, ReadPipe};
 #[derive(Debug, Clone)]
 pub struct UndeterminedOffer {
     pub(crate) data_offer: Option<WlDataOffer>,
-    pub mime_types: Vec<String>,
-    pub accepted_mime_type: Option<String>,
     pub source_actions: DndAction,
 }
 impl PartialEq for UndeterminedOffer {
@@ -31,13 +28,6 @@ impl PartialEq for UndeterminedOffer {
 }
 
 impl UndeterminedOffer {
-    pub fn accept(&mut self, serial: u32, mime_type: Option<String>) {
-        self.accepted_mime_type = mime_type.clone();
-        if let Some(offer) = self.data_offer.as_ref() {
-            offer.accept(serial, mime_type);
-        }
-    }
-
     pub fn destroy(&self) {
         if let Some(offer) = self.data_offer.as_ref() {
             offer.destroy();
@@ -61,7 +51,7 @@ impl UndeterminedOffer {
 pub struct DragOffer {
     /// the wl_data offer if it exists
     pub(crate) data_offer: Option<WlDataOffer>,
-    /// the serial for this data offer
+    /// the serial for this data offer's enter event
     pub serial: u32,
     /// the surface that this DnD is active on
     pub surface: WlSurface,
@@ -71,8 +61,6 @@ pub struct DragOffer {
     pub y: f64,
     /// the timestamp a motion event was received in millisecond granularity
     pub time: Option<u32>,
-    /// the mime types of the data offer
-    pub mime_types: Vec<String>,
     /// accepted mime type
     pub accepted_mime_type: Option<String>,
     /// the advertised drag actions
@@ -145,10 +133,6 @@ impl DragOffer {
 pub struct SelectionOffer {
     /// the wl_data offer
     pub(crate) data_offer: Option<WlDataOffer>,
-    /// the mime types of the data offer
-    pub mime_types: Vec<String>,
-    /// accepted mime type
-    pub accepted_mime_type: Option<String>,
 }
 
 impl PartialEq for SelectionOffer {
@@ -177,13 +161,6 @@ impl SelectionOffer {
         }
     }
 
-    pub fn accept(&mut self, serial: u32, mime_type: Option<String>) {
-        if let Some(ref data_offer) = self.data_offer {
-            self.accepted_mime_type = mime_type.clone();
-            data_offer.accept(serial, mime_type);
-        }
-    }
-
     pub fn destroy(&self) {
         if let Some(ref data_offer) = self.data_offer {
             data_offer.destroy();
@@ -206,8 +183,6 @@ impl Default for DataDeviceOffer {
     fn default() -> Self {
         DataDeviceOffer::Undetermined(UndeterminedOffer {
             data_offer: None,
-            mime_types: Vec::new(),
-            accepted_mime_type: None,
             source_actions: DndAction::empty(),
         })
     }
@@ -253,7 +228,7 @@ impl DataDeviceOffer {
     pub fn accept_mime_type(&mut self, serial: u32, mime_type: Option<String>) {
         match self {
             DataDeviceOffer::Drag(o) => o.accept_mime_type(serial, mime_type),
-            DataDeviceOffer::Selection(o) => o.accept(serial, mime_type),
+            DataDeviceOffer::Selection(_) => {}
             DataDeviceOffer::Undetermined(_) => {} // error?
         };
     }
@@ -269,22 +244,23 @@ impl DataDeviceOffer {
 
 #[derive(Debug, Default)]
 pub struct DataOfferData {
-    pub(crate) inner: Arc<Mutex<DataDeviceOffer>>,
+    pub(crate) inner: Arc<Mutex<DataDeviceOfferInner>>,
+}
+
+#[derive(Debug, Default)]
+pub struct DataDeviceOfferInner {
+    pub(crate) offer: DataDeviceOffer,
+    pub(crate) mime_types: Vec<String>,
 }
 
 impl DataOfferData {
     pub(crate) fn push_mime_type(&self, mime_type: String) {
-        let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
-            DataDeviceOffer::Drag(ref mut o) => o.mime_types.push(mime_type),
-            DataDeviceOffer::Selection(ref mut o) => o.mime_types.push(mime_type),
-            DataDeviceOffer::Undetermined(ref mut o) => o.mime_types.push(mime_type),
-        }
+        self.inner.lock().unwrap().mime_types.push(mime_type);
     }
 
     pub(crate) fn set_source_action(&self, action: DndAction) {
         let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
+        match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(ref mut o) => o.source_actions = action,
             DataDeviceOffer::Selection(_) => {}
             DataDeviceOffer::Undetermined(ref mut o) => o.source_actions = action,
@@ -293,7 +269,7 @@ impl DataOfferData {
 
     pub(crate) fn set_selected_action(&self, action: DndAction) {
         let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
+        match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(ref mut o) => o.selected_action = action,
             DataDeviceOffer::Selection(_) => {}    // error?
             DataDeviceOffer::Undetermined(_) => {} // error?
@@ -302,41 +278,31 @@ impl DataOfferData {
 
     pub(crate) fn to_selection_offer(&self) {
         let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
+        match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(o) => {
-                *inner = DataDeviceOffer::Selection(SelectionOffer {
-                    data_offer: o.data_offer.take(),
-                    mime_types: mem::take(&mut o.mime_types),
-                    accepted_mime_type: o.accepted_mime_type.take(),
-                });
+                inner.offer =
+                    DataDeviceOffer::Selection(SelectionOffer { data_offer: o.data_offer.take() });
             }
             DataDeviceOffer::Selection(_) => {}
             DataDeviceOffer::Undetermined(o) => {
-                *inner = DataDeviceOffer::Selection(SelectionOffer {
-                    data_offer: o.data_offer.take(),
-                    mime_types: mem::take(&mut o.mime_types),
-                    accepted_mime_type: o.accepted_mime_type.take(),
-                });
+                inner.offer =
+                    DataDeviceOffer::Selection(SelectionOffer { data_offer: o.data_offer.take() });
             }
         }
     }
 
     pub(crate) fn init_undetermined_offer(&self, offer: &WlDataOffer) {
         let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
+        match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(o) => {
-                *inner = DataDeviceOffer::Undetermined(UndeterminedOffer {
+                inner.offer = DataDeviceOffer::Undetermined(UndeterminedOffer {
                     data_offer: Some(offer.clone()),
-                    mime_types: mem::take(&mut o.mime_types),
-                    accepted_mime_type: o.accepted_mime_type.take(),
                     source_actions: o.source_actions,
                 });
             }
-            DataDeviceOffer::Selection(o) => {
-                *inner = DataDeviceOffer::Undetermined(UndeterminedOffer {
+            DataDeviceOffer::Selection(_) => {
+                inner.offer = DataDeviceOffer::Undetermined(UndeterminedOffer {
                     data_offer: Some(offer.clone()),
-                    mime_types: mem::take(&mut o.mime_types),
-                    accepted_mime_type: o.accepted_mime_type.take(),
                     source_actions: DndAction::empty(),
                 });
             }
@@ -355,13 +321,12 @@ impl DataOfferData {
         time: Option<u32>,
     ) {
         let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
+        match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(_) => {}
             DataDeviceOffer::Selection(o) => {
-                *inner = DataDeviceOffer::Drag(DragOffer {
+                inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.take(),
-                    mime_types: mem::take(&mut o.mime_types),
-                    accepted_mime_type: o.accepted_mime_type.take(),
+                    accepted_mime_type: None,
                     source_actions: DndAction::empty(),
                     selected_action: DndAction::empty(),
                     serial,
@@ -372,10 +337,9 @@ impl DataOfferData {
                 });
             }
             DataDeviceOffer::Undetermined(o) => {
-                *inner = DataDeviceOffer::Drag(DragOffer {
+                inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.take(),
-                    mime_types: mem::take(&mut o.mime_types),
-                    accepted_mime_type: o.accepted_mime_type.take(),
+                    accepted_mime_type: None,
                     source_actions: o.source_actions,
                     selected_action: DndAction::empty(),
                     serial,
@@ -390,7 +354,7 @@ impl DataOfferData {
 
     pub(crate) fn motion(&self, x: f64, y: f64, time: u32) {
         let mut inner = self.inner.lock().unwrap();
-        match inner.deref_mut() {
+        match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(o) => {
                 o.x = x;
                 o.y = y;
@@ -408,27 +372,24 @@ impl DataOfferDataExt for DataOfferData {
     }
 
     fn as_drag_offer(&self) -> Option<DragOffer> {
-        match self.inner.lock().unwrap().deref() {
+        match &self.inner.lock().unwrap().deref().offer {
             DataDeviceOffer::Drag(o) => Some(o.clone()),
             _ => None,
         }
     }
 
     fn as_selection_offer(&self) -> Option<SelectionOffer> {
-        match self.inner.lock().unwrap().deref() {
+        match &self.inner.lock().unwrap().deref().offer {
             DataDeviceOffer::Selection(o) => Some(o.clone()),
             _ => None,
         }
     }
 
     fn mime_types(&self) -> Vec<String> {
-        match self.inner.lock().unwrap().deref() {
-            DataDeviceOffer::Drag(o) => o.mime_types.clone(),
-            DataDeviceOffer::Selection(o) => o.mime_types.clone(),
-            DataDeviceOffer::Undetermined(o) => o.mime_types.clone(),
-        }
+        self.inner.lock().unwrap().mime_types.clone()
     }
 }
+
 pub trait DataOfferDataExt {
     fn data_offer_data(&self) -> &DataOfferData;
     fn mime_types(&self) -> Vec<String>;
@@ -467,7 +428,7 @@ pub trait DataOfferHandler: Sized {
     /// In the case that the last action received is `ask`, the destination asks the user for their preference, then calls set_actions & accept each one last time.
     /// Finally, the destination may then request data to be sent and finishing the data offer
     ///
-    fn actions(
+    fn selected_action(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
@@ -494,13 +455,13 @@ where
         match event {
             wl_data_offer::Event::Offer { mime_type } => {
                 data.push_mime_type(mime_type.clone());
-                state.offer(conn, qh, &mut data.inner.lock().unwrap(), mime_type);
+                state.offer(conn, qh, &mut data.inner.lock().unwrap().offer, mime_type);
             }
             wl_data_offer::Event::SourceActions { source_actions } => {
                 match source_actions {
                     wayland_client::WEnum::Value(a) => {
                         data.set_source_action(a);
-                        state.source_actions(conn, qh, &mut data.inner.lock().unwrap(), a);
+                        state.source_actions(conn, qh, &mut data.inner.lock().unwrap().offer, a);
                     }
                     wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
@@ -509,7 +470,7 @@ where
                 match dnd_action {
                     wayland_client::WEnum::Value(a) => {
                         data.set_selected_action(a);
-                        state.actions(conn, qh, &mut data.inner.lock().unwrap(), a);
+                        state.selected_action(conn, qh, &mut data.inner.lock().unwrap().offer, a);
                     }
                     wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }

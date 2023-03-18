@@ -56,6 +56,40 @@ pub trait DataDeviceDataExt: Send + Sync {
 
     fn data_device_data(&self) -> &DataDeviceData;
 
+    fn selection_mime_types(&self) -> Vec<String> {
+        let inner = self.data_device_data();
+        inner
+            .inner
+            .lock()
+            .unwrap()
+            .selection_offer
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|offer| {
+                let data = offer.data::<Self::DataOfferInner>().unwrap();
+                Some(data.mime_types())
+            })
+            .unwrap_or_default()
+    }
+
+    fn drag_mime_types(&self) -> Vec<String> {
+        let inner = self.data_device_data();
+        inner
+            .inner
+            .lock()
+            .unwrap()
+            .drag_offer
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|offer| {
+                let data = offer.data::<Self::DataOfferInner>().unwrap();
+                Some(data.mime_types())
+            })
+            .unwrap_or_default()
+    }
+
     /// Get the active dnd offer if it exists.
     fn drag_offer(&self) -> Option<DragOffer> {
         let inner = self.data_device_data();
