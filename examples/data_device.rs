@@ -232,19 +232,9 @@ impl WindowHandler for DataDeviceWindow {
         configure: WindowConfigure,
         _serial: u32,
     ) {
-        match configure.new_size {
-            Some(size) => {
-                self.width = size.0;
-                self.height = size.1;
-                self.buffer = None;
-            }
-            None => {
-                self.width = 256;
-                self.height = 256;
-                self.buffer = None;
-            }
-        }
-
+        self.width = configure.new_size.0.map(|w| w.get()).unwrap_or(self.width);
+        self.height = configure.new_size.1.map(|h| h.get()).unwrap_or(self.height);
+        self.buffer = None;
         // Initiate the first draw.
         if self.first_configure {
             self.first_configure = false;
@@ -520,7 +510,7 @@ impl DataDeviceHandler for DataDeviceWindow {
         {
             drag_offer.accept_mime_type(0, Some(m.clone()));
         }
-        
+
         // accept the action now just in case
         drag_offer.set_actions(DndAction::Copy, DndAction::Copy);
     }
