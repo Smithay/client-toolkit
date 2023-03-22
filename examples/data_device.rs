@@ -510,7 +510,9 @@ impl DataDeviceWindow {
 impl DataDeviceHandler for DataDeviceWindow {
     fn enter(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, data_device: DataDevice) {
         let mut drag_offer = data_device.drag_offer().unwrap();
+        println!("data offer entered x: {:.2} y: {:.2}", drag_offer.x, drag_offer.y);
 
+        // accept the first mime type we support
         if let Some(m) = data_device
             .drag_mime_types()
             .iter()
@@ -518,6 +520,9 @@ impl DataDeviceHandler for DataDeviceWindow {
         {
             drag_offer.accept_mime_type(0, Some(m.clone()));
         }
+        
+        // accept the action now just in case
+        drag_offer.set_actions(DndAction::Copy, DndAction::Copy);
     }
 
     fn leave(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _data_device: DataDevice) {
@@ -577,7 +582,7 @@ impl DataDeviceHandler for DataDeviceWindow {
         data_device: DataDevice,
     ) {
         if let Some(offer) = data_device.drag_offer() {
-            dbg!(&offer);
+            println!("Dropped: {offer:?}");
             self.dnd_offers.push((offer, String::new(), None));
             let cur_offer = self.dnd_offers.last_mut().unwrap();
             let mime_type = match data_device
@@ -644,7 +649,7 @@ impl DataOfferHandler for DataDeviceWindow {
         offer: &mut DragOffer,
         actions: wayland_client::protocol::wl_data_device_manager::DndAction,
     ) {
-        dbg!(actions);
+        println!("Source actions: {actions:?}");
         offer.set_actions(DndAction::Copy, DndAction::Copy);
     }
 
@@ -655,7 +660,7 @@ impl DataOfferHandler for DataDeviceWindow {
         _offer: &mut DragOffer,
         actions: wayland_client::protocol::wl_data_device_manager::DndAction,
     ) {
-        dbg!(actions);
+        println!("Selected action: {actions:?}");
         // TODO ?
     }
 }
