@@ -361,7 +361,7 @@ impl KbState {
     }
 
     pub(crate) unsafe fn init_with_fd(&mut self, fd: File, size: usize) {
-        let map = MmapOptions::new().len(size).map(&fd).unwrap();
+        let map = MmapOptions::new().len(size).map_copy_read_only(&fd).unwrap();
 
         let keymap = ffi_dispatch!(
             XKBH,
