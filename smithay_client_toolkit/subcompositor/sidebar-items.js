@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["SubcompositorState",""],["SubsurfaceData","The data assoctiated with the subsurface."]]};

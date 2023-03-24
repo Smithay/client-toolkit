@@ -643,8 +643,8 @@
         decoration.data::&lt;WindowData&gt;().and_then(|data| data.<span class="number">0</span>.upgrade()).map(Window)
     }
 
-    <span class="kw">pub fn </span>show_window_menu(<span class="kw-2">&amp;</span><span class="self">self</span>, seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat, serial: u32, position: (u32, u32)) {
-        <span class="self">self</span>.xdg_toplevel().show_window_menu(seat, serial, position.<span class="number">0 </span><span class="kw">as </span>i32, position.<span class="number">1 </span><span class="kw">as </span>i32);
+    <span class="kw">pub fn </span>show_window_menu(<span class="kw-2">&amp;</span><span class="self">self</span>, seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat, serial: u32, position: (i32, i32)) {
+        <span class="self">self</span>.xdg_toplevel().show_window_menu(seat, serial, position.<span class="number">0</span>, position.<span class="number">1</span>);
     }
 
     <span class="kw">pub fn </span>set_title(<span class="kw-2">&amp;</span><span class="self">self</span>, title: <span class="kw">impl </span>Into&lt;String&gt;) {
@@ -769,4 +769,4 @@
     };
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.1 (8460ca823 2023-03-20)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
