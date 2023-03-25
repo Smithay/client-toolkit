@@ -1,4 +1,3 @@
-use wayland_backend::io_lifetimes::OwnedFd;
 use wayland_client::{
     protocol::{
         wl_data_device_manager::DndAction,
@@ -8,7 +7,7 @@ use wayland_client::{
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
-use super::{data_device::DataDevice, DataDeviceManagerState};
+use super::{data_device::DataDevice, DataDeviceManagerState, WritePipe};
 
 #[derive(Debug, Default)]
 pub struct DataSourceData {}
@@ -44,7 +43,7 @@ pub trait DataSourceHandler: Sized {
         qh: &QueueHandle<Self>,
         source: &WlDataSource,
         mime: String,
-        fd: OwnedFd,
+        fd: WritePipe,
     );
 
     /// The data source is no longer valid
@@ -87,7 +86,7 @@ where
                 state.accept_mime(conn, qh, source, mime_type)
             }
             wl_data_source::Event::Send { mime_type, fd } => {
-                state.send_request(conn, qh, source, mime_type, fd);
+                state.send_request(conn, qh, source, mime_type, fd.into());
             }
             wl_data_source::Event::Cancelled => {
                 state.cancelled(conn, qh, source);

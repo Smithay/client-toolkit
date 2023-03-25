@@ -12,7 +12,7 @@ use smithay_client_toolkit::{
         data_device::{DataDevice, DataDeviceDataExt, DataDeviceHandler},
         data_offer::{DataDeviceOffer, DataOfferHandler, DragOffer, SelectionOffer},
         data_source::{CopyPasteSource, DataSourceHandler, DragSource},
-        DataDeviceManagerState,
+        DataDeviceManagerState, WritePipe,
     },
     delegate_compositor, delegate_data_device, delegate_data_device_manager, delegate_data_offer,
     delegate_data_source, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
@@ -37,6 +37,7 @@ use smithay_client_toolkit::{
         Shm, ShmHandler,
     },
 };
+use wayland_backend::io_lifetimes::OwnedFd;
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{
@@ -672,10 +673,11 @@ impl DataSourceHandler for DataDeviceWindow {
         _qh: &QueueHandle<Self>,
         source: &wayland_client::protocol::wl_data_source::WlDataSource,
         mime: String,
-        fd: wayland_backend::io_lifetimes::OwnedFd,
+        write_pipe: WritePipe,
     ) {
         dbg!(&self.drag_sources);
 
+        let fd = OwnedFd::from(write_pipe);
         if let Some(_) = self
             .copy_paste_sources
             .iter_mut()
