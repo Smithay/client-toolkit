@@ -170,7 +170,6 @@ macro_rules! delegate_pointer {
 pub(crate) struct PointerDataInner {
     /// Surface the pointer most recently entered
     pub(crate) surface: Option<wl_surface::WlSurface>,
-
     /// Position relative to the surface
     pub(crate) position: (f64, f64),
 
