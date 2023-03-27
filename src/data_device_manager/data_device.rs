@@ -127,8 +127,9 @@ impl DataDeviceDataExt for DataDeviceData {
 ///
 /// The functions defined in this trait are called as DataDevice events are received from the compositor.
 pub trait DataDeviceHandler: Sized {
-    /// Introduces a new data offer
-    /// ASHLEY left out because the data offer will be introduced to the user once the type is known
+    // Introduces a new data offer
+    // ASHLEY left out because the data offer will be introduced to the user once the type is known
+    // either through the enter method or the selection method.
     // fn data_offer(
     //     &mut self,
     //     conn: &Connection,
