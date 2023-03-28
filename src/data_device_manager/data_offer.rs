@@ -19,6 +19,7 @@ use super::{DataDeviceManagerState, ReadPipe};
 #[derive(Debug, Clone)]
 pub struct UndeterminedOffer {
     pub(crate) data_offer: Option<WlDataOffer>,
+    pub actions: DndAction,
 }
 impl PartialEq for UndeterminedOffer {
     fn eq(&self, other: &Self) -> bool {
@@ -162,7 +163,7 @@ pub enum DataDeviceOffer {
 
 impl Default for DataDeviceOffer {
     fn default() -> Self {
-        DataDeviceOffer::Undetermined(UndeterminedOffer { data_offer: None })
+        DataDeviceOffer::Undetermined(UndeterminedOffer { data_offer: None, actions: DndAction::empty() })
     }
 }
 
@@ -234,7 +235,7 @@ impl DataOfferData {
         match &mut inner.deref_mut().offer {
             DataDeviceOffer::Drag(ref mut o) => o.source_actions = action,
             DataDeviceOffer::Selection(_) => {}
-            DataDeviceOffer::Undetermined(_) => {}
+            DataDeviceOffer::Undetermined(ref mut o) => o.actions = action,
         };
     }
 
@@ -266,14 +267,16 @@ impl DataOfferData {
     pub(crate) fn init_undetermined_offer(&self, offer: &WlDataOffer) {
         let mut inner = self.inner.lock().unwrap();
         match &mut inner.deref_mut().offer {
-            DataDeviceOffer::Drag(_) => {
+            DataDeviceOffer::Drag(o) => {
                 inner.offer = DataDeviceOffer::Undetermined(UndeterminedOffer {
                     data_offer: Some(offer.clone()),
+                    actions: o.source_actions,
                 });
             }
             DataDeviceOffer::Selection(_) => {
                 inner.offer = DataDeviceOffer::Undetermined(UndeterminedOffer {
                     data_offer: Some(offer.clone()),
+                    actions: DndAction::empty(),
                 });
             }
             DataDeviceOffer::Undetermined(o) => {
@@ -310,7 +313,7 @@ impl DataOfferData {
                 inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.clone().unwrap(),
                     accepted_mime_type: None,
-                    source_actions: DndAction::empty(),
+                    source_actions: o.actions,
                     selected_action: DndAction::empty(),
                     serial,
                     surface,
