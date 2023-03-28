@@ -61,8 +61,6 @@ pub struct DragOffer {
     pub y: f64,
     /// the timestamp a motion event was received in millisecond granularity
     pub time: Option<u32>,
-    /// accepted mime type
-    pub accepted_mime_type: Option<String>,
     /// the advertised drag actions
     pub source_actions: DndAction,
     /// the compositor selected drag action
@@ -101,8 +99,7 @@ impl DragOffer {
     /// Accept the given mime type, or None to reject the offer.
     /// In version 2, this request is used for feedback, but doesn't affect the final result of the drag-and-drop operation.
     /// In version 3, this request determines the final result of the drag-and-drop operation.
-    pub fn accept_mime_type(&mut self, serial: u32, mime_type: Option<String>) {
-        self.accepted_mime_type = mime_type.clone();
+    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<String>) {
         self.data_offer.accept(serial, mime_type);
     }
 
@@ -163,7 +160,10 @@ pub enum DataDeviceOffer {
 
 impl Default for DataDeviceOffer {
     fn default() -> Self {
-        DataDeviceOffer::Undetermined(UndeterminedOffer { data_offer: None, actions: DndAction::empty() })
+        DataDeviceOffer::Undetermined(UndeterminedOffer {
+            data_offer: None,
+            actions: DndAction::empty(),
+        })
     }
 }
 
@@ -197,7 +197,7 @@ impl DataDeviceOffer {
         receive(inner, mime_type).map_err(DataOfferError::Io)
     }
 
-    pub fn accept_mime_type(&mut self, serial: u32, mime_type: Option<String>) {
+    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<String>) {
         match self {
             DataDeviceOffer::Drag(o) => o.accept_mime_type(serial, mime_type),
             DataDeviceOffer::Selection(_) => {}
@@ -205,7 +205,7 @@ impl DataDeviceOffer {
         };
     }
 
-    pub fn set_actions(&mut self, actions: DndAction, preferred_action: DndAction) {
+    pub fn set_actions(&self, actions: DndAction, preferred_action: DndAction) {
         match self {
             DataDeviceOffer::Drag(o) => o.set_actions(actions, preferred_action),
             DataDeviceOffer::Selection(_) => {}
@@ -299,7 +299,6 @@ impl DataOfferData {
             DataDeviceOffer::Selection(o) => {
                 inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.clone(),
-                    accepted_mime_type: None,
                     source_actions: DndAction::empty(),
                     selected_action: DndAction::empty(),
                     serial,
@@ -312,7 +311,6 @@ impl DataOfferData {
             DataDeviceOffer::Undetermined(o) => {
                 inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.clone().unwrap(),
-                    accepted_mime_type: None,
                     source_actions: o.actions,
                     selected_action: DndAction::empty(),
                     serial,
