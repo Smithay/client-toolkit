@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.17.0 - 2023-03028
+
+#### Breaking Changes
+
+- `wayland-rs` dependencies are updated to 0.30 and all APIs have changed significantly as a result
+
+#### Additions
+
+- `xkbcommon` is a new optional dependecy for keyboard handling gated by the `xkbcommon` feature
+- pointer-constraints-unstable-v1 protocol support
+- relative-pointer-unstable-v1 protocol support
+- wlr-layer-shell-unstable-v1 protocol support
+- OutputInfo includes logical size and logical position
+- New SHM pool types
+
 ## 0.16.0 - 2022-06-18
 
 #### Breaking changes
@@ -10,7 +25,7 @@
 
 #### Additions
 
-- `DataDevice::with_dnd` and `DataOffer::receive_to_fd` allow more flexible interfaction with the data device abstraction
+- `DataDevice::with_dnd` and `DataOffer::receive_to_fd` allow more flexible interaction with the data device abstraction
 - the output integration now supports version `4` of `wl_output`
 
 ## 0.15.4 - 2022-04-10
@@ -23,7 +38,7 @@
 
 #### Bugfixes
 
-- SCTK now correctly interacts with the wayland socket being conccurently poolled from
+- SCTK now correctly interacts with the wayland socket being conccurently polled from
   other threads.
 
 ## 0.15.2 - 2021-10-27
