@@ -532,6 +532,7 @@
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
 <a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::os::unix::io::AsRawFd;
 <span class="kw">use </span>std::{
     ops::{Deref, DerefMut},
@@ -553,6 +554,7 @@
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>UndeterminedOffer {
     <span class="kw">pub</span>(<span class="kw">crate</span>) data_offer: <span class="prelude-ty">Option</span>&lt;WlDataOffer&gt;,
+    <span class="kw">pub </span>actions: DndAction,
 }
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>UndeterminedOffer {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
@@ -594,8 +596,6 @@
     </span><span class="kw">pub </span>y: f64,
     <span class="doccomment">/// the timestamp a motion event was received in millisecond granularity
     </span><span class="kw">pub </span>time: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    <span class="doccomment">/// accepted mime type
-    </span><span class="kw">pub </span>accepted_mime_type: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// the advertised drag actions
     </span><span class="kw">pub </span>source_actions: DndAction,
     <span class="doccomment">/// the compositor selected drag action
@@ -634,8 +634,7 @@
     <span class="doccomment">/// Accept the given mime type, or None to reject the offer.
     /// In version 2, this request is used for feedback, but doesn&#39;t affect the final result of the drag-and-drop operation.
     /// In version 3, this request determines the final result of the drag-and-drop operation.
-    </span><span class="kw">pub fn </span>accept_mime_type(<span class="kw-2">&amp;mut </span><span class="self">self</span>, serial: u32, mime_type: <span class="prelude-ty">Option</span>&lt;String&gt;) {
-        <span class="self">self</span>.accepted_mime_type = mime_type.clone();
+    </span><span class="kw">pub fn </span>accept_mime_type(<span class="kw-2">&amp;</span><span class="self">self</span>, serial: u32, mime_type: <span class="prelude-ty">Option</span>&lt;String&gt;) {
         <span class="self">self</span>.data_offer.accept(serial, mime_type);
     }
 
@@ -696,7 +695,10 @@
 
 <span class="kw">impl </span>Default <span class="kw">for </span>DataDeviceOffer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        DataDeviceOffer::Undetermined(UndeterminedOffer { data_offer: <span class="prelude-val">None </span>})
+        DataDeviceOffer::Undetermined(UndeterminedOffer {
+            data_offer: <span class="prelude-val">None</span>,
+            actions: DndAction::empty(),
+        })
     }
 }
 
@@ -730,7 +732,7 @@
         receive(inner, mime_type).map_err(DataOfferError::Io)
     }
 
-    <span class="kw">pub fn </span>accept_mime_type(<span class="kw-2">&amp;mut </span><span class="self">self</span>, serial: u32, mime_type: <span class="prelude-ty">Option</span>&lt;String&gt;) {
+    <span class="kw">pub fn </span>accept_mime_type(<span class="kw-2">&amp;</span><span class="self">self</span>, serial: u32, mime_type: <span class="prelude-ty">Option</span>&lt;String&gt;) {
         <span class="kw">match </span><span class="self">self </span>{
             DataDeviceOffer::Drag(o) =&gt; o.accept_mime_type(serial, mime_type),
             DataDeviceOffer::Selection(<span class="kw">_</span>) =&gt; {}
@@ -738,7 +740,7 @@
         </span>};
     }
 
-    <span class="kw">pub fn </span>set_actions(<span class="kw-2">&amp;mut </span><span class="self">self</span>, actions: DndAction, preferred_action: DndAction) {
+    <span class="kw">pub fn </span>set_actions(<span class="kw-2">&amp;</span><span class="self">self</span>, actions: DndAction, preferred_action: DndAction) {
         <span class="kw">match </span><span class="self">self </span>{
             DataDeviceOffer::Drag(o) =&gt; o.set_actions(actions, preferred_action),
             DataDeviceOffer::Selection(<span class="kw">_</span>) =&gt; {}
@@ -768,7 +770,7 @@
         <span class="kw">match </span><span class="kw-2">&amp;mut </span>inner.deref_mut().offer {
             DataDeviceOffer::Drag(<span class="kw-2">ref mut </span>o) =&gt; o.source_actions = action,
             DataDeviceOffer::Selection(<span class="kw">_</span>) =&gt; {}
-            DataDeviceOffer::Undetermined(<span class="kw">_</span>) =&gt; {}
+            DataDeviceOffer::Undetermined(<span class="kw-2">ref mut </span>o) =&gt; o.actions = action,
         };
     }
 
@@ -800,14 +802,16 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>init_undetermined_offer(<span class="kw-2">&amp;</span><span class="self">self</span>, offer: <span class="kw-2">&amp;</span>WlDataOffer) {
         <span class="kw">let </span><span class="kw-2">mut </span>inner = <span class="self">self</span>.inner.lock().unwrap();
         <span class="kw">match </span><span class="kw-2">&amp;mut </span>inner.deref_mut().offer {
-            DataDeviceOffer::Drag(<span class="kw">_</span>) =&gt; {
+            DataDeviceOffer::Drag(o) =&gt; {
                 inner.offer = DataDeviceOffer::Undetermined(UndeterminedOffer {
                     data_offer: <span class="prelude-val">Some</span>(offer.clone()),
+                    actions: o.source_actions,
                 });
             }
             DataDeviceOffer::Selection(<span class="kw">_</span>) =&gt; {
                 inner.offer = DataDeviceOffer::Undetermined(UndeterminedOffer {
                     data_offer: <span class="prelude-val">Some</span>(offer.clone()),
+                    actions: DndAction::empty(),
                 });
             }
             DataDeviceOffer::Undetermined(o) =&gt; {
@@ -830,7 +834,6 @@
             DataDeviceOffer::Selection(o) =&gt; {
                 inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.clone(),
-                    accepted_mime_type: <span class="prelude-val">None</span>,
                     source_actions: DndAction::empty(),
                     selected_action: DndAction::empty(),
                     serial,
@@ -843,8 +846,7 @@
             DataDeviceOffer::Undetermined(o) =&gt; {
                 inner.offer = DataDeviceOffer::Drag(DragOffer {
                     data_offer: o.data_offer.clone().unwrap(),
-                    accepted_mime_type: <span class="prelude-val">None</span>,
-                    source_actions: DndAction::empty(),
+                    source_actions: o.actions,
                     selected_action: DndAction::empty(),
                     serial,
                     surface,
