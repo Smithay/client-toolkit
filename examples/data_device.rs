@@ -500,7 +500,7 @@ impl DataDeviceWindow {
 
 impl DataDeviceHandler for DataDeviceWindow {
     fn enter(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, data_device: DataDevice) {
-        let mut drag_offer = data_device.drag_offer().unwrap();
+        let drag_offer = data_device.drag_offer().unwrap();
         println!("data offer entered x: {:.2} y: {:.2}", drag_offer.x, drag_offer.y);
 
         // accept the first mime type we support
