@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["GlobalError","An error that may occur when creating objects using a global."]]};
+window.SIDEBAR_ITEMS = {"enum":["GlobalError"]};

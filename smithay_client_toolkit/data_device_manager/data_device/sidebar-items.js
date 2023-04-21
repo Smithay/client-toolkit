@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["DataDevice",""],["DataDeviceData",""],["DataDeviceInner",""]],"trait":[["DataDeviceDataExt",""],["DataDeviceHandler","Handler trait for DataDevice events."]]};
+window.SIDEBAR_ITEMS = {"struct":["DataDevice","DataDeviceData","DataDeviceInner"],"trait":["DataDeviceDataExt","DataDeviceHandler"]};

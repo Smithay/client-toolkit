@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["RelativeMotionEvent",""],["RelativePointerState",""]],"trait":[["RelativePointerHandler",""]]};
+window.SIDEBAR_ITEMS = {"struct":["RelativeMotionEvent","RelativePointerState"],"trait":["RelativePointerHandler"]};

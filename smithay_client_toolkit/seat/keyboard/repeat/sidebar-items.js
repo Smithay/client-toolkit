@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":[["RepeatCallback",""]]};
+window.SIDEBAR_ITEMS = {"type":["RepeatCallback"]};

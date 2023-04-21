@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["GlobalData","A struct used as the UserData field for globals bound by SCTK."]],"trait":[["ProvidesBoundGlobal","A trait implemented by types that provide access to capability globals."]]};
+window.SIDEBAR_ITEMS = {"struct":["GlobalData"],"trait":["ProvidesBoundGlobal"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["PointerConstraintsState",""]],"trait":[["PointerConstraintsHandler",""]]};
+window.SIDEBAR_ITEMS = {"struct":["PointerConstraintsState"],"trait":["PointerConstraintsHandler"]};

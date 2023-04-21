@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ActivateSlotError",""],["CreateBufferError",""]],"struct":[["Buffer","A wrapper around a [`wl_buffer::WlBuffer`] which has been allocated via a [SlotPool]."],["Slot","A chunk of memory allocated from a [SlotPool]"],["SlotPool",""]],"trait":[["CanvasKey","A helper trait for [SlotPool::canvas]."]]};
+window.SIDEBAR_ITEMS = {"enum":["ActivateSlotError","CreateBufferError"],"struct":["Buffer","Slot","SlotPool"],"trait":["CanvasKey"]};

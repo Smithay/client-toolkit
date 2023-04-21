@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["FallbackFrame","The default ugly frame."]]};
+window.SIDEBAR_ITEMS = {"struct":["FallbackFrame"]};

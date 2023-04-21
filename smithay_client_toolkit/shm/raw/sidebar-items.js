@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["RawPool","A raw handler for file backed shared memory pools."]]};
+window.SIDEBAR_ITEMS = {"struct":["RawPool"]};
