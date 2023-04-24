@@ -3,6 +3,7 @@ pub mod keyboard;
 pub mod pointer;
 pub mod pointer_constraints;
 pub mod relative_pointer;
+pub mod shortcuts_inhibit;
 pub mod touch;
 
 use std::{
