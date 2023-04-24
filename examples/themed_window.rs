@@ -20,7 +20,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
-        keyboard::{KeyEvent, KeyboardHandler, Modifiers},
+        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
         pointer::{
             CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
             ThemedPointer,
@@ -410,7 +410,7 @@ impl KeyboardHandler for SimpleWindow {
         surface: &wl_surface::WlSurface,
         _: u32,
         _: &[u32],
-        keysyms: &[u32],
+        keysyms: &[Keysym],
     ) {
         if self.window.wl_surface() == surface {
             println!("Keyboard focus on window with pressed syms: {keysyms:?}");

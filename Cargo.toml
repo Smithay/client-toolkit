@@ -31,8 +31,9 @@ wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
 wayland-scanner = "0.30.0"
 wayland-csd-frame = { version = "0.2.2", default-features = false, features = ["wayland-backend_0_1"] }
 
-xkbcommon = { version = "0.5", optional = true, features = ["wayland"] }
+xkbcommon = { version = "0.5.0", optional = true, features = ["wayland"], git = "https://github.com/notgull/xkbcommon-rs.git", branch = "xkeysym" }
 calloop = { version = "0.10.5", optional = true }
+xkeysym = { git = "https://github.com/notgull/xkeysym.git", version = "0.1.1" }
 
 [features]
 default = ["calloop", "xkbcommon"]

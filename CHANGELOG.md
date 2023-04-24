@@ -29,6 +29,7 @@
 #### Breaking Changes
 
 - `wayland-rs` dependencies are updated to 0.30 and all APIs have changed significantly as a result
+- `xkeysym::Keysym` is used as a keyboard key representation instead of `u32`
 
 #### Additions
 
