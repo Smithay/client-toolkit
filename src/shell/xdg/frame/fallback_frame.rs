@@ -11,6 +11,7 @@ use crate::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
 use crate::{
     compositor::SurfaceData,
+    seat::pointer::CursorIcon,
     shell::xdg::{WindowManagerCapabilities, WindowState},
     shell::WaylandSurface,
     shm::{slot::SlotPool, Shm},
@@ -357,7 +358,7 @@ where
         }
     }
 
-    fn click_point_moved(&mut self, surface: &WlSurface, x: f64, y: f64) -> Option<&str> {
+    fn click_point_moved(&mut self, surface: &WlSurface, x: f64, y: f64) -> Option<CursorIcon> {
         let part_index = self.part_index_for_surface(surface)?;
         let location = match part_index {
             LEFT_BORDER => Location::Left,
@@ -383,15 +384,15 @@ where
             && old_location != self.mouse_location;
 
         Some(match self.mouse_location {
-            Location::Top => "top_side",
-            Location::TopRight => "top_right_corner",
-            Location::Right => "right_side",
-            Location::BottomRight => "bottom_right_corner",
-            Location::Bottom => "bottom_side",
-            Location::BottomLeft => "bottom_left_corner",
-            Location::Left => "left_side",
-            Location::TopLeft => "top_left_corner",
-            _ => "left_ptr",
+            Location::Top => CursorIcon::NResize,
+            Location::TopRight => CursorIcon::NeResize,
+            Location::Right => CursorIcon::EResize,
+            Location::BottomRight => CursorIcon::SeResize,
+            Location::Bottom => CursorIcon::SResize,
+            Location::BottomLeft => CursorIcon::SwResize,
+            Location::Left => CursorIcon::WResize,
+            Location::TopLeft => CursorIcon::NwResize,
+            _ => CursorIcon::Default,
         })
     }
 

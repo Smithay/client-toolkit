@@ -15,11 +15,14 @@ use std::{
 
 use wayland_client::{
     globals::GlobalList,
-    protocol::{wl_pointer, wl_seat, wl_touch},
+    protocol::{wl_pointer, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-use crate::registry::{ProvidesRegistryState, RegistryHandler};
+use crate::{
+    compositor::SurfaceDataExt,
+    registry::{ProvidesRegistryState, RegistryHandler},
+};
 
 use self::{
     pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
@@ -130,16 +133,29 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
-    pub fn get_pointer_with_theme<D>(
+    pub fn get_pointer_with_theme<D, S>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
+        shm: &wl_shm::WlShm,
+        surface: wl_surface::WlSurface,
         theme: ThemeSpec,
     ) -> Result<ThemedPointer<PointerData>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
+        D: Dispatch<wl_pointer::WlPointer, PointerData>
+            + Dispatch<wl_surface::WlSurface, S>
+            + PointerHandler
+            + 'static,
+        S: SurfaceDataExt + 'static,
     {
-        self.get_pointer_with_theme_and_data(qh, seat, theme, PointerData::new(seat.clone()))
+        self.get_pointer_with_theme_and_data(
+            qh,
+            seat,
+            shm,
+            surface,
+            theme,
+            PointerData::new(seat.clone()),
+        )
     }
 
     /// Creates a pointer from a seat.
@@ -172,15 +188,21 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
-    pub fn get_pointer_with_theme_and_data<D, U>(
+    pub fn get_pointer_with_theme_and_data<D, S, U>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
+        shm: &wl_shm::WlShm,
+        surface: wl_surface::WlSurface,
         theme: ThemeSpec,
         pointer_data: U,
     ) -> Result<ThemedPointer<U>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
+        D: Dispatch<wl_pointer::WlPointer, U>
+            + Dispatch<wl_surface::WlSurface, S>
+            + PointerHandler
+            + 'static,
+        S: SurfaceDataExt + 'static,
         U: PointerDataExt + 'static,
     {
         let inner =
@@ -194,7 +216,10 @@ impl SeatState {
         Ok(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
             pointer: wl_ptr,
+            shm: shm.clone(),
+            surface,
             _marker: std::marker::PhantomData,
+            _surface_data: std::marker::PhantomData,
         })
     }
 
