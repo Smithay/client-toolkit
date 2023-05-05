@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::{convert::TryInto, num::NonZeroU32};
 
+use smithay_client_toolkit::seat::keyboard::keysyms;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
@@ -11,7 +12,8 @@ use smithay_client_toolkit::{
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers},
         pointer::{
-            PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer,
+            CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
+            ThemedPointer,
         },
         Capability, SeatHandler, SeatState,
     },
@@ -35,6 +37,44 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, Proxy, QueueHandle,
 };
+
+// Cursor shapes.
+const CURSORS: &[CursorIcon] = &[
+    CursorIcon::Default,
+    CursorIcon::Crosshair,
+    CursorIcon::Pointer,
+    CursorIcon::Move,
+    CursorIcon::Text,
+    CursorIcon::Wait,
+    CursorIcon::Help,
+    CursorIcon::Progress,
+    CursorIcon::NotAllowed,
+    CursorIcon::ContextMenu,
+    CursorIcon::Cell,
+    CursorIcon::VerticalText,
+    CursorIcon::Alias,
+    CursorIcon::Copy,
+    CursorIcon::NoDrop,
+    CursorIcon::Grab,
+    CursorIcon::Grabbing,
+    CursorIcon::AllScroll,
+    CursorIcon::ZoomIn,
+    CursorIcon::ZoomOut,
+    CursorIcon::EResize,
+    CursorIcon::NResize,
+    CursorIcon::NeResize,
+    CursorIcon::NwResize,
+    CursorIcon::SResize,
+    CursorIcon::SeResize,
+    CursorIcon::SwResize,
+    CursorIcon::WResize,
+    CursorIcon::EwResize,
+    CursorIcon::NsResize,
+    CursorIcon::NeswResize,
+    CursorIcon::NwseResize,
+    CursorIcon::ColResize,
+    CursorIcon::RowResize,
+];
 
 fn main() {
     env_logger::init();
@@ -60,7 +100,6 @@ fn main() {
         .expect("Failed to create pool");
 
     let window_surface = compositor_state.create_surface(&qh);
-    let pointer_surface = compositor_state.create_surface(&qh);
 
     let window =
         xdg_shell_state.create_window(window_surface, WindowDecorations::ServerDefault, &qh);
@@ -76,11 +115,13 @@ fn main() {
     // the correct options.
     window.commit();
 
+    println!("Press `n` to cycle through cursor icons.");
+
     let mut simple_window = SimpleWindow {
         registry_state,
         seat_state,
         output_state,
-        _compositor_state: compositor_state,
+        compositor_state,
         subcompositor_state: Arc::new(subcompositor_state),
         shm_state,
         _xdg_shell_state: xdg_shell_state,
@@ -94,21 +135,20 @@ fn main() {
         buffer: None,
         window,
         window_frame: None,
-        pointer_surface,
         keyboard: None,
         keyboard_focus: false,
         themed_pointer: None,
         set_cursor: false,
-        cursor_icon: String::from("diamond_cross"),
+        window_cursor_icon_idx: 0,
+        decorations_cursor: None,
     };
 
     // We don't draw immediately, the configure will notify us when to first draw.
-
     loop {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
 
         if simple_window.exit {
-            println!("exiting example");
+            println!("Exiting example.");
             break;
         }
     }
@@ -118,7 +158,7 @@ struct SimpleWindow {
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
-    _compositor_state: CompositorState,
+    compositor_state: CompositorState,
     subcompositor_state: Arc<SubcompositorState>,
     shm_state: Shm,
     _xdg_shell_state: XdgShell,
@@ -132,12 +172,12 @@ struct SimpleWindow {
     buffer: Option<Buffer>,
     window: Window,
     window_frame: Option<FallbackFrame<Self>>,
-    pointer_surface: wl_surface::WlSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     themed_pointer: Option<ThemedPointer>,
     set_cursor: bool,
-    cursor_icon: String,
+    window_cursor_icon_idx: usize,
+    decorations_cursor: Option<CursorIcon>,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -247,7 +287,7 @@ impl WindowHandler for SimpleWindow {
             let width = width.unwrap_or(NonZeroU32::new(1).unwrap());
             let height = height.unwrap_or(NonZeroU32::new(1).unwrap());
 
-            println!("{width}, {height}");
+            println!("New dimentions: {width}, {height}");
             window_frame.resize(width, height);
 
             let (x, y) = window_frame.location();
@@ -311,10 +351,16 @@ impl SeatHandler for SimpleWindow {
 
         if capability == Capability::Pointer && self.themed_pointer.is_none() {
             println!("Set pointer capability");
-            println!("Creating pointer theme");
+            let surface = self.compositor_state.create_surface(qh);
             let themed_pointer = self
                 .seat_state
-                .get_pointer_with_theme(qh, &seat, ThemeSpec::default())
+                .get_pointer_with_theme(
+                    qh,
+                    &seat,
+                    self.shm_state.wl_shm(),
+                    surface,
+                    ThemeSpec::default(),
+                )
                 .expect("Failed to create pointer");
             self.themed_pointer.replace(themed_pointer);
         }
@@ -367,7 +413,6 @@ impl KeyboardHandler for SimpleWindow {
         _: u32,
     ) {
         if self.window.wl_surface() == surface {
-            println!("Release keyboard focus on window");
             self.keyboard_focus = false;
         }
     }
@@ -380,7 +425,12 @@ impl KeyboardHandler for SimpleWindow {
         _: u32,
         event: KeyEvent,
     ) {
-        println!("Key press: {event:?}");
+        if event.keysym == keysyms::XKB_KEY_n {
+            // Cycle through cursor icons.
+            self.window_cursor_icon_idx = (self.window_cursor_icon_idx + 1) % CURSORS.len();
+            println!("Setting cursor icon to: {}", CURSORS[self.window_cursor_icon_idx].name());
+            self.set_cursor = true;
+        }
     }
 
     fn release_key(
@@ -389,9 +439,8 @@ impl KeyboardHandler for SimpleWindow {
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _: u32,
-        event: KeyEvent,
+        _: KeyEvent,
     ) {
-        println!("Key release: {event:?}");
     }
 
     fn update_modifiers(
@@ -400,9 +449,8 @@ impl KeyboardHandler for SimpleWindow {
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _serial: u32,
-        modifiers: Modifiers,
+        _: Modifiers,
     ) {
-        println!("Update modifiers: {modifiers:?}");
     }
 }
 
@@ -420,16 +468,10 @@ impl PointerHandler for SimpleWindow {
             match event.kind {
                 Enter { .. } => {
                     self.set_cursor = true;
-                    self.cursor_icon = self
+                    self.decorations_cursor = self
                         .window_frame
                         .as_mut()
-                        .and_then(|frame| frame.click_point_moved(&event.surface, x, y))
-                        .unwrap_or("diamond_cross")
-                        .to_owned();
-
-                    if &event.surface == self.window.wl_surface() {
-                        println!("Pointer entered @{:?}", event.position);
-                    }
+                        .and_then(|frame| frame.click_point_moved(&event.surface, x, y));
                 }
                 Leave { .. } => {
                     if &event.surface != self.window.wl_surface() {
@@ -437,7 +479,6 @@ impl PointerHandler for SimpleWindow {
                             window_frame.click_point_left();
                         }
                     }
-                    println!("Pointer left");
                 }
                 Motion { .. } => {
                     if let Some(new_cursor) = self
@@ -446,11 +487,11 @@ impl PointerHandler for SimpleWindow {
                         .and_then(|frame| frame.click_point_moved(&event.surface, x, y))
                     {
                         self.set_cursor = true;
-                        self.cursor_icon = new_cursor.to_owned();
+                        self.decorations_cursor = Some(new_cursor);
                     }
                 }
                 Press { button, serial, .. } | Release { button, serial, .. } => {
-                    let pressed = if matches!(event.kind, Press { .. }) { true } else { false };
+                    let pressed = matches!(event.kind, Press { .. });
                     if &event.surface != self.window.wl_surface() {
                         let click = match button {
                             0x110 => FrameClick::Normal,
@@ -466,19 +507,15 @@ impl PointerHandler for SimpleWindow {
                             self.frame_action(pointer, serial, action);
                         }
                     } else if pressed {
-                        println!("Press {:x} @ {:?}", button, event.position);
                         self.shift = self.shift.xor(Some(0));
                     }
                 }
-                Axis { horizontal, vertical, .. } => {
-                    if &event.surface == self.window.wl_surface() {
-                        println!("Scroll H:{horizontal:?}, V:{vertical:?}");
-                    }
-                }
+                Axis { .. } => {}
             }
         }
     }
 }
+
 impl SimpleWindow {
     fn frame_action(&mut self, pointer: &wl_pointer::WlPointer, serial: u32, action: FrameAction) {
         let pointer_data = pointer.data::<PointerData>().unwrap();
@@ -504,13 +541,9 @@ impl ShmHandler for SimpleWindow {
 impl SimpleWindow {
     pub fn draw(&mut self, conn: &Connection, qh: &QueueHandle<Self>) {
         if self.set_cursor {
-            let _ = self.themed_pointer.as_mut().unwrap().set_cursor(
-                conn,
-                &self.cursor_icon,
-                self.shm_state.wl_shm(),
-                &self.pointer_surface,
-                1,
-            );
+            let cursor_icon =
+                self.decorations_cursor.unwrap_or(CURSORS[self.window_cursor_icon_idx]);
+            let _ = self.themed_pointer.as_mut().unwrap().set_cursor(conn, cursor_icon);
             self.set_cursor = false;
         }
 
@@ -562,11 +595,11 @@ impl SimpleWindow {
         }
 
         // Draw the decorations frame.
-        self.window_frame.as_mut().map(|frame| {
+        if let Some(frame) = self.window_frame.as_mut() {
             if frame.is_dirty() && !frame.is_hidden() {
                 frame.draw();
             }
-        });
+        }
 
         // Damage the entire window
         self.window.wl_surface().damage_buffer(0, 0, width as i32, height as i32);

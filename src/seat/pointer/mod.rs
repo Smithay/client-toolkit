@@ -3,17 +3,28 @@ use std::{
     env, mem,
     sync::{Arc, Mutex},
 };
-use wayland_backend::{client::InvalidId, smallvec::SmallVec};
 
+use wayland_backend::{client::InvalidId, smallvec::SmallVec};
 use wayland_client::{
-    protocol::{wl_pointer, wl_seat::WlSeat, wl_shm, wl_surface},
+    protocol::{
+        wl_pointer::{self, WlPointer},
+        wl_seat::WlSeat,
+        wl_shm::WlShm,
+        wl_surface::WlSurface,
+    },
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_cursor::{Cursor, CursorTheme};
 
-use crate::error::GlobalError;
+use crate::{
+    compositor::{SurfaceData, SurfaceDataExt},
+    error::GlobalError,
+};
 
 use super::SeatState;
+
+#[doc(inline)]
+pub use cursor_icon::{CursorIcon, ParseError as CursorIconParseError};
 
 /* From linux/input-event-codes.h - the buttons usually used by mice */
 pub const BTN_LEFT: u32 = 0x110;
@@ -64,7 +75,7 @@ impl AxisScroll {
 /// A single pointer event.
 #[derive(Debug, Clone)]
 pub struct PointerEvent {
-    pub surface: wl_surface::WlSurface,
+    pub surface: WlSurface,
     pub position: (f64, f64),
     pub kind: PointerEventKind,
 }
@@ -109,7 +120,7 @@ pub trait PointerHandler: Sized {
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
-        pointer: &wl_pointer::WlPointer,
+        pointer: &WlPointer,
         events: &[PointerEvent],
     );
 }
@@ -130,9 +141,15 @@ impl PointerData {
         &self.seat
     }
 
-    /// The latest serial from the `Enter` event.
+    /// Serial from the latest [`PointerEventKind::Enter`] event.
     pub fn latest_enter_serial(&self) -> Option<u32> {
         self.inner.lock().unwrap().latest_enter
+    }
+
+    /// Serial from the latest button [`PointerEventKind::Press`] and
+    /// [`PointerEventKind::Release`] events.
+    pub fn latest_button_serial(&self) -> Option<u32> {
+        self.inner.lock().unwrap().latest_btn
     }
 }
 
@@ -169,7 +186,7 @@ macro_rules! delegate_pointer {
 #[derive(Debug, Default)]
 pub(crate) struct PointerDataInner {
     /// Surface the pointer most recently entered
-    pub(crate) surface: Option<wl_surface::WlSurface>,
+    pub(crate) surface: Option<WlSurface>,
     /// Position relative to the surface
     pub(crate) position: (f64, f64),
 
@@ -178,16 +195,19 @@ pub(crate) struct PointerDataInner {
 
     /// The serial of the latest enter event for the pointer
     pub(crate) latest_enter: Option<u32>,
+
+    /// The serial of the latest enter event for the pointer
+    pub(crate) latest_btn: Option<u32>,
 }
 
-impl<D, U> Dispatch<wl_pointer::WlPointer, U, D> for SeatState
+impl<D, U> Dispatch<WlPointer, U, D> for SeatState
 where
-    D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler,
+    D: Dispatch<WlPointer, U> + PointerHandler,
     U: PointerDataExt,
 {
     fn event(
         data: &mut D,
-        pointer: &wl_pointer::WlPointer,
+        pointer: &WlPointer,
         event: wl_pointer::Event,
         udata: &U,
         conn: &Connection,
@@ -220,20 +240,22 @@ where
                 PointerEventKind::Motion { time }
             }
 
-            wl_pointer::Event::Button { time, button, state, serial } => match state {
-                WEnum::Value(wl_pointer::ButtonState::Pressed) => {
-                    PointerEventKind::Press { time, button, serial }
+            wl_pointer::Event::Button { time, button, state, serial } => {
+                guard.latest_btn.replace(serial);
+                match state {
+                    WEnum::Value(wl_pointer::ButtonState::Pressed) => {
+                        PointerEventKind::Press { time, button, serial }
+                    }
+                    WEnum::Value(wl_pointer::ButtonState::Released) => {
+                        PointerEventKind::Release { time, button, serial }
+                    }
+                    WEnum::Unknown(unknown) => {
+                        log::warn!(target: "sctk", "{}: invalid pointer button state: {:x}", pointer.id(), unknown);
+                        return;
+                    }
+                    _ => unreachable!(),
                 }
-                WEnum::Value(wl_pointer::ButtonState::Released) => {
-                    PointerEventKind::Release { time, button, serial }
-                }
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: invalid pointer button state: {:x}", pointer.id(), unknown);
-                    return;
-                }
-                _ => unreachable!(),
-            },
-
+            }
             // Axis logical events.
             wl_pointer::Event::Axis { time, axis, value } => match axis {
                 WEnum::Value(axis) => {
@@ -372,25 +394,27 @@ where
 
 /// Pointer themeing
 #[derive(Debug)]
-pub struct ThemedPointer<U = PointerData> {
+pub struct ThemedPointer<U = PointerData, S = SurfaceData> {
     pub(super) themes: Arc<Mutex<Themes>>,
-    pub(super) pointer: wl_pointer::WlPointer,
+    /// The underlying wl_pointer.
+    pub(super) pointer: WlPointer,
+    pub(super) shm: WlShm,
+    /// The surface owned by the cursor to present the icon.
+    pub(super) surface: WlSurface,
     pub(super) _marker: std::marker::PhantomData<U>,
+    pub(super) _surface_data: std::marker::PhantomData<S>,
 }
 
-impl<U: PointerDataExt + 'static> ThemedPointer<U> {
-    pub fn set_cursor(
-        &self,
-        conn: &Connection,
-        name: &str,
-        shm: &wl_shm::WlShm,
-        surface: &wl_surface::WlSurface,
-        scale: i32,
-    ) -> Result<(), PointerThemeError> {
+impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, S> {
+    /// Set the cursor to the given [`CursorIcon`].
+    ///
+    /// The cursor icon should be reloaded on every [`PointerEventKind::Enter`] event.
+    pub fn set_cursor(&self, conn: &Connection, icon: CursorIcon) -> Result<(), PointerThemeError> {
         let mut themes = self.themes.lock().unwrap();
 
+        let scale = self.surface.data::<S>().unwrap().surface_data().scale_factor();
         let cursor = themes
-            .get_cursor(conn, name, scale as u32, shm)
+            .get_cursor(conn, icon.name(), scale as u32, &self.shm)
             .map_err(PointerThemeError::InvalidId)?
             .ok_or(PointerThemeError::CursorNotFound)?;
 
@@ -398,32 +422,64 @@ impl<U: PointerDataExt + 'static> ThemedPointer<U> {
         let (w, h) = image.dimensions();
         let (hx, hy) = image.hotspot();
 
-        surface.set_buffer_scale(scale);
-        surface.attach(Some(image), 0, 0);
+        self.surface.set_buffer_scale(scale);
+        self.surface.attach(Some(image), 0, 0);
 
-        if surface.version() >= 4 {
-            surface.damage_buffer(0, 0, w as i32, h as i32);
+        if self.surface.version() >= 4 {
+            self.surface.damage_buffer(0, 0, w as i32, h as i32);
         } else {
-            // surface is old and does not support damage_buffer, so we damage
-            // in surface coordinates and hope it is not rescaled
-            surface.damage(0, 0, w as i32 / scale, h as i32 / scale);
+            // Fallback for the old old surface.
+            self.surface.damage(0, 0, w as i32 / scale, h as i32 / scale);
         }
 
         // Commit the surface to place the cursor image in the compositor's memory.
-        surface.commit();
+        self.surface.commit();
 
         // Set the pointer surface to change the pointer.
         let data = self.pointer.data::<U>();
         if let Some(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
-            self.pointer.set_cursor(serial, Some(surface), hx as i32 / scale, hy as i32 / scale);
+            self.pointer.set_cursor(
+                serial,
+                Some(&self.surface),
+                hx as i32 / scale,
+                hy as i32 / scale,
+            );
             Ok(())
         } else {
             Err(PointerThemeError::MissingEnterSerial)
         }
     }
 
-    pub fn pointer(&self) -> &wl_pointer::WlPointer {
+    /// Hide the cursor by providing empty surface for it.
+    ///
+    /// The cursor should be hidden on every [`PointerEventKind::Enter`] event.
+    pub fn hide_cursor(&self) -> Result<(), PointerThemeError> {
+        let data = self.pointer.data::<U>();
+        if let Some(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
+            self.pointer.set_cursor(serial, None, 0, 0);
+            Ok(())
+        } else {
+            Err(PointerThemeError::MissingEnterSerial)
+        }
+    }
+
+    /// The [`WlPointer`] associated with this [`ThemedPointer`].
+    pub fn pointer(&self) -> &WlPointer {
         &self.pointer
+    }
+
+    /// The associated [`WlSurface`] with this [`ThemedPointer`].
+    pub fn surface(&self) -> &WlSurface {
+        &self.surface
+    }
+}
+
+impl<U, S> Drop for ThemedPointer<U, S> {
+    fn drop(&mut self) {
+        if self.pointer.version() >= 3 {
+            self.pointer.release();
+        }
+        self.surface.destroy();
     }
 }
 
@@ -509,7 +565,7 @@ impl Themes {
         conn: &Connection,
         name: &str,
         scale: u32,
-        shm: &wl_shm::WlShm,
+        shm: &WlShm,
     ) -> Result<Option<&Cursor>, InvalidId> {
         // Check if the theme has been initialized at the specified scale.
         if let Entry::Vacant(e) = self.themes.entry(scale) {

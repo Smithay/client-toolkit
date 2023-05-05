@@ -5,6 +5,7 @@ use std::num::NonZeroU32;
 use crate::reexports::client::protocol::wl_surface::WlSurface;
 use crate::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
+use crate::seat::pointer::CursorIcon;
 use crate::shell::xdg::window::{WindowManagerCapabilities, WindowState};
 
 pub mod fallback_frame;
@@ -28,7 +29,7 @@ pub trait DecorationsFrame: Sized {
     /// The return value is the new cursor icon you should apply to provide better visual
     /// feedback for the user. However, you might want to ignore it, if you're using touch events
     /// to drive the movements.
-    fn click_point_moved(&mut self, surface: &WlSurface, x: f64, y: f64) -> Option<&str>;
+    fn click_point_moved(&mut self, surface: &WlSurface, x: f64, y: f64) -> Option<CursorIcon>;
 
     /// All clicks left the decorations.
     ///
