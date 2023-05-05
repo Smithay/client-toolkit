@@ -5,13 +5,12 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use bitflags::bitflags;
-
-use wayland_client::{
+use crate::reexports::client::{
     protocol::{wl_output, wl_seat, wl_surface},
     Connection, Proxy, QueueHandle,
 };
-use wayland_protocols::{
+use crate::reexports::csd_frame::{WindowManagerCapabilities, WindowState};
+use crate::reexports::protocols::{
     xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::{self, Mode},
     xdg::shell::client::{xdg_surface, xdg_toplevel},
 };
@@ -95,12 +94,12 @@ pub struct WindowConfigure {
 
     /// The capabilities supported by the compositor.
     ///
-    /// For more see [`WindowManagerCapabilites`] documentation on the flag values.
+    /// For more see [`WindowManagerCapabilities`] documentation on the flag values.
     pub capabilities: WindowManagerCapabilities,
 }
 
 impl WindowConfigure {
-    /// Is [`State::Maximized`] state is set.
+    /// Is [`WindowState::MAXIMIZED`] state is set.
     #[inline]
     pub fn is_maximized(&self) -> bool {
         self.state.contains(WindowState::MAXIMIZED)
@@ -112,7 +111,7 @@ impl WindowConfigure {
         self.state.contains(WindowState::FULLSCREEN)
     }
 
-    /// Is [`WindowState::Resizing`] state is set.
+    /// Is [`WindowState::RESIZING`] state is set.
     #[inline]
     pub fn is_resizing(&self) -> bool {
         self.state.contains(WindowState::RESIZING)
@@ -155,46 +154,6 @@ impl WindowConfigure {
     }
 }
 
-bitflags! {
-    /// The configured state of the window.
-    pub struct WindowState: u16 {
-        /// The surface is maximized. The window geometry specified in the
-        /// configure event must be obeyed by the client. The client should
-        /// draw without shadow or other decoration outside of the window
-        /// geometry.
-        const MAXIMIZED    = 0b0000_0000_0000_0001;
-        /// The surface is fullscreen. The window geometry specified in the
-        /// configure event is a maximum; the client cannot resize beyond it.
-        /// For a surface to cover the whole fullscreened area, the geometry
-        /// dimensions must be obeyed by the client. For more details, see
-        /// xdg_toplevel.set_fullscreen.
-        const FULLSCREEN   = 0b0000_0000_0000_0010;
-        /// The surface is being resized. The window geometry specified in the
-        /// configure event is a maximum; the client cannot resize beyond it.
-        /// Clients that have aspect ratio or cell sizing configuration can use
-        /// a smaller size, however.
-        const RESIZING     = 0b0000_0000_0000_0100;
-        /// Client window decorations should be painted as if the window is
-        /// active. Do not assume this means that the window actually has
-        /// keyboard or pointer focus.
-        const ACTIVATED    = 0b0000_0000_0000_1000;
-        /// The window is currently in a tiled layout and the left edge is
-        /// considered to be adjacent to another part of the tiling grid.
-        const TILED_LEFT   = 0b0000_0000_0001_0000;
-        /// The window is currently in a tiled layout and the right edge is
-        /// considered to be adjacent to another part of the tiling grid.
-        const TILED_RIGHT  = 0b0000_0000_0010_0000;
-        /// The window is currently in a tiled layout and the top edge is
-        /// considered to be adjacent to another part of the tiling grid.
-        const TILED_TOP    = 0b0000_0000_0100_0000;
-        /// The window is currently in a tiled layout and the bottom edge is
-        /// considered to be adjacent to another part of the tiling grid.
-        const TILED_BOTTOM = 0b0000_0000_1000_0000;
-        /// The window has any of the mentioned tiled bits set.
-        const TILED = Self::TILED_TOP.bits | Self::TILED_LEFT.bits | Self::TILED_RIGHT.bits | Self::TILED_BOTTOM.bits;
-    }
-}
-
 /// Decorations a window is created with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowDecorations {
@@ -221,23 +180,6 @@ pub enum WindowDecorations {
 
     /// The window should use server side decorations or draw any client side decorations.
     None,
-}
-
-bitflags! {
-    /// The capabilities of the window manager.
-    ///
-    /// This is a hint to hide UI elements which provide functionality
-    /// not supported by compositor.
-    pub struct WindowManagerCapabilities : u16 {
-        /// `show_window_menu` is available.
-        const WINDOW_MENU = 0b0000_0000_0000_0001;
-        /// Window can be maximized and unmaximized.
-        const MAXIMIZE = 0b0000_0000_0000_0010;
-        /// Window can be fullscreened and unfullscreened.
-        const FULLSCREEN = 0b0000_0000_0000_0100;
-        /// Window could be minimized.
-        const MINIMIZE = 0b0000_0000_0000_1000;
-    }
 }
 
 #[derive(Debug, Clone)]
