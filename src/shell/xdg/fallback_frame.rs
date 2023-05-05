@@ -7,18 +7,19 @@ use crate::reexports::client::{
     protocol::{wl_shm, wl_subsurface::WlSubsurface, wl_surface::WlSurface},
     Dispatch, Proxy, QueueHandle,
 };
-use crate::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
+use crate::reexports::csd_frame::{
+    DecorationsFrame, FrameAction, FrameClick, ResizeEdge, WindowManagerCapabilities, WindowState,
+};
 
 use crate::{
     compositor::SurfaceData,
     seat::pointer::CursorIcon,
-    shell::xdg::{WindowManagerCapabilities, WindowState},
     shell::WaylandSurface,
     shm::{slot::SlotPool, Shm},
     subcompositor::{SubcompositorState, SubsurfaceData},
 };
 
-use super::{DecorationsFrame, FrameAction, FrameClick};
+use wayland_backend::client::ObjectId;
 
 /// The size of the header bar.
 const HEADER_SIZE: u32 = 24;
@@ -170,8 +171,8 @@ where
     }
 
     #[inline]
-    fn part_index_for_surface(&mut self, surface: &WlSurface) -> Option<usize> {
-        self.render_data.as_ref()?.parts.iter().position(|part| &part.surface == surface)
+    fn part_index_for_surface(&mut self, surface_id: &ObjectId) -> Option<usize> {
+        self.render_data.as_ref()?.parts.iter().position(|part| &part.surface.id() == surface_id)
     }
 
     fn draw_buttons(
@@ -316,7 +317,7 @@ impl<State> DecorationsFrame for FallbackFrame<State>
 where
     State: Dispatch<WlSurface, SurfaceData> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
 {
-    fn on_click(&mut self, click: FrameClick, pressed: bool) -> Option<super::FrameAction> {
+    fn on_click(&mut self, click: FrameClick, pressed: bool) -> Option<FrameAction> {
         // Handle alternate click before everything else.
         if click == FrameClick::Alternate {
             return if Location::Head != self.mouse_location
@@ -358,8 +359,8 @@ where
         }
     }
 
-    fn click_point_moved(&mut self, surface: &WlSurface, x: f64, y: f64) -> Option<CursorIcon> {
-        let part_index = self.part_index_for_surface(surface)?;
+    fn click_point_moved(&mut self, surface_id: &ObjectId, x: f64, y: f64) -> Option<CursorIcon> {
+        let part_index = self.part_index_for_surface(surface_id)?;
         let location = match part_index {
             LEFT_BORDER => Location::Left,
             RIGHT_BORDER => Location::Right,

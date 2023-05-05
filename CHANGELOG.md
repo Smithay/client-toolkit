@@ -8,6 +8,7 @@
 - `SeatState:get_pointer_with_them*` now takes `Shm` and `WlSurface` for the themed cursor.
 - `ThemedPointer` now automatically releases the associated `WlPointer`.
 - `CursorIcon` from `cursor-icon` crate is now used for `set_cursor` and `Frame`.
+- `wayland-csd-frame` is now used for CSD types like `WindowState`, `DecorationsFrame`, etc.
 
 ## 0.17.0 - 2023-03-28
 

@@ -52,6 +52,8 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    ///
+    /// [`EventSource`]: calloop::EventSource
     pub fn get_keyboard_with_repeat<D, T>(
         &mut self,
         qh: &QueueHandle<D>,
@@ -84,6 +86,8 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    ///
+    /// [`EventSource`]: calloop::EventSource
     pub fn get_keyboard_with_repeat_with_data<D, U>(
         &mut self,
         qh: &QueueHandle<D>,

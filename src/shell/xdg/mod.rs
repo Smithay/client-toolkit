@@ -2,14 +2,16 @@
 // TODO: Examples
 
 use std::sync::{Arc, Mutex};
-use wayland_client::globals::{BindError, GlobalList};
-use wayland_client::Connection;
-use wayland_client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
-use wayland_protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::Mode;
-use wayland_protocols::xdg::decoration::zv1::client::{
+
+use crate::reexports::client::globals::{BindError, GlobalList};
+use crate::reexports::client::Connection;
+use crate::reexports::client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
+use crate::reexports::csd_frame::{WindowManagerCapabilities, WindowState};
+use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::Mode;
+use crate::reexports::protocols::xdg::decoration::zv1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
-use wayland_protocols::xdg::shell::client::{
+use crate::reexports::protocols::xdg::shell::client::{
     xdg_positioner, xdg_surface, xdg_toplevel, xdg_wm_base,
 };
 
@@ -21,12 +23,11 @@ use crate::registry::GlobalProxy;
 use self::window::inner::WindowInner;
 use self::window::{
     DecorationMode, Window, WindowConfigure, WindowData, WindowDecorations, WindowHandler,
-    WindowManagerCapabilities, WindowState,
 };
 
 use super::WaylandSurface;
 
-pub mod frame;
+pub mod fallback_frame;
 pub mod popup;
 pub mod window;
 

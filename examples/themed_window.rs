@@ -1,6 +1,15 @@
 use std::sync::Arc;
 use std::{convert::TryInto, num::NonZeroU32};
 
+use smithay_client_toolkit::reexports::client::{
+    globals::registry_queue_init,
+    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, Proxy, QueueHandle,
+};
+use smithay_client_toolkit::reexports::csd_frame::{
+    DecorationsFrame, FrameAction, FrameClick, ResizeEdge,
+};
+use smithay_client_toolkit::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge;
 use smithay_client_toolkit::seat::keyboard::keysyms;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
@@ -19,8 +28,7 @@ use smithay_client_toolkit::{
     },
     shell::{
         xdg::{
-            frame::fallback_frame::FallbackFrame,
-            frame::{DecorationsFrame, FrameAction, FrameClick},
+            fallback_frame::FallbackFrame,
             window::{DecorationMode, Window, WindowConfigure, WindowDecorations, WindowHandler},
             XdgShell, XdgSurface,
         },
@@ -31,11 +39,6 @@ use smithay_client_toolkit::{
         Shm, ShmHandler,
     },
     subcompositor::SubcompositorState,
-};
-use wayland_client::{
-    globals::registry_queue_init,
-    protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, Proxy, QueueHandle,
 };
 
 // Cursor shapes.
@@ -471,7 +474,7 @@ impl PointerHandler for SimpleWindow {
                     self.decorations_cursor = self
                         .window_frame
                         .as_mut()
-                        .and_then(|frame| frame.click_point_moved(&event.surface, x, y));
+                        .and_then(|frame| frame.click_point_moved(&event.surface.id(), x, y));
                 }
                 Leave { .. } => {
                     if &event.surface != self.window.wl_surface() {
@@ -484,7 +487,7 @@ impl PointerHandler for SimpleWindow {
                     if let Some(new_cursor) = self
                         .window_frame
                         .as_mut()
-                        .and_then(|frame| frame.click_point_moved(&event.surface, x, y))
+                        .and_then(|frame| frame.click_point_moved(&event.surface.id(), x, y))
                     {
                         self.set_cursor = true;
                         self.decorations_cursor = Some(new_cursor);
@@ -526,8 +529,23 @@ impl SimpleWindow {
             FrameAction::Maximize => self.window.set_maximized(),
             FrameAction::UnMaximize => self.window.unset_maximized(),
             FrameAction::ShowMenu(x, y) => self.window.show_window_menu(seat, serial, (x, y)),
-            FrameAction::Resize(edge) => self.window.resize(seat, serial, edge),
+            FrameAction::Resize(edge) => {
+                let edge = match edge {
+                    ResizeEdge::None => XdgResizeEdge::None,
+                    ResizeEdge::Top => XdgResizeEdge::Top,
+                    ResizeEdge::Bottom => XdgResizeEdge::Bottom,
+                    ResizeEdge::Left => XdgResizeEdge::Left,
+                    ResizeEdge::TopLeft => XdgResizeEdge::TopLeft,
+                    ResizeEdge::BottomLeft => XdgResizeEdge::BottomLeft,
+                    ResizeEdge::Right => XdgResizeEdge::Right,
+                    ResizeEdge::TopRight => XdgResizeEdge::TopRight,
+                    ResizeEdge::BottomRight => XdgResizeEdge::BottomRight,
+                    _ => return,
+                };
+                self.window.resize(seat, serial, edge);
+            }
             FrameAction::Move => self.window.move_(seat, serial),
+            _ => return,
         }
     }
 }

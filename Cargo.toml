@@ -30,6 +30,7 @@ wayland-cursor = "0.30.0"
 wayland-protocols = { version = "0.30.0", features = ["client", "unstable"] }
 wayland-protocols-wlr = { version = "0.1.0", features = ["client"] }
 wayland-scanner = "0.30.0"
+wayland-csd-frame = "0.1.0"
 
 xkbcommon = { version = "0.5", optional = true, features = ["wayland"] }
 calloop = { version = "0.10.5", optional = true }
