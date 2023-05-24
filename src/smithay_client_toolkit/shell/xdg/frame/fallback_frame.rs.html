@@ -694,6 +694,7 @@
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
 </pre><pre class="rust"><code><span class="doccomment">//! The default fallback frame which is intended to show some very basic derocations.
 
 </span><span class="kw">use </span>std::sync::Arc;
@@ -707,6 +708,7 @@
 
 <span class="kw">use crate</span>::{
     compositor::SurfaceData,
+    seat::pointer::CursorIcon,
     shell::xdg::{WindowManagerCapabilities, WindowState},
     shell::WaylandSurface,
     shm::{slot::SlotPool, Shm},
@@ -1053,7 +1055,7 @@
         }
     }
 
-    <span class="kw">fn </span>click_point_moved(<span class="kw-2">&amp;mut </span><span class="self">self</span>, surface: <span class="kw-2">&amp;</span>WlSurface, x: f64, y: f64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+    <span class="kw">fn </span>click_point_moved(<span class="kw-2">&amp;mut </span><span class="self">self</span>, surface: <span class="kw-2">&amp;</span>WlSurface, x: f64, y: f64) -&gt; <span class="prelude-ty">Option</span>&lt;CursorIcon&gt; {
         <span class="kw">let </span>part_index = <span class="self">self</span>.part_index_for_surface(surface)<span class="question-mark">?</span>;
         <span class="kw">let </span>location = <span class="kw">match </span>part_index {
             LEFT_BORDER =&gt; Location::Left,
@@ -1079,15 +1081,15 @@
             &amp;&amp; old_location != <span class="self">self</span>.mouse_location;
 
         <span class="prelude-val">Some</span>(<span class="kw">match </span><span class="self">self</span>.mouse_location {
-            Location::Top =&gt; <span class="string">&quot;top_side&quot;</span>,
-            Location::TopRight =&gt; <span class="string">&quot;top_right_corner&quot;</span>,
-            Location::Right =&gt; <span class="string">&quot;right_side&quot;</span>,
-            Location::BottomRight =&gt; <span class="string">&quot;bottom_right_corner&quot;</span>,
-            Location::Bottom =&gt; <span class="string">&quot;bottom_side&quot;</span>,
-            Location::BottomLeft =&gt; <span class="string">&quot;bottom_left_corner&quot;</span>,
-            Location::Left =&gt; <span class="string">&quot;left_side&quot;</span>,
-            Location::TopLeft =&gt; <span class="string">&quot;top_left_corner&quot;</span>,
-            <span class="kw">_ </span>=&gt; <span class="string">&quot;left_ptr&quot;</span>,
+            Location::Top =&gt; CursorIcon::NResize,
+            Location::TopRight =&gt; CursorIcon::NeResize,
+            Location::Right =&gt; CursorIcon::EResize,
+            Location::BottomRight =&gt; CursorIcon::SeResize,
+            Location::Bottom =&gt; CursorIcon::SResize,
+            Location::BottomLeft =&gt; CursorIcon::SwResize,
+            Location::Left =&gt; CursorIcon::WResize,
+            Location::TopLeft =&gt; CursorIcon::NwResize,
+            <span class="kw">_ </span>=&gt; CursorIcon::Default,
         })
     }
 

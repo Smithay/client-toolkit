@@ -475,6 +475,31 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
 </pre><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
 </span><span class="kw">pub mod </span>keyboard;
 <span class="kw">pub mod </span>pointer;
@@ -492,11 +517,14 @@
 
 <span class="kw">use </span>wayland_client::{
     globals::GlobalList,
-    protocol::{wl_pointer, wl_seat, wl_touch},
+    protocol::{wl_pointer, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::registry::{ProvidesRegistryState, RegistryHandler};
+<span class="kw">use crate</span>::{
+    compositor::SurfaceDataExt,
+    registry::{ProvidesRegistryState, RegistryHandler},
+};
 
 <span class="kw">use </span><span class="self">self</span>::{
     pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
@@ -607,16 +635,29 @@
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
-    </span><span class="kw">pub fn </span>get_pointer_with_theme&lt;D&gt;(
+    </span><span class="kw">pub fn </span>get_pointer_with_theme&lt;D, S&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
+        surface: wl_surface::WlSurface,
         theme: ThemeSpec,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ThemedPointer&lt;PointerData&gt;, SeatError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt;
+            + Dispatch&lt;wl_surface::WlSurface, S&gt;
+            + PointerHandler
+            + <span class="lifetime">&#39;static</span>,
+        S: SurfaceDataExt + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">self</span>.get_pointer_with_theme_and_data(qh, seat, theme, PointerData::new(seat.clone()))
+        <span class="self">self</span>.get_pointer_with_theme_and_data(
+            qh,
+            seat,
+            shm,
+            surface,
+            theme,
+            PointerData::new(seat.clone()),
+        )
     }
 
     <span class="doccomment">/// Creates a pointer from a seat.
@@ -649,15 +690,21 @@
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
-    </span><span class="kw">pub fn </span>get_pointer_with_theme_and_data&lt;D, U&gt;(
+    </span><span class="kw">pub fn </span>get_pointer_with_theme_and_data&lt;D, S, U&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
+        shm: <span class="kw-2">&amp;</span>wl_shm::WlShm,
+        surface: wl_surface::WlSurface,
         theme: ThemeSpec,
         pointer_data: U,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ThemedPointer&lt;U&gt;, SeatError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;wl_pointer::WlPointer, U&gt; + PointerHandler + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;wl_pointer::WlPointer, U&gt;
+            + Dispatch&lt;wl_surface::WlSurface, S&gt;
+            + PointerHandler
+            + <span class="lifetime">&#39;static</span>,
+        S: SurfaceDataExt + <span class="lifetime">&#39;static</span>,
         U: PointerDataExt + <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let </span>inner =
@@ -671,7 +718,10 @@
         <span class="prelude-val">Ok</span>(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
             pointer: wl_ptr,
+            shm: shm.clone(),
+            surface,
             _marker: std::marker::PhantomData,
+            _surface_data: std::marker::PhantomData,
         })
     }
 

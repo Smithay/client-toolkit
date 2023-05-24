@@ -143,6 +143,7 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre><pre class="rust"><code><span class="doccomment">//! The frame to use with XDG shell window.
 
 </span><span class="kw">use </span>std::num::NonZeroU32;
@@ -150,6 +151,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::reexports::client::protocol::wl_surface::WlSurface;
 <span class="kw">use </span><span class="kw">crate</span>::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
+<span class="kw">use </span><span class="kw">crate</span>::seat::pointer::CursorIcon;
 <span class="kw">use </span><span class="kw">crate</span>::shell::xdg::window::{WindowManagerCapabilities, WindowState};
 
 <span class="kw">pub mod </span>fallback_frame;
@@ -173,7 +175,7 @@
     /// The return value is the new cursor icon you should apply to provide better visual
     /// feedback for the user. However, you might want to ignore it, if you&#39;re using touch events
     /// to drive the movements.
-    </span><span class="kw">fn </span>click_point_moved(<span class="kw-2">&amp;mut </span><span class="self">self</span>, surface: <span class="kw-2">&amp;</span>WlSurface, x: f64, y: f64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;;
+    </span><span class="kw">fn </span>click_point_moved(<span class="kw-2">&amp;mut </span><span class="self">self</span>, surface: <span class="kw-2">&amp;</span>WlSurface, x: f64, y: f64) -&gt; <span class="prelude-ty">Option</span>&lt;CursorIcon&gt;;
 
     <span class="doccomment">/// All clicks left the decorations.
     ///
