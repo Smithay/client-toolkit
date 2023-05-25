@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["frame","popup","window"],"struct":["XdgPositioner","XdgShell","XdgShellSurface"],"trait":["XdgSurface"]};
+window.SIDEBAR_ITEMS = {"mod":["fallback_frame","popup","window"],"struct":["XdgPositioner","XdgShell","XdgShellSurface"],"trait":["XdgSurface"]};

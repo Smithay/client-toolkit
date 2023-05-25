@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DecorationMode","WindowDecorations"],"struct":["Window","WindowConfigure","WindowData","WindowManagerCapabilities","WindowState"],"trait":["WindowHandler"]};
+window.SIDEBAR_ITEMS = {"enum":["DecorationMode","WindowDecorations"],"struct":["Window","WindowConfigure","WindowData"],"trait":["WindowHandler"]};

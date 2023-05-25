@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["FrameAction","FrameClick"],"mod":["fallback_frame"],"trait":["DecorationsFrame"]};

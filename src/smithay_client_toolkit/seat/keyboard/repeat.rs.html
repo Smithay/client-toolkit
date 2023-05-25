@@ -116,6 +116,10 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::sync::atomic::Ordering;
 
 <span class="kw">use </span>calloop::{LoopHandle, RegistrationToken};
@@ -170,6 +174,8 @@
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    ///
+    /// [`EventSource`]: calloop::EventSource
     </span><span class="kw">pub fn </span>get_keyboard_with_repeat&lt;D, T&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
@@ -202,6 +208,8 @@
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
+    ///
+    /// [`EventSource`]: calloop::EventSource
     </span><span class="kw">pub fn </span>get_keyboard_with_repeat_with_data&lt;D, U&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,

@@ -330,18 +330,21 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ## Cross desktop group (XDG) shell
 </span><span class="comment">// TODO: Examples
 
 </span><span class="kw">use </span>std::sync::{Arc, Mutex};
-<span class="kw">use </span>wayland_client::globals::{BindError, GlobalList};
-<span class="kw">use </span>wayland_client::Connection;
-<span class="kw">use </span>wayland_client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
-<span class="kw">use </span>wayland_protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::Mode;
-<span class="kw">use </span>wayland_protocols::xdg::decoration::zv1::client::{
+
+<span class="kw">use </span><span class="kw">crate</span>::reexports::client::globals::{BindError, GlobalList};
+<span class="kw">use </span><span class="kw">crate</span>::reexports::client::Connection;
+<span class="kw">use </span><span class="kw">crate</span>::reexports::client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
+<span class="kw">use </span><span class="kw">crate</span>::reexports::csd_frame::{WindowManagerCapabilities, WindowState};
+<span class="kw">use </span><span class="kw">crate</span>::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::Mode;
+<span class="kw">use </span><span class="kw">crate</span>::reexports::protocols::xdg::decoration::zv1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
-<span class="kw">use </span>wayland_protocols::xdg::shell::client::{
+<span class="kw">use </span><span class="kw">crate</span>::reexports::protocols::xdg::shell::client::{
     xdg_positioner, xdg_surface, xdg_toplevel, xdg_wm_base,
 };
 
@@ -353,12 +356,11 @@
 <span class="kw">use </span><span class="self">self</span>::window::inner::WindowInner;
 <span class="kw">use </span><span class="self">self</span>::window::{
     DecorationMode, Window, WindowConfigure, WindowData, WindowDecorations, WindowHandler,
-    WindowManagerCapabilities, WindowState,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::WaylandSurface;
 
-<span class="kw">pub mod </span>frame;
+<span class="kw">pub mod </span>fallback_frame;
 <span class="kw">pub mod </span>popup;
 <span class="kw">pub mod </span>window;
 
