@@ -204,16 +204,9 @@ impl WindowHandler for Wgpu {
         configure: WindowConfigure,
         _serial: u32,
     ) {
-        match configure.new_size {
-            Some(size) => {
-                self.width = size.0;
-                self.height = size.1;
-            }
-            None => {
-                self.width = 256;
-                self.height = 256;
-            }
-        }
+        let (new_width, new_height) = configure.new_size;
+        self.width = new_width.map_or(256, |v| v.get());
+        self.height = new_height.map_or(256, |v| v.get());
 
         let adapter = &self.adapter;
         let surface = &self.surface;
