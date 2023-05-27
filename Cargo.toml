@@ -50,7 +50,7 @@ image = "0.23"
 env_logger = "0.9"
 wgpu = "0.15.0"
 raqote = "0.8.2"
-raw-window-handle = "0.4.3"
+raw-window-handle = "0.5.2"
 pollster = "0.2.5"
 
 [[example]]
