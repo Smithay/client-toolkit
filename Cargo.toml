@@ -19,7 +19,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 bitflags = "1.0"
 cursor-icon = "1.0.0"
 dlib = "0.5"
-lazy_static = "1.0"
 log = "0.4"
 memmap2 = "0.5.0"
 nix = { version = "0.26.1", default-features = false, features = ["fs", "mman"] }
