@@ -175,6 +175,19 @@ where
         self.render_data.as_ref()?.parts.iter().position(|part| &part.surface.id() == surface_id)
     }
 
+    fn set_sync(&mut self, sync: bool) {
+        if let Some(render_data) = self.render_data.as_mut() {
+            for part in render_data.parts.iter() {
+                if sync {
+                    part.subsurface.set_sync();
+                } else {
+                    part.subsurface.set_desync();
+                }
+                part.surface.commit();
+            };
+        }
+    }
+
     fn draw_buttons(
         buttons: &[Option<UIButton>],
         canvas: &mut [u8],
@@ -426,6 +439,12 @@ where
         self.dirty |= !difference
             .intersection(WindowState::ACTIVATED | WindowState::FULLSCREEN | WindowState::MAXIMIZED)
             .is_empty();
+
+        // Let the frame be re-drawn in sync with the parent surface during
+        // resizes to avoid artifacts.
+        if difference.contains(WindowState::RESIZING) {
+            self.set_sync(self.state.contains(WindowState::RESIZING))
+        }
     }
 
     fn resize(&mut self, width: NonZeroU32, height: NonZeroU32) {
@@ -646,8 +665,10 @@ struct FramePart {
 impl FramePart {
     fn new(surfaces: (WlSubsurface, WlSurface), width: u32, height: u32, pos: (i32, i32)) -> Self {
         let (subsurface, surface) = surfaces;
-        // XXX sync subsurfaces with the main surface.
-        subsurface.set_sync();
+        // Make the frame surfaces desync so that the frame can be redrawn when
+        // the minimize/maximize/close buttons are being moused over, even when
+        // the parent surface isn't rendering any new frames.
+        subsurface.set_desync();
         Self { surface, subsurface, width, height, pos }
     }
 }

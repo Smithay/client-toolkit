@@ -9,6 +9,7 @@
 - `ThemedPointer` now automatically releases the associated `WlPointer`.
 - `CursorIcon` from `cursor-icon` crate is now used for `set_cursor` and `Frame`.
 - `wayland-csd-frame` is now used for CSD types like `WindowState`, `DecorationsFrame`, etc.
+- `FallbackFrame` subsurfaces are now desync, except during resizes. If your application's main surface doesn't always commit after every frame callback but instead waits until it actually has something to draw, you may wish to call `frame.draw()` in additional place, for example after `frame.click_point_moved` and `frame.click_point_left`.
 
 ## 0.17.0 - 2023-03-28
 
