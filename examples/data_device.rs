@@ -1,7 +1,7 @@
 use std::{
     convert::TryInto,
     fs::File,
-    io::{Read, Write},
+    io::{BufRead, BufReader, Write},
     time::Duration,
 };
 
@@ -61,6 +61,7 @@ const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
 ];
 
 fn main() {
+    println!("Press c to set the selection, or click and drag on the window to drag and drop. Selection contents are printed automatically.");
     env_logger::init();
 
     // All Wayland apps start by connecting the compositor (server).
@@ -159,8 +160,8 @@ struct DataDeviceWindow {
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     pointer: Option<wl_pointer::WlPointer>,
-    dnd_offers: Vec<(DragOffer, String, Option<RegistrationToken>)>,
-    selection_offers: Vec<(SelectionOffer, String, Option<RegistrationToken>)>,
+    dnd_offers: Vec<(DragOffer, Vec<u8>, Option<RegistrationToken>)>,
+    selection_offers: Vec<(SelectionOffer, Vec<u8>, Option<RegistrationToken>)>,
     data_devices: Vec<(WlSeat, Option<WlKeyboard>, Option<WlPointer>, DataDevice)>,
     copy_paste_sources: Vec<CopyPasteSource>,
     drag_sources: Vec<(DragSource, bool)>,
@@ -269,7 +270,6 @@ impl SeatHandler for DataDeviceWindow {
                 self.data_devices.last_mut().unwrap()
             };
         if capability == Capability::Keyboard && self.keyboard.is_none() {
-            println!("Set keyboard capability");
             let keyboard =
                 self.seat_state.get_keyboard(qh, &seat, None).expect("Failed to create keyboard");
             self.keyboard = Some(keyboard.clone());
@@ -277,7 +277,6 @@ impl SeatHandler for DataDeviceWindow {
         }
 
         if capability == Capability::Pointer && self.pointer.is_none() {
-            println!("Set pointer capability");
             let pointer = self.seat_state.get_pointer(qh, &seat).expect("Failed to create pointer");
             self.pointer = Some(pointer.clone());
             data_device.2.replace(pointer);
@@ -354,9 +353,6 @@ impl KeyboardHandler for DataDeviceWindow {
                     source.set_selection(&data_device.3, serial);
                     self.copy_paste_sources.push(source);
                 }
-            }
-            Some(s) => {
-                dbg!(s);
             }
             _ => {}
         };
@@ -529,39 +525,63 @@ impl DataDeviceHandler for DataDeviceWindow {
     fn selection(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, data_device: DataDevice) {
         let mime_types = data_device.selection_mime_types();
         if let Some(offer) = data_device.selection_offer() {
-            self.selection_offers.push((offer, String::new(), None));
+            self.selection_offers.push((offer.clone(), Vec::new(), None));
             let cur_offer = self.selection_offers.last_mut().unwrap();
             let mime_type =
                 match mime_types.iter().find(|m| SUPPORTED_MIME_TYPES.contains(&m.as_str())) {
                     Some(mime) => mime,
                     None => return,
                 };
-
-            if let Ok(read_pipe) = cur_offer.0.receive(mime_type.clone()) {
-                let offer_clone = cur_offer.0.clone();
-                match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
-                    let (_, mut contents, token) = state
-                        .selection_offers
-                        .iter()
-                        .position(|o| &o.0 == &offer_clone)
-                        .map(|p| state.selection_offers.remove(p))
-                        .unwrap();
-
-                    if let Err(err) = f.read_to_string(&mut contents) {
-                        eprintln!("{err:?}");
-                    } else {
-                        println!("TEXT FROM Selection: {contents}");
-                    }
-                    println!("TEXT FROM Selection: {contents}");
-                    state.loop_handle.remove(token.unwrap());
-                }) {
-                    Ok(token) => {
-                        cur_offer.2.replace(token);
-                    }
-                    Err(err) => {
-                        eprintln!("{:?}", err);
-                    }
+            let read_pipe = match offer.receive(mime_type.clone()) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Failed to receive the offer: {:?}", e);
+                    return;
                 }
+            };
+            let loop_handle = self.loop_handle.clone();
+            let cur_offer_ = cur_offer.0.clone();
+            match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
+                let offer = match state.selection_offers.iter().position(|o| o.0 == cur_offer_) {
+                    Some(s) => state.selection_offers.remove(s),
+                    None => return,
+                };
+                let (offer, mut data, token) = match offer {
+                    (o, d, Some(t)) => (o, d, t),
+                    _ => return,
+                };
+                let mut reader = BufReader::new(f);
+                let consumed = match reader.fill_buf() {
+                    Ok(buf) => {
+                        if buf.is_empty() {
+                            loop_handle.remove(token);
+                            println!("selection data: {:?}", String::from_utf8(data.clone()));
+                            state.selection_offers.push((offer, Vec::new(), None));
+                            return;
+                        } else {
+                            data.extend_from_slice(buf);
+                            state.selection_offers.push((offer, data, Some(token)));
+                        }
+                        buf.len()
+                    }
+                    Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                        state.selection_offers.push((offer, data, Some(token)));
+                        return;
+                    }
+                    Err(e) => {
+                        eprintln!("Error reading selection data: {}", e);
+                        loop_handle.remove(token);
+                        state.selection_offers.push((offer, Vec::new(), None));
+
+                        return;
+                    }
+                };
+                reader.consume(consumed);
+            }) {
+                Ok(token) => {
+                    cur_offer.2 = Some(token);
+                }
+                Err(_) => return,
             }
         }
     }
@@ -574,7 +594,7 @@ impl DataDeviceHandler for DataDeviceWindow {
     ) {
         if let Some(offer) = data_device.drag_offer() {
             println!("Dropped: {offer:?}");
-            self.dnd_offers.push((offer, String::new(), None));
+            self.dnd_offers.push((offer, Vec::new(), None));
             let cur_offer = self.dnd_offers.last_mut().unwrap();
             let mime_type = match data_device
                 .drag_mime_types()
@@ -585,32 +605,63 @@ impl DataDeviceHandler for DataDeviceWindow {
                 Some(mime) => mime,
                 None => return,
             };
-            dbg!(&mime_type);
+            let read_pipe = match cur_offer.0.receive(mime_type.clone()) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Failed to receive the offer: {:?}", e);
+                    return;
+                }
+            };
+
             self.accept_counter += 1;
             cur_offer.0.accept_mime_type(self.accept_counter, Some(mime_type.clone()));
             cur_offer.0.set_actions(DndAction::Copy, DndAction::Copy);
-            if let Ok(read_pipe) = cur_offer.0.receive(mime_type.clone()) {
-                let offer_clone = cur_offer.0.clone();
-                match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
-                    let (offer, mut contents, token) = state
-                        .dnd_offers
-                        .iter()
-                        .position(|o| &o.0.inner() == &offer_clone.inner())
-                        .map(|p| state.dnd_offers.remove(p))
-                        .unwrap();
-
-                    f.read_to_string(&mut contents).unwrap();
-                    println!("TEXT FROM drop: {contents}");
-                    state.loop_handle.remove(token.unwrap());
-
-                    offer.finish();
-                }) {
-                    Ok(token) => {
-                        cur_offer.2.replace(token);
+            let loop_handle = self.loop_handle.clone();
+            let cur_offer_ = cur_offer.0.clone();
+            match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
+                let offer = match state.dnd_offers.iter().position(|o| o.0 == cur_offer_) {
+                    Some(s) => state.dnd_offers.remove(s),
+                    None => return,
+                };
+                let (offer, mut data, token) = match offer {
+                    (o, d, Some(t)) => (o, d, t),
+                    _ => return,
+                };
+                let mut reader = BufReader::new(f);
+                let consumed = match reader.fill_buf() {
+                    Ok(buf) => {
+                        if buf.is_empty() {
+                            loop_handle.remove(token);
+                            println!("Dropped data: {:?}", String::from_utf8(data.clone()));
+                            offer.finish();
+                            state.dnd_offers.push((offer, Vec::new(), None));
+                            return;
+                        } else {
+                            data.extend_from_slice(buf);
+                            state.dnd_offers.push((offer, data, Some(token)));
+                        }
+                        buf.len()
                     }
-                    Err(err) => {
-                        eprintln!("{:?}", err);
+                    Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                        state.dnd_offers.push((offer, data, Some(token)));
+                        return;
                     }
+                    Err(e) => {
+                        eprintln!("Error reading dropped data: {}", e);
+                        offer.finish();
+                        loop_handle.remove(token);
+
+                        return;
+                    }
+                };
+                reader.consume(consumed);
+            }) {
+                Ok(token) => {
+                    cur_offer.2 = Some(token);
+                }
+                Err(err) => {
+                    eprintln!("{err}");
+                    cur_offer.0.finish();
                 }
             }
         }
@@ -651,8 +702,9 @@ impl DataOfferHandler for DataDeviceWindow {
         _offer: &mut DragOffer,
         actions: wayland_client::protocol::wl_data_device_manager::DndAction,
     ) {
+        // In this small example there isn't much to do here.
+        // Normal applications might track the action and then handling each differently.
         println!("Selected action: {actions:?}");
-        // TODO ?
     }
 }
 
@@ -675,8 +727,6 @@ impl DataSourceHandler for DataDeviceWindow {
         mime: String,
         write_pipe: WritePipe,
     ) {
-        dbg!(&self.drag_sources);
-
         let fd = OwnedFd::from(write_pipe);
         if let Some(_) = self
             .copy_paste_sources
@@ -701,10 +751,7 @@ impl DataSourceHandler for DataDeviceWindow {
         _qh: &QueueHandle<Self>,
         source: &wayland_client::protocol::wl_data_source::WlDataSource,
     ) {
-        self.copy_paste_sources
-            .iter()
-            .position(|s| s.inner() == source)
-            .map(|pos| self.copy_paste_sources.remove(pos));
+        self.drag_sources.retain(|s| s.0.inner() != source);
         source.destroy();
     }
 
@@ -723,9 +770,7 @@ impl DataSourceHandler for DataDeviceWindow {
         _qh: &QueueHandle<Self>,
         source: &wayland_client::protocol::wl_data_source::WlDataSource,
     ) {
-        self.copy_paste_sources.iter().position(|s| s.inner() == source).map(|pos| {
-            self.copy_paste_sources.remove(pos);
-        });
+        self.drag_sources.retain(|s| s.0.inner() != source);
         source.destroy();
     }
 

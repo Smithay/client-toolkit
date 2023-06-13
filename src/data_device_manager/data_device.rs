@@ -14,7 +14,7 @@ use wayland_client::{
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DataDevice {
     pub(crate) device: WlDataDevice,
 }
@@ -33,6 +33,10 @@ impl DataDevice {
     /// Unset the selection of the provided data device as a response to the event with with provided serial.
     pub fn unset_selection(&self, serial: u32) {
         self.device.set_selection(None, serial);
+    }
+
+    pub fn inner(&self) -> &WlDataDevice {
+        &self.device
     }
 }
 
