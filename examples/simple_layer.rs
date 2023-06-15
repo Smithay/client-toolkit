@@ -91,7 +91,7 @@ fn main() {
         width: 256,
         height: 256,
         shift: None,
-        buffer: None,
+        buffers: None,
         animating: false,
         layer,
         keyboard: None,
@@ -119,7 +119,7 @@ struct SimpleLayer {
     width: u32,
     height: u32,
     shift: Option<u32>,
-    buffer: Option<Buffers>,
+    buffers: Option<Buffers>,
     layer: LayerSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
@@ -200,7 +200,7 @@ impl LayerShellHandler for SimpleLayer {
         }
 
         // Initializes our double buffer one we've configured the layer shell
-        self.buffer = Some(Buffers::new(&mut self.pool, self.width, self.height));
+        self.buffers = Some(Buffers::new(&mut self.pool, self.width, self.height));
 
         // Initiate the first draw.
         if self.first_configure {
@@ -384,7 +384,7 @@ impl SimpleLayer {
         let width = self.width;
         let height = self.height;
         // Draw to the window:
-        if let Some(ref mut buffers) = self.buffer {
+        if let Some(ref mut buffers) = self.buffers {
             let canvas = buffers.canvas(&mut self.pool).unwrap();
             let shift = self.shift.unwrap_or(0);
             canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
