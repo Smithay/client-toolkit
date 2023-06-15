@@ -200,7 +200,8 @@ impl LayerShellHandler for SimpleLayer {
         }
 
         // Initializes our double buffer one we've configured the layer shell
-        self.buffers = Some(Buffers::new(&mut self.pool, self.width, self.height));
+        self.buffers =
+            Some(Buffers::new(&mut self.pool, self.width, self.height, wl_shm::Format::Argb8888));
 
         // Initiate the first draw.
         if self.first_configure {
@@ -446,25 +447,15 @@ struct Buffers {
 }
 
 impl Buffers {
-    fn new(pool: &mut SlotPool, width: u32, height: u32) -> Buffers {
+    fn new(pool: &mut SlotPool, width: u32, height: u32, format: wl_shm::Format) -> Buffers {
         Self {
             buffers: [
-                pool.create_buffer(
-                    width as i32,
-                    height as i32,
-                    width as i32 * 4,
-                    wl_shm::Format::Argb8888,
-                )
-                .expect("create buffer")
-                .0,
-                pool.create_buffer(
-                    width as i32,
-                    height as i32,
-                    width as i32 * 4,
-                    wl_shm::Format::Argb8888,
-                )
-                .expect("create buffer")
-                .0,
+                pool.create_buffer(width as i32, height as i32, width as i32 * 4, format)
+                    .expect("create buffer")
+                    .0,
+                pool.create_buffer(width as i32, height as i32, width as i32 * 4, format)
+                    .expect("create buffer")
+                    .0,
             ],
             current: 0,
         }
