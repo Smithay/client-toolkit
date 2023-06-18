@@ -293,6 +293,10 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Mutex;
 
 <span class="kw">use super</span>::{
@@ -309,7 +313,7 @@
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="attr">#[derive(Debug, Clone, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>DataDevice {
     <span class="kw">pub</span>(<span class="kw">crate</span>) device: WlDataDevice,
 }
@@ -328,6 +332,10 @@
     <span class="doccomment">/// Unset the selection of the provided data device as a response to the event with with provided serial.
     </span><span class="kw">pub fn </span>unset_selection(<span class="kw-2">&amp;</span><span class="self">self</span>, serial: u32) {
         <span class="self">self</span>.device.set_selection(<span class="prelude-val">None</span>, serial);
+    }
+
+    <span class="kw">pub fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>WlDataDevice {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.device
     }
 }
 
