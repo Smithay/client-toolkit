@@ -51,42 +51,39 @@ impl DataDeviceManagerState {
     }
 
     /// creates a data source for copy paste
-    pub fn create_copy_paste_source<'s, D, I>(
+    pub fn create_copy_paste_source<D, T: ToString>(
         &self,
         qh: &QueueHandle<D>,
-        mime_types: I,
+        mime_types: impl IntoIterator<Item = T>,
     ) -> CopyPasteSource
     where
         D: Dispatch<WlDataSource, DataSourceData> + 'static,
-        I: IntoIterator<Item = &'s str>,
     {
         CopyPasteSource { inner: self.create_data_source(qh, mime_types, None) }
     }
 
     /// creates a data source for drag and drop
-    pub fn create_drag_and_drop_source<'s, D, I>(
+    pub fn create_drag_and_drop_source<D, T: ToString>(
         &self,
         qh: &QueueHandle<D>,
-        mime_types: I,
+        mime_types: impl IntoIterator<Item = T>,
         dnd_actions: DndAction,
     ) -> DragSource
     where
         D: Dispatch<WlDataSource, DataSourceData> + 'static,
-        I: IntoIterator<Item = &'s str>,
     {
         DragSource { inner: self.create_data_source(qh, mime_types, Some(dnd_actions)) }
     }
 
     /// creates a data source
-    fn create_data_source<'s, D, I>(
+    fn create_data_source<D, T: ToString>(
         &self,
         qh: &QueueHandle<D>,
-        mime_types: I,
+        mime_types: impl IntoIterator<Item = T>,
         dnd_actions: Option<DndAction>,
     ) -> WlDataSource
     where
         D: Dispatch<WlDataSource, DataSourceData> + 'static,
-        I: IntoIterator<Item = &'s str>,
     {
         let source = self.create_data_source_with_data(qh, Default::default());
 
