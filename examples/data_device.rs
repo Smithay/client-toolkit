@@ -15,9 +15,16 @@ use smithay_client_toolkit::{
         DataDeviceManagerState, WritePipe,
     },
     delegate_compositor, delegate_data_device, delegate_data_device_manager, delegate_data_offer,
-    delegate_data_source, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
-    delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    delegate_data_source, delegate_keyboard, delegate_output, delegate_pointer,
+    delegate_primary_selection, delegate_registry, delegate_seat, delegate_shm, delegate_xdg_shell,
+    delegate_xdg_window,
     output::{OutputHandler, OutputState},
+    primary_selection::{
+        device::{PrimarySelectionDevice, PrimarySelectionDeviceHandler},
+        offer::PrimarySelectionOffer,
+        selection::{PrimarySelectionSource, PrimarySelectionSourceHandler},
+        PrimarySelectionManagerState,
+    },
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
@@ -50,6 +57,10 @@ use wayland_client::{
     },
     Connection, QueueHandle, WaylandSource,
 };
+use wayland_protocols::wp::primary_selection::zv1::client::{
+    zwp_primary_selection_device_v1::ZwpPrimarySelectionDeviceV1,
+    zwp_primary_selection_source_v1::ZwpPrimarySelectionSourceV1,
+};
 
 const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
     "text/plain;charset=utf-8",
@@ -61,7 +72,10 @@ const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
 ];
 
 fn main() {
-    println!("Press c to set the selection, or click and drag on the window to drag and drop. Selection contents are printed automatically.");
+    println!(
+        "Press c to set the selection, p to set primary selection, or click and drag on\
+         the window to drag and drop. Selection contents are printed automatically."
+    );
     env_logger::init();
 
     // All Wayland apps start by connecting the compositor (server).
@@ -102,6 +116,12 @@ fn main() {
     window.commit();
     let pool = SlotPool::new(256 * 256 * 4, &shm).expect("Failed to create pool");
 
+    // Create primary selection manager state and log if it's not present.
+    let primary_selection_manager_state = PrimarySelectionManagerState::bind(&globals, &qh).ok();
+    if primary_selection_manager_state.is_none() {
+        eprintln!("zwp_primary_selection_v1 is not available.");
+    }
+
     let mut simple_window = DataDeviceWindow {
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
@@ -110,6 +130,7 @@ fn main() {
         data_device_manager_state: DataDeviceManagerState::bind(&globals, &qh)
             .expect("data device manager is not available"),
 
+        primary_selection_manager_state,
         exit: false,
         first_configure: true,
         pool,
@@ -121,13 +142,15 @@ fn main() {
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
-        data_devices: Vec::new(),
+        seat_objects: Vec::new(),
         copy_paste_sources: Vec::new(),
+        selection_sources: Vec::new(),
         drag_sources: Vec::new(),
         loop_handle: event_loop.handle(),
         accept_counter: 0,
         dnd_offers: Vec::new(),
         selection_offers: Vec::new(),
+        primary_selection_offers: Vec::new(),
     };
 
     // We don't draw immediately, the configure will notify us when to first draw.
@@ -148,6 +171,7 @@ struct DataDeviceWindow {
     output_state: OutputState,
     shm_state: Shm,
     data_device_manager_state: DataDeviceManagerState,
+    primary_selection_manager_state: Option<PrimarySelectionManagerState>,
 
     exit: bool,
     first_configure: bool,
@@ -162,8 +186,16 @@ struct DataDeviceWindow {
     pointer: Option<wl_pointer::WlPointer>,
     dnd_offers: Vec<(DragOffer, Vec<u8>, Option<RegistrationToken>)>,
     selection_offers: Vec<(SelectionOffer, Vec<u8>, Option<RegistrationToken>)>,
-    data_devices: Vec<(WlSeat, Option<WlKeyboard>, Option<WlPointer>, DataDevice)>,
+    primary_selection_offers: Vec<(PrimarySelectionOffer, Vec<u8>, Option<RegistrationToken>)>,
+    seat_objects: Vec<(
+        WlSeat,
+        Option<WlKeyboard>,
+        Option<WlPointer>,
+        DataDevice,
+        Option<PrimarySelectionDevice>,
+    )>,
     copy_paste_sources: Vec<CopyPasteSource>,
+    selection_sources: Vec<PrimarySelectionSource>,
     drag_sources: Vec<(DragSource, bool)>,
     loop_handle: LoopHandle<'static, DataDeviceWindow>,
     accept_counter: u32,
@@ -259,27 +291,32 @@ impl SeatHandler for DataDeviceWindow {
         seat: wl_seat::WlSeat,
         capability: Capability,
     ) {
-        let data_device =
-            if let Some(data_device) = self.data_devices.iter_mut().find(|(s, ..)| s == &seat) {
-                data_device
+        let seat_object =
+            if let Some(seat_object) = self.seat_objects.iter_mut().find(|(s, ..)| s == &seat) {
+                seat_object
             } else {
                 // create the data device here for this seat
                 let data_device_manager = &self.data_device_manager_state;
                 let data_device = data_device_manager.get_data_device(qh, &seat);
-                self.data_devices.push((seat.clone(), None, None, data_device));
-                self.data_devices.last_mut().unwrap()
+
+                let primary_device = self
+                    .primary_selection_manager_state
+                    .as_ref()
+                    .map(|manager| manager.get_selection_device(qh, &seat));
+                self.seat_objects.push((seat.clone(), None, None, data_device, primary_device));
+                self.seat_objects.last_mut().unwrap()
             };
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             let keyboard =
                 self.seat_state.get_keyboard(qh, &seat, None).expect("Failed to create keyboard");
             self.keyboard = Some(keyboard.clone());
-            data_device.1.replace(keyboard);
+            seat_object.1.replace(keyboard);
         }
 
         if capability == Capability::Pointer && self.pointer.is_none() {
             let pointer = self.seat_state.get_pointer(qh, &seat).expect("Failed to create pointer");
             self.pointer = Some(pointer.clone());
-            data_device.2.replace(pointer);
+            seat_object.2.replace(pointer);
         }
     }
 
@@ -345,13 +382,39 @@ impl KeyboardHandler for DataDeviceWindow {
             Some(s) if s.to_lowercase() == "c" => {
                 println!("Creating copy paste source and setting selection...");
                 if let Some(data_device) =
-                    self.data_devices.iter().find(|(_, d_kbd, ..)| d_kbd.as_ref() == Some(&kbd))
+                    self.seat_objects.iter().find_map(|(_, d_kbd, _, d, ..)| {
+                        if d_kbd.as_ref() == Some(&kbd) {
+                            Some(d)
+                        } else {
+                            None
+                        }
+                    })
                 {
                     let source = self
                         .data_device_manager_state
                         .create_copy_paste_source(qh, SUPPORTED_MIME_TYPES.to_vec());
-                    source.set_selection(&data_device.3, serial);
+                    source.set_selection(&data_device, serial);
                     self.copy_paste_sources.push(source);
+                }
+            }
+            Some(s) if s.to_lowercase() == "p" => {
+                println!("Creating primary selection source and setting selection...");
+                if let Some(primary_selection_device) =
+                    self.seat_objects.iter().find_map(|(_, d_kbd, _, _, pd)| {
+                        if d_kbd.as_ref() == Some(&kbd) {
+                            pd.as_ref()
+                        } else {
+                            None
+                        }
+                    })
+                {
+                    let source = self
+                        .primary_selection_manager_state
+                        .as_ref()
+                        .unwrap()
+                        .create_selection_source(qh, SUPPORTED_MIME_TYPES.to_vec());
+                    source.set_selection(&primary_selection_device, serial);
+                    self.selection_sources.push(source);
                 }
             }
             _ => {}
@@ -397,7 +460,7 @@ impl PointerHandler for DataDeviceWindow {
             match event.kind {
                 Press { button, serial, .. } if button == BTN_LEFT => {
                     if let Some(data_device) = self
-                        .data_devices
+                        .seat_objects
                         .iter()
                         .find(|(_, _, d_pointer, ..)| d_pointer.as_ref() == Some(&pointer))
                     {
@@ -787,6 +850,126 @@ impl DataSourceHandler for DataDeviceWindow {
     }
 }
 
+impl PrimarySelectionDeviceHandler for DataDeviceWindow {
+    fn selection(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &ZwpPrimarySelectionDeviceV1,
+    ) {
+        let primary_device = self.seat_objects.iter().find_map(|object| object.4.as_ref()).unwrap();
+        if let Some(offer) = primary_device.data().selection_offer() {
+            offer.with_mime_types(|mimes| {
+                println!("Received primary selection offer with mime types:");
+                for mime in mimes {
+                    println!("\t{mime}");
+                }
+            });
+
+            // Add a new offer.
+            self.primary_selection_offers.push((offer.clone(), Vec::new(), None));
+
+            let mime_type = match offer.with_mime_types(|mimes| {
+                for mime in mimes {
+                    if SUPPORTED_MIME_TYPES.contains(&mime.as_str()) {
+                        return Some(mime.clone());
+                    }
+                }
+
+                None
+            }) {
+                Some(mime) => mime,
+                None => return,
+            };
+
+            let read_pipe = match offer.receive(mime_type.clone()) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Failed to receive the offer: {:?}", e);
+                    return;
+                }
+            };
+            let loop_handle = self.loop_handle.clone();
+            match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
+                let offer = match state.primary_selection_offers.iter().position(|of| of.0 == offer)
+                {
+                    Some(s) => state.primary_selection_offers.remove(s),
+                    None => return,
+                };
+                let (offer, mut data, token) = match offer {
+                    (o, d, Some(t)) => (o, d, t),
+                    _ => return,
+                };
+                let mut reader = BufReader::new(f);
+                let consumed = match reader.fill_buf() {
+                    Ok(buf) => {
+                        if buf.is_empty() {
+                            loop_handle.remove(token);
+                            println!(
+                                "primary selection data: {:?}",
+                                String::from_utf8(data.clone())
+                            );
+                            state.primary_selection_offers.push((offer, Vec::new(), None));
+                            return;
+                        } else {
+                            data.extend_from_slice(buf);
+                            state.primary_selection_offers.push((offer, data, Some(token)));
+                        }
+                        buf.len()
+                    }
+                    Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                        state.primary_selection_offers.push((offer, data, Some(token)));
+                        return;
+                    }
+                    Err(e) => {
+                        eprintln!("Error reading selection data: {}", e);
+                        loop_handle.remove(token);
+                        state.primary_selection_offers.push((offer, Vec::new(), None));
+
+                        return;
+                    }
+                };
+                reader.consume(consumed);
+            }) {
+                Ok(token) => {
+                    self.primary_selection_offers.last_mut().unwrap().2 = Some(token);
+                }
+                Err(_) => return,
+            }
+        }
+    }
+}
+
+impl PrimarySelectionSourceHandler for DataDeviceWindow {
+    fn send_request(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        source: &ZwpPrimarySelectionSourceV1,
+        mime: String,
+        write_pipe: WritePipe,
+    ) {
+        let fd = OwnedFd::from(write_pipe);
+        if let Some(_) = self
+            .selection_sources
+            .iter_mut()
+            .find(|s| s.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()))
+        {
+            let mut f = File::from(fd);
+            writeln!(f, "Copied from primary selection via sctk").unwrap();
+        }
+    }
+
+    fn cancelled(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        source: &ZwpPrimarySelectionSourceV1,
+    ) {
+        self.selection_sources.retain(|s| s.inner() == source);
+    }
+}
+
 delegate_compositor!(DataDeviceWindow);
 delegate_output!(DataDeviceWindow);
 delegate_shm!(DataDeviceWindow);
@@ -802,6 +985,8 @@ delegate_data_device_manager!(DataDeviceWindow);
 delegate_data_device!(DataDeviceWindow);
 delegate_data_source!(DataDeviceWindow);
 delegate_data_offer!(DataDeviceWindow);
+
+delegate_primary_selection!(DataDeviceWindow);
 
 delegate_registry!(DataDeviceWindow);
 
