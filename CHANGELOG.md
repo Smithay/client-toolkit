@@ -13,6 +13,7 @@
 #### Additions
 
 - Make `DataDeviceManagerState`'s `create_{copy_paste,drag_and_drop}_source` accept `IntoIterator<Item = T: ToString>`.
+- Add support for `zwp_primary_selection_v1`.
 
 ## 0.17.0 - 2023-03-28
 
