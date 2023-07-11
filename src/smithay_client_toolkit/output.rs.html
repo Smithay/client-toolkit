@@ -736,6 +736,8 @@
 <a href="#736" id="736">736</a>
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     any::Any,
     fmt::{<span class="self">self</span>, Display, Formatter},
@@ -1423,7 +1425,9 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(xdg_output) = <span class="kw-2">&amp;</span>output.xdg_output {
                 xdg_output.destroy();
             }
-            output.wl_output.release();
+            <span class="kw">if </span>output.wl_output.version() &gt;= <span class="number">3 </span>{
+                output.wl_output.release();
+            }
         }
     }
 }
