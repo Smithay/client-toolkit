@@ -685,7 +685,9 @@ where
             if let Some(xdg_output) = &output.xdg_output {
                 xdg_output.destroy();
             }
-            output.wl_output.release();
+            if output.wl_output.version() >= 3 {
+                output.wl_output.release();
+            }
         }
     }
 }
