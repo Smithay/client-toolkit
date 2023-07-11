@@ -10,6 +10,10 @@
 - `CursorIcon` from `cursor-icon` crate is now used for `set_cursor` and `Frame`.
 - `wayland-csd-frame` is now used for CSD types like `WindowState`, `DecorationsFrame`, etc.
 
+#### Fixed
+
+- Crash when `wl_output` is below version 3.
+
 #### Additions
 
 - Make `DataDeviceManagerState`'s `create_{copy_paste,drag_and_drop}_source` accept `IntoIterator<Item = T: ToString>`.
