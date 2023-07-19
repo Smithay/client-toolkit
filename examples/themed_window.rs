@@ -545,7 +545,7 @@ impl SimpleWindow {
                 self.window.resize(seat, serial, edge);
             }
             FrameAction::Move => self.window.move_(seat, serial),
-            _ => return,
+            _ => (),
         }
     }
 }

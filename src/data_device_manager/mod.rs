@@ -1,15 +1,6 @@
-pub mod data_device;
-pub mod data_offer;
-pub mod data_source;
-mod read_pipe;
-mod write_pipe;
-
-pub use read_pipe::*;
-pub use write_pipe::*;
-
-use std::marker::PhantomData;
-
-use wayland_client::{
+use crate::error::GlobalError;
+use crate::globals::{GlobalData, ProvidesBoundGlobal};
+use crate::reexports::client::{
     globals::{BindError, GlobalList},
     protocol::{
         wl_data_device,
@@ -20,21 +11,21 @@ use wayland_client::{
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-use crate::{
-    error::GlobalError,
-    globals::{GlobalData, ProvidesBoundGlobal},
-};
+pub mod data_device;
+pub mod data_offer;
+pub mod data_source;
+mod read_pipe;
+mod write_pipe;
 
-use self::{
-    data_device::{DataDevice, DataDeviceData, DataDeviceDataExt},
-    data_offer::DataOfferData,
-    data_source::{CopyPasteSource, DataSourceData, DataSourceDataExt, DragSource},
-};
+pub use read_pipe::*;
+pub use write_pipe::*;
+
+use data_device::{DataDevice, DataDeviceData};
+use data_source::{CopyPasteSource, DataSourceData, DragSource};
 
 #[derive(Debug)]
-pub struct DataDeviceManagerState<V = DataOfferData> {
+pub struct DataDeviceManagerState {
     manager: WlDataDeviceManager,
-    _phantom: PhantomData<V>,
 }
 
 impl DataDeviceManagerState {
@@ -43,7 +34,7 @@ impl DataDeviceManagerState {
         State: Dispatch<WlDataDeviceManager, GlobalData, State> + 'static,
     {
         let manager = globals.bind(qh, 1..=3, GlobalData)?;
-        Ok(Self { manager, _phantom: PhantomData })
+        Ok(Self { manager })
     }
 
     pub fn data_device_manager(&self) -> &WlDataDeviceManager {
@@ -85,7 +76,7 @@ impl DataDeviceManagerState {
     where
         D: Dispatch<WlDataSource, DataSourceData> + 'static,
     {
-        let source = self.create_data_source_with_data(qh, Default::default());
+        let source = self.manager.create_data_source(qh, Default::default());
 
         for mime in mime_types {
             source.offer(mime.to_string());
@@ -100,35 +91,13 @@ impl DataDeviceManagerState {
         source
     }
 
-    /// create a new data source for a given seat with some user data
-    pub fn create_data_source_with_data<D, U>(&self, qh: &QueueHandle<D>, data: U) -> WlDataSource
-    where
-        D: Dispatch<WlDataSource, U> + 'static,
-        U: DataSourceDataExt + 'static,
-    {
-        self.manager.create_data_source(qh, data)
-    }
-
     /// create a new data device for a given seat
     pub fn get_data_device<D>(&self, qh: &QueueHandle<D>, seat: &WlSeat) -> DataDevice
     where
         D: Dispatch<wl_data_device::WlDataDevice, DataDeviceData> + 'static,
     {
-        DataDevice { device: self.get_data_device_with_data(qh, seat, Default::default()) }
-    }
-
-    /// create a new data device for a given seat with some user data
-    pub fn get_data_device_with_data<D, U>(
-        &self,
-        qh: &QueueHandle<D>,
-        seat: &WlSeat,
-        data: U,
-    ) -> wl_data_device::WlDataDevice
-    where
-        D: Dispatch<wl_data_device::WlDataDevice, U> + 'static,
-        U: DataDeviceDataExt + 'static,
-    {
-        self.manager.get_data_device(seat, qh, data)
+        let data = DataDeviceData::new(seat.clone());
+        DataDevice { device: self.manager.get_data_device(seat, qh, data) }
     }
 }
 
@@ -151,16 +120,29 @@ where
         _conn: &Connection,
         _qhandle: &QueueHandle<D>,
     ) {
-        unreachable!()
+        unreachable!("wl_data_device_manager has no events")
     }
 }
 
 #[macro_export]
-macro_rules! delegate_data_device_manager {
+macro_rules! delegate_data_device {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager: $crate::globals::GlobalData
+            ] => $crate::data_device_manager::DataDeviceManagerState);
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::client::protocol::wl_data_offer::WlDataOffer: $crate::data_device_manager::data_offer::DataOfferData
+            ] => $crate::data_device_manager::DataDeviceManagerState);
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::client::protocol::wl_data_source::WlDataSource: $crate::data_device_manager::data_source::DataSourceData
+            ] => $crate::data_device_manager::DataDeviceManagerState
+        );
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::client::protocol::wl_data_device::WlDataDevice: $crate::data_device_manager::data_device::DataDeviceData
             ] => $crate::data_device_manager::DataDeviceManagerState
         );
     };

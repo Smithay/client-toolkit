@@ -42,6 +42,10 @@ impl PrimarySelectionDevice {
     pub fn data(&self) -> &PrimarySelectionDeviceData {
         self.device.data::<PrimarySelectionDeviceData>().unwrap()
     }
+
+    pub fn inner(&self) -> &ZwpPrimarySelectionDeviceV1 {
+        &self.device
+    }
 }
 
 impl Drop for PrimarySelectionDevice {
