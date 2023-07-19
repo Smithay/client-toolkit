@@ -4,7 +4,7 @@ use calloop::{LoopHandle, RegistrationToken};
 use wayland_client::{
     protocol::{
         wl_keyboard::{self, WlKeyboard},
-        wl_seat,
+        wl_seat, wl_surface,
     },
     Dispatch, QueueHandle,
 };
@@ -19,6 +19,7 @@ pub(crate) struct RepeatedKey {
     pub(crate) key: KeyEvent,
     /// Whether this is the first event of the repeat sequence.
     pub(crate) is_first: bool,
+    pub(crate) surface: wl_surface::WlSurface,
 }
 
 pub type RepeatCallback<T> = Box<dyn FnMut(&mut T, &WlKeyboard, KeyEvent) + 'static>;
