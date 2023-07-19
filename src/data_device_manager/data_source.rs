@@ -1,4 +1,4 @@
-use wayland_client::{
+use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
         wl_data_source::{self, WlDataSource},
@@ -180,22 +180,4 @@ impl Drop for DragSource {
     fn drop(&mut self) {
         self.inner.destroy();
     }
-}
-
-#[macro_export]
-macro_rules! delegate_data_source {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, udata: [$($udata: ty),*$(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_source::WlDataSource: $udata,
-            ] => $crate::data_device_manager::DataDeviceManagerState
-        );
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_source::WlDataSource: $crate::data_device_manager::data_source::DataSourceData
-            ] => $crate::data_device_manager::DataDeviceManagerState
-        );
-    };
 }

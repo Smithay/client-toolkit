@@ -9,15 +9,14 @@ use calloop::{EventLoop, LoopHandle, RegistrationToken};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     data_device_manager::{
-        data_device::{DataDevice, DataDeviceDataExt, DataDeviceHandler},
-        data_offer::{DataDeviceOffer, DataOfferHandler, DragOffer, SelectionOffer},
+        data_device::{DataDevice, DataDeviceHandler},
+        data_offer::{DataOfferHandler, DragOffer, SelectionOffer},
         data_source::{CopyPasteSource, DataSourceHandler, DragSource},
         DataDeviceManagerState, WritePipe,
     },
-    delegate_compositor, delegate_data_device, delegate_data_device_manager, delegate_data_offer,
-    delegate_data_source, delegate_keyboard, delegate_output, delegate_pointer,
-    delegate_primary_selection, delegate_registry, delegate_seat, delegate_shm, delegate_xdg_shell,
-    delegate_xdg_window,
+    delegate_compositor, delegate_data_device, delegate_keyboard, delegate_output,
+    delegate_pointer, delegate_primary_selection, delegate_registry, delegate_seat, delegate_shm,
+    delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     primary_selection::{
         device::{PrimarySelectionDevice, PrimarySelectionDeviceHandler},
@@ -48,6 +47,7 @@ use wayland_backend::io_lifetimes::OwnedFd;
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{
+        wl_data_device::WlDataDevice,
         wl_data_device_manager::DndAction,
         wl_keyboard::{self, WlKeyboard},
         wl_output,
@@ -61,15 +61,6 @@ use wayland_protocols::wp::primary_selection::zv1::client::{
     zwp_primary_selection_device_v1::ZwpPrimarySelectionDeviceV1,
     zwp_primary_selection_source_v1::ZwpPrimarySelectionSourceV1,
 };
-
-const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
-    "text/plain;charset=utf-8",
-    "text/plain;charset=UTF-8",
-    "UTF8_STRING",
-    "STRING",
-    "text/plain",
-    "TEXT",
-];
 
 fn main() {
     println!(
@@ -187,13 +178,7 @@ struct DataDeviceWindow {
     dnd_offers: Vec<(DragOffer, Vec<u8>, Option<RegistrationToken>)>,
     selection_offers: Vec<(SelectionOffer, Vec<u8>, Option<RegistrationToken>)>,
     primary_selection_offers: Vec<(PrimarySelectionOffer, Vec<u8>, Option<RegistrationToken>)>,
-    seat_objects: Vec<(
-        WlSeat,
-        Option<WlKeyboard>,
-        Option<WlPointer>,
-        DataDevice,
-        Option<PrimarySelectionDevice>,
-    )>,
+    seat_objects: Vec<SeatObject>,
     copy_paste_sources: Vec<CopyPasteSource>,
     selection_sources: Vec<PrimarySelectionSource>,
     drag_sources: Vec<(DragSource, bool)>,
@@ -292,7 +277,7 @@ impl SeatHandler for DataDeviceWindow {
         capability: Capability,
     ) {
         let seat_object =
-            if let Some(seat_object) = self.seat_objects.iter_mut().find(|(s, ..)| s == &seat) {
+            if let Some(seat_object) = self.seat_objects.iter_mut().find(|s| s.seat == seat) {
                 seat_object
             } else {
                 // create the data device here for this seat
@@ -303,20 +288,26 @@ impl SeatHandler for DataDeviceWindow {
                     .primary_selection_manager_state
                     .as_ref()
                     .map(|manager| manager.get_selection_device(qh, &seat));
-                self.seat_objects.push((seat.clone(), None, None, data_device, primary_device));
+                self.seat_objects.push(SeatObject {
+                    seat: seat.clone(),
+                    keyboard: None,
+                    pointer: None,
+                    data_device,
+                    primary_device,
+                });
                 self.seat_objects.last_mut().unwrap()
             };
         if capability == Capability::Keyboard && self.keyboard.is_none() {
             let keyboard =
                 self.seat_state.get_keyboard(qh, &seat, None).expect("Failed to create keyboard");
             self.keyboard = Some(keyboard.clone());
-            seat_object.1.replace(keyboard);
+            seat_object.keyboard.replace(keyboard);
         }
 
         if capability == Capability::Pointer && self.pointer.is_none() {
             let pointer = self.seat_state.get_pointer(qh, &seat).expect("Failed to create pointer");
             self.pointer = Some(pointer.clone());
-            seat_object.2.replace(pointer);
+            seat_object.pointer.replace(pointer);
         }
     }
 
@@ -381,39 +372,35 @@ impl KeyboardHandler for DataDeviceWindow {
         match event.utf8 {
             Some(s) if s.to_lowercase() == "c" => {
                 println!("Creating copy paste source and setting selection...");
-                if let Some(data_device) =
-                    self.seat_objects.iter().find_map(|(_, d_kbd, _, d, ..)| {
-                        if d_kbd.as_ref() == Some(&kbd) {
-                            Some(d)
-                        } else {
-                            None
-                        }
-                    })
-                {
+                if let Some(data_device) = self.seat_objects.iter().find_map(|seat| {
+                    if seat.keyboard.as_ref() == Some(kbd) {
+                        Some(&seat.data_device)
+                    } else {
+                        None
+                    }
+                }) {
                     let source = self
                         .data_device_manager_state
                         .create_copy_paste_source(qh, SUPPORTED_MIME_TYPES.to_vec());
-                    source.set_selection(&data_device, serial);
+                    source.set_selection(data_device, serial);
                     self.copy_paste_sources.push(source);
                 }
             }
             Some(s) if s.to_lowercase() == "p" => {
                 println!("Creating primary selection source and setting selection...");
-                if let Some(primary_selection_device) =
-                    self.seat_objects.iter().find_map(|(_, d_kbd, _, _, pd)| {
-                        if d_kbd.as_ref() == Some(&kbd) {
-                            pd.as_ref()
-                        } else {
-                            None
-                        }
-                    })
-                {
+                if let Some(primary_selection_device) = self.seat_objects.iter().find_map(|seat| {
+                    if seat.keyboard.as_ref() == Some(kbd) {
+                        seat.primary_device.as_ref()
+                    } else {
+                        None
+                    }
+                }) {
                     let source = self
                         .primary_selection_manager_state
                         .as_ref()
                         .unwrap()
                         .create_selection_source(qh, SUPPORTED_MIME_TYPES.to_vec());
-                    source.set_selection(&primary_selection_device, serial);
+                    source.set_selection(primary_selection_device, serial);
                     self.selection_sources.push(source);
                 }
             }
@@ -459,10 +446,8 @@ impl PointerHandler for DataDeviceWindow {
             let surface = event.surface.clone();
             match event.kind {
                 Press { button, serial, .. } if button == BTN_LEFT => {
-                    if let Some(data_device) = self
-                        .seat_objects
-                        .iter()
-                        .find(|(_, _, d_pointer, ..)| d_pointer.as_ref() == Some(&pointer))
+                    if let Some(seat) =
+                        self.seat_objects.iter().find(|seat| seat.pointer.as_ref() == Some(pointer))
                     {
                         println!("Creating drag and drop source and starting drag...");
                         self.shift = self.shift.xor(Some(0));
@@ -472,7 +457,7 @@ impl PointerHandler for DataDeviceWindow {
                             DndAction::Copy,
                         );
 
-                        source.start_drag(&data_device.3, &surface, None, serial);
+                        source.start_drag(&seat.data_device, &surface, None, serial);
                         self.drag_sources.push((source, false));
                     }
                 }
@@ -558,44 +543,88 @@ impl DataDeviceWindow {
 }
 
 impl DataDeviceHandler for DataDeviceWindow {
-    fn enter(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, data_device: DataDevice) {
-        let drag_offer = data_device.drag_offer().unwrap();
+    fn enter(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        wl_data_device: &WlDataDevice,
+    ) {
+        let data_device = &self
+            .seat_objects
+            .iter()
+            .find(|seat| seat.data_device.inner() == wl_data_device)
+            .unwrap()
+            .data_device;
+        let drag_offer = data_device.data().drag_offer().unwrap();
         println!("data offer entered x: {:.2} y: {:.2}", drag_offer.x, drag_offer.y);
 
-        // accept the first mime type we support
-        if let Some(m) = data_device
-            .drag_mime_types()
-            .iter()
-            .find(|m| SUPPORTED_MIME_TYPES.contains(&m.as_str()))
-        {
-            drag_offer.accept_mime_type(0, Some(m.clone()));
+        // Accept the first mime type we support.
+        if let Some(mime) = drag_offer.with_mime_types(|mime_types| {
+            for mime in mime_types {
+                if SUPPORTED_MIME_TYPES.contains(&mime.as_str()) {
+                    return Some(mime.clone());
+                }
+            }
+
+            None
+        }) {
+            drag_offer.accept_mime_type(0, Some(mime));
         }
 
-        // accept the action now just in case
+        // Accept the action now just in case
         drag_offer.set_actions(DndAction::Copy, DndAction::Copy);
     }
 
-    fn leave(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _data_device: DataDevice) {
+    fn leave(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _data_device: &WlDataDevice) {
         println!("data offer left");
     }
 
-    fn motion(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, data_device: DataDevice) {
-        let DragOffer { x, y, time, .. } = data_device.drag_offer().unwrap();
+    fn motion(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        wl_data_device: &WlDataDevice,
+    ) {
+        let data_device = &self
+            .seat_objects
+            .iter()
+            .find(|seat| seat.data_device.inner() == wl_data_device)
+            .unwrap()
+            .data_device;
+        let DragOffer { x, y, time, .. } = data_device.data().drag_offer().unwrap();
 
         dbg!((time, x, y));
     }
 
-    fn selection(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, data_device: DataDevice) {
-        let mime_types = data_device.selection_mime_types();
-        if let Some(offer) = data_device.selection_offer() {
+    fn selection(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        wl_data_device: &WlDataDevice,
+    ) {
+        let data_device = &self
+            .seat_objects
+            .iter()
+            .find(|seat| seat.data_device.inner() == wl_data_device)
+            .unwrap()
+            .data_device;
+        if let Some(offer) = data_device.data().selection_offer() {
+            offer.with_mime_types(|mimes| {
+                println!("Received selection offer with mime types:");
+                for mime in mimes {
+                    println!("\t{mime}");
+                }
+            });
+
             self.selection_offers.push((offer.clone(), Vec::new(), None));
             let cur_offer = self.selection_offers.last_mut().unwrap();
-            let mime_type =
-                match mime_types.iter().find(|m| SUPPORTED_MIME_TYPES.contains(&m.as_str())) {
-                    Some(mime) => mime,
-                    None => return,
-                };
-            let read_pipe = match offer.receive(mime_type.clone()) {
+
+            let mime_type = match offer.with_mime_types(pick_mime) {
+                Some(mime_type) => mime_type,
+                None => return,
+            };
+
+            let read_pipe = match offer.receive(mime_type) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Failed to receive the offer: {:?}", e);
@@ -604,7 +633,7 @@ impl DataDeviceHandler for DataDeviceWindow {
             };
             let loop_handle = self.loop_handle.clone();
             let cur_offer_ = cur_offer.0.clone();
-            match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
+            if let Ok(token) = self.loop_handle.insert_source(read_pipe, move |_, f, state| {
                 let offer = match state.selection_offers.iter().position(|o| o.0 == cur_offer_) {
                     Some(s) => state.selection_offers.remove(s),
                     None => return,
@@ -641,10 +670,7 @@ impl DataDeviceHandler for DataDeviceWindow {
                 };
                 reader.consume(consumed);
             }) {
-                Ok(token) => {
-                    cur_offer.2 = Some(token);
-                }
-                Err(_) => return,
+                cur_offer.2 = Some(token);
             }
         }
     }
@@ -653,18 +679,19 @@ impl DataDeviceHandler for DataDeviceWindow {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        wl_data_device: &WlDataDevice,
     ) {
-        if let Some(offer) = data_device.drag_offer() {
+        let data_device = &self
+            .seat_objects
+            .iter()
+            .find(|seat| seat.data_device.inner() == wl_data_device)
+            .unwrap()
+            .data_device;
+        if let Some(offer) = data_device.data().drag_offer() {
             println!("Dropped: {offer:?}");
-            self.dnd_offers.push((offer, Vec::new(), None));
+            self.dnd_offers.push((offer.clone(), Vec::new(), None));
             let cur_offer = self.dnd_offers.last_mut().unwrap();
-            let mime_type = match data_device
-                .drag_mime_types()
-                .iter()
-                .find(|m| SUPPORTED_MIME_TYPES.contains(&m.as_str()))
-                .cloned()
-            {
+            let mime_type = match offer.with_mime_types(pick_mime) {
                 Some(mime) => mime,
                 None => return,
             };
@@ -677,7 +704,7 @@ impl DataDeviceHandler for DataDeviceWindow {
             };
 
             self.accept_counter += 1;
-            cur_offer.0.accept_mime_type(self.accept_counter, Some(mime_type.clone()));
+            cur_offer.0.accept_mime_type(self.accept_counter, Some(mime_type));
             cur_offer.0.set_actions(DndAction::Copy, DndAction::Copy);
             let loop_handle = self.loop_handle.clone();
             let cur_offer_ = cur_offer.0.clone();
@@ -732,21 +759,6 @@ impl DataDeviceHandler for DataDeviceWindow {
 }
 
 impl DataOfferHandler for DataDeviceWindow {
-    fn offer(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        offer: &mut DataDeviceOffer,
-        mime_type: String,
-    ) {
-        println!("Received offer with mime type: {mime_type}");
-        let serial = self.accept_counter;
-        self.accept_counter += 1;
-        if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
-            offer.accept_mime_type(serial, Some(mime_type.clone()));
-        }
-    }
-
     fn source_actions(
         &mut self,
         _conn: &Connection,
@@ -791,17 +803,17 @@ impl DataSourceHandler for DataDeviceWindow {
         write_pipe: WritePipe,
     ) {
         let fd = OwnedFd::from(write_pipe);
-        if let Some(_) = self
+        if self
             .copy_paste_sources
             .iter_mut()
-            .find(|s| s.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()))
+            .any(|s| s.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()))
         {
             let mut f = File::from(fd);
             writeln!(f, "Copied from selection via sctk").unwrap();
-        } else if let Some(_) = self
+        } else if self
             .drag_sources
             .iter_mut()
-            .find(|s| s.0.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()) && s.1)
+            .any(|s| s.0.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()) && s.1)
         {
             let mut f = File::from(fd);
             writeln!(f, "Dropped via sctk").unwrap();
@@ -855,9 +867,16 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
-        _: &ZwpPrimarySelectionDeviceV1,
+        primary_device: &ZwpPrimarySelectionDeviceV1,
     ) {
-        let primary_device = self.seat_objects.iter().find_map(|object| object.4.as_ref()).unwrap();
+        let primary_device = self
+            .seat_objects
+            .iter()
+            .find(|seat| seat.primary_device.as_ref().map(|p| p.inner()) == Some(primary_device))
+            .unwrap()
+            .primary_device
+            .as_ref()
+            .unwrap();
         if let Some(offer) = primary_device.data().selection_offer() {
             offer.with_mime_types(|mimes| {
                 println!("Received primary selection offer with mime types:");
@@ -869,20 +888,12 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
             // Add a new offer.
             self.primary_selection_offers.push((offer.clone(), Vec::new(), None));
 
-            let mime_type = match offer.with_mime_types(|mimes| {
-                for mime in mimes {
-                    if SUPPORTED_MIME_TYPES.contains(&mime.as_str()) {
-                        return Some(mime.clone());
-                    }
-                }
-
-                None
-            }) {
+            let mime_type = match offer.with_mime_types(pick_mime) {
                 Some(mime) => mime,
                 None => return,
             };
 
-            let read_pipe = match offer.receive(mime_type.clone()) {
+            let read_pipe = match offer.receive(mime_type) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Failed to receive the offer: {:?}", e);
@@ -890,7 +901,7 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                 }
             };
             let loop_handle = self.loop_handle.clone();
-            match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
+            if let Ok(token) = self.loop_handle.insert_source(read_pipe, move |_, f, state| {
                 let offer = match state.primary_selection_offers.iter().position(|of| of.0 == offer)
                 {
                     Some(s) => state.primary_selection_offers.remove(s),
@@ -931,10 +942,7 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                 };
                 reader.consume(consumed);
             }) {
-                Ok(token) => {
-                    self.primary_selection_offers.last_mut().unwrap().2 = Some(token);
-                }
-                Err(_) => return,
+                self.primary_selection_offers.last_mut().unwrap().2 = Some(token);
             }
         }
     }
@@ -950,10 +958,10 @@ impl PrimarySelectionSourceHandler for DataDeviceWindow {
         write_pipe: WritePipe,
     ) {
         let fd = OwnedFd::from(write_pipe);
-        if let Some(_) = self
+        if self
             .selection_sources
             .iter_mut()
-            .find(|s| s.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()))
+            .any(|s| s.inner() == source && SUPPORTED_MIME_TYPES.contains(&mime.as_str()))
         {
             let mut f = File::from(fd);
             writeln!(f, "Copied from primary selection via sctk").unwrap();
@@ -970,6 +978,21 @@ impl PrimarySelectionSourceHandler for DataDeviceWindow {
     }
 }
 
+impl ProvidesRegistryState for DataDeviceWindow {
+    fn registry(&mut self) -> &mut RegistryState {
+        &mut self.registry_state
+    }
+    registry_handlers![OutputState, SeatState];
+}
+
+struct SeatObject {
+    seat: WlSeat,
+    keyboard: Option<WlKeyboard>,
+    pointer: Option<WlPointer>,
+    data_device: DataDevice,
+    primary_device: Option<PrimarySelectionDevice>,
+}
+
 delegate_compositor!(DataDeviceWindow);
 delegate_output!(DataDeviceWindow);
 delegate_shm!(DataDeviceWindow);
@@ -981,18 +1004,26 @@ delegate_pointer!(DataDeviceWindow);
 delegate_xdg_shell!(DataDeviceWindow);
 delegate_xdg_window!(DataDeviceWindow);
 
-delegate_data_device_manager!(DataDeviceWindow);
 delegate_data_device!(DataDeviceWindow);
-delegate_data_source!(DataDeviceWindow);
-delegate_data_offer!(DataDeviceWindow);
 
 delegate_primary_selection!(DataDeviceWindow);
 
 delegate_registry!(DataDeviceWindow);
 
-impl ProvidesRegistryState for DataDeviceWindow {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
+const SUPPORTED_MIME_TYPES: &[&str; 6] = &[
+    "text/plain;charset=utf-8",
+    "text/plain;charset=UTF-8",
+    "UTF8_STRING",
+    "STRING",
+    "text/plain",
+    "TEXT",
+];
+fn pick_mime(mime_types: &[String]) -> Option<String> {
+    for mime in mime_types {
+        if SUPPORTED_MIME_TYPES.contains(&mime.as_str()) {
+            return Some(mime.clone());
+        }
     }
-    registry_handlers![OutputState, SeatState];
+
+    None
 }

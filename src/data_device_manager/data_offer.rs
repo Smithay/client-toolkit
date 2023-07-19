@@ -1,11 +1,10 @@
-use std::os::unix::io::AsRawFd;
 use std::{
     ops::{Deref, DerefMut},
     os::unix::prelude::{FromRawFd, RawFd},
     sync::{Arc, Mutex},
 };
-use wayland_backend::io_lifetimes::BorrowedFd;
-use wayland_client::{
+
+use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
         wl_data_offer::{self, WlDataOffer},
@@ -16,35 +15,48 @@ use wayland_client::{
 
 use super::{DataDeviceManagerState, ReadPipe};
 
-#[derive(Debug, Clone)]
-pub struct UndeterminedOffer {
-    pub(crate) data_offer: Option<WlDataOffer>,
-    pub actions: DndAction,
+/// Handler trait for DataOffer events.
+///
+/// The functions defined in this trait are called as DataOffer events are received from the compositor.
+pub trait DataOfferHandler: Sized {
+    /// Called to advertise the available DnD Actions as set by the source.
+    fn source_actions(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        offer: &mut DragOffer,
+        actions: DndAction,
+    );
+
+    /// Called to advertise the action selected by the compositor after matching
+    /// the source/destination side actions. Only one action or none will be
+    /// selected in the actions sent by the compositor. This may be called
+    /// multiple times during a DnD operation. The most recent DndAction is the
+    /// only valid one.
+    ///
+    /// At the time of a `drop` event on the data device, this action must be
+    /// used except in the case of an ask action. In the case that the last
+    /// action received is `ask`, the destination asks the user for their
+    /// preference, then calls set_actions & accept each one last time. Finally,
+    /// the destination may then request data to be sent and finishing the data
+    /// offer
+    fn selected_action(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        offer: &mut DragOffer,
+        actions: DndAction,
+    );
 }
-impl PartialEq for UndeterminedOffer {
-    fn eq(&self, other: &Self) -> bool {
-        self.data_offer == other.data_offer
-    }
-}
 
-impl UndeterminedOffer {
-    pub fn destroy(&self) {
-        if let Some(offer) = self.data_offer.as_ref() {
-            offer.destroy();
-        }
-    }
+/// An error that may occur when working with data offers.
+#[derive(Debug, thiserror::Error)]
+pub enum DataOfferError {
+    #[error("offer is not valid to receive from yet")]
+    InvalidReceive,
 
-    pub fn inner(&self) -> Option<&WlDataOffer> {
-        self.data_offer.as_ref()
-    }
-
-    pub fn set_actions(&self, actions: DndAction, preferred_action: DndAction) {
-        if let Some(ref data_offer) = self.data_offer {
-            if data_offer.version() >= 3 {
-                data_offer.set_actions(actions, preferred_action);
-            }
-        }
-    }
+    #[error("IO error")]
+    Io(std::io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -67,17 +79,18 @@ pub struct DragOffer {
     pub selected_action: DndAction,
 }
 
-impl PartialEq for DragOffer {
-    fn eq(&self, other: &Self) -> bool {
-        self.data_offer == other.data_offer
-    }
-}
-
 impl DragOffer {
     pub fn finish(&self) {
         if self.data_offer.version() >= 3 {
             self.data_offer.finish();
         }
+    }
+
+    /// Inspect the mime types available on the given offer.
+    pub fn with_mime_types<T, F: Fn(&[String]) -> T>(&self, callback: F) -> T {
+        let mime_types =
+            &self.data_offer.data::<DataOfferData>().unwrap().inner.lock().unwrap().mime_types;
+        callback(mime_types)
     }
 
     /// Set the accepted and preferred drag and drop actions.
@@ -114,30 +127,26 @@ impl DragOffer {
     }
 }
 
+impl PartialEq for DragOffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.data_offer == other.data_offer
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SelectionOffer {
     /// the wl_data offer
     pub(crate) data_offer: WlDataOffer,
 }
 
-impl PartialEq for SelectionOffer {
-    fn eq(&self, other: &Self) -> bool {
-        self.data_offer == other.data_offer
-    }
-}
-
-/// An error that may occur when working with data offers.
-#[derive(Debug, thiserror::Error)]
-pub enum DataOfferError {
-    /// A compositor global was available, but did not support the given minimum version
-    #[error("offer is not valid to receive from yet")]
-    InvalidReceive,
-
-    #[error("IO error")]
-    Io(std::io::Error),
-}
-
 impl SelectionOffer {
+    /// Inspect the mime types available on the given offer.
+    pub fn with_mime_types<T, F: Fn(&[String]) -> T>(&self, callback: F) -> T {
+        let mime_types =
+            &self.data_offer.data::<DataOfferData>().unwrap().inner.lock().unwrap().mime_types;
+        callback(mime_types)
+    }
+
     pub fn receive(&self, mime_type: String) -> Result<ReadPipe, DataOfferError> {
         receive(&self.data_offer, mime_type).map_err(DataOfferError::Io)
     }
@@ -151,66 +160,9 @@ impl SelectionOffer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum DataDeviceOffer {
-    Drag(DragOffer),
-    Selection(SelectionOffer),
-    Undetermined(UndeterminedOffer),
-}
-
-impl Default for DataDeviceOffer {
-    fn default() -> Self {
-        DataDeviceOffer::Undetermined(UndeterminedOffer {
-            data_offer: None,
-            actions: DndAction::empty(),
-        })
-    }
-}
-
-impl DataDeviceOffer {
-    /// # Safety
-    ///
-    /// The provided file destructor must be a valid FD for writing, and will be closed
-    /// once the contents are written.
-    pub unsafe fn receive_to_fd(
-        &self,
-        mime_type: String,
-        fd: BorrowedFd,
-    ) -> Result<(), DataOfferError> {
-        let inner = match self {
-            DataDeviceOffer::Drag(o) => o.inner(),
-            DataDeviceOffer::Selection(o) => o.inner(),
-            DataDeviceOffer::Undetermined(_) => return Err(DataOfferError::InvalidReceive), // error?
-        };
-
-        unsafe { receive_to_fd(inner, mime_type, fd.as_raw_fd()) };
-        Ok(())
-    }
-
-    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, DataOfferError> {
-        let inner = match self {
-            DataDeviceOffer::Drag(o) => o.inner(),
-            DataDeviceOffer::Selection(o) => o.inner(),
-            DataDeviceOffer::Undetermined(_) => return Err(DataOfferError::InvalidReceive), // error?
-        };
-
-        receive(inner, mime_type).map_err(DataOfferError::Io)
-    }
-
-    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<String>) {
-        match self {
-            DataDeviceOffer::Drag(o) => o.accept_mime_type(serial, mime_type),
-            DataDeviceOffer::Selection(_) => {}
-            DataDeviceOffer::Undetermined(_) => {} // error?
-        };
-    }
-
-    pub fn set_actions(&self, actions: DndAction, preferred_action: DndAction) {
-        match self {
-            DataDeviceOffer::Drag(o) => o.set_actions(actions, preferred_action),
-            DataDeviceOffer::Selection(_) => {}
-            DataDeviceOffer::Undetermined(o) => o.set_actions(actions, preferred_action), // error?
-        };
+impl PartialEq for SelectionOffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.data_offer == other.data_offer
     }
 }
 
@@ -219,13 +171,13 @@ pub struct DataOfferData {
     pub(crate) inner: Arc<Mutex<DataDeviceOfferInner>>,
 }
 
-#[derive(Debug, Default)]
-pub struct DataDeviceOfferInner {
-    pub(crate) offer: DataDeviceOffer,
-    pub(crate) mime_types: Vec<String>,
-}
-
 impl DataOfferData {
+    /// Inspect the mime types available on the given offer.
+    pub fn with_mime_types<T, F: Fn(&[String]) -> T>(&self, callback: F) -> T {
+        let mime_types = &self.inner.lock().unwrap().mime_types;
+        callback(mime_types)
+    }
+
     pub(crate) fn push_mime_type(&self, mime_type: String) {
         self.inner.lock().unwrap().mime_types.push(mime_type);
     }
@@ -335,98 +287,59 @@ impl DataOfferData {
             DataDeviceOffer::Undetermined(_) => {}
         }
     }
-}
 
-impl DataOfferDataExt for DataOfferData {
-    fn data_offer_data(&self) -> &DataOfferData {
-        self
-    }
-
-    fn as_drag_offer(&self) -> Option<DragOffer> {
+    pub(crate) fn as_drag_offer(&self) -> Option<DragOffer> {
         match &self.inner.lock().unwrap().deref().offer {
             DataDeviceOffer::Drag(o) => Some(o.clone()),
             _ => None,
         }
     }
 
-    fn as_selection_offer(&self) -> Option<SelectionOffer> {
+    pub(crate) fn as_selection_offer(&self) -> Option<SelectionOffer> {
         match &self.inner.lock().unwrap().deref().offer {
             DataDeviceOffer::Selection(o) => Some(o.clone()),
             _ => None,
         }
     }
+}
 
-    fn mime_types(&self) -> Vec<String> {
-        self.inner.lock().unwrap().mime_types.clone()
+#[derive(Debug, Default)]
+pub struct DataDeviceOfferInner {
+    pub(crate) offer: DataDeviceOffer,
+    pub(crate) mime_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum DataDeviceOffer {
+    Drag(DragOffer),
+    Selection(SelectionOffer),
+    Undetermined(UndeterminedOffer),
+}
+
+impl Default for DataDeviceOffer {
+    fn default() -> Self {
+        DataDeviceOffer::Undetermined(UndeterminedOffer {
+            data_offer: None,
+            actions: DndAction::empty(),
+        })
     }
 }
 
-pub trait DataOfferDataExt {
-    fn data_offer_data(&self) -> &DataOfferData;
-    fn mime_types(&self) -> Vec<String>;
-    fn as_drag_offer(&self) -> Option<DragOffer>;
-    fn as_selection_offer(&self) -> Option<SelectionOffer>;
-}
-
-/// Handler trait for DataOffer events.
-///
-/// The functions defined in this trait are called as DataOffer events are received from the compositor.
-pub trait DataOfferHandler: Sized {
-    /// Called for each mime type the data offer advertises.
-    fn offer(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        offer: &mut DataDeviceOffer,
-        mime_type: String,
-    );
-
-    /// Called to advertise the available DnD Actions as set by the source.
-    fn source_actions(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        offer: &mut DragOffer,
-        actions: DndAction,
-    );
-
-    /// Called to advertise the action selected by the compositor after matching the source/destination side actions.
-    /// Only one action or none will be selected in the actions sent by the compositor.
-    /// This may be called multiple times during a DnD operation.
-    /// The most recent DndAction is the only valid one.
-    ///
-    /// At the time of a `drop` event on the data device, this action must be used except in the case of an ask action.
-    /// In the case that the last action received is `ask`, the destination asks the user for their preference, then calls set_actions & accept each one last time.
-    /// Finally, the destination may then request data to be sent and finishing the data offer
-    ///
-    fn selected_action(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        offer: &mut DragOffer,
-        actions: DndAction,
-    );
-}
-
-impl<D, U> Dispatch<wl_data_offer::WlDataOffer, U, D> for DataDeviceManagerState
+impl<D> Dispatch<wl_data_offer::WlDataOffer, DataOfferData, D> for DataDeviceManagerState
 where
-    D: Dispatch<wl_data_offer::WlDataOffer, U> + DataOfferHandler,
-    U: DataOfferDataExt,
+    D: Dispatch<wl_data_offer::WlDataOffer, DataOfferData> + DataOfferHandler,
 {
     fn event(
         state: &mut D,
         _offer: &wl_data_offer::WlDataOffer,
         event: <wl_data_offer::WlDataOffer as wayland_client::Proxy>::Event,
-        data: &U,
+        data: &DataOfferData,
         conn: &wayland_client::Connection,
         qh: &wayland_client::QueueHandle<D>,
     ) {
-        let data = data.data_offer_data();
-
         match event {
             wl_data_offer::Event::Offer { mime_type } => {
-                data.push_mime_type(mime_type.clone());
-                state.offer(conn, qh, &mut data.inner.lock().unwrap().offer, mime_type);
+                data.push_mime_type(mime_type);
             }
             wl_data_offer::Event::SourceActions { source_actions } => {
                 match source_actions {
@@ -460,6 +373,18 @@ where
             }
             _ => unimplemented!(),
         };
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct UndeterminedOffer {
+    pub(crate) data_offer: Option<WlDataOffer>,
+    pub actions: DndAction,
+}
+
+impl PartialEq for UndeterminedOffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.data_offer == other.data_offer
     }
 }
 
@@ -514,22 +439,4 @@ pub unsafe fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: Raw
     if let Err(err) = close(writefd) {
         log::warn!("Failed to close write pipe: {}", err);
     }
-}
-
-#[macro_export]
-macro_rules! delegate_data_offer {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, udata: [$($udata: ty),*$(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_offer::WlDataOffer: $udata,
-            ] => $crate::data_device_manager::DataDeviceManagerState
-        );
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_offer::WlDataOffer: $crate::data_device_manager::data_offer::DataOfferData
-            ] => $crate::data_device_manager::DataDeviceManagerState
-        );
-    };
 }
