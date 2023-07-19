@@ -323,6 +323,7 @@ pub struct KeyboardData<T> {
     xkb_compose: Mutex<Option<xkb::compose::State>>,
     #[cfg(feature = "calloop")]
     repeat_data: Arc<Mutex<Option<RepeatData<T>>>>,
+    focus: Mutex<Option<wl_surface::WlSurface>>,
     _phantom_data: PhantomData<T>,
 }
 
@@ -369,6 +370,7 @@ impl<T> KeyboardData<T> {
             xkb_compose: Mutex::new(None),
             #[cfg(feature = "calloop")]
             repeat_data: Arc::new(Mutex::new(None)),
+            focus: Mutex::new(None),
             _phantom_data: PhantomData,
         };
 
@@ -408,6 +410,7 @@ impl<T> KeyboardData<T> {
             xkb_compose: Mutex::new(None),
             #[cfg(feature = "calloop")]
             repeat_data: Arc::new(Mutex::new(None)),
+            focus: Mutex::new(None),
             _phantom_data: PhantomData,
         };
 
@@ -589,6 +592,8 @@ where
 
                     data.enter(conn, qh, keyboard, &surface, serial, &raw, &keysyms);
                 }
+
+                *udata.focus.lock().unwrap() = Some(surface);
             }
 
             wl_keyboard::Event::Leave { serial, surface } => {
@@ -602,6 +607,8 @@ where
                 }
 
                 data.leave(conn, qh, keyboard, &surface, serial);
+
+                *udata.focus.lock().unwrap() = None;
             }
 
             wl_keyboard::Event::Key { serial, time, key, state } => match state {
@@ -677,10 +684,19 @@ where
                                                 loop_handle.remove(token);
                                             }
 
+                                            let surface = udata
+                                                .focus
+                                                .lock()
+                                                .unwrap()
+                                                .as_ref()
+                                                .cloned()
+                                                .expect("wl_keyboard::key with no focused surface");
+
                                             // Update the current repeat key.
                                             repeat_data.current_repeat.replace(RepeatedKey {
                                                 key: event.clone(),
                                                 is_first: true,
+                                                surface,
                                             });
 
                                             let (delay, rate) = match repeat_data.repeat_info {
@@ -713,6 +729,11 @@ where
                                                         return TimeoutAction::Drop;
                                                     }
                                                     let key = key.as_mut().unwrap();
+                                                    // If surface was closed while focused, no `Leave`
+                                                    // event occurred.
+                                                    if !key.surface.is_alive() {
+                                                        return TimeoutAction::Drop;
+                                                    }
                                                     key.key.time += if key.is_first {
                                                         key.is_first = false;
                                                         delay
