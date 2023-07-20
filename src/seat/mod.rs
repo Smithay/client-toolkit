@@ -1,10 +1,3 @@
-#[cfg(feature = "xkbcommon")]
-pub mod keyboard;
-pub mod pointer;
-pub mod pointer_constraints;
-pub mod relative_pointer;
-pub mod touch;
-
 use std::{
     fmt::{self, Display, Formatter},
     sync::{
@@ -13,21 +6,29 @@ use std::{
     },
 };
 
-use wayland_client::{
-    globals::GlobalList,
-    protocol::{wl_pointer, wl_seat, wl_shm, wl_surface, wl_touch},
+use crate::reexports::client::{
+    globals::{Global, GlobalList},
+    protocol::{wl_pointer, wl_registry::WlRegistry, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
-
+use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
+use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 use crate::{
     compositor::SurfaceDataExt,
+    globals::GlobalData,
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
-use self::{
-    pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
-    touch::{TouchData, TouchDataExt, TouchHandler},
-};
+#[cfg(feature = "xkbcommon")]
+pub mod keyboard;
+pub mod pointer;
+pub mod pointer_constraints;
+pub mod relative_pointer;
+pub mod touch;
+
+use pointer::cursor_shape::CursorShapeManager;
+use pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes};
+use touch::{TouchData, TouchDataExt, TouchHandler};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,6 +65,14 @@ pub enum SeatError {
 pub struct SeatState {
     // (name, seat)
     seats: Vec<SeatInner>,
+    cursor_shape_manager_state: CursorShapeManagerState,
+}
+
+#[derive(Debug)]
+enum CursorShapeManagerState {
+    NotPresent,
+    Pending { registry: WlRegistry, global: Global },
+    Bound(CursorShapeManager),
 }
 
 impl SeatState {
@@ -71,18 +80,34 @@ impl SeatState {
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> SeatState {
-        let seats = global_list.contents().with_list(|globals| {
-            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=7, |id| SeatData {
-                has_keyboard: Arc::new(AtomicBool::new(false)),
-                has_pointer: Arc::new(AtomicBool::new(false)),
-                has_touch: Arc::new(AtomicBool::new(false)),
-                name: Arc::new(Mutex::new(None)),
-                id,
-            })
-            .expect("failed to bind global")
+        let (seats, cursor_shape_manager) = global_list.contents().with_list(|globals| {
+            let global = globals
+                .iter()
+                .find(|global| global.interface == WpCursorShapeManagerV1::interface().name)
+                .map(|global| CursorShapeManagerState::Pending {
+                    registry: global_list.registry().clone(),
+                    global: global.clone(),
+                })
+                .unwrap_or(CursorShapeManagerState::NotPresent);
+
+            (
+                crate::registry::bind_all(global_list.registry(), globals, qh, 1..=7, |id| {
+                    SeatData {
+                        has_keyboard: Arc::new(AtomicBool::new(false)),
+                        has_pointer: Arc::new(AtomicBool::new(false)),
+                        has_touch: Arc::new(AtomicBool::new(false)),
+                        name: Arc::new(Mutex::new(None)),
+                        id,
+                    }
+                })
+                .expect("failed to bind global"),
+                global,
+            )
         });
 
-        let mut state = SeatState { seats: vec![] };
+        let mut state =
+            SeatState { seats: vec![], cursor_shape_manager_state: cursor_shape_manager };
+
         for seat in seats {
             let data = seat.data::<SeatData>().unwrap().clone();
 
@@ -130,6 +155,8 @@ impl SeatState {
 
     /// Creates a pointer from a seat with the provided theme.
     ///
+    /// This will use [`CursorShapeManager`] under the hood when it's available.
+    ///
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
@@ -144,6 +171,8 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData>
             + Dispatch<wl_surface::WlSurface, S>
+            + Dispatch<WpCursorShapeManagerV1, GlobalData>
+            + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
             + 'static,
         S: SurfaceDataExt + 'static,
@@ -200,6 +229,8 @@ impl SeatState {
     where
         D: Dispatch<wl_pointer::WlPointer, U>
             + Dispatch<wl_surface::WlSurface, S>
+            + Dispatch<WpCursorShapeManagerV1, GlobalData>
+            + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
             + 'static,
         S: SurfaceDataExt + 'static,
@@ -213,11 +244,33 @@ impl SeatState {
         }
 
         let wl_ptr = seat.get_pointer(qh, pointer_data);
+
+        if let CursorShapeManagerState::Pending { registry, global } =
+            &self.cursor_shape_manager_state
+        {
+            self.cursor_shape_manager_state =
+                match crate::registry::bind_one(registry, &[global.clone()], qh, 1..=1, GlobalData)
+                {
+                    Ok(bound) => {
+                        CursorShapeManagerState::Bound(CursorShapeManager::from_existing(bound))
+                    }
+                    Err(_) => CursorShapeManagerState::NotPresent,
+                }
+        }
+
+        let shape_device =
+            if let CursorShapeManagerState::Bound(ref bound) = self.cursor_shape_manager_state {
+                Some(bound.get_shape_device(&wl_ptr, qh))
+            } else {
+                None
+            };
+
         Ok(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
             pointer: wl_ptr,
             shm: shm.clone(),
             surface,
+            shape_device,
             _marker: std::marker::PhantomData,
             _surface_data: std::marker::PhantomData,
         })
@@ -458,7 +511,7 @@ where
         interface: &str,
         _: u32,
     ) {
-        if interface == "wl_seat" {
+        if interface == wl_seat::WlSeat::interface().name {
             let seat = state
                 .registry()
                 .bind_specific(
@@ -489,7 +542,7 @@ where
         name: u32,
         interface: &str,
     ) {
-        if interface == "wl_seat" {
+        if interface == wl_seat::WlSeat::interface().name {
             if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.data.id == name)
             {
                 let seat = seat.seat.clone();

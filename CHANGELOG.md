@@ -18,6 +18,8 @@
 
 - Make `DataDeviceManagerState`'s `create_{copy_paste,drag_and_drop}_source` accept `IntoIterator<Item = T: ToString>`.
 - Add support for `zwp_primary_selection_v1`.
+- `CursorShapeManager` providing handling for `cursor-shape-v1` protocol.
+- `SeatState::get_pointer_with_theme` will now automatically use `wp_cursor_shape_v1` when available.
 
 ## 0.17.0 - 2023-03-28
 
