@@ -15,6 +15,7 @@ use wayland_client::{
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_cursor::{Cursor, CursorTheme};
+use wayland_protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 
 use crate::{
     compositor::{SurfaceData, SurfaceDataExt},
@@ -25,6 +26,10 @@ use super::SeatState;
 
 #[doc(inline)]
 pub use cursor_icon::{CursorIcon, ParseError as CursorIconParseError};
+
+pub mod cursor_shape;
+
+use cursor_shape::cursor_icon_to_shape;
 
 /* From linux/input-event-codes.h - the buttons usually used by mice */
 pub const BTN_LEFT: u32 = 0x110;
@@ -171,7 +176,17 @@ macro_rules! delegate_pointer {
                 $crate::reexports::client::protocol::wl_pointer::WlPointer: $crate::seat::pointer::PointerData
             ] => $crate::seat::SeatState
         );
-    };
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1: $crate::globals::GlobalData
+            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
+        );
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1: $crate::globals::GlobalData
+            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
+        );
+     };
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, pointer: [$($pointer_data:ty),* $(,)?]) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
@@ -179,6 +194,16 @@ macro_rules! delegate_pointer {
                     $crate::reexports::client::protocol::wl_pointer::WlPointer: $pointer_data,
                 )*
             ] => $crate::seat::SeatState
+        );
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1: $crate::globals::GlobalData
+            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
+        );
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+            [
+                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1: $crate::globals::GlobalData
+            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
         );
     };
 }
@@ -401,6 +426,7 @@ pub struct ThemedPointer<U = PointerData, S = SurfaceData> {
     pub(super) shm: WlShm,
     /// The surface owned by the cursor to present the icon.
     pub(super) surface: WlSurface,
+    pub(super) shape_device: Option<WpCursorShapeDeviceV1>,
     pub(super) _marker: std::marker::PhantomData<U>,
     pub(super) _surface_data: std::marker::PhantomData<S>,
 }
@@ -410,6 +436,31 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
     ///
     /// The cursor icon should be reloaded on every [`PointerEventKind::Enter`] event.
     pub fn set_cursor(&self, conn: &Connection, icon: CursorIcon) -> Result<(), PointerThemeError> {
+        let serial = match self
+            .pointer
+            .data::<U>()
+            .and_then(|data| data.pointer_data().latest_enter_serial())
+        {
+            Some(serial) => serial,
+            None => return Err(PointerThemeError::MissingEnterSerial),
+        };
+
+        if let Some(shape_device) = self.shape_device.as_ref() {
+            shape_device.set_shape(serial, cursor_icon_to_shape(icon));
+            Ok(())
+        } else {
+            self.set_cursor_legacy(conn, serial, icon)
+        }
+    }
+
+    /// The legacy method of loading the cursor from the system cursor
+    /// theme instead of relying on compositor to set the cursor.
+    fn set_cursor_legacy(
+        &self,
+        conn: &Connection,
+        serial: u32,
+        icon: CursorIcon,
+    ) -> Result<(), PointerThemeError> {
         let mut themes = self.themes.lock().unwrap();
 
         let scale = self.surface.data::<S>().unwrap().surface_data().scale_factor();
@@ -436,18 +487,8 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
         self.surface.commit();
 
         // Set the pointer surface to change the pointer.
-        let data = self.pointer.data::<U>();
-        if let Some(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
-            self.pointer.set_cursor(
-                serial,
-                Some(&self.surface),
-                hx as i32 / scale,
-                hy as i32 / scale,
-            );
-            Ok(())
-        } else {
-            Err(PointerThemeError::MissingEnterSerial)
-        }
+        self.pointer.set_cursor(serial, Some(&self.surface), hx as i32 / scale, hy as i32 / scale);
+        Ok(())
     }
 
     /// Hide the cursor by providing empty surface for it.
@@ -476,6 +517,10 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
 
 impl<U, S> Drop for ThemedPointer<U, S> {
     fn drop(&mut self) {
+        if let Some(shape_device) = self.shape_device.take() {
+            shape_device.destroy();
+        }
+
         if self.pointer.version() >= 3 {
             self.pointer.release();
         }
