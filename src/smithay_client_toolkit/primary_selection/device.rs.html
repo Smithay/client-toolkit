@@ -146,6 +146,10 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Mutex};
 
 <span class="kw">use </span><span class="kw">crate</span>::reexports::client::{
@@ -189,6 +193,10 @@
     <span class="doccomment">/// Get the underlying data.
     </span><span class="kw">pub fn </span>data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PrimarySelectionDeviceData {
         <span class="self">self</span>.device.data::&lt;PrimarySelectionDeviceData&gt;().unwrap()
+    }
+
+    <span class="kw">pub fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ZwpPrimarySelectionDeviceV1 {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.device
     }
 }
 

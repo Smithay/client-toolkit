@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DataDeviceOffer","DataOfferError"],"fn":["receive","receive_to_fd"],"struct":["DataDeviceOfferInner","DataOfferData","DragOffer","SelectionOffer","UndeterminedOffer"],"trait":["DataOfferDataExt","DataOfferHandler"]};
+window.SIDEBAR_ITEMS = {"enum":["DataOfferError"],"fn":["receive","receive_to_fd"],"struct":["DataDeviceOfferInner","DataOfferData","DragOffer","SelectionOffer"],"trait":["DataOfferHandler"]};

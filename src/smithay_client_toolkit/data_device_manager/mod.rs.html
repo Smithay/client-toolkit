@@ -147,36 +147,9 @@
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-</pre></div><pre class="rust"><code><span class="kw">pub mod </span>data_device;
-<span class="kw">pub mod </span>data_offer;
-<span class="kw">pub mod </span>data_source;
-<span class="kw">mod </span>read_pipe;
-<span class="kw">mod </span>write_pipe;
-
-<span class="kw">pub use </span>read_pipe::<span class="kw-2">*</span>;
-<span class="kw">pub use </span>write_pipe::<span class="kw-2">*</span>;
-
-<span class="kw">use </span>std::marker::PhantomData;
-
-<span class="kw">use </span>wayland_client::{
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::GlobalError;
+<span class="kw">use </span><span class="kw">crate</span>::globals::{GlobalData, ProvidesBoundGlobal};
+<span class="kw">use </span><span class="kw">crate</span>::reexports::client::{
     globals::{BindError, GlobalList},
     protocol::{
         wl_data_device,
@@ -187,21 +160,21 @@
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-<span class="kw">use crate</span>::{
-    error::GlobalError,
-    globals::{GlobalData, ProvidesBoundGlobal},
-};
+<span class="kw">pub mod </span>data_device;
+<span class="kw">pub mod </span>data_offer;
+<span class="kw">pub mod </span>data_source;
+<span class="kw">mod </span>read_pipe;
+<span class="kw">mod </span>write_pipe;
 
-<span class="kw">use </span><span class="self">self</span>::{
-    data_device::{DataDevice, DataDeviceData, DataDeviceDataExt},
-    data_offer::DataOfferData,
-    data_source::{CopyPasteSource, DataSourceData, DataSourceDataExt, DragSource},
-};
+<span class="kw">pub use </span>read_pipe::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>write_pipe::<span class="kw-2">*</span>;
+
+<span class="kw">use </span>data_device::{DataDevice, DataDeviceData};
+<span class="kw">use </span>data_source::{CopyPasteSource, DataSourceData, DragSource};
 
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>DataDeviceManagerState&lt;V = DataOfferData&gt; {
+</span><span class="kw">pub struct </span>DataDeviceManagerState {
     manager: WlDataDeviceManager,
-    _phantom: PhantomData&lt;V&gt;,
 }
 
 <span class="kw">impl </span>DataDeviceManagerState {
@@ -210,7 +183,7 @@
         </span>State: Dispatch&lt;WlDataDeviceManager, GlobalData, State&gt; + <span class="lifetime">&#39;static</span>,
     {
         <span class="kw">let </span>manager = globals.bind(qh, <span class="number">1</span>..=<span class="number">3</span>, GlobalData)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ manager, _phantom: PhantomData })
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ manager })
     }
 
     <span class="kw">pub fn </span>data_device_manager(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>WlDataDeviceManager {
@@ -252,7 +225,7 @@
     <span class="kw">where
         </span>D: Dispatch&lt;WlDataSource, DataSourceData&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span>source = <span class="self">self</span>.create_data_source_with_data(qh, Default::default());
+        <span class="kw">let </span>source = <span class="self">self</span>.manager.create_data_source(qh, Default::default());
 
         <span class="kw">for </span>mime <span class="kw">in </span>mime_types {
             source.offer(mime.to_string());
@@ -267,35 +240,13 @@
         source
     }
 
-    <span class="doccomment">/// create a new data source for a given seat with some user data
-    </span><span class="kw">pub fn </span>create_data_source_with_data&lt;D, U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;, data: U) -&gt; WlDataSource
-    <span class="kw">where
-        </span>D: Dispatch&lt;WlDataSource, U&gt; + <span class="lifetime">&#39;static</span>,
-        U: DataSourceDataExt + <span class="lifetime">&#39;static</span>,
-    {
-        <span class="self">self</span>.manager.create_data_source(qh, data)
-    }
-
     <span class="doccomment">/// create a new data device for a given seat
     </span><span class="kw">pub fn </span>get_data_device&lt;D&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;, seat: <span class="kw-2">&amp;</span>WlSeat) -&gt; DataDevice
     <span class="kw">where
         </span>D: Dispatch&lt;wl_data_device::WlDataDevice, DataDeviceData&gt; + <span class="lifetime">&#39;static</span>,
     {
-        DataDevice { device: <span class="self">self</span>.get_data_device_with_data(qh, seat, Default::default()) }
-    }
-
-    <span class="doccomment">/// create a new data device for a given seat with some user data
-    </span><span class="kw">pub fn </span>get_data_device_with_data&lt;D, U&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
-        seat: <span class="kw-2">&amp;</span>WlSeat,
-        data: U,
-    ) -&gt; wl_data_device::WlDataDevice
-    <span class="kw">where
-        </span>D: Dispatch&lt;wl_data_device::WlDataDevice, U&gt; + <span class="lifetime">&#39;static</span>,
-        U: DataDeviceDataExt + <span class="lifetime">&#39;static</span>,
-    {
-        <span class="self">self</span>.manager.get_data_device(seat, qh, data)
+        <span class="kw">let </span>data = DataDeviceData::new(seat.clone());
+        DataDevice { device: <span class="self">self</span>.manager.get_data_device(seat, qh, data) }
     }
 }
 
@@ -318,16 +269,29 @@
         _conn: <span class="kw-2">&amp;</span>Connection,
         _qhandle: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="macro">unreachable!</span>()
+        <span class="macro">unreachable!</span>(<span class="string">&quot;wl_data_device_manager has no events&quot;</span>)
     }
 }
 
 <span class="attr">#[macro_export]
-</span><span class="macro">macro_rules! </span>delegate_data_device_manager {
+</span><span class="macro">macro_rules! </span>delegate_data_device {
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
                 <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::data_device_manager::DataDeviceManagerState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_data_offer::WlDataOffer</span>: <span class="macro-nonterminal">$crate::data_device_manager::data_offer::DataOfferData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::data_device_manager::DataDeviceManagerState</span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_data_source::WlDataSource</span>: <span class="macro-nonterminal">$crate::data_device_manager::data_source::DataSourceData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::data_device_manager::DataDeviceManagerState
+        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_data_device::WlDataDevice</span>: <span class="macro-nonterminal">$crate::data_device_manager::data_device::DataDeviceData
             </span>] =&gt; <span class="macro-nonterminal">$crate::data_device_manager::DataDeviceManagerState
         </span>);
     };
