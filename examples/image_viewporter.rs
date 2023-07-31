@@ -2,10 +2,10 @@ use std::{env, path::Path};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_registry, delegate_shm, delegate_simple,
+    delegate_compositor, delegate_output, delegate_registry, delegate_shm, delegate_viewporter,
     delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState, SimpleGlobal},
+    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     shell::{
         xdg::{
@@ -15,16 +15,14 @@ use smithay_client_toolkit::{
         WaylandSurface,
     },
     shm::{slot::SlotPool, Shm, ShmHandler},
+    viewporter::Viewporter,
 };
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{wl_output, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    Connection, QueueHandle,
 };
-use wayland_protocols::wp::viewporter::client::{
-    wp_viewport::{self, WpViewport},
-    wp_viewporter::{self, WpViewporter},
-};
+use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 
 fn main() {
     env_logger::init();
@@ -45,10 +43,7 @@ fn main() {
     // we share with the compositor process.
     let shm = Shm::bind(&globals, &qh).expect("wl shm is not available.");
     // In this example, we use the viewporter to allow the compositor to scale and crop presented images.
-    //
-    // Since the wp_viewporter protocol has no events, we can use SimpleGlobal.
-    let wp_viewporter = SimpleGlobal::<wp_viewporter::WpViewporter, 1>::bind(&globals, &qh)
-        .expect("wp_viewporter not available");
+    let viewporter = Viewporter::bind(&globals, &qh).expect("wp viewporter is not available");
 
     let mut windows = Vec::new();
 
@@ -89,11 +84,7 @@ fn main() {
         window.commit();
 
         // For scaling, create a viewport for the window.
-        let viewport = wp_viewporter.get().expect("Requires wp_viewporter").get_viewport(
-            window.wl_surface(),
-            &qh,
-            (),
-        );
+        let viewport = viewporter.get_viewport(window.wl_surface(), &qh);
 
         windows.push(ImageViewer {
             width: image.width(),
@@ -117,7 +108,6 @@ fn main() {
         registry_state: RegistryState::new(&globals),
         output_state: OutputState::new(&globals, &qh),
         shm,
-        wp_viewporter,
         pool,
         windows,
     };
@@ -138,7 +128,6 @@ struct State {
     registry_state: RegistryState,
     output_state: OutputState,
     shm: Shm,
-    wp_viewporter: SimpleGlobal<WpViewporter, 1>,
 
     pool: SlotPool,
     windows: Vec<ImageViewer>,
@@ -291,11 +280,10 @@ impl State {
 delegate_compositor!(State);
 delegate_output!(State);
 delegate_shm!(State);
+delegate_viewporter!(State);
 
 delegate_xdg_shell!(State);
 delegate_xdg_window!(State);
-
-delegate_simple!(State, WpViewporter, 1);
 
 delegate_registry!(State);
 
@@ -305,29 +293,4 @@ impl ProvidesRegistryState for State {
     }
 
     registry_handlers!(OutputState);
-}
-
-impl AsMut<SimpleGlobal<WpViewporter, 1>> for State {
-    fn as_mut(&mut self) -> &mut SimpleGlobal<WpViewporter, 1> {
-        &mut self.wp_viewporter
-    }
-}
-
-impl Dispatch<WpViewport, ()> for State {
-    fn event(
-        _: &mut State,
-        _: &WpViewport,
-        _: wp_viewport::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<State>,
-    ) {
-        unreachable!("wp_viewport::Event is empty in version 1")
-    }
-}
-
-impl Drop for ImageViewer {
-    fn drop(&mut self) {
-        self.viewport.destroy()
-    }
 }
