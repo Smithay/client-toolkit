@@ -20,7 +20,7 @@ bitflags = "1.0"
 cursor-icon = "1.0.0"
 dlib = "0.5"
 log = "0.4"
-memmap2 = "0.5.0"
+memmap2 = "0.7.0"
 nix = { version = "0.26.1", default-features = false, features = ["fs", "mman"] }
 thiserror = "1.0.30"
 wayland-backend = "0.1.0"
