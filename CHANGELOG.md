@@ -9,6 +9,7 @@
 - `ThemedPointer` now automatically releases the associated `WlPointer`.
 - `CursorIcon` from `cursor-icon` crate is now used for `set_cursor` and `Frame`.
 - `wayland-csd-frame` is now used for CSD types like `WindowState`, `DecorationsFrame`, etc.
+- Added `CompositorHandle::transform_changed` to listen for transform changes.
 
 #### Fixed
 
@@ -21,6 +22,7 @@
 - `CursorShapeManager` providing handling for `cursor-shape-v1` protocol.
 - `SeatState::get_pointer_with_theme` will now automatically use `wp_cursor_shape_v1` when available.
 - Add support for `xdg_shell` version 6.
+- Add support for `wl_surafce::preferred_buffer_scale` and `wl_surface::preferred_buffer_transform`.
 
 ## 0.17.0 - 2023-03-28
 
