@@ -419,7 +419,64 @@
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::mem;
+<span class="kw">use </span>std::sync::MutexGuard;
+<span class="kw">use </span>std::sync::{
     atomic::{AtomicI32, Ordering},
     Arc, Mutex,
 };
@@ -430,7 +487,7 @@
         wl_callback, wl_compositor, wl_output, wl_region,
         wl_surface::{<span class="self">self</span>, WlSurface},
     },
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 <span class="kw">use crate</span>::{
@@ -447,6 +504,15 @@
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
         surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
         new_factor: i32,
+    );
+
+    <span class="doccomment">/// The surface has either been moved into or out of an output and the output has different transform.
+    </span><span class="kw">fn </span>transform_changed(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
+        surface: <span class="kw-2">&amp;</span>wl_surface::WlSurface,
+        new_transform: wl_output::Transform,
     );
 
     <span class="doccomment">/// A frame callback has been completed.
@@ -485,7 +551,7 @@
     <span class="kw">where
         </span>State: Dispatch&lt;wl_compositor::WlCompositor, GlobalData, State&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span>wl_compositor = globals.bind(qh, <span class="number">1</span>..=<span class="number">5</span>, GlobalData)<span class="question-mark">?</span>;
+        <span class="kw">let </span>wl_compositor = globals.bind(qh, <span class="number">1</span>..=<span class="number">6</span>, GlobalData)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(CompositorState { wl_compositor })
     }
 
@@ -528,15 +594,6 @@
     </span>inner: Mutex&lt;SurfaceDataInner&gt;,
 }
 
-<span class="attr">#[derive(Debug, Default)]
-</span><span class="kw">struct </span>SurfaceDataInner {
-    <span class="doccomment">/// The outputs the surface is currently inside.
-    </span>outputs: Vec&lt;wl_output::WlOutput&gt;,
-
-    <span class="doccomment">/// A handle to the OutputInfo callback that dispatches scale updates.
-    </span>watcher: <span class="prelude-ty">Option</span>&lt;ScaleWatcherHandle&gt;,
-}
-
 <span class="kw">impl </span>SurfaceData {
     <span class="doccomment">/// Create a new surface that initially reports the given scale factor and parent.
     </span><span class="kw">pub fn </span>new(parent_surface: <span class="prelude-ty">Option</span>&lt;WlSurface&gt;, scale_factor: i32) -&gt; <span class="self">Self </span>{
@@ -550,6 +607,11 @@
     <span class="doccomment">/// The scale factor of the output with the highest scale factor.
     </span><span class="kw">pub fn </span>scale_factor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i32 {
         <span class="self">self</span>.scale_factor.load(Ordering::Relaxed)
+    }
+
+    <span class="doccomment">/// The suggest transform for the surface.
+    </span><span class="kw">pub fn </span>transform(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; wl_output::Transform {
+        <span class="self">self</span>.inner.lock().unwrap().transform
     }
 
     <span class="doccomment">/// The parent surface used for this surface.
@@ -569,6 +631,24 @@
 <span class="kw">impl </span>Default <span class="kw">for </span>SurfaceData {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(<span class="prelude-val">None</span>, <span class="number">1</span>)
+    }
+}
+
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">struct </span>SurfaceDataInner {
+    <span class="doccomment">/// The transform of the given surface.
+    </span>transform: wl_output::Transform,
+
+    <span class="doccomment">/// The outputs the surface is currently inside.
+    </span>outputs: Vec&lt;wl_output::WlOutput&gt;,
+
+    <span class="doccomment">/// A handle to the OutputInfo callback that dispatches scale updates.
+    </span>watcher: <span class="prelude-ty">Option</span>&lt;ScaleWatcherHandle&gt;,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>SurfaceDataInner {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ transform: wl_output::Transform::Normal, outputs: Vec::new(), watcher: <span class="prelude-val">None </span>}
     }
 }
 
@@ -678,12 +758,36 @@
             wl_surface::Event::Enter { output } =&gt; {
                 inner.outputs.push(output);
             }
-
             wl_surface::Event::Leave { output } =&gt; {
                 inner.outputs.retain(|o| o != <span class="kw-2">&amp;</span>output);
             }
-
+            wl_surface::Event::PreferredBufferScale { factor } =&gt; {
+                <span class="kw">let </span>current_scale = data.scale_factor.load(Ordering::Relaxed);
+                drop(inner);
+                data.scale_factor.store(factor, Ordering::Relaxed);
+                <span class="kw">if </span>current_scale != factor {
+                    state.scale_factor_changed(conn, qh, surface, factor);
+                }
+                <span class="kw">return</span>;
+            }
+            wl_surface::Event::PreferredBufferTransform { transform } =&gt; {
+                <span class="comment">// Only handle known values.
+                </span><span class="kw">if let </span>WEnum::Value(transform) = transform {
+                    <span class="kw">let </span>old_transform = std::mem::replace(<span class="kw-2">&amp;mut </span>inner.transform, transform);
+                    drop(inner);
+                    <span class="kw">if </span>old_transform != transform {
+                        state.transform_changed(conn, qh, surface, transform);
+                    }
+                }
+                <span class="kw">return</span>;
+            }
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        }
+
+        <span class="comment">// NOTE: with v6 we don&#39;t need any special handling of the scale factor, everything
+        // was handled from the above, so return.
+        </span><span class="kw">if </span>surface.version() &gt;= <span class="number">6 </span>{
+            <span class="kw">return</span>;
         }
 
         inner.watcher.get_or_insert_with(|| {
@@ -696,50 +800,56 @@
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = surface.data::&lt;U&gt;() {
                         <span class="kw">let </span>data = data.surface_data();
                         <span class="kw">let </span>inner = data.inner.lock().unwrap();
-                        <span class="kw">let </span>current = data.scale_factor.load(Ordering::Relaxed);
-                        <span class="kw">let </span>factor = <span class="kw">match </span>inner
-                            .outputs
-                            .iter()
-                            .filter_map(|output| {
-                                output.data::&lt;OutputData&gt;().map(OutputData::scale_factor)
-                            })
-                            .reduce(i32::max)
-                        {
-                            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
-                            <span class="prelude-val">Some</span>(factor) <span class="kw">if </span>factor == current =&gt; <span class="kw">return</span>,
-                            <span class="prelude-val">Some</span>(factor) =&gt; factor,
-                        };
-
-                        data.scale_factor.store(factor, Ordering::Relaxed);
-                        drop(inner);
-                        state.scale_factor_changed(conn, qh, <span class="kw-2">&amp;</span>surface, factor);
+                        dispatch_surface_state_updates(state, conn, qh, <span class="kw-2">&amp;</span>surface, data, inner);
                     }
                 }
             })
         });
 
-        <span class="comment">// Compute the new max of the scale factors for all outputs this surface is displayed on.
-        </span><span class="kw">let </span>current = data.scale_factor.load(Ordering::Relaxed);
+        dispatch_surface_state_updates(state, conn, qh, surface, data, inner);
+    }
+}
 
-        <span class="kw">let </span>factor = <span class="kw">match </span>inner
-            .outputs
-            .iter()
-            .filter_map(|output| output.data::&lt;OutputData&gt;().map(OutputData::scale_factor))
-            .reduce(i32::max)
-        {
-            <span class="comment">// If no scale factor is found, because the surface has left its only output, do not
-            // change the scale factor.
-            </span><span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
-            <span class="prelude-val">Some</span>(factor) <span class="kw">if </span>factor == current =&gt; <span class="kw">return</span>,
-            <span class="prelude-val">Some</span>(factor) =&gt; factor,
-        };
+<span class="kw">fn </span>dispatch_surface_state_updates&lt;D, U&gt;(
+    state: <span class="kw-2">&amp;mut </span>D,
+    conn: <span class="kw-2">&amp;</span>Connection,
+    qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
+    surface: <span class="kw-2">&amp;</span>WlSurface,
+    data: <span class="kw-2">&amp;</span>SurfaceData,
+    <span class="kw-2">mut </span>inner: MutexGuard&lt;SurfaceDataInner&gt;,
+) <span class="kw">where
+    </span>D: Dispatch&lt;wl_surface::WlSurface, U&gt; + CompositorHandler + OutputHandler + <span class="lifetime">&#39;static</span>,
+    U: SurfaceDataExt + <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">let </span>current_scale = data.scale_factor.load(Ordering::Relaxed);
+    <span class="kw">let </span>(factor, transform) = <span class="kw">match </span>inner
+        .outputs
+        .iter()
+        .filter_map(|output| {
+            output
+                .data::&lt;OutputData&gt;()
+                .map(|data| data.with_output_info(|info| (info.scale_factor, info.transform)))
+        })
+        <span class="comment">// NOTE: reduce will only work for more than 1 element, thus we map transform to normal
+        // since we can&#39;t guess which one to use. With the exactly one output, the corrent
+        // transform will be passed instead.
+        </span>.reduce(|acc, props| (acc.<span class="number">0</span>.max(props.<span class="number">0</span>), wl_output::Transform::Normal))
+    {
+        <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
+        <span class="prelude-val">Some</span>(props) =&gt; props,
+    };
 
-        data.scale_factor.store(factor, Ordering::Relaxed);
+    data.scale_factor.store(factor, Ordering::Relaxed);
+    <span class="kw">let </span>old_transform = mem::replace(<span class="kw-2">&amp;mut </span>inner.transform, transform);
+    <span class="comment">// Drop the mutex before we send of any events.
+    </span>drop(inner);
 
-        <span class="comment">// Drop the mutex before we send of any events.
-        </span>drop(inner);
-
+    <span class="kw">if </span>factor != current_scale {
         state.scale_factor_changed(conn, qh, surface, factor);
+    }
+
+    <span class="kw">if </span>transform != old_transform {
+        state.transform_changed(conn, qh, surface, transform);
     }
 }
 
