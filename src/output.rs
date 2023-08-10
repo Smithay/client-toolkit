@@ -247,6 +247,13 @@ impl OutputData {
         guard.scale_factor
     }
 
+    /// Get the output transform.
+    pub fn transform(&self) -> wl_output::Transform {
+        let guard = self.0.lock().unwrap();
+
+        guard.transform
+    }
+
     /// Access the underlying [`OutputInfo`].
     ///
     /// Reentrant calls within the `callback` will deadlock.

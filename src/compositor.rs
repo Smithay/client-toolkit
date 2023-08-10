@@ -1,3 +1,5 @@
+use std::mem;
+use std::sync::MutexGuard;
 use std::sync::{
     atomic::{AtomicI32, Ordering},
     Arc, Mutex,
@@ -9,7 +11,7 @@ use wayland_client::{
         wl_callback, wl_compositor, wl_output, wl_region,
         wl_surface::{self, WlSurface},
     },
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use crate::{
@@ -26,6 +28,15 @@ pub trait CompositorHandler: Sized {
         qh: &QueueHandle<Self>,
         surface: &wl_surface::WlSurface,
         new_factor: i32,
+    );
+
+    /// The surface has either been moved into or out of an output and the output has different transform.
+    fn transform_changed(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        surface: &wl_surface::WlSurface,
+        new_transform: wl_output::Transform,
     );
 
     /// A frame callback has been completed.
@@ -64,7 +75,7 @@ impl CompositorState {
     where
         State: Dispatch<wl_compositor::WlCompositor, GlobalData, State> + 'static,
     {
-        let wl_compositor = globals.bind(qh, 1..=5, GlobalData)?;
+        let wl_compositor = globals.bind(qh, 1..=6, GlobalData)?;
         Ok(CompositorState { wl_compositor })
     }
 
@@ -107,15 +118,6 @@ pub struct SurfaceData {
     inner: Mutex<SurfaceDataInner>,
 }
 
-#[derive(Debug, Default)]
-struct SurfaceDataInner {
-    /// The outputs the surface is currently inside.
-    outputs: Vec<wl_output::WlOutput>,
-
-    /// A handle to the OutputInfo callback that dispatches scale updates.
-    watcher: Option<ScaleWatcherHandle>,
-}
-
 impl SurfaceData {
     /// Create a new surface that initially reports the given scale factor and parent.
     pub fn new(parent_surface: Option<WlSurface>, scale_factor: i32) -> Self {
@@ -129,6 +131,11 @@ impl SurfaceData {
     /// The scale factor of the output with the highest scale factor.
     pub fn scale_factor(&self) -> i32 {
         self.scale_factor.load(Ordering::Relaxed)
+    }
+
+    /// The suggest transform for the surface.
+    pub fn transform(&self) -> wl_output::Transform {
+        self.inner.lock().unwrap().transform
     }
 
     /// The parent surface used for this surface.
@@ -148,6 +155,24 @@ impl SurfaceData {
 impl Default for SurfaceData {
     fn default() -> Self {
         Self::new(None, 1)
+    }
+}
+
+#[derive(Debug)]
+struct SurfaceDataInner {
+    /// The transform of the given surface.
+    transform: wl_output::Transform,
+
+    /// The outputs the surface is currently inside.
+    outputs: Vec<wl_output::WlOutput>,
+
+    /// A handle to the OutputInfo callback that dispatches scale updates.
+    watcher: Option<ScaleWatcherHandle>,
+}
+
+impl Default for SurfaceDataInner {
+    fn default() -> Self {
+        Self { transform: wl_output::Transform::Normal, outputs: Vec::new(), watcher: None }
     }
 }
 
@@ -257,12 +282,36 @@ where
             wl_surface::Event::Enter { output } => {
                 inner.outputs.push(output);
             }
-
             wl_surface::Event::Leave { output } => {
                 inner.outputs.retain(|o| o != &output);
             }
-
+            wl_surface::Event::PreferredBufferScale { factor } => {
+                let current_scale = data.scale_factor.load(Ordering::Relaxed);
+                drop(inner);
+                data.scale_factor.store(factor, Ordering::Relaxed);
+                if current_scale != factor {
+                    state.scale_factor_changed(conn, qh, surface, factor);
+                }
+                return;
+            }
+            wl_surface::Event::PreferredBufferTransform { transform } => {
+                // Only handle known values.
+                if let WEnum::Value(transform) = transform {
+                    let old_transform = std::mem::replace(&mut inner.transform, transform);
+                    drop(inner);
+                    if old_transform != transform {
+                        state.transform_changed(conn, qh, surface, transform);
+                    }
+                }
+                return;
+            }
             _ => unreachable!(),
+        }
+
+        // NOTE: with v6 we don't need any special handling of the scale factor, everything
+        // was handled from the above, so return.
+        if surface.version() >= 6 {
+            return;
         }
 
         inner.watcher.get_or_insert_with(|| {
@@ -275,50 +324,56 @@ where
                     if let Some(data) = surface.data::<U>() {
                         let data = data.surface_data();
                         let inner = data.inner.lock().unwrap();
-                        let current = data.scale_factor.load(Ordering::Relaxed);
-                        let factor = match inner
-                            .outputs
-                            .iter()
-                            .filter_map(|output| {
-                                output.data::<OutputData>().map(OutputData::scale_factor)
-                            })
-                            .reduce(i32::max)
-                        {
-                            None => return,
-                            Some(factor) if factor == current => return,
-                            Some(factor) => factor,
-                        };
-
-                        data.scale_factor.store(factor, Ordering::Relaxed);
-                        drop(inner);
-                        state.scale_factor_changed(conn, qh, &surface, factor);
+                        dispatch_surface_state_updates(state, conn, qh, &surface, data, inner);
                     }
                 }
             })
         });
 
-        // Compute the new max of the scale factors for all outputs this surface is displayed on.
-        let current = data.scale_factor.load(Ordering::Relaxed);
+        dispatch_surface_state_updates(state, conn, qh, surface, data, inner);
+    }
+}
 
-        let factor = match inner
-            .outputs
-            .iter()
-            .filter_map(|output| output.data::<OutputData>().map(OutputData::scale_factor))
-            .reduce(i32::max)
-        {
-            // If no scale factor is found, because the surface has left its only output, do not
-            // change the scale factor.
-            None => return,
-            Some(factor) if factor == current => return,
-            Some(factor) => factor,
-        };
+fn dispatch_surface_state_updates<D, U>(
+    state: &mut D,
+    conn: &Connection,
+    qh: &QueueHandle<D>,
+    surface: &WlSurface,
+    data: &SurfaceData,
+    mut inner: MutexGuard<SurfaceDataInner>,
+) where
+    D: Dispatch<wl_surface::WlSurface, U> + CompositorHandler + OutputHandler + 'static,
+    U: SurfaceDataExt + 'static,
+{
+    let current_scale = data.scale_factor.load(Ordering::Relaxed);
+    let (factor, transform) = match inner
+        .outputs
+        .iter()
+        .filter_map(|output| {
+            output
+                .data::<OutputData>()
+                .map(|data| data.with_output_info(|info| (info.scale_factor, info.transform)))
+        })
+        // NOTE: reduce will only work for more than 1 element, thus we map transform to normal
+        // since we can't guess which one to use. With the exactly one output, the corrent
+        // transform will be passed instead.
+        .reduce(|acc, props| (acc.0.max(props.0), wl_output::Transform::Normal))
+    {
+        None => return,
+        Some(props) => props,
+    };
 
-        data.scale_factor.store(factor, Ordering::Relaxed);
+    data.scale_factor.store(factor, Ordering::Relaxed);
+    let old_transform = mem::replace(&mut inner.transform, transform);
+    // Drop the mutex before we send of any events.
+    drop(inner);
 
-        // Drop the mutex before we send of any events.
-        drop(inner);
-
+    if factor != current_scale {
         state.scale_factor_changed(conn, qh, surface, factor);
+    }
+
+    if transform != old_transform {
+        state.transform_changed(conn, qh, surface, transform);
     }
 }
 

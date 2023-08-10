@@ -165,6 +165,16 @@ impl CompositorHandler for State {
         // Not needed for this example.
     }
 
+    fn transform_changed(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _new_transform: wl_output::Transform,
+    ) {
+        // Not needed for this example.
+    }
+
     fn frame(
         &mut self,
         conn: &Connection,
