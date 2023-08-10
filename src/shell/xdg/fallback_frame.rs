@@ -1,6 +1,8 @@
 //! The default fallback frame which is intended to show some very basic derocations.
 
+use std::mem;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{error::Error, num::NonZeroU32};
 
 use crate::reexports::client::{
@@ -66,6 +68,14 @@ pub struct FallbackFrame<State> {
     /// The frame rendering data. When `None` the frame is hidden.
     render_data: Option<FrameRenderData>,
 
+    /// Whether the frame should sync with the parent.
+    ///
+    /// This should happen in reaction to scale or resize changes.
+    should_sync: bool,
+
+    /// The active scale factor of the frame.
+    scale_factor: f64,
+
     /// The frame queue handle.
     queue_handle: QueueHandle<State>,
 
@@ -100,7 +110,9 @@ where
             state: WindowState::empty(),
             wm_capabilities,
             dirty: true,
+            scale_factor: 1.,
             pool,
+            should_sync: true,
             queue_handle,
             subcompositor,
             render_data,
@@ -317,7 +329,18 @@ impl<State> DecorationsFrame for FallbackFrame<State>
 where
     State: Dispatch<WlSurface, SurfaceData> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
 {
-    fn on_click(&mut self, click: FrameClick, pressed: bool) -> Option<FrameAction> {
+    fn set_scaling_factor(&mut self, scale_factor: f64) {
+        self.scale_factor = scale_factor;
+        self.dirty = true;
+        self.should_sync = true;
+    }
+
+    fn on_click(
+        &mut self,
+        _timestamp: Duration,
+        click: FrameClick,
+        pressed: bool,
+    ) -> Option<FrameAction> {
         // Handle alternate click before everything else.
         if click == FrameClick::Alternate {
             return if Location::Head != self.mouse_location
@@ -359,7 +382,13 @@ where
         }
     }
 
-    fn click_point_moved(&mut self, surface_id: &ObjectId, x: f64, y: f64) -> Option<CursorIcon> {
+    fn click_point_moved(
+        &mut self,
+        _timestamp: Duration,
+        surface_id: &ObjectId,
+        x: f64,
+        y: f64,
+    ) -> Option<CursorIcon> {
         let part_index = self.part_index_for_surface(surface_id)?;
         let location = match part_index {
             LEFT_BORDER => Location::Left,
@@ -447,6 +476,7 @@ where
         parts[RIGHT_BORDER].pos.0 = width as i32;
 
         self.dirty = true;
+        self.should_sync = true;
     }
 
     fn subtract_borders(
@@ -488,14 +518,15 @@ where
         self.dirty
     }
 
-    fn draw(&mut self) {
+    fn draw(&mut self) -> bool {
         let render_data = match self.render_data.as_mut() {
             Some(render_data) => render_data,
-            None => return,
+            None => return false,
         };
 
-        // Reset the dirty bit.
+        // Reset the dirty bit and sync option.
         self.dirty = false;
+        let should_sync = mem::take(&mut self.should_sync);
 
         if self.state.contains(WindowState::FULLSCREEN) {
             // Don't draw the decorations for the full screen surface.
@@ -503,7 +534,7 @@ where
                 part.surface.attach(None, 0, 0);
                 part.surface.commit();
             }
-            return;
+            return should_sync;
         }
 
         let is_active = self.state.contains(WindowState::ACTIVATED);
@@ -511,7 +542,9 @@ where
             if is_active { PRIMARY_COLOR_ACTIVE } else { PRIMARY_COLOR_INACTIVE }.to_le_bytes();
 
         for (idx, part) in render_data.parts.iter().enumerate() {
-            let scale = part.surface.data::<SurfaceData>().unwrap().scale_factor();
+            // We don't support fractinal scaling here, so round up.
+            let scale = self.scale_factor.ceil() as i32;
+
             let (buffer, canvas) = match self.pool.create_buffer(
                 part.width as i32 * scale,
                 part.height as i32 * scale,
@@ -543,6 +576,11 @@ where
             }
 
             part.surface.set_buffer_scale(scale);
+            if should_sync {
+                part.subsurface.set_sync();
+            } else {
+                part.subsurface.set_desync();
+            }
 
             // Update the subsurface position.
             part.subsurface.set_position(part.pos.0, part.pos.1);
@@ -556,6 +594,8 @@ where
 
             part.surface.commit();
         }
+
+        should_sync
     }
 
     fn update_wm_capabilities(&mut self, capabilities: WindowManagerCapabilities) {
