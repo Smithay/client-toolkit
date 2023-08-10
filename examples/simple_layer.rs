@@ -2,6 +2,7 @@
 
 use std::convert::TryInto;
 
+use calloop::{EventLoop, LoopSignal};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_layer, delegate_output, delegate_pointer,
@@ -21,12 +22,15 @@ use smithay_client_toolkit::{
         },
         WaylandSurface,
     },
-    shm::{slot::SlotPool, Shm, ShmHandler},
+    shm::{
+        slot::{Buffer, SlotPool},
+        Shm, ShmHandler,
+    },
 };
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    Connection, QueueHandle, WaylandSource,
 };
 use xkbcommon::xkb::keysyms;
 
@@ -37,7 +41,7 @@ fn main() {
     let conn = Connection::connect_to_env().unwrap();
 
     // Enumerate the list of globals to get the protocols the server implements.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let (globals, event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
@@ -72,6 +76,7 @@ fn main() {
     // initial memory allocation.
     let pool = SlotPool::new(256 * 256 * 4, &shm).expect("Failed to create pool");
 
+    let mut event_loop = EventLoop::try_new().unwrap();
     let mut simple_layer = SimpleLayer {
         // Seats and outputs may be hotplugged at runtime, therefore we need to setup a registry state to
         // listen for seats and outputs.
@@ -80,27 +85,25 @@ fn main() {
         output_state: OutputState::new(&globals, &qh),
         shm,
 
-        exit: false,
+        exit: event_loop.get_signal(),
         first_configure: true,
         pool,
         width: 256,
         height: 256,
         shift: None,
+        buffers: None,
+        animating: false,
         layer,
         keyboard: None,
         keyboard_focus: false,
         pointer: None,
     };
 
-    // We don't draw immediately, the configure will notify us when to first draw.
-    loop {
-        event_queue.blocking_dispatch(&mut simple_layer).unwrap();
+    let ws = WaylandSource::new(event_queue).unwrap();
 
-        if simple_layer.exit {
-            println!("exiting example");
-            break;
-        }
-    }
+    ws.insert(event_loop.handle()).unwrap();
+
+    event_loop.run(None, &mut simple_layer, |_| {}).unwrap();
 }
 
 struct SimpleLayer {
@@ -109,12 +112,14 @@ struct SimpleLayer {
     output_state: OutputState,
     shm: Shm,
 
-    exit: bool,
+    exit: LoopSignal,
     first_configure: bool,
+    animating: bool,
     pool: SlotPool,
     width: u32,
     height: u32,
     shift: Option<u32>,
+    buffers: Option<Buffers>,
     layer: LayerSurface,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
@@ -185,7 +190,7 @@ impl OutputHandler for SimpleLayer {
 
 impl LayerShellHandler for SimpleLayer {
     fn closed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _layer: &LayerSurface) {
-        self.exit = true;
+        self.exit.stop();
     }
 
     fn configure(
@@ -203,6 +208,10 @@ impl LayerShellHandler for SimpleLayer {
             self.width = configure.new_size.0;
             self.height = configure.new_size.1;
         }
+
+        // Initializes our double buffer one we've configured the layer shell
+        self.buffers =
+            Some(Buffers::new(&mut self.pool, self.width, self.height, wl_shm::Format::Argb8888));
 
         // Initiate the first draw.
         if self.first_configure {
@@ -303,7 +312,7 @@ impl KeyboardHandler for SimpleLayer {
         println!("Key press: {event:?}");
         // press 'esc' to exit
         if event.keysym == keysyms::KEY_Escape {
-            self.exit = true;
+            self.exit.stop();
         }
     }
 
@@ -334,7 +343,7 @@ impl PointerHandler for SimpleLayer {
     fn pointer_frame(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         _pointer: &wl_pointer::WlPointer,
         events: &[PointerEvent],
     ) {
@@ -355,6 +364,14 @@ impl PointerHandler for SimpleLayer {
                 Press { button, .. } => {
                     println!("Press {:x} @ {:?}", button, event.position);
                     self.shift = self.shift.xor(Some(0));
+                    // If we initialize a frame twice in a row, it invalidates one
+                    // of the buffers, so if we're animating, chances are there's
+                    // a frame in the queue
+                    if !self.animating {
+                        self.layer.wl_surface().frame(qh, self.layer.wl_surface().clone());
+                        self.layer.commit();
+                    }
+                    self.animating = !self.animating;
                 }
                 Release { button, .. } => {
                     println!("Release {:x} @ {:?}", button, event.position);
@@ -377,15 +394,9 @@ impl SimpleLayer {
     pub fn draw(&mut self, qh: &QueueHandle<Self>) {
         let width = self.width;
         let height = self.height;
-        let stride = self.width as i32 * 4;
-
-        let (buffer, canvas) = self
-            .pool
-            .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888)
-            .expect("create buffer");
-
         // Draw to the window:
-        {
+        if let Some(ref mut buffers) = self.buffers {
+            let canvas = buffers.canvas(&mut self.pool).unwrap();
             let shift = self.shift.unwrap_or(0);
             canvas.chunks_exact_mut(4).enumerate().for_each(|(index, chunk)| {
                 let x = ((index + shift as usize) % width as usize) as u32;
@@ -404,21 +415,20 @@ impl SimpleLayer {
             if let Some(shift) = &mut self.shift {
                 *shift = (*shift + 1) % width;
             }
+
+            // Damage the entire window
+            self.layer.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
+
+            if self.animating {
+                // Request our next frame
+                self.layer.wl_surface().frame(qh, self.layer.wl_surface().clone());
+            }
+
+            // Attach and commit to present.
+            buffers.buffer().attach_to(self.layer.wl_surface()).expect("buffer attach");
+            self.layer.commit();
+            buffers.flip();
         }
-
-        // Damage the entire window
-        self.layer.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
-
-        // Request our next frame
-        self.layer.wl_surface().frame(qh, self.layer.wl_surface().clone());
-
-        // Attach and commit to present.
-        buffer.attach_to(self.layer.wl_surface()).expect("buffer attach");
-        self.layer.commit();
-
-        // TODO save and reuse buffer when the window size is unchanged.  This is especially
-        // useful if you do damage tracking, since you don't need to redraw the undamaged parts
-        // of the canvas.
     }
 }
 
@@ -439,4 +449,37 @@ impl ProvidesRegistryState for SimpleLayer {
         &mut self.registry_state
     }
     registry_handlers![OutputState, SeatState];
+}
+
+struct Buffers {
+    buffers: [Buffer; 2],
+    current: usize,
+}
+
+impl Buffers {
+    fn new(pool: &mut SlotPool, width: u32, height: u32, format: wl_shm::Format) -> Buffers {
+        Self {
+            buffers: [
+                pool.create_buffer(width as i32, height as i32, width as i32 * 4, format)
+                    .expect("create buffer")
+                    .0,
+                pool.create_buffer(width as i32, height as i32, width as i32 * 4, format)
+                    .expect("create buffer")
+                    .0,
+            ],
+            current: 0,
+        }
+    }
+
+    fn flip(&mut self) {
+        self.current = 1 - self.current
+    }
+
+    fn buffer(&self) -> &Buffer {
+        &self.buffers[self.current]
+    }
+
+    fn canvas<'a>(&'a self, pool: &'a mut SlotPool) -> Option<&mut [u8]> {
+        self.buffers[self.current].canvas(pool)
+    }
 }
