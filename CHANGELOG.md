@@ -20,6 +20,7 @@
 - Add support for `zwp_primary_selection_v1`.
 - `CursorShapeManager` providing handling for `cursor-shape-v1` protocol.
 - `SeatState::get_pointer_with_theme` will now automatically use `wp_cursor_shape_v1` when available.
+- Add support for `xdg_shell` version 6.
 
 ## 0.17.0 - 2023-03-28
 
