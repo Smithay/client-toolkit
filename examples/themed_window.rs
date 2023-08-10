@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::reexports::client::{
@@ -471,10 +472,9 @@ impl PointerHandler for SimpleWindow {
             match event.kind {
                 Enter { .. } => {
                     self.set_cursor = true;
-                    self.decorations_cursor = self
-                        .window_frame
-                        .as_mut()
-                        .and_then(|frame| frame.click_point_moved(&event.surface.id(), x, y));
+                    self.decorations_cursor = self.window_frame.as_mut().and_then(|frame| {
+                        frame.click_point_moved(Duration::ZERO, &event.surface.id(), x, y)
+                    });
                 }
                 Leave { .. } => {
                     if &event.surface != self.window.wl_surface() {
@@ -483,17 +483,20 @@ impl PointerHandler for SimpleWindow {
                         }
                     }
                 }
-                Motion { .. } => {
-                    if let Some(new_cursor) = self
-                        .window_frame
-                        .as_mut()
-                        .and_then(|frame| frame.click_point_moved(&event.surface.id(), x, y))
-                    {
+                Motion { time } => {
+                    if let Some(new_cursor) = self.window_frame.as_mut().and_then(|frame| {
+                        frame.click_point_moved(
+                            Duration::from_millis(time as u64),
+                            &event.surface.id(),
+                            x,
+                            y,
+                        )
+                    }) {
                         self.set_cursor = true;
                         self.decorations_cursor = Some(new_cursor);
                     }
                 }
-                Press { button, serial, .. } | Release { button, serial, .. } => {
+                Press { button, serial, time } | Release { button, serial, time } => {
                     let pressed = matches!(event.kind, Press { .. });
                     if &event.surface != self.window.wl_surface() {
                         let click = match button {
@@ -502,11 +505,9 @@ impl PointerHandler for SimpleWindow {
                             _ => continue,
                         };
 
-                        if let Some(action) = self
-                            .window_frame
-                            .as_mut()
-                            .and_then(|frame| frame.on_click(click, pressed))
-                        {
+                        if let Some(action) = self.window_frame.as_mut().and_then(|frame| {
+                            frame.on_click(Duration::from_millis(time as u64), click, pressed)
+                        }) {
                             self.frame_action(pointer, serial, action);
                         }
                     } else if pressed {
