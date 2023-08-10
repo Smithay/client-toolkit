@@ -117,6 +117,7 @@ where
                                 State::TiledRight => acc.set(WindowState::TILED_RIGHT, true),
                                 State::TiledTop => acc.set(WindowState::TILED_TOP, true),
                                 State::TiledBottom => acc.set(WindowState::TILED_BOTTOM, true),
+                                State::Suspended => acc.set(WindowState::SUSPENDED, true),
                                 _ => (),
                             }
                             acc

@@ -53,7 +53,7 @@ impl XdgShell {
             + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State>
             + 'static,
     {
-        let xdg_wm_base = globals.bind(qh, 1..=5, GlobalData)?;
+        let xdg_wm_base = globals.bind(qh, 1..=6, GlobalData)?;
         let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Ok(Self { xdg_wm_base, xdg_decoration_manager })
     }
