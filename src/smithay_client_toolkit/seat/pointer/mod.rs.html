@@ -585,6 +585,51 @@
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap},
     env, mem,
@@ -602,6 +647,7 @@
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 <span class="kw">use </span>wayland_cursor::{Cursor, CursorTheme};
+<span class="kw">use </span>wayland_protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 
 <span class="kw">use crate</span>::{
     compositor::{SurfaceData, SurfaceDataExt},
@@ -612,6 +658,10 @@
 
 <span class="attr">#[doc(inline)]
 </span><span class="kw">pub use </span>cursor_icon::{CursorIcon, ParseError <span class="kw">as </span>CursorIconParseError};
+
+<span class="kw">pub mod </span>cursor_shape;
+
+<span class="kw">use </span>cursor_shape::cursor_icon_to_shape;
 
 <span class="comment">/* From linux/input-event-codes.h - the buttons usually used by mice */
 </span><span class="kw">pub const </span>BTN_LEFT: u32 = <span class="number">0x110</span>;
@@ -758,7 +808,17 @@
                 <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_pointer::WlPointer</span>: <span class="macro-nonterminal">$crate::seat::pointer::PointerData
             </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
         </span>);
-    };
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::pointer::cursor_shape::CursorShapeManager
+        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::pointer::cursor_shape::CursorShapeManager
+        </span>);
+     };
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, pointer: [$(<span class="macro-nonterminal">$pointer_data</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
         <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
             [
@@ -766,6 +826,16 @@
                     <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_pointer::WlPointer</span>: <span class="macro-nonterminal">$pointer_data</span>,
                 )*
             ] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
+        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::pointer::cursor_shape::CursorShapeManager
+        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
+            </span>] =&gt; <span class="macro-nonterminal">$crate::seat::pointer::cursor_shape::CursorShapeManager
         </span>);
     };
 }
@@ -988,6 +1058,7 @@
     <span class="kw">pub</span>(<span class="kw">super</span>) shm: WlShm,
     <span class="doccomment">/// The surface owned by the cursor to present the icon.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) surface: WlSurface,
+    <span class="kw">pub</span>(<span class="kw">super</span>) shape_device: <span class="prelude-ty">Option</span>&lt;WpCursorShapeDeviceV1&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) _marker: std::marker::PhantomData&lt;U&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) _surface_data: std::marker::PhantomData&lt;S&gt;,
 }
@@ -997,6 +1068,31 @@
     ///
     /// The cursor icon should be reloaded on every [`PointerEventKind::Enter`] event.
     </span><span class="kw">pub fn </span>set_cursor(<span class="kw-2">&amp;</span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, icon: CursorIcon) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
+        <span class="kw">let </span>serial = <span class="kw">match </span><span class="self">self
+            </span>.pointer
+            .data::&lt;U&gt;()
+            .and_then(|data| data.pointer_data().latest_enter_serial())
+        {
+            <span class="prelude-val">Some</span>(serial) =&gt; serial,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial),
+        };
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(shape_device) = <span class="self">self</span>.shape_device.as_ref() {
+            shape_device.set_shape(serial, cursor_icon_to_shape(icon));
+            <span class="prelude-val">Ok</span>(())
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.set_cursor_legacy(conn, serial, icon)
+        }
+    }
+
+    <span class="doccomment">/// The legacy method of loading the cursor from the system cursor
+    /// theme instead of relying on compositor to set the cursor.
+    </span><span class="kw">fn </span>set_cursor_legacy(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        conn: <span class="kw-2">&amp;</span>Connection,
+        serial: u32,
+        icon: CursorIcon,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PointerThemeError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>themes = <span class="self">self</span>.themes.lock().unwrap();
 
         <span class="kw">let </span>scale = <span class="self">self</span>.surface.data::&lt;S&gt;().unwrap().surface_data().scale_factor();
@@ -1023,18 +1119,8 @@
         </span><span class="self">self</span>.surface.commit();
 
         <span class="comment">// Set the pointer surface to change the pointer.
-        </span><span class="kw">let </span>data = <span class="self">self</span>.pointer.data::&lt;U&gt;();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
-            <span class="self">self</span>.pointer.set_cursor(
-                serial,
-                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.surface),
-                hx <span class="kw">as </span>i32 / scale,
-                hy <span class="kw">as </span>i32 / scale,
-            );
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(PointerThemeError::MissingEnterSerial)
-        }
+        </span><span class="self">self</span>.pointer.set_cursor(serial, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.surface), hx <span class="kw">as </span>i32 / scale, hy <span class="kw">as </span>i32 / scale);
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Hide the cursor by providing empty surface for it.
@@ -1063,6 +1149,10 @@
 
 <span class="kw">impl</span>&lt;U, S&gt; Drop <span class="kw">for </span>ThemedPointer&lt;U, S&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(shape_device) = <span class="self">self</span>.shape_device.take() {
+            shape_device.destroy();
+        }
+
         <span class="kw">if </span><span class="self">self</span>.pointer.version() &gt;= <span class="number">3 </span>{
             <span class="self">self</span>.pointer.release();
         }

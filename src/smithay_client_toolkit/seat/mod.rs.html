@@ -500,14 +500,60 @@
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
-</pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
-</span><span class="kw">pub mod </span>keyboard;
-<span class="kw">pub mod </span>pointer;
-<span class="kw">pub mod </span>pointer_constraints;
-<span class="kw">pub mod </span>relative_pointer;
-<span class="kw">pub mod </span>touch;
-
-<span class="kw">use </span>std::{
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     fmt::{<span class="self">self</span>, Display, Formatter},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -515,21 +561,29 @@
     },
 };
 
-<span class="kw">use </span>wayland_client::{
-    globals::GlobalList,
-    protocol::{wl_pointer, wl_seat, wl_shm, wl_surface, wl_touch},
+<span class="kw">use </span><span class="kw">crate</span>::reexports::client::{
+    globals::{Global, GlobalList},
+    protocol::{wl_pointer, wl_registry::WlRegistry, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
-
+<span class="kw">use </span><span class="kw">crate</span>::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
+<span class="kw">use </span><span class="kw">crate</span>::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 <span class="kw">use crate</span>::{
     compositor::SurfaceDataExt,
+    globals::GlobalData,
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
-<span class="kw">use </span><span class="self">self</span>::{
-    pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes},
-    touch::{TouchData, TouchDataExt, TouchHandler},
-};
+<span class="attr">#[cfg(feature = <span class="string">&quot;xkbcommon&quot;</span>)]
+</span><span class="kw">pub mod </span>keyboard;
+<span class="kw">pub mod </span>pointer;
+<span class="kw">pub mod </span>pointer_constraints;
+<span class="kw">pub mod </span>relative_pointer;
+<span class="kw">pub mod </span>touch;
+
+<span class="kw">use </span>pointer::cursor_shape::CursorShapeManager;
+<span class="kw">use </span>pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes};
+<span class="kw">use </span>touch::{TouchData, TouchDataExt, TouchHandler};
 
 <span class="attr">#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -566,6 +620,14 @@
 </span><span class="kw">pub struct </span>SeatState {
     <span class="comment">// (name, seat)
     </span>seats: Vec&lt;SeatInner&gt;,
+    cursor_shape_manager_state: CursorShapeManagerState,
+}
+
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">enum </span>CursorShapeManagerState {
+    NotPresent,
+    Pending { registry: WlRegistry, global: Global },
+    Bound(CursorShapeManager),
 }
 
 <span class="kw">impl </span>SeatState {
@@ -573,18 +635,34 @@
         global_list: <span class="kw-2">&amp;</span>GlobalList,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) -&gt; SeatState {
-        <span class="kw">let </span>seats = global_list.contents().with_list(|globals| {
-            <span class="kw">crate</span>::registry::bind_all(global_list.registry(), globals, qh, <span class="number">1</span>..=<span class="number">7</span>, |id| SeatData {
-                has_keyboard: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
-                has_pointer: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
-                has_touch: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
-                name: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
-                id,
-            })
-            .expect(<span class="string">&quot;failed to bind global&quot;</span>)
+        <span class="kw">let </span>(seats, cursor_shape_manager) = global_list.contents().with_list(|globals| {
+            <span class="kw">let </span>global = globals
+                .iter()
+                .find(|global| global.interface == WpCursorShapeManagerV1::interface().name)
+                .map(|global| CursorShapeManagerState::Pending {
+                    registry: global_list.registry().clone(),
+                    global: global.clone(),
+                })
+                .unwrap_or(CursorShapeManagerState::NotPresent);
+
+            (
+                <span class="kw">crate</span>::registry::bind_all(global_list.registry(), globals, qh, <span class="number">1</span>..=<span class="number">7</span>, |id| {
+                    SeatData {
+                        has_keyboard: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                        has_pointer: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                        has_touch: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
+                        name: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
+                        id,
+                    }
+                })
+                .expect(<span class="string">&quot;failed to bind global&quot;</span>),
+                global,
+            )
         });
 
-        <span class="kw">let </span><span class="kw-2">mut </span>state = SeatState { seats: <span class="macro">vec!</span>[] };
+        <span class="kw">let </span><span class="kw-2">mut </span>state =
+            SeatState { seats: <span class="macro">vec!</span>[], cursor_shape_manager_state: cursor_shape_manager };
+
         <span class="kw">for </span>seat <span class="kw">in </span>seats {
             <span class="kw">let </span>data = seat.data::&lt;SeatData&gt;().unwrap().clone();
 
@@ -632,6 +710,8 @@
 
     <span class="doccomment">/// Creates a pointer from a seat with the provided theme.
     ///
+    /// This will use [`CursorShapeManager`] under the hood when it&#39;s available.
+    ///
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
@@ -646,6 +726,8 @@
     <span class="kw">where
         </span>D: Dispatch&lt;wl_pointer::WlPointer, PointerData&gt;
             + Dispatch&lt;wl_surface::WlSurface, S&gt;
+            + Dispatch&lt;WpCursorShapeManagerV1, GlobalData&gt;
+            + Dispatch&lt;WpCursorShapeDeviceV1, GlobalData&gt;
             + PointerHandler
             + <span class="lifetime">&#39;static</span>,
         S: SurfaceDataExt + <span class="lifetime">&#39;static</span>,
@@ -702,6 +784,8 @@
     <span class="kw">where
         </span>D: Dispatch&lt;wl_pointer::WlPointer, U&gt;
             + Dispatch&lt;wl_surface::WlSurface, S&gt;
+            + Dispatch&lt;WpCursorShapeManagerV1, GlobalData&gt;
+            + Dispatch&lt;WpCursorShapeDeviceV1, GlobalData&gt;
             + PointerHandler
             + <span class="lifetime">&#39;static</span>,
         S: SurfaceDataExt + <span class="lifetime">&#39;static</span>,
@@ -715,11 +799,33 @@
         }
 
         <span class="kw">let </span>wl_ptr = seat.get_pointer(qh, pointer_data);
+
+        <span class="kw">if let </span>CursorShapeManagerState::Pending { registry, global } =
+            <span class="kw-2">&amp;</span><span class="self">self</span>.cursor_shape_manager_state
+        {
+            <span class="self">self</span>.cursor_shape_manager_state =
+                <span class="kw">match </span><span class="kw">crate</span>::registry::bind_one(registry, <span class="kw-2">&amp;</span>[global.clone()], qh, <span class="number">1</span>..=<span class="number">1</span>, GlobalData)
+                {
+                    <span class="prelude-val">Ok</span>(bound) =&gt; {
+                        CursorShapeManagerState::Bound(CursorShapeManager::from_existing(bound))
+                    }
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; CursorShapeManagerState::NotPresent,
+                }
+        }
+
+        <span class="kw">let </span>shape_device =
+            <span class="kw">if let </span>CursorShapeManagerState::Bound(<span class="kw-2">ref </span>bound) = <span class="self">self</span>.cursor_shape_manager_state {
+                <span class="prelude-val">Some</span>(bound.get_shape_device(<span class="kw-2">&amp;</span>wl_ptr, qh))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>};
+
         <span class="prelude-val">Ok</span>(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
             pointer: wl_ptr,
             shm: shm.clone(),
             surface,
+            shape_device,
             _marker: std::marker::PhantomData,
             _surface_data: std::marker::PhantomData,
         })
@@ -960,7 +1066,7 @@
         interface: <span class="kw-2">&amp;</span>str,
         <span class="kw">_</span>: u32,
     ) {
-        <span class="kw">if </span>interface == <span class="string">&quot;wl_seat&quot; </span>{
+        <span class="kw">if </span>interface == wl_seat::WlSeat::interface().name {
             <span class="kw">let </span>seat = state
                 .registry()
                 .bind_specific(
@@ -991,7 +1097,7 @@
         name: u32,
         interface: <span class="kw-2">&amp;</span>str,
     ) {
-        <span class="kw">if </span>interface == <span class="string">&quot;wl_seat&quot; </span>{
+        <span class="kw">if </span>interface == wl_seat::WlSeat::interface().name {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(seat) = state.seat_state().seats.iter().find(|inner| inner.data.id == name)
             {
                 <span class="kw">let </span>seat = seat.seat.clone();
