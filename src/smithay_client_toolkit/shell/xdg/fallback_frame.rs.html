@@ -696,9 +696,51 @@
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The default fallback frame which is intended to show some very basic derocations.
 
-</span><span class="kw">use </span>std::sync::Arc;
+</span><span class="kw">use </span>std::mem;
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{error::Error, num::NonZeroU32};
 
 <span class="kw">use </span><span class="kw">crate</span>::reexports::client::{
@@ -764,6 +806,14 @@
     <span class="doccomment">/// The frame rendering data. When `None` the frame is hidden.
     </span>render_data: <span class="prelude-ty">Option</span>&lt;FrameRenderData&gt;,
 
+    <span class="doccomment">/// Whether the frame should sync with the parent.
+    ///
+    /// This should happen in reaction to scale or resize changes.
+    </span>should_sync: bool,
+
+    <span class="doccomment">/// The active scale factor of the frame.
+    </span>scale_factor: f64,
+
     <span class="doccomment">/// The frame queue handle.
     </span>queue_handle: QueueHandle&lt;State&gt;,
 
@@ -798,7 +848,9 @@
             state: WindowState::empty(),
             wm_capabilities,
             dirty: <span class="bool-val">true</span>,
+            scale_factor: <span class="number">1.</span>,
             pool,
+            should_sync: <span class="bool-val">true</span>,
             queue_handle,
             subcompositor,
             render_data,
@@ -1015,7 +1067,18 @@
 <span class="kw">where
     </span>State: Dispatch&lt;WlSurface, SurfaceData&gt; + Dispatch&lt;WlSubsurface, SubsurfaceData&gt; + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">fn </span>on_click(<span class="kw-2">&amp;mut </span><span class="self">self</span>, click: FrameClick, pressed: bool) -&gt; <span class="prelude-ty">Option</span>&lt;FrameAction&gt; {
+    <span class="kw">fn </span>set_scaling_factor(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scale_factor: f64) {
+        <span class="self">self</span>.scale_factor = scale_factor;
+        <span class="self">self</span>.dirty = <span class="bool-val">true</span>;
+        <span class="self">self</span>.should_sync = <span class="bool-val">true</span>;
+    }
+
+    <span class="kw">fn </span>on_click(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _timestamp: Duration,
+        click: FrameClick,
+        pressed: bool,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;FrameAction&gt; {
         <span class="comment">// Handle alternate click before everything else.
         </span><span class="kw">if </span>click == FrameClick::Alternate {
             <span class="kw">return if </span>Location::Head != <span class="self">self</span>.mouse_location
@@ -1057,7 +1120,13 @@
         }
     }
 
-    <span class="kw">fn </span>click_point_moved(<span class="kw-2">&amp;mut </span><span class="self">self</span>, surface_id: <span class="kw-2">&amp;</span>ObjectId, x: f64, y: f64) -&gt; <span class="prelude-ty">Option</span>&lt;CursorIcon&gt; {
+    <span class="kw">fn </span>click_point_moved(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _timestamp: Duration,
+        surface_id: <span class="kw-2">&amp;</span>ObjectId,
+        x: f64,
+        y: f64,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;CursorIcon&gt; {
         <span class="kw">let </span>part_index = <span class="self">self</span>.part_index_for_surface(surface_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>location = <span class="kw">match </span>part_index {
             LEFT_BORDER =&gt; Location::Left,
@@ -1145,6 +1214,7 @@
         parts[RIGHT_BORDER].pos.<span class="number">0 </span>= width <span class="kw">as </span>i32;
 
         <span class="self">self</span>.dirty = <span class="bool-val">true</span>;
+        <span class="self">self</span>.should_sync = <span class="bool-val">true</span>;
     }
 
     <span class="kw">fn </span>subtract_borders(
@@ -1186,14 +1256,15 @@
         <span class="self">self</span>.dirty
     }
 
-    <span class="kw">fn </span>draw(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">fn </span>draw(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
         <span class="kw">let </span>render_data = <span class="kw">match </span><span class="self">self</span>.render_data.as_mut() {
             <span class="prelude-val">Some</span>(render_data) =&gt; render_data,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
         };
 
-        <span class="comment">// Reset the dirty bit.
+        <span class="comment">// Reset the dirty bit and sync option.
         </span><span class="self">self</span>.dirty = <span class="bool-val">false</span>;
+        <span class="kw">let </span>should_sync = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.should_sync);
 
         <span class="kw">if </span><span class="self">self</span>.state.contains(WindowState::FULLSCREEN) {
             <span class="comment">// Don&#39;t draw the decorations for the full screen surface.
@@ -1201,7 +1272,7 @@
                 part.surface.attach(<span class="prelude-val">None</span>, <span class="number">0</span>, <span class="number">0</span>);
                 part.surface.commit();
             }
-            <span class="kw">return</span>;
+            <span class="kw">return </span>should_sync;
         }
 
         <span class="kw">let </span>is_active = <span class="self">self</span>.state.contains(WindowState::ACTIVATED);
@@ -1209,7 +1280,9 @@
             <span class="kw">if </span>is_active { PRIMARY_COLOR_ACTIVE } <span class="kw">else </span>{ PRIMARY_COLOR_INACTIVE }.to_le_bytes();
 
         <span class="kw">for </span>(idx, part) <span class="kw">in </span>render_data.parts.iter().enumerate() {
-            <span class="kw">let </span>scale = part.surface.data::&lt;SurfaceData&gt;().unwrap().scale_factor();
+            <span class="comment">// We don&#39;t support fractinal scaling here, so round up.
+            </span><span class="kw">let </span>scale = <span class="self">self</span>.scale_factor.ceil() <span class="kw">as </span>i32;
+
             <span class="kw">let </span>(buffer, canvas) = <span class="kw">match </span><span class="self">self</span>.pool.create_buffer(
                 part.width <span class="kw">as </span>i32 * scale,
                 part.height <span class="kw">as </span>i32 * scale,
@@ -1241,6 +1314,11 @@
             }
 
             part.surface.set_buffer_scale(scale);
+            <span class="kw">if </span>should_sync {
+                part.subsurface.set_sync();
+            } <span class="kw">else </span>{
+                part.subsurface.set_desync();
+            }
 
             <span class="comment">// Update the subsurface position.
             </span>part.subsurface.set_position(part.pos.<span class="number">0</span>, part.pos.<span class="number">1</span>);
@@ -1254,6 +1332,8 @@
 
             part.surface.commit();
         }
+
+        should_sync
     }
 
     <span class="kw">fn </span>update_wm_capabilities(<span class="kw-2">&amp;mut </span><span class="self">self</span>, capabilities: WindowManagerCapabilities) {

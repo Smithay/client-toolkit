@@ -230,6 +230,7 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     convert::{TryFrom, TryInto},
     num::NonZeroU32,
@@ -349,6 +350,7 @@
                                 State::TiledRight =&gt; acc.set(WindowState::TILED_RIGHT, <span class="bool-val">true</span>),
                                 State::TiledTop =&gt; acc.set(WindowState::TILED_TOP, <span class="bool-val">true</span>),
                                 State::TiledBottom =&gt; acc.set(WindowState::TILED_BOTTOM, <span class="bool-val">true</span>),
+                                State::Suspended =&gt; acc.set(WindowState::SUSPENDED, <span class="bool-val">true</span>),
                                 <span class="kw">_ </span>=&gt; (),
                             }
                             acc

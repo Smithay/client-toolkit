@@ -392,7 +392,7 @@
             + Dispatch&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State&gt;
             + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span>xdg_wm_base = globals.bind(qh, <span class="number">1</span>..=<span class="number">5</span>, GlobalData)<span class="question-mark">?</span>;
+        <span class="kw">let </span>xdg_wm_base = globals.bind(qh, <span class="number">1</span>..=<span class="number">6</span>, GlobalData)<span class="question-mark">?</span>;
         <span class="kw">let </span>xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, <span class="number">1</span>..=<span class="number">1</span>, GlobalData));
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ xdg_wm_base, xdg_decoration_manager })
     }
