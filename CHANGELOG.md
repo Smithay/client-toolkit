@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.18.0-beta.1 - 2023-08-11
+
 #### Breaking Changes
 
 - `ThemedPointer::set_cursor` now takes only `Connection` and `&str`.
