@@ -33,7 +33,7 @@ wayland-csd-frame = { version = "0.2.2", default-features = false, features = ["
 
 xkbcommon = { version = "0.5.0", optional = true, features = ["wayland"], git = "https://github.com/notgull/xkbcommon-rs.git", branch = "xkeysym" }
 calloop = { version = "0.10.5", optional = true }
-xkeysym = { git = "https://github.com/notgull/xkeysym.git", version = "0.1.1" }
+xkeysym = "0.2.0"
 
 [features]
 default = ["calloop", "xkbcommon"]
