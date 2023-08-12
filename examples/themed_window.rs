@@ -11,7 +11,6 @@ use smithay_client_toolkit::reexports::csd_frame::{
     DecorationsFrame, FrameAction, FrameClick, ResizeEdge,
 };
 use smithay_client_toolkit::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge;
-use smithay_client_toolkit::seat::keyboard::keysyms;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
@@ -439,7 +438,7 @@ impl KeyboardHandler for SimpleWindow {
         _: u32,
         event: KeyEvent,
     ) {
-        if event.keysym == keysyms::XKB_KEY_n {
+        if event.keysym == Keysym::N {
             // Cycle through cursor icons.
             self.window_cursor_icon_idx = (self.window_cursor_icon_idx + 1) % CURSORS.len();
             println!("Setting cursor icon to: {}", CURSORS[self.window_cursor_icon_idx].name());
