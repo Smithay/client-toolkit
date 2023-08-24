@@ -1,0 +1,18 @@
+[package]
+name = "calloop-wayland-source"
+description = "A wayland-rs client event source for callloop"
+version = "0.1.0"
+authors = ["Kirill Chibisov <contact@kchibisov.com>"]
+documentation = "https://smithay.github.io/client-toolkit/calloop_wayland_source"
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+keywords = ["wayland", "windowing"]
+rust-version = "1.65.0"
+
+[dependencies]
+wayland-client = "0.30.2"
+wayland-backend = "0.1.0"
+calloop = "0.10.0"
+log = { version = "0.4.19", optional = true }
+rustix = { version = "0.38.4", default-features = false, features = ["std"] }

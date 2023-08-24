@@ -3,13 +3,21 @@ name = "smithay-client-toolkit"
 version = "0.17.0"
 authors = ["Elinor Berger <elinor@safaradeg.net>", "i509VCB <mail@i509.me>", "Ashley Wulber <ashley@system76.com>"]
 documentation = "https://smithay.github.io/client-toolkit"
-repository = "https://github.com/smithay/client-toolkit"
-license = "MIT"
-edition = "2021"
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
 categories = ["gui"]
 keywords = ["wayland", "client"]
 description = "Toolkit for making client wayland applications."
 readme = "README.md"
+
+[workspace]
+members = ["calloop-wayland-source"]
+
+[workspace.package]
+repository = "https://github.com/smithay/client-toolkit"
+license = "MIT"
+edition = "2021"
 
 [package.metadata.docs.rs]
 features = ["calloop", "xkbcommon"]
