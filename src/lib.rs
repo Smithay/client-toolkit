@@ -16,6 +16,8 @@ pub mod reexports {
     pub use wayland_protocols_wlr as protocols_wlr;
 }
 
+#[cfg(feature = "calloop")]
+pub mod calloop;
 pub mod compositor;
 pub mod data_device_manager;
 pub mod error;

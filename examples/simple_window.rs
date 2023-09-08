@@ -2,6 +2,7 @@ use std::{convert::TryInto, time::Duration};
 
 use calloop::{EventLoop, LoopHandle};
 use smithay_client_toolkit::{
+    calloop::WaylandSource,
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
     delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
@@ -28,7 +29,7 @@ use smithay_client_toolkit::{
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle, WaylandSource,
+    Connection, QueueHandle,
 };
 
 fn main() {

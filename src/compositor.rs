@@ -423,7 +423,7 @@ impl wayland_client::backend::ObjectData for RegionData {
         _: &wayland_client::backend::Backend,
         _: wayland_client::backend::protocol::Message<
             wayland_client::backend::ObjectId,
-            wayland_backend::io_lifetimes::OwnedFd,
+            std::os::unix::io::OwnedFd,
         >,
     ) -> Option<Arc<(dyn wayland_client::backend::ObjectData + 'static)>> {
         unreachable!("wl_region has no events");

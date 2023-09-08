@@ -6,7 +6,7 @@
 use std::{
     fs::File,
     io,
-    os::unix::prelude::{FromRawFd, RawFd},
+    os::unix::prelude::{AsFd, FromRawFd, RawFd},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -53,7 +53,7 @@ impl RawPool {
 
         let pool = shm
             .send_constructor(
-                wl_shm::Request::CreatePool { fd: shm_fd, size: len as i32 },
+                wl_shm::Request::CreatePool { fd: mem_file.as_fd(), size: len as i32 },
                 Arc::new(ShmPoolData),
             )
             .unwrap_or_else(|_| Proxy::inert(shm.backend().clone()));
@@ -274,7 +274,7 @@ impl ObjectData for ShmPoolData {
         _: &wayland_client::backend::Backend,
         _: wayland_client::backend::protocol::Message<
             wayland_client::backend::ObjectId,
-            wayland_backend::io_lifetimes::OwnedFd,
+            std::os::unix::io::OwnedFd,
         >,
     ) -> Option<Arc<(dyn ObjectData + 'static)>> {
         unreachable!("wl_shm_pool has no events")

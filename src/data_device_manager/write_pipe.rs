@@ -1,8 +1,7 @@
 use std::{
     fs, io,
-    os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
+    os::unix::io::{AsFd, AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
 };
-use wayland_backend::io_lifetimes::{AsFd, OwnedFd};
 
 /// If the `calloop` cargo feature is enabled, this can be used
 /// as an `EventSource` in a calloop event loop.
@@ -86,7 +85,7 @@ impl AsRawFd for WritePipe {
 
 #[cfg(feature = "calloop")]
 impl AsFd for WritePipe {
-    fn as_fd(&self) -> wayland_backend::io_lifetimes::BorrowedFd<'_> {
+    fn as_fd(&self) -> std::os::unix::io::BorrowedFd<'_> {
         self.file.file.as_fd()
     }
 }
@@ -100,7 +99,7 @@ impl AsRawFd for WritePipe {
 #[cfg(not(feature = "calloop"))]
 
 impl AsFd for WritePipe {
-    fn as_fd(&self) -> wayland_backend::io_lifetimes::BorrowedFd<'_> {
+    fn as_fd(&self) -> std::os::unix::io::BorrowedFd<'_> {
         self.file.as_fd()
     }
 }
