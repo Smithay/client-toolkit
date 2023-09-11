@@ -29,6 +29,7 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
+use xkeysym::Keysym;
 
 fn main() {
     env_logger::init();
@@ -277,7 +278,7 @@ impl<T: Test + 'static> KeyboardHandler for SimpleWindow<T> {
         surface: &wl_surface::WlSurface,
         _: u32,
         _: &[u32],
-        keysyms: &[u32],
+        keysyms: &[Keysym],
     ) {
         if self.window.wl_surface() == surface {
             println!("Keyboard focus on window with pressed syms: {keysyms:?}");

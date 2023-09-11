@@ -1,6 +1,3 @@
-#[rustfmt::skip]
-pub mod keysyms;
-
 use std::{
     convert::TryInto,
     env,
@@ -14,6 +11,9 @@ use std::{
     },
     time::Duration,
 };
+
+#[doc(inline)]
+pub use xkeysym::Keysym;
 
 #[cfg(feature = "calloop")]
 use calloop::timer::{TimeoutAction, Timer};
@@ -137,7 +137,7 @@ pub trait KeyboardHandler: Sized {
         surface: &wl_surface::WlSurface,
         serial: u32,
         raw: &[u32],
-        keysyms: &[u32],
+        keysyms: &[Keysym],
     );
 
     /// The keyboard has left a surface.
@@ -248,8 +248,8 @@ pub struct KeyEvent {
 
     /// The interpreted symbol of the key.
     ///
-    /// This corresponds to one of the values in the [`keysyms`] module.
-    pub keysym: u32,
+    /// This corresponds to one of the assoiated values on the [`Keysym`] type.
+    pub keysym: Keysym,
 
     /// UTF-8 interpretation of the entered text.
     ///
@@ -590,7 +590,15 @@ where
                     // Drop guard before calling user code.
                     drop(state_guard);
 
-                    data.enter(conn, qh, keyboard, &surface, serial, &raw, &keysyms);
+                    data.enter(
+                        conn,
+                        qh,
+                        keyboard,
+                        &surface,
+                        serial,
+                        &raw,
+                        bytemuck::cast_slice(&keysyms),
+                    );
                 }
 
                 *udata.focus.lock().unwrap() = Some(surface);
@@ -642,7 +650,8 @@ where
                         // Drop guard before calling user code.
                         drop(state_guard);
 
-                        let event = KeyEvent { time, raw_code: key, keysym, utf8 };
+                        let event =
+                            KeyEvent { time, raw_code: key, keysym: Keysym::new(keysym), utf8 };
 
                         match state {
                             wl_keyboard::KeyState::Released => {
@@ -788,7 +797,7 @@ where
                             let mut compose = udata.xkb_compose.lock().unwrap();
 
                             match compose.as_mut() {
-                                Some(compose) => match compose.feed(event.key.keysym) {
+                                Some(compose) => match compose.feed(event.key.keysym.raw()) {
                                     xkb::FeedResult::Ignored => None,
                                     xkb::FeedResult::Accepted => match compose.status() {
                                         xkb::Status::Composed => compose.utf8(),

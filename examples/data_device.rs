@@ -27,7 +27,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
-        keyboard::{KeyEvent, KeyboardHandler, Modifiers},
+        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
         pointer::{PointerEvent, PointerEventKind, PointerHandler, BTN_LEFT},
         Capability, SeatHandler, SeatState,
     },
@@ -351,7 +351,7 @@ impl KeyboardHandler for DataDeviceWindow {
         surface: &wl_surface::WlSurface,
         _: u32,
         _: &[u32],
-        _keysyms: &[u32],
+        _keysyms: &[Keysym],
     ) {
         if self.window.wl_surface() == surface {
             self.keyboard_focus = true;

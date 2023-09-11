@@ -10,7 +10,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
-        keyboard::{KeyEvent, KeyboardHandler, Modifiers},
+        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
         pointer::{PointerEvent, PointerEventKind, PointerHandler},
         Capability, SeatHandler, SeatState,
     },
@@ -28,7 +28,6 @@ use wayland_client::{
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
-use xkbcommon::xkb::keysyms;
 
 fn main() {
     env_logger::init();
@@ -270,7 +269,7 @@ impl KeyboardHandler for SimpleLayer {
         surface: &wl_surface::WlSurface,
         _: u32,
         _: &[u32],
-        keysyms: &[u32],
+        keysyms: &[Keysym],
     ) {
         if self.layer.wl_surface() == surface {
             println!("Keyboard focus on window with pressed syms: {keysyms:?}");
@@ -302,7 +301,7 @@ impl KeyboardHandler for SimpleLayer {
     ) {
         println!("Key press: {event:?}");
         // press 'esc' to exit
-        if event.keysym == keysyms::KEY_Escape {
+        if event.keysym == Keysym::Escape {
             self.exit = true;
         }
     }

@@ -10,6 +10,7 @@
 - `CursorIcon` from `cursor-icon` crate is now used for `set_cursor` and `Frame`.
 - `wayland-csd-frame` is now used for CSD types like `WindowState`, `DecorationsFrame`, etc.
 - Added `CompositorHandle::transform_changed` to listen for transform changes.
+- `xkeysym::Keysym` is used as a keyboard key representation instead of `u32`
 
 #### Fixed
 
