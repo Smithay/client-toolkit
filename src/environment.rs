@@ -283,6 +283,7 @@ impl<I: Interface + Clone + From<Proxy<I>> + AsRef<Proxy<I>>> GlobalHandler<I> f
         version: u32,
         _: DispatchData,
     ) {
+        let version = I::VERSION.min(version);
         self.global = Some((*registry.bind::<I>(version, id)).clone())
     }
     fn get(&self) -> Option<Attached<I>> {
