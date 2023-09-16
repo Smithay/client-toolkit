@@ -1,6 +1,6 @@
 use std::{
     ops::{Deref, DerefMut},
-    os::unix::prelude::{FromRawFd, RawFd},
+    os::unix::prelude::{BorrowedFd, FromRawFd, RawFd},
     sync::{Arc, Mutex},
 };
 
@@ -407,7 +407,7 @@ pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPi
     // create a pipe
     let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
-    offer.receive(mime_type, writefd);
+    offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
 
     if let Err(err) = close(writefd) {
         log::warn!("Failed to close write pipe: {}", err);
@@ -434,7 +434,7 @@ pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPi
 pub unsafe fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: RawFd) {
     use nix::unistd::close;
 
-    offer.receive(mime_type, writefd);
+    offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
 
     if let Err(err) = close(writefd) {
         log::warn!("Failed to close write pipe: {}", err);

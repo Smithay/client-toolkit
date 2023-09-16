@@ -1,6 +1,7 @@
 use std::{convert::TryInto, time::Duration};
 
-use calloop::{EventLoop, LoopHandle};
+use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle};
+use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
@@ -28,7 +29,7 @@ use smithay_client_toolkit::{
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle, WaylandSource,
+    Connection, QueueHandle,
 };
 
 fn main() {
@@ -43,7 +44,7 @@ fn main() {
     let mut event_loop: EventLoop<SimpleWindow> =
         EventLoop::try_new().expect("Failed to initialize the event loop!");
     let loop_handle = event_loop.handle();
-    WaylandSource::new(event_queue).unwrap().insert(loop_handle).unwrap();
+    WaylandSource::new(conn.clone(), event_queue).insert(loop_handle).unwrap();
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.

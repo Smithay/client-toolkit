@@ -1,8 +1,7 @@
 use std::{
     fs, io,
-    os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
+    os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
 };
-use wayland_backend::io_lifetimes::{AsFd, OwnedFd};
 
 /// If the `calloop` cargo feature is enabled, this can be used
 /// as an `EventSource` in a calloop event loop.
@@ -18,11 +17,11 @@ pub struct WritePipe {
 #[cfg(feature = "calloop")]
 impl io::Write for WritePipe {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.file.file.write(buf)
+        unsafe { self.file.get_mut().write(buf) }
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.file.file.flush()
+        unsafe { self.file.get_mut().flush() }
     }
 }
 
@@ -80,14 +79,14 @@ impl From<OwnedFd> for WritePipe {
 #[cfg(feature = "calloop")]
 impl AsRawFd for WritePipe {
     fn as_raw_fd(&self) -> RawFd {
-        self.file.file.as_raw_fd()
+        self.file.get_ref().as_raw_fd()
     }
 }
 
 #[cfg(feature = "calloop")]
 impl AsFd for WritePipe {
-    fn as_fd(&self) -> wayland_backend::io_lifetimes::BorrowedFd<'_> {
-        self.file.file.as_fd()
+    fn as_fd(&self) -> BorrowedFd {
+        self.file.get_ref().as_fd()
     }
 }
 
@@ -100,7 +99,7 @@ impl AsRawFd for WritePipe {
 #[cfg(not(feature = "calloop"))]
 
 impl AsFd for WritePipe {
-    fn as_fd(&self) -> wayland_backend::io_lifetimes::BorrowedFd<'_> {
+    fn as_fd(&self) -> BorrowedFd<'_> {
         self.file.as_fd()
     }
 }
@@ -108,14 +107,14 @@ impl AsFd for WritePipe {
 #[cfg(feature = "calloop")]
 impl IntoRawFd for WritePipe {
     fn into_raw_fd(self) -> RawFd {
-        self.file.file.into_raw_fd()
+        self.file.unwrap().into_raw_fd()
     }
 }
 
 #[cfg(feature = "calloop")]
 impl From<WritePipe> for OwnedFd {
     fn from(write_pipe: WritePipe) -> Self {
-        write_pipe.file.file.into()
+        write_pipe.file.unwrap().into()
     }
 }
 
@@ -137,7 +136,7 @@ impl From<WritePipe> for OwnedFd {
 impl calloop::EventSource for WritePipe {
     type Event = ();
     type Error = std::io::Error;
-    type Metadata = fs::File;
+    type Metadata = calloop::generic::NoIoDrop<fs::File>;
     type Ret = ();
 
     fn process_events<F>(
@@ -147,7 +146,7 @@ impl calloop::EventSource for WritePipe {
         mut callback: F,
     ) -> std::io::Result<calloop::PostAction>
     where
-        F: FnMut((), &mut fs::File),
+        F: FnMut((), &mut calloop::generic::NoIoDrop<fs::File>),
     {
         self.file.process_events(readiness, token, |_, file| {
             callback((), file);

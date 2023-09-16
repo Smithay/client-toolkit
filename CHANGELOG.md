@@ -11,6 +11,8 @@
 - `wayland-csd-frame` is now used for CSD types like `WindowState`, `DecorationsFrame`, etc.
 - Added `CompositorHandle::transform_changed` to listen for transform changes.
 - `xkeysym::Keysym` is used as a keyboard key representation instead of `u32`
+- `wayland-rs` dependencies are updated to 0.31
+- `calloop` dependency updated to 0.12.1
 
 #### Fixed
 

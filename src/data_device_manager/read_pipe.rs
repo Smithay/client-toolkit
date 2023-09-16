@@ -1,8 +1,7 @@
 use std::{
     fs, io,
-    os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
+    os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
 };
-use wayland_backend::io_lifetimes::{AsFd, OwnedFd};
 
 /// If the `calloop` cargo feature is enabled, this can be used
 /// as an `EventSource` in a calloop event loop.
@@ -18,7 +17,7 @@ pub struct ReadPipe {
 #[cfg(feature = "calloop")]
 impl io::Read for ReadPipe {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.file.file.read(buf)
+        unsafe { self.file.get_mut().read(buf) }
     }
 }
 
@@ -72,14 +71,14 @@ impl From<OwnedFd> for ReadPipe {
 #[cfg(feature = "calloop")]
 impl AsRawFd for ReadPipe {
     fn as_raw_fd(&self) -> RawFd {
-        self.file.file.as_raw_fd()
+        self.file.get_ref().as_raw_fd()
     }
 }
 
 #[cfg(feature = "calloop")]
 impl AsFd for ReadPipe {
-    fn as_fd(&self) -> wayland_backend::io_lifetimes::BorrowedFd<'_> {
-        self.file.file.as_fd()
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.file.get_ref().as_fd()
     }
 }
 
@@ -92,7 +91,7 @@ impl AsRawFd for ReadPipe {
 #[cfg(not(feature = "calloop"))]
 
 impl AsFd for ReadPipe {
-    fn as_fd(&self) -> wayland_backend::io_lifetimes::BorrowedFd<'_> {
+    fn as_fd(&self) -> BorrowedFd<'_> {
         self.file.as_fd()
     }
 }
@@ -100,14 +99,14 @@ impl AsFd for ReadPipe {
 #[cfg(feature = "calloop")]
 impl IntoRawFd for ReadPipe {
     fn into_raw_fd(self) -> RawFd {
-        self.file.file.into_raw_fd()
+        self.file.unwrap().as_raw_fd()
     }
 }
 
 #[cfg(feature = "calloop")]
 impl From<ReadPipe> for OwnedFd {
     fn from(read_pipe: ReadPipe) -> Self {
-        read_pipe.file.file.into()
+        read_pipe.file.unwrap().into()
     }
 }
 
@@ -129,7 +128,7 @@ impl From<ReadPipe> for OwnedFd {
 impl calloop::EventSource for ReadPipe {
     type Event = ();
     type Error = std::io::Error;
-    type Metadata = fs::File;
+    type Metadata = calloop::generic::NoIoDrop<fs::File>;
     type Ret = ();
 
     fn process_events<F>(
@@ -139,7 +138,7 @@ impl calloop::EventSource for ReadPipe {
         mut callback: F,
     ) -> std::io::Result<calloop::PostAction>
     where
-        F: FnMut((), &mut fs::File),
+        F: FnMut((), &mut calloop::generic::NoIoDrop<fs::File>),
     {
         self.file.process_events(readiness, token, |_, file| {
             callback((), file);

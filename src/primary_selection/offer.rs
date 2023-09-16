@@ -1,5 +1,5 @@
 use std::{
-    os::unix::io::{FromRawFd, RawFd},
+    os::unix::io::{BorrowedFd, FromRawFd, RawFd},
     sync::Mutex,
 };
 
@@ -41,7 +41,7 @@ impl PrimarySelectionOffer {
         // create a pipe
         let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
 
-        self.offer.receive(mime_type, writefd);
+        self.offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
 
         if let Err(err) = close(writefd) {
             log::warn!("Failed to close write pipe: {}", err);
@@ -57,7 +57,7 @@ impl PrimarySelectionOffer {
     pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: RawFd) {
         use nix::unistd::close;
 
-        self.offer.receive(mime_type, writefd);
+        self.offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
 
         if let Err(err) = close(writefd) {
             log::warn!("Failed to close write pipe: {}", err);
