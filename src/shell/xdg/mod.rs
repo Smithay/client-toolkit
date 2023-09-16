@@ -1,6 +1,7 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
+use std::os::unix::io::OwnedFd;
 use std::sync::{Arc, Mutex};
 
 use crate::reexports::client::globals::{BindError, GlobalList};
@@ -203,10 +204,7 @@ impl wayland_client::backend::ObjectData for PositionerData {
     fn event(
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
-        _: wayland_client::backend::protocol::Message<
-            wayland_client::backend::ObjectId,
-            wayland_backend::io_lifetimes::OwnedFd,
-        >,
+        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
     ) -> Option<Arc<(dyn wayland_client::backend::ObjectData + 'static)>> {
         unreachable!("xdg_positioner has no events");
     }

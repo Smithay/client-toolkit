@@ -1,11 +1,13 @@
 use std::{
     convert::TryInto,
-    fs::File,
+    fs::{self, File},
     io::{BufRead, BufReader, Write},
+    os::unix::io::OwnedFd,
     time::Duration,
 };
 
-use calloop::{EventLoop, LoopHandle, RegistrationToken};
+use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle, RegistrationToken};
+use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     data_device_manager::{
@@ -43,7 +45,6 @@ use smithay_client_toolkit::{
         Shm, ShmHandler,
     },
 };
-use wayland_backend::io_lifetimes::OwnedFd;
 use wayland_client::{
     globals::registry_queue_init,
     protocol::{
@@ -55,7 +56,7 @@ use wayland_client::{
         wl_seat::{self, WlSeat},
         wl_shm, wl_surface,
     },
-    Connection, QueueHandle, WaylandSource,
+    Connection, QueueHandle,
 };
 use wayland_protocols::wp::primary_selection::zv1::client::{
     zwp_primary_selection_device_v1::ZwpPrimarySelectionDeviceV1,
@@ -78,7 +79,7 @@ fn main() {
     let mut event_loop: EventLoop<DataDeviceWindow> =
         EventLoop::try_new().expect("Failed to initialize the event loop!");
     let loop_handle = event_loop.handle();
-    WaylandSource::new(event_queue).unwrap().insert(loop_handle).unwrap();
+    WaylandSource::new(conn.clone(), event_queue).insert(loop_handle).unwrap();
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.
@@ -652,6 +653,8 @@ impl DataDeviceHandler for DataDeviceWindow {
                     (o, d, Some(t)) => (o, d, t),
                     _ => return,
                 };
+                // SAFETY: it's safe as long as we don't close the underlying file.
+                let f: &mut fs::File = unsafe { f.get_mut() };
                 let mut reader = BufReader::new(f);
                 let consumed = match reader.fill_buf() {
                     Ok(buf) => {
@@ -727,6 +730,8 @@ impl DataDeviceHandler for DataDeviceWindow {
                     (o, d, Some(t)) => (o, d, t),
                     _ => return,
                 };
+                // SAFETY: it's safe as long as we don't close the underlying file.
+                let f: &mut fs::File = unsafe { f.get_mut() };
                 let mut reader = BufReader::new(f);
                 let consumed = match reader.fill_buf() {
                     Ok(buf) => {
@@ -921,6 +926,8 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                     (o, d, Some(t)) => (o, d, t),
                     _ => return,
                 };
+                // SAFETY: it's safe as long as we don't close the underlying file.
+                let f: &mut fs::File = unsafe { f.get_mut() };
                 let mut reader = BufReader::new(f);
                 let consumed = match reader.fill_buf() {
                     Ok(buf) => {

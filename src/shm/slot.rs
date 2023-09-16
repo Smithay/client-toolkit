@@ -2,7 +2,7 @@
 
 use std::io;
 use std::{
-    os::unix::io::AsRawFd,
+    os::unix::io::{AsRawFd, OwnedFd},
     sync::{
         atomic::{AtomicU8, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -505,10 +505,7 @@ impl wayland_client::backend::ObjectData for BufferData {
     fn event(
         self: Arc<Self>,
         handle: &wayland_client::backend::Backend,
-        msg: wayland_backend::protocol::Message<
-            wayland_backend::client::ObjectId,
-            wayland_backend::io_lifetimes::OwnedFd,
-        >,
+        msg: wayland_backend::protocol::Message<wayland_backend::client::ObjectId, OwnedFd>,
     ) -> Option<Arc<dyn wayland_backend::client::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),

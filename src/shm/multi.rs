@@ -65,6 +65,7 @@
 
 use std::borrow::Borrow;
 use std::io;
+use std::os::unix::io::OwnedFd;
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -404,10 +405,7 @@ impl wayland_client::backend::ObjectData for BufferObjectData {
     fn event(
         self: Arc<Self>,
         _backend: &wayland_backend::client::Backend,
-        msg: wayland_backend::protocol::Message<
-            wayland_backend::client::ObjectId,
-            wayland_backend::io_lifetimes::OwnedFd,
-        >,
+        msg: wayland_backend::protocol::Message<wayland_backend::client::ObjectId, OwnedFd>,
     ) -> Option<Arc<dyn wayland_backend::client::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),

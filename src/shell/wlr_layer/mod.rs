@@ -236,6 +236,7 @@ bitflags! {
     /// A combination of two orthogonal edges will cause the layer's anchor point to be the intersection of
     /// the edges. For example [`Anchor::TOP`] and [`Anchor::LEFT`] will result in an anchor point in the top
     /// left of the anchor rectangle.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct Anchor: u32 {
         /// Top edge of the anchor rectangle.
         const TOP = 1;

@@ -10,6 +10,8 @@
 pub mod reexports {
     #[cfg(feature = "calloop")]
     pub use calloop;
+    #[cfg(feature = "calloop")]
+    pub use calloop_wayland_source;
     pub use wayland_client as client;
     pub use wayland_csd_frame as csd_frame;
     pub use wayland_protocols as protocols;
