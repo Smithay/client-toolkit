@@ -26,8 +26,8 @@ use smithay_client_toolkit::{
 };
 use wayland_client::{
     globals::registry_queue_init,
-    protocol::{wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    protocol::{wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface},
+    Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::wp::{
     pointer_constraints::zv1::client::{
@@ -38,11 +38,14 @@ use wayland_protocols::wp::{
 
 const WHITE: raqote::SolidSource = raqote::SolidSource { r: 255, g: 255, b: 255, a: 255 };
 const BLACK: raqote::SolidSource = raqote::SolidSource { r: 0, g: 0, b: 0, a: 255 };
+const GREY: raqote::SolidSource = raqote::SolidSource { r: 192, g: 192, b: 192, a: 255 };
+const SOLID_WHITE: raqote::Source = raqote::Source::Solid(WHITE);
 const SOLID_BLACK: raqote::Source = raqote::Source::Solid(BLACK);
 const SPEED: f32 = 0.001;
 
 enum Constraint {
     Confine(zwp_confined_pointer_v1::ZwpConfinedPointerV1),
+    ConfineRegion(zwp_confined_pointer_v1::ZwpConfinedPointerV1),
     Lock(zwp_locked_pointer_v1::ZwpLockedPointerV1),
 }
 
@@ -204,6 +207,17 @@ impl WindowHandler for SimpleWindow {
         self.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
         self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
 
+        if let Some(Constraint::ConfineRegion(confine)) = &self.constraint {
+            let region = self.compositor_state.wl_compositor().create_region(qh, ());
+            region.add(
+                self.width as i32 / 4,
+                self.height as i32 / 4,
+                self.width as i32 / 2,
+                self.height as i32 / 2,
+            );
+            confine.set_region(Some(&region));
+        }
+
         self.draw(conn, qh);
     }
 }
@@ -361,7 +375,19 @@ impl SimpleWindow {
                 height as i32,
                 bytemuck::cast_slice_mut(pool.canvas(&buffer).unwrap()),
             );
-            dt.clear(WHITE);
+            if let Some(Constraint::ConfineRegion(_)) = &self.constraint {
+                dt.clear(GREY);
+                dt.fill_rect(
+                    (width / 4) as f32,
+                    (height / 4) as f32,
+                    (width / 2) as f32,
+                    (height / 2) as f32,
+                    &SOLID_WHITE,
+                    &raqote::DrawOptions::new(),
+                );
+            } else {
+                dt.clear(WHITE);
+            }
             let mut pb = raqote::PathBuilder::new();
             pb.arc(
                 self.pos.0 * self.width as f32,
@@ -420,6 +446,13 @@ impl SimpleWindow {
                     "Pointer confined to window (inactive)"
                 }
             }
+            Some(Constraint::ConfineRegion(_)) => {
+                if self.constraint_active {
+                    "Pointer confined to region"
+                } else {
+                    "Pointer confined to region (inactive)"
+                }
+            }
             Some(Constraint::Lock(_)) => {
                 if self.constraint_active {
                     "Pointer locked in place"
@@ -459,6 +492,17 @@ impl SimpleWindow {
                     .unwrap(),
             )),
             Some(Constraint::Confine(confine)) => {
+                let region = self.compositor_state.wl_compositor().create_region(qh, ());
+                region.add(
+                    self.width as i32 / 4,
+                    self.height as i32 / 4,
+                    self.width as i32 / 2,
+                    self.height as i32 / 2,
+                );
+                confine.set_region(Some(&region));
+                Some(Constraint::ConfineRegion(confine))
+            }
+            Some(Constraint::ConfineRegion(confine)) => {
                 confine.destroy();
                 Some(Constraint::Lock(
                     self.pointer_constraint_state
@@ -501,4 +545,16 @@ impl ProvidesRegistryState for SimpleWindow {
         &mut self.registry_state
     }
     registry_handlers![OutputState, SeatState,];
+}
+
+impl Dispatch<wl_region::WlRegion, ()> for SimpleWindow {
+    fn event(
+        _: &mut Self,
+        _: &wl_region::WlRegion,
+        _: wl_region::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<SimpleWindow>,
+    ) {
+    }
 }
