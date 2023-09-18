@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.16.1 - 2023-09-18
+
+#### Bugfixes
+
+- Restrict `SimpleGlobal` bindings to our max API version
+
 ## 0.16.0 - 2022-06-18
 
 #### Breaking changes
