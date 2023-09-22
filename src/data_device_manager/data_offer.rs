@@ -1,6 +1,6 @@
 use std::{
     ops::{Deref, DerefMut},
-    os::unix::prelude::{BorrowedFd, FromRawFd, RawFd},
+    os::unix::prelude::{AsFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
     sync::{Arc, Mutex},
 };
 
@@ -427,16 +427,14 @@ pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPi
 /// At least make sure you flush your events to the server before
 /// doing so.
 ///
-/// # Safety
-///
 /// The provided file destructor must be a valid FD for writing, and will be closed
 /// once the contents are written.
-pub unsafe fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: RawFd) {
+pub fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: OwnedFd) {
     use nix::unistd::close;
 
-    offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
+    offer.receive(mime_type, writefd.as_fd());
 
-    if let Err(err) = close(writefd) {
+    if let Err(err) = close(writefd.into_raw_fd()) {
         log::warn!("Failed to close write pipe: {}", err);
     }
 }

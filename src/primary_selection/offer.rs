@@ -1,5 +1,5 @@
 use std::{
-    os::unix::io::{BorrowedFd, FromRawFd, RawFd},
+    os::unix::io::{AsFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
     sync::Mutex,
 };
 
@@ -50,16 +50,16 @@ impl PrimarySelectionOffer {
         Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
     }
 
-    /// # Safety
+    /// Request to receive the data of a given mime type, writen to `writefd`.
     ///
     /// The provided file destructor must be a valid FD for writing, and will be closed
     /// once the contents are written.
-    pub unsafe fn receive_to_fd(&self, mime_type: String, writefd: RawFd) {
+    pub fn receive_to_fd(&self, mime_type: String, writefd: OwnedFd) {
         use nix::unistd::close;
 
-        self.offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
+        self.offer.receive(mime_type, writefd.as_fd());
 
-        if let Err(err) = close(writefd) {
+        if let Err(err) = close(writefd.into_raw_fd()) {
             log::warn!("Failed to close write pipe: {}", err);
         }
     }
