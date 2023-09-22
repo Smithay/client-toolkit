@@ -1,5 +1,5 @@
 use std::{
-    os::unix::io::{AsFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
+    os::unix::io::{AsFd, OwnedFd},
     sync::Mutex,
 };
 
@@ -36,18 +36,13 @@ impl PrimarySelectionOffer {
     /// Fails if too many file descriptors were already open and a pipe
     /// could not be created.
     pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
-        use nix::fcntl::OFlag;
-        use nix::unistd::{close, pipe2};
+        use rustix::pipe::{pipe_with, PipeFlags};
         // create a pipe
-        let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
+        let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
 
-        self.offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
+        self.receive_to_fd(mime_type, writefd);
 
-        if let Err(err) = close(writefd) {
-            log::warn!("Failed to close write pipe: {}", err);
-        }
-
-        Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
+        Ok(ReadPipe::from(readfd))
     }
 
     /// Request to receive the data of a given mime type, writen to `writefd`.
@@ -55,13 +50,7 @@ impl PrimarySelectionOffer {
     /// The provided file destructor must be a valid FD for writing, and will be closed
     /// once the contents are written.
     pub fn receive_to_fd(&self, mime_type: String, writefd: OwnedFd) {
-        use nix::unistd::close;
-
         self.offer.receive(mime_type, writefd.as_fd());
-
-        if let Err(err) = close(writefd.into_raw_fd()) {
-            log::warn!("Failed to close write pipe: {}", err);
-        }
     }
 }
 

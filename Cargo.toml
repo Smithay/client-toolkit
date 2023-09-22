@@ -22,7 +22,7 @@ cursor-icon = "1.0.0"
 dlib = "0.5"
 log = "0.4"
 memmap2 = "0.7.0"
-nix = { version = "0.26.1", default-features = false, features = ["fs", "mman"] }
+rustix = { version = "0.38.15", features = ["fs", "pipe", "shm"] }
 thiserror = "1.0.30"
 wayland-backend = "0.3.0"
 wayland-client = "0.31.1"

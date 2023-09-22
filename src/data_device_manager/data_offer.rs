@@ -1,6 +1,6 @@
 use std::{
     ops::{Deref, DerefMut},
-    os::unix::prelude::{AsFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
+    os::unix::prelude::{AsFd, OwnedFd},
     sync::{Arc, Mutex},
 };
 
@@ -436,18 +436,13 @@ impl PartialEq for UndeterminedOffer {
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
 pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPipe> {
-    use nix::fcntl::OFlag;
-    use nix::unistd::{close, pipe2};
+    use rustix::pipe::{pipe_with, PipeFlags};
     // create a pipe
-    let (readfd, writefd) = pipe2(OFlag::O_CLOEXEC)?;
+    let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
 
-    offer.receive(mime_type, unsafe { BorrowedFd::borrow_raw(writefd) });
+    receive_to_fd(offer, mime_type, writefd);
 
-    if let Err(err) = close(writefd) {
-        log::warn!("Failed to close write pipe: {}", err);
-    }
-
-    Ok(unsafe { FromRawFd::from_raw_fd(readfd) })
+    Ok(ReadPipe::from(readfd))
 }
 
 /// Receive data to the write end of a raw file descriptor. If you have the read end, you can read from it.
@@ -464,11 +459,5 @@ pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPi
 /// The provided file destructor must be a valid FD for writing, and will be closed
 /// once the contents are written.
 pub fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: OwnedFd) {
-    use nix::unistd::close;
-
     offer.receive(mime_type, writefd.as_fd());
-
-    if let Err(err) = close(writefd.into_raw_fd()) {
-        log::warn!("Failed to close write pipe: {}", err);
-    }
 }
