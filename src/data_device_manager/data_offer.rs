@@ -4,6 +4,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use log::warn;
+
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
@@ -77,6 +79,10 @@ pub struct DragOffer {
     pub source_actions: DndAction,
     /// the compositor selected drag action
     pub selected_action: DndAction,
+    /// whether or not the drag has been dropped
+    pub dropped: bool,
+    /// whether or not the drag has left
+    pub left: bool,
 }
 
 impl DragOffer {
@@ -97,7 +103,7 @@ impl DragOffer {
     /// This request determines the final result of the drag-and-drop operation.
     /// If the end result is that no action is accepted, the drag source will receive wl_data_source.cancelled.
     pub fn set_actions(&self, actions: DndAction, preferred_action: DndAction) {
-        if self.data_offer.version() >= 3 {
+        if self.data_offer.version() >= 3 && !self.left {
             self.data_offer.set_actions(actions, preferred_action);
         }
     }
@@ -106,14 +112,21 @@ impl DragOffer {
     /// This request may happen multiple times for different mime types, both before and after wl_data_device.drop.
     /// Drag-and-drop destination clients may preemptively fetch data or examine it more closely to determine acceptance.
     pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
-        receive(&self.data_offer, mime_type)
+        // When the data device has left, we can't receive unless it was previously dropped.
+        if !self.left || self.dropped {
+            receive(&self.data_offer, mime_type)
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "offer has left"))
+        }
     }
 
     /// Accept the given mime type, or None to reject the offer.
     /// In version 2, this request is used for feedback, but doesn't affect the final result of the drag-and-drop operation.
     /// In version 3, this request determines the final result of the drag-and-drop operation.
     pub fn accept_mime_type(&self, serial: u32, mime_type: Option<String>) {
-        self.data_offer.accept(serial, mime_type);
+        if !self.left {
+            self.data_offer.accept(serial, mime_type);
+        }
     }
 
     /// Destroy the data offer.
@@ -258,6 +271,8 @@ impl DataOfferData {
                     x,
                     y,
                     time,
+                    dropped: false,
+                    left: false,
                 });
             }
             DataDeviceOffer::Undetermined(o) => {
@@ -270,6 +285,8 @@ impl DataOfferData {
                     x,
                     y,
                     time,
+                    dropped: false,
+                    left: false,
                 });
             }
         }
@@ -292,6 +309,23 @@ impl DataOfferData {
         match &self.inner.lock().unwrap().deref().offer {
             DataDeviceOffer::Drag(o) => Some(o.clone()),
             _ => None,
+        }
+    }
+
+    pub(crate) fn leave(&self) -> bool {
+        let mut inner = self.inner.lock().unwrap();
+        match &mut inner.deref_mut().offer {
+            DataDeviceOffer::Drag(o) => {
+                o.left = true;
+                if !o.dropped {
+                    o.data_offer.destroy();
+                }
+                !o.dropped
+            }
+            _ => {
+                warn!("DataDeviceOffer::leave called on non-drag offer");
+                false
+            }
         }
     }
 

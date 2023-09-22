@@ -1,13 +1,19 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::DerefMut,
+    sync::{Arc, Mutex},
+};
 
-use crate::reexports::client::{
-    event_created_child,
-    protocol::{
-        wl_data_device::{self, WlDataDevice},
-        wl_data_offer::{self, WlDataOffer},
-        wl_seat::WlSeat,
+use crate::{
+    data_device_manager::data_offer::DataDeviceOffer,
+    reexports::client::{
+        event_created_child,
+        protocol::{
+            wl_data_device::{self, WlDataDevice},
+            wl_data_offer::{self, WlDataOffer},
+            wl_seat::WlSeat,
+        },
+        Connection, Dispatch, Proxy, QueueHandle,
     },
-    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use super::{
@@ -34,7 +40,8 @@ pub trait DataDeviceHandler: Sized {
     fn enter(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: &WlDataDevice);
 
     /// The drag and drop pointer has left the surface and the session ends.
-    /// The offer will be destroyed.
+    /// The offer will be destroyed unless it was previously dropped.
+    /// In the case of a dropped offer, the client must destroy it manually after it is finished.
     fn leave(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: &WlDataDevice);
 
     /// Drag and Drop motion.
@@ -133,9 +140,11 @@ where
             Event::Leave => {
                 // We must destroy the offer we've got on enter.
                 if let Some(offer) = inner.drag_offer.take() {
-                    offer.destroy()
+                    let data = offer.data::<DataOfferData>().unwrap();
+                    if !data.leave() {
+                        inner.drag_offer = Some(offer);
+                    }
                 }
-
                 // XXX Drop done here to prevent Mutex deadlocks.
                 drop(inner);
                 state.leave(conn, qh, data_device);
@@ -153,6 +162,18 @@ where
                 state.motion(conn, qh, data_device);
             }
             Event::Drop => {
+                if let Some(offer) = inner.drag_offer.take() {
+                    let data = offer.data::<DataOfferData>().unwrap();
+
+                    let mut drag_inner = data.inner.lock().unwrap();
+
+                    if let DataDeviceOffer::Drag(ref mut o) = drag_inner.deref_mut().offer {
+                        o.dropped = true;
+                    }
+                    drop(drag_inner);
+
+                    inner.drag_offer = Some(offer);
+                }
                 // XXX Drop done here to prevent Mutex deadlocks.
                 drop(inner);
                 // Pass the info about the drop to the user.
