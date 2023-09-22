@@ -4,7 +4,6 @@ pub mod slot;
 
 use std::io;
 
-use nix::errno::Errno;
 use wayland_client::{
     globals::{BindError, GlobalList},
     protocol::wl_shm,
@@ -68,12 +67,6 @@ pub enum CreatePoolError {
     /// Error while allocating the shared memory.
     #[error(transparent)]
     Create(#[from] io::Error),
-}
-
-impl From<Errno> for CreatePoolError {
-    fn from(errno: Errno) -> Self {
-        Into::<io::Error>::into(errno).into()
-    }
 }
 
 /// Delegates the handling of [`wl_shm`] to some [`Shm`].

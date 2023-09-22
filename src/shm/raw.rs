@@ -3,21 +3,19 @@
 //! This is intended as a safe building block for higher level shared memory pool abstractions and is not
 //! encouraged for most library users.
 
+use rustix::{
+    io::Errno,
+    shm::{Mode, ShmOFlags},
+};
 use std::{
     fs::File,
     io,
-    os::unix::prelude::{AsFd, FromRawFd, OwnedFd, RawFd},
+    os::unix::prelude::{AsFd, OwnedFd},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use memmap2::MmapMut;
-use nix::{
-    errno::Errno,
-    fcntl,
-    sys::{mman, stat},
-    unistd,
-};
 use wayland_client::{
     backend::ObjectData,
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
@@ -48,7 +46,7 @@ impl RawPool {
     ) -> Result<RawPool, CreatePoolError> {
         let shm = shm.bound_global()?;
         let shm_fd = RawPool::create_shm_fd()?;
-        let mem_file = unsafe { File::from_raw_fd(shm_fd) };
+        let mem_file = File::from(shm_fd);
         mem_file.set_len(len as u64)?;
 
         let pool = shm
@@ -170,14 +168,14 @@ impl io::Seek for RawPool {
 }
 
 impl RawPool {
-    fn create_shm_fd() -> io::Result<RawFd> {
+    fn create_shm_fd() -> io::Result<OwnedFd> {
         #[cfg(target_os = "linux")]
         {
             match RawPool::create_memfd() {
                 Ok(fd) => return Ok(fd),
 
                 // Not supported, use fallback.
-                Err(Errno::ENOSYS) => (),
+                Err(Errno::NOSYS) => (),
 
                 Err(err) => return Err(Into::<io::Error>::into(err)),
             };
@@ -190,25 +188,20 @@ impl RawPool {
         );
 
         loop {
-            let flags = fcntl::OFlag::O_CREAT
-                | fcntl::OFlag::O_EXCL
-                | fcntl::OFlag::O_RDWR
-                | fcntl::OFlag::O_CLOEXEC;
+            let flags = ShmOFlags::CREATE | ShmOFlags::EXCL | ShmOFlags::RDWR;
 
-            let mode = stat::Mode::S_IRUSR | stat::Mode::S_IWUSR;
+            let mode = Mode::RUSR | Mode::WUSR;
 
-            match mman::shm_open(mem_file_handle.as_str(), flags, mode) {
-                Ok(fd) => match mman::shm_unlink(mem_file_handle.as_str()) {
+            match rustix::shm::shm_open(mem_file_handle.as_str(), flags, mode) {
+                Ok(fd) => match rustix::shm::shm_unlink(mem_file_handle.as_str()) {
                     Ok(_) => return Ok(fd),
 
                     Err(errno) => {
-                        unistd::close(fd)?;
-
                         return Err(errno.into());
                     }
                 },
 
-                Err(Errno::EEXIST) => {
+                Err(Errno::EXIST) => {
                     // Change the handle if we happen to be duplicate.
                     let time = SystemTime::now();
 
@@ -220,7 +213,7 @@ impl RawPool {
                     continue;
                 }
 
-                Err(Errno::EINTR) => continue,
+                Err(Errno::INTR) => continue,
 
                 Err(err) => return Err(err.into()),
             }
@@ -228,30 +221,23 @@ impl RawPool {
     }
 
     #[cfg(target_os = "linux")]
-    fn create_memfd() -> nix::Result<RawFd> {
+    fn create_memfd() -> rustix::io::Result<OwnedFd> {
         use std::ffi::CStr;
 
-        use nix::{
-            fcntl::{FcntlArg, SealFlag},
-            sys::memfd::{self, MemFdCreateFlag},
-        };
+        use rustix::fs::{MemfdFlags, SealFlags};
 
         loop {
             let name = CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap();
-            let flags = MemFdCreateFlag::MFD_ALLOW_SEALING | MemFdCreateFlag::MFD_CLOEXEC;
+            let flags = MemfdFlags::ALLOW_SEALING | MemfdFlags::CLOEXEC;
 
-            match memfd::memfd_create(name, flags) {
+            match rustix::fs::memfd_create(name, flags) {
                 Ok(fd) => {
-                    let arg =
-                        FcntlArg::F_ADD_SEALS(SealFlag::F_SEAL_SHRINK | SealFlag::F_SEAL_SEAL);
-
                     // We only need to seal for the purposes of optimization, ignore the errors.
-                    let _ = fcntl::fcntl(fd, arg);
-
+                    let _ = rustix::fs::fcntl_add_seals(&fd, SealFlags::SHRINK | SealFlags::SEAL);
                     return Ok(fd);
                 }
 
-                Err(Errno::EINTR) => continue,
+                Err(Errno::INTR) => continue,
 
                 Err(err) => return Err(err),
             }
