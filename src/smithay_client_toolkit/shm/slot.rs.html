@@ -557,14 +557,11 @@
 <a href="#557" id="557">557</a>
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A pool implementation based on buffer slots
 
 </span><span class="kw">use </span>std::io;
 <span class="kw">use </span>std::{
-    os::unix::io::AsRawFd,
+    os::unix::io::{AsRawFd, OwnedFd},
     sync::{
         atomic::{AtomicU8, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -1067,10 +1064,7 @@
     <span class="kw">fn </span>event(
         <span class="self">self</span>: Arc&lt;<span class="self">Self</span>&gt;,
         handle: <span class="kw-2">&amp;</span>wayland_client::backend::Backend,
-        msg: wayland_backend::protocol::Message&lt;
-            wayland_backend::client::ObjectId,
-            wayland_backend::io_lifetimes::OwnedFd,
-        &gt;,
+        msg: wayland_backend::protocol::Message&lt;wayland_backend::client::ObjectId, OwnedFd&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;<span class="kw">dyn </span>wayland_backend::client::ObjectData&gt;&gt; {
         <span class="macro">debug_assert!</span>(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),

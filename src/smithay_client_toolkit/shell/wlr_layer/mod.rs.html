@@ -347,6 +347,7 @@
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>dispatch;
 
 <span class="kw">use </span>std::{
@@ -585,6 +586,7 @@
     /// A combination of two orthogonal edges will cause the layer&#39;s anchor point to be the intersection of
     /// the edges. For example [`Anchor::TOP`] and [`Anchor::LEFT`] will result in an anchor point in the top
     /// left of the anchor rectangle.
+    </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     </span><span class="kw">pub struct </span>Anchor: u32 {
         <span class="doccomment">/// Top edge of the anchor rectangle.
         </span><span class="kw">const </span>TOP = <span class="number">1</span>;

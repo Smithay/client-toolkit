@@ -100,7 +100,7 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    os::unix::io::{FromRawFd, RawFd},
+    os::unix::io::{BorrowedFd, FromRawFd, RawFd},
     sync::Mutex,
 };
 
@@ -142,7 +142,7 @@
         <span class="comment">// create a pipe
         </span><span class="kw">let </span>(readfd, writefd) = pipe2(OFlag::O_CLOEXEC)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.offer.receive(mime_type, writefd);
+        <span class="self">self</span>.offer.receive(mime_type, <span class="kw">unsafe </span>{ BorrowedFd::borrow_raw(writefd) });
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = close(writefd) {
             <span class="macro">log::warn!</span>(<span class="string">&quot;Failed to close write pipe: {}&quot;</span>, err);
@@ -158,7 +158,7 @@
     </span><span class="kw">pub unsafe fn </span>receive_to_fd(<span class="kw-2">&amp;</span><span class="self">self</span>, mime_type: String, writefd: RawFd) {
         <span class="kw">use </span>nix::unistd::close;
 
-        <span class="self">self</span>.offer.receive(mime_type, writefd);
+        <span class="self">self</span>.offer.receive(mime_type, <span class="kw">unsafe </span>{ BorrowedFd::borrow_raw(writefd) });
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = close(writefd) {
             <span class="macro">log::warn!</span>(<span class="string">&quot;Failed to close write pipe: {}&quot;</span>, err);
