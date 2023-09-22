@@ -587,7 +587,7 @@ impl DataDeviceHandler for DataDeviceWindow {
     }
 
     fn leave(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _data_device: &WlDataDevice) {
-        println!("data offer left");
+        println!("Data offer left");
     }
 
     fn motion(
@@ -739,6 +739,7 @@ impl DataDeviceHandler for DataDeviceWindow {
                             loop_handle.remove(token);
                             println!("Dropped data: {:?}", String::from_utf8(data.clone()));
                             offer.finish();
+                            offer.destroy();
                             state.dnd_offers.push((offer, Vec::new(), None));
                             return;
                         } else {
@@ -754,6 +755,7 @@ impl DataDeviceHandler for DataDeviceWindow {
                     Err(e) => {
                         eprintln!("Error reading dropped data: {}", e);
                         offer.finish();
+                        offer.destroy();
                         loop_handle.remove(token);
 
                         return;
@@ -851,7 +853,7 @@ impl DataSourceHandler for DataDeviceWindow {
         _qh: &QueueHandle<Self>,
         _source: &wayland_client::protocol::wl_data_source::WlDataSource,
     ) {
-        println!("DROP PERFORMED");
+        println!("Drop performed");
     }
 
     fn dnd_finished(
@@ -860,6 +862,7 @@ impl DataSourceHandler for DataDeviceWindow {
         _qh: &QueueHandle<Self>,
         source: &wayland_client::protocol::wl_data_source::WlDataSource,
     ) {
+        println!("Finished");
         self.drag_sources.retain(|s| s.0.inner() != source);
         source.destroy();
     }
