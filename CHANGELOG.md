@@ -13,6 +13,7 @@
 - `xkeysym::Keysym` is used as a keyboard key representation instead of `u32`
 - `wayland-rs` dependencies are updated to 0.31
 - `calloop` dependency updated to 0.12.1
+- Take `OwnedFd` instead of `RawFd` as argument to `receive_to_fd` functions.
 
 #### Fixed
 
