@@ -226,16 +226,43 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Mutex};
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
+    ops::DerefMut,
+    sync::{Arc, Mutex},
+};
 
-<span class="kw">use </span><span class="kw">crate</span>::reexports::client::{
-    event_created_child,
-    protocol::{
-        wl_data_device::{<span class="self">self</span>, WlDataDevice},
-        wl_data_offer::{<span class="self">self</span>, WlDataOffer},
-        wl_seat::WlSeat,
+<span class="kw">use crate</span>::{
+    data_device_manager::data_offer::DataDeviceOffer,
+    reexports::client::{
+        event_created_child,
+        protocol::{
+            wl_data_device::{<span class="self">self</span>, WlDataDevice},
+            wl_data_offer::{<span class="self">self</span>, WlDataOffer},
+            wl_seat::WlSeat,
+        },
+        Connection, Dispatch, Proxy, QueueHandle,
     },
-    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 <span class="kw">use super</span>::{
@@ -262,7 +289,8 @@
     </span><span class="kw">fn </span>enter(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, data_device: <span class="kw-2">&amp;</span>WlDataDevice);
 
     <span class="doccomment">/// The drag and drop pointer has left the surface and the session ends.
-    /// The offer will be destroyed.
+    /// The offer will be destroyed unless it was previously dropped.
+    /// In the case of a dropped offer, the client must destroy it manually after it is finished.
     </span><span class="kw">fn </span>leave(<span class="kw-2">&amp;mut </span><span class="self">self</span>, conn: <span class="kw-2">&amp;</span>Connection, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;, data_device: <span class="kw-2">&amp;</span>WlDataDevice);
 
     <span class="doccomment">/// Drag and Drop motion.
@@ -361,9 +389,11 @@
             Event::Leave =&gt; {
                 <span class="comment">// We must destroy the offer we&#39;ve got on enter.
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(offer) = inner.drag_offer.take() {
-                    offer.destroy()
+                    <span class="kw">let </span>data = offer.data::&lt;DataOfferData&gt;().unwrap();
+                    <span class="kw">if </span>!data.leave() {
+                        inner.drag_offer = <span class="prelude-val">Some</span>(offer);
+                    }
                 }
-
                 <span class="comment">// XXX Drop done here to prevent Mutex deadlocks.
                 </span>drop(inner);
                 state.leave(conn, qh, data_device);
@@ -381,6 +411,18 @@
                 state.motion(conn, qh, data_device);
             }
             Event::Drop =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(offer) = inner.drag_offer.take() {
+                    <span class="kw">let </span>data = offer.data::&lt;DataOfferData&gt;().unwrap();
+
+                    <span class="kw">let </span><span class="kw-2">mut </span>drag_inner = data.inner.lock().unwrap();
+
+                    <span class="kw">if let </span>DataDeviceOffer::Drag(<span class="kw-2">ref mut </span>o) = drag_inner.deref_mut().offer {
+                        o.dropped = <span class="bool-val">true</span>;
+                    }
+                    drop(drag_inner);
+
+                    inner.drag_offer = <span class="prelude-val">Some</span>(offer);
+                }
                 <span class="comment">// XXX Drop done here to prevent Mutex deadlocks.
                 </span>drop(inner);
                 <span class="comment">// Pass the info about the drop to the user.
