@@ -4,6 +4,14 @@
 
 #### Breaking Changes
 
+#### Fixed
+
+#### Additions
+
+## 0.18.0 - 2023-09-23
+
+#### Breaking Changes
+
 - `ThemedPointer::set_cursor` now takes only `Connection` and `&str`.
 - `SeatState:get_pointer_with_them*` now takes `Shm` and `WlSurface` for the themed cursor.
 - `ThemedPointer` now automatically releases the associated `WlPointer`.
