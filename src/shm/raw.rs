@@ -171,7 +171,7 @@ impl io::Seek for RawPool {
 
 impl RawPool {
     fn create_shm_fd() -> io::Result<RawFd> {
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "freebsd"))]
         {
             match RawPool::create_memfd() {
                 Ok(fd) => return Ok(fd),
@@ -227,7 +227,7 @@ impl RawPool {
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     fn create_memfd() -> nix::Result<RawFd> {
         use std::ffi::CStr;
 
