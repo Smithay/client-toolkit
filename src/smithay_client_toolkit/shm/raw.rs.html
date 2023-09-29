@@ -265,40 +265,24 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.
 //!
 //! This is intended as a safe building block for higher level shared memory pool abstractions and is not
 //! encouraged for most library users.
 
-</span><span class="kw">use </span>std::{
+</span><span class="kw">use </span>rustix::{
+    io::Errno,
+    shm::{Mode, ShmOFlags},
+};
+<span class="kw">use </span>std::{
     fs::File,
     io,
-    os::unix::prelude::{AsFd, FromRawFd, OwnedFd, RawFd},
+    os::unix::prelude::{AsFd, OwnedFd},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 <span class="kw">use </span>memmap2::MmapMut;
-<span class="kw">use </span>nix::{
-    errno::Errno,
-    fcntl,
-    sys::{mman, stat},
-    unistd,
-};
 <span class="kw">use </span>wayland_client::{
     backend::ObjectData,
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
@@ -329,7 +313,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RawPool, CreatePoolError&gt; {
         <span class="kw">let </span>shm = shm.bound_global()<span class="question-mark">?</span>;
         <span class="kw">let </span>shm_fd = RawPool::create_shm_fd()<span class="question-mark">?</span>;
-        <span class="kw">let </span>mem_file = <span class="kw">unsafe </span>{ File::from_raw_fd(shm_fd) };
+        <span class="kw">let </span>mem_file = File::from(shm_fd);
         mem_file.set_len(len <span class="kw">as </span>u64)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>pool = shm
@@ -451,14 +435,14 @@
 }
 
 <span class="kw">impl </span>RawPool {
-    <span class="kw">fn </span>create_shm_fd() -&gt; io::Result&lt;RawFd&gt; {
+    <span class="kw">fn </span>create_shm_fd() -&gt; io::Result&lt;OwnedFd&gt; {
         <span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
         </span>{
             <span class="kw">match </span>RawPool::create_memfd() {
                 <span class="prelude-val">Ok</span>(fd) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(fd),
 
                 <span class="comment">// Not supported, use fallback.
-                </span><span class="prelude-val">Err</span>(Errno::ENOSYS) =&gt; (),
+                </span><span class="prelude-val">Err</span>(Errno::NOSYS) =&gt; (),
 
                 <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Into::&lt;io::Error&gt;::into(err)),
             };
@@ -471,25 +455,20 @@
         );
 
         <span class="kw">loop </span>{
-            <span class="kw">let </span>flags = fcntl::OFlag::O_CREAT
-                | fcntl::OFlag::O_EXCL
-                | fcntl::OFlag::O_RDWR
-                | fcntl::OFlag::O_CLOEXEC;
+            <span class="kw">let </span>flags = ShmOFlags::CREATE | ShmOFlags::EXCL | ShmOFlags::RDWR;
 
-            <span class="kw">let </span>mode = stat::Mode::S_IRUSR | stat::Mode::S_IWUSR;
+            <span class="kw">let </span>mode = Mode::RUSR | Mode::WUSR;
 
-            <span class="kw">match </span>mman::shm_open(mem_file_handle.as_str(), flags, mode) {
-                <span class="prelude-val">Ok</span>(fd) =&gt; <span class="kw">match </span>mman::shm_unlink(mem_file_handle.as_str()) {
+            <span class="kw">match </span>rustix::shm::shm_open(mem_file_handle.as_str(), flags, mode) {
+                <span class="prelude-val">Ok</span>(fd) =&gt; <span class="kw">match </span>rustix::shm::shm_unlink(mem_file_handle.as_str()) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(fd),
 
                     <span class="prelude-val">Err</span>(errno) =&gt; {
-                        unistd::close(fd)<span class="question-mark">?</span>;
-
                         <span class="kw">return </span><span class="prelude-val">Err</span>(errno.into());
                     }
                 },
 
-                <span class="prelude-val">Err</span>(Errno::EEXIST) =&gt; {
+                <span class="prelude-val">Err</span>(Errno::EXIST) =&gt; {
                     <span class="comment">// Change the handle if we happen to be duplicate.
                     </span><span class="kw">let </span>time = SystemTime::now();
 
@@ -501,7 +480,7 @@
                     <span class="kw">continue</span>;
                 }
 
-                <span class="prelude-val">Err</span>(Errno::EINTR) =&gt; <span class="kw">continue</span>,
+                <span class="prelude-val">Err</span>(Errno::INTR) =&gt; <span class="kw">continue</span>,
 
                 <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err.into()),
             }
@@ -509,30 +488,23 @@
     }
 
     <span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
-    </span><span class="kw">fn </span>create_memfd() -&gt; nix::Result&lt;RawFd&gt; {
+    </span><span class="kw">fn </span>create_memfd() -&gt; rustix::io::Result&lt;OwnedFd&gt; {
         <span class="kw">use </span>std::ffi::CStr;
 
-        <span class="kw">use </span>nix::{
-            fcntl::{FcntlArg, SealFlag},
-            sys::memfd::{<span class="self">self</span>, MemFdCreateFlag},
-        };
+        <span class="kw">use </span>rustix::fs::{MemfdFlags, SealFlags};
 
         <span class="kw">loop </span>{
             <span class="kw">let </span>name = CStr::from_bytes_with_nul(<span class="string">b&quot;smithay-client-toolkit\0&quot;</span>).unwrap();
-            <span class="kw">let </span>flags = MemFdCreateFlag::MFD_ALLOW_SEALING | MemFdCreateFlag::MFD_CLOEXEC;
+            <span class="kw">let </span>flags = MemfdFlags::ALLOW_SEALING | MemfdFlags::CLOEXEC;
 
-            <span class="kw">match </span>memfd::memfd_create(name, flags) {
+            <span class="kw">match </span>rustix::fs::memfd_create(name, flags) {
                 <span class="prelude-val">Ok</span>(fd) =&gt; {
-                    <span class="kw">let </span>arg =
-                        FcntlArg::F_ADD_SEALS(SealFlag::F_SEAL_SHRINK | SealFlag::F_SEAL_SEAL);
-
                     <span class="comment">// We only need to seal for the purposes of optimization, ignore the errors.
-                    </span><span class="kw">let _ </span>= fcntl::fcntl(fd, arg);
-
+                    </span><span class="kw">let _ </span>= rustix::fs::fcntl_add_seals(<span class="kw-2">&amp;</span>fd, SealFlags::SHRINK | SealFlags::SEAL);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(fd);
                 }
 
-                <span class="prelude-val">Err</span>(Errno::EINTR) =&gt; <span class="kw">continue</span>,
+                <span class="prelude-val">Err</span>(Errno::INTR) =&gt; <span class="kw">continue</span>,
 
                 <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(err),
             }

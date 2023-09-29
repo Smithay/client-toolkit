@@ -134,20 +134,12 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>multi;
 <span class="kw">pub mod </span>raw;
 <span class="kw">pub mod </span>slot;
 
 <span class="kw">use </span>std::io;
 
-<span class="kw">use </span>nix::errno::Errno;
 <span class="kw">use </span>wayland_client::{
     globals::{BindError, GlobalList},
     protocol::wl_shm,
@@ -211,12 +203,6 @@
     <span class="doccomment">/// Error while allocating the shared memory.
     </span><span class="attr">#[error(transparent)]
     </span>Create(<span class="attr">#[from] </span>io::Error),
-}
-
-<span class="kw">impl </span>From&lt;Errno&gt; <span class="kw">for </span>CreatePoolError {
-    <span class="kw">fn </span>from(errno: Errno) -&gt; <span class="self">Self </span>{
-        Into::&lt;io::Error&gt;::into(errno).into()
-    }
 }
 
 <span class="doccomment">/// Delegates the handling of [`wl_shm`] to some [`Shm`].

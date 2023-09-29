@@ -461,20 +461,9 @@
 <a href="#461" id="461">461</a>
 <a href="#462" id="462">462</a>
 <a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     ops::{Deref, DerefMut},
-    os::unix::prelude::{AsFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
+    os::unix::prelude::{AsFd, OwnedFd},
     sync::{Arc, Mutex},
 };
 
@@ -910,18 +899,13 @@
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
 </span><span class="kw">pub fn </span>receive(offer: <span class="kw-2">&amp;</span>WlDataOffer, mime_type: String) -&gt; std::io::Result&lt;ReadPipe&gt; {
-    <span class="kw">use </span>nix::fcntl::OFlag;
-    <span class="kw">use </span>nix::unistd::{close, pipe2};
+    <span class="kw">use </span>rustix::pipe::{pipe_with, PipeFlags};
     <span class="comment">// create a pipe
-    </span><span class="kw">let </span>(readfd, writefd) = pipe2(OFlag::O_CLOEXEC)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>(readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)<span class="question-mark">?</span>;
 
-    offer.receive(mime_type, <span class="kw">unsafe </span>{ BorrowedFd::borrow_raw(writefd) });
+    receive_to_fd(offer, mime_type, writefd);
 
-    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = close(writefd) {
-        <span class="macro">log::warn!</span>(<span class="string">&quot;Failed to close write pipe: {}&quot;</span>, err);
-    }
-
-    <span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{ FromRawFd::from_raw_fd(readfd) })
+    <span class="prelude-val">Ok</span>(ReadPipe::from(readfd))
 }
 
 <span class="doccomment">/// Receive data to the write end of a raw file descriptor. If you have the read end, you can read from it.
@@ -938,12 +922,6 @@
 /// The provided file destructor must be a valid FD for writing, and will be closed
 /// once the contents are written.
 </span><span class="kw">pub fn </span>receive_to_fd(offer: <span class="kw-2">&amp;</span>WlDataOffer, mime_type: String, writefd: OwnedFd) {
-    <span class="kw">use </span>nix::unistd::close;
-
     offer.receive(mime_type, writefd.as_fd());
-
-    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = close(writefd.into_raw_fd()) {
-        <span class="macro">log::warn!</span>(<span class="string">&quot;Failed to close write pipe: {}&quot;</span>, err);
-    }
 }
 </code></pre></div></section></main></body></html>
