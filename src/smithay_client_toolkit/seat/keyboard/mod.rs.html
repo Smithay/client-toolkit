@@ -855,7 +855,7 @@
     fmt::Debug,
     marker::PhantomData,
     num::NonZeroU32,
-    os::unix::io::AsRawFd,
+    os::unix::io::IntoRawFd,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -1385,7 +1385,7 @@
                             </span><span class="kw">match unsafe </span>{
                                 xkb::Keymap::new_from_fd(
                                     <span class="kw-2">&amp;</span>context,
-                                    fd.as_raw_fd(),
+                                    fd.into_raw_fd(),
                                     size <span class="kw">as </span>usize,
                                     xkb::KEYMAP_FORMAT_TEXT_V1,
                                     xkb::COMPILE_NO_FLAGS,
