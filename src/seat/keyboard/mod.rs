@@ -4,7 +4,6 @@ use std::{
     fmt::Debug,
     marker::PhantomData,
     num::NonZeroU32,
-    os::unix::io::IntoRawFd,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -13,7 +12,7 @@ use std::{
 };
 
 #[doc(inline)]
-pub use xkeysym::Keysym;
+pub use xkeysym::{KeyCode, Keysym};
 
 #[cfg(feature = "calloop")]
 use calloop::timer::{TimeoutAction, Timer};
@@ -534,7 +533,7 @@ where
                             match unsafe {
                                 xkb::Keymap::new_from_fd(
                                     &context,
-                                    fd.into_raw_fd(),
+                                    fd,
                                     size as usize,
                                     xkb::KEYMAP_FORMAT_TEXT_V1,
                                     xkb::COMPILE_NO_FLAGS,
@@ -584,7 +583,7 @@ where
                         .copied()
                         // We must add 8 to the keycode for any functions we pass the raw keycode into per
                         // wl_keyboard protocol.
-                        .map(|raw| guard.key_get_one_sym(raw + 8))
+                        .map(|raw| guard.key_get_one_sym(KeyCode::new(raw + 8)))
                         .collect::<Vec<_>>();
 
                     // Drop guard before calling user code.
@@ -626,7 +625,8 @@ where
                     if let Some(guard) = state_guard.as_ref() {
                         // We must add 8 to the keycode for any functions we pass the raw keycode into per
                         // wl_keyboard protocol.
-                        let keysym = guard.key_get_one_sym(key + 8);
+                        let keycode = KeyCode::new(key + 8);
+                        let keysym = guard.key_get_one_sym(keycode);
                         let utf8 = if state == wl_keyboard::KeyState::Pressed {
                             let mut compose = udata.xkb_compose.lock().unwrap();
 
@@ -635,13 +635,13 @@ where
                                     xkb::FeedResult::Ignored => None,
                                     xkb::FeedResult::Accepted => match compose.status() {
                                         xkb::Status::Composed => compose.utf8(),
-                                        xkb::Status::Nothing => Some(guard.key_get_utf8(key + 8)),
+                                        xkb::Status::Nothing => Some(guard.key_get_utf8(keycode)),
                                         _ => None,
                                     },
                                 },
 
                                 // No compose
-                                None => Some(guard.key_get_utf8(key + 8)),
+                                None => Some(guard.key_get_utf8(keycode)),
                             }
                         } else {
                             None
@@ -650,8 +650,7 @@ where
                         // Drop guard before calling user code.
                         drop(state_guard);
 
-                        let event =
-                            KeyEvent { time, raw_code: key, keysym: Keysym::new(keysym), utf8 };
+                        let event = KeyEvent { time, raw_code: key, keysym, utf8 };
 
                         match state {
                             wl_keyboard::KeyState::Released => {
@@ -684,7 +683,9 @@ where
                                         let key_repeats = state_guard
                                             .as_ref()
                                             .map(|guard| {
-                                                guard.get_keymap().key_repeats(event.raw_code + 8)
+                                                guard
+                                                    .get_keymap()
+                                                    .key_repeats(KeyCode::new(event.raw_code + 8))
                                             })
                                             .unwrap_or_default();
                                         if key_repeats {
@@ -797,19 +798,22 @@ where
                             let mut compose = udata.xkb_compose.lock().unwrap();
 
                             match compose.as_mut() {
-                                Some(compose) => match compose.feed(event.key.keysym.raw()) {
+                                Some(compose) => match compose.feed(event.key.keysym) {
                                     xkb::FeedResult::Ignored => None,
                                     xkb::FeedResult::Accepted => match compose.status() {
                                         xkb::Status::Composed => compose.utf8(),
-                                        xkb::Status::Nothing => {
-                                            Some(state.key_get_utf8(event.key.raw_code + 8))
-                                        }
+                                        xkb::Status::Nothing => Some(
+                                            state
+                                                .key_get_utf8(KeyCode::new(event.key.raw_code + 8)),
+                                        ),
                                         _ => None,
                                     },
                                 },
 
                                 // No compose.
-                                None => Some(state.key_get_utf8(event.key.raw_code + 8)),
+                                None => {
+                                    Some(state.key_get_utf8(KeyCode::new(event.key.raw_code + 8)))
+                                }
                             }
                         };
 
