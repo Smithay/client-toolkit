@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["KeyboardError","RepeatInfo"],"mod":["repeat"],"struct":["KeyEvent","KeyboardData","Keymap","Keysym","Modifiers","RMLVO"],"trait":["KeyboardDataExt","KeyboardHandler"]};
+window.SIDEBAR_ITEMS = {"enum":["KeyboardError","RepeatInfo"],"mod":["repeat"],"struct":["KeyCode","KeyEvent","KeyboardData","Keymap","Keysym","Modifiers","RMLVO"],"trait":["KeyboardDataExt","KeyboardHandler"]};

@@ -849,13 +849,16 @@
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
 <a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     convert::TryInto,
     env,
     fmt::Debug,
     marker::PhantomData,
     num::NonZeroU32,
-    os::unix::io::IntoRawFd,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -864,7 +867,7 @@
 };
 
 <span class="attr">#[doc(inline)]
-</span><span class="kw">pub use </span>xkeysym::Keysym;
+</span><span class="kw">pub use </span>xkeysym::{KeyCode, Keysym};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
 </span><span class="kw">use </span>calloop::timer::{TimeoutAction, Timer};
@@ -1385,7 +1388,7 @@
                             </span><span class="kw">match unsafe </span>{
                                 xkb::Keymap::new_from_fd(
                                     <span class="kw-2">&amp;</span>context,
-                                    fd.into_raw_fd(),
+                                    fd,
                                     size <span class="kw">as </span>usize,
                                     xkb::KEYMAP_FORMAT_TEXT_V1,
                                     xkb::COMPILE_NO_FLAGS,
@@ -1435,7 +1438,7 @@
                         .copied()
                         <span class="comment">// We must add 8 to the keycode for any functions we pass the raw keycode into per
                         // wl_keyboard protocol.
-                        </span>.map(|raw| guard.key_get_one_sym(raw + <span class="number">8</span>))
+                        </span>.map(|raw| guard.key_get_one_sym(KeyCode::new(raw + <span class="number">8</span>)))
                         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
                     <span class="comment">// Drop guard before calling user code.
@@ -1477,7 +1480,8 @@
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(guard) = state_guard.as_ref() {
                         <span class="comment">// We must add 8 to the keycode for any functions we pass the raw keycode into per
                         // wl_keyboard protocol.
-                        </span><span class="kw">let </span>keysym = guard.key_get_one_sym(key + <span class="number">8</span>);
+                        </span><span class="kw">let </span>keycode = KeyCode::new(key + <span class="number">8</span>);
+                        <span class="kw">let </span>keysym = guard.key_get_one_sym(keycode);
                         <span class="kw">let </span>utf8 = <span class="kw">if </span>state == wl_keyboard::KeyState::Pressed {
                             <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
 
@@ -1486,13 +1490,13 @@
                                     xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
                                     xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
                                         xkb::Status::Composed =&gt; compose.utf8(),
-                                        xkb::Status::Nothing =&gt; <span class="prelude-val">Some</span>(guard.key_get_utf8(key + <span class="number">8</span>)),
+                                        xkb::Status::Nothing =&gt; <span class="prelude-val">Some</span>(guard.key_get_utf8(keycode)),
                                         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                                     },
                                 },
 
                                 <span class="comment">// No compose
-                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(guard.key_get_utf8(key + <span class="number">8</span>)),
+                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(guard.key_get_utf8(keycode)),
                             }
                         } <span class="kw">else </span>{
                             <span class="prelude-val">None
@@ -1501,8 +1505,7 @@
                         <span class="comment">// Drop guard before calling user code.
                         </span>drop(state_guard);
 
-                        <span class="kw">let </span>event =
-                            KeyEvent { time, raw_code: key, keysym: Keysym::new(keysym), utf8 };
+                        <span class="kw">let </span>event = KeyEvent { time, raw_code: key, keysym, utf8 };
 
                         <span class="kw">match </span>state {
                             wl_keyboard::KeyState::Released =&gt; {
@@ -1535,7 +1538,9 @@
                                         <span class="kw">let </span>key_repeats = state_guard
                                             .as_ref()
                                             .map(|guard| {
-                                                guard.get_keymap().key_repeats(event.raw_code + <span class="number">8</span>)
+                                                guard
+                                                    .get_keymap()
+                                                    .key_repeats(KeyCode::new(event.raw_code + <span class="number">8</span>))
                                             })
                                             .unwrap_or_default();
                                         <span class="kw">if </span>key_repeats {
@@ -1648,19 +1653,22 @@
                             <span class="kw">let </span><span class="kw-2">mut </span>compose = udata.xkb_compose.lock().unwrap();
 
                             <span class="kw">match </span>compose.as_mut() {
-                                <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.key.keysym.raw()) {
+                                <span class="prelude-val">Some</span>(compose) =&gt; <span class="kw">match </span>compose.feed(event.key.keysym) {
                                     xkb::FeedResult::Ignored =&gt; <span class="prelude-val">None</span>,
                                     xkb::FeedResult::Accepted =&gt; <span class="kw">match </span>compose.status() {
                                         xkb::Status::Composed =&gt; compose.utf8(),
-                                        xkb::Status::Nothing =&gt; {
-                                            <span class="prelude-val">Some</span>(state.key_get_utf8(event.key.raw_code + <span class="number">8</span>))
-                                        }
+                                        xkb::Status::Nothing =&gt; <span class="prelude-val">Some</span>(
+                                            state
+                                                .key_get_utf8(KeyCode::new(event.key.raw_code + <span class="number">8</span>)),
+                                        ),
                                         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                                     },
                                 },
 
                                 <span class="comment">// No compose.
-                                </span><span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(state.key_get_utf8(event.key.raw_code + <span class="number">8</span>)),
+                                </span><span class="prelude-val">None </span>=&gt; {
+                                    <span class="prelude-val">Some</span>(state.key_get_utf8(KeyCode::new(event.key.raw_code + <span class="number">8</span>)))
+                                }
                             }
                         };
 
