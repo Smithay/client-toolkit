@@ -16,7 +16,7 @@ use wayland_protocols::wp::linux_dmabuf::zv1::client::{
 #[cfg(target_os = "freebsd")]
 type dev_t = u64;
 #[cfg(not(target_os = "freebsd"))]
-use nix::libc::dev_t;
+use libc::dev_t;
 
 /// A preference tranche of dmabuf formats
 #[derive(Debug)]
