@@ -129,7 +129,7 @@ impl calloop::EventSource for ReadPipe {
     type Event = ();
     type Error = std::io::Error;
     type Metadata = calloop::generic::NoIoDrop<fs::File>;
-    type Ret = ();
+    type Ret = calloop::PostAction;
 
     fn process_events<F>(
         &mut self,
@@ -138,12 +138,9 @@ impl calloop::EventSource for ReadPipe {
         mut callback: F,
     ) -> std::io::Result<calloop::PostAction>
     where
-        F: FnMut((), &mut calloop::generic::NoIoDrop<fs::File>),
+        F: FnMut((), &mut calloop::generic::NoIoDrop<fs::File>) -> Self::Ret,
     {
-        self.file.process_events(readiness, token, |_, file| {
-            callback((), file);
-            Ok(calloop::PostAction::Continue)
-        })
+        self.file.process_events(readiness, token, |_, file| Ok(callback((), file)))
     }
 
     fn register(
