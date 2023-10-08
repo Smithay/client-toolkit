@@ -6,7 +6,9 @@ use std::{
     time::Duration,
 };
 
-use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle, RegistrationToken};
+use smithay_client_toolkit::reexports::calloop::{
+    EventLoop, LoopHandle, PostAction, RegistrationToken,
+};
 use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
@@ -642,16 +644,15 @@ impl DataDeviceHandler for DataDeviceWindow {
                     return;
                 }
             };
-            let loop_handle = self.loop_handle.clone();
             let cur_offer_ = cur_offer.0.clone();
             if let Ok(token) = self.loop_handle.insert_source(read_pipe, move |_, f, state| {
                 let offer = match state.selection_offers.iter().position(|o| o.0 == cur_offer_) {
                     Some(s) => state.selection_offers.remove(s),
-                    None => return,
+                    None => return PostAction::Continue,
                 };
                 let (offer, mut data, token) = match offer {
                     (o, d, Some(t)) => (o, d, t),
-                    _ => return,
+                    _ => return PostAction::Continue,
                 };
                 // SAFETY: it's safe as long as we don't close the underlying file.
                 let f: &mut fs::File = unsafe { f.get_mut() };
@@ -659,10 +660,9 @@ impl DataDeviceHandler for DataDeviceWindow {
                 let consumed = match reader.fill_buf() {
                     Ok(buf) => {
                         if buf.is_empty() {
-                            loop_handle.remove(token);
                             println!("selection data: {:?}", String::from_utf8(data.clone()));
                             state.selection_offers.push((offer, Vec::new(), None));
-                            return;
+                            return PostAction::Remove;
                         } else {
                             data.extend_from_slice(buf);
                             state.selection_offers.push((offer, data, Some(token)));
@@ -671,17 +671,17 @@ impl DataDeviceHandler for DataDeviceWindow {
                     }
                     Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
                         state.selection_offers.push((offer, data, Some(token)));
-                        return;
+                        return PostAction::Continue;
                     }
                     Err(e) => {
                         eprintln!("Error reading selection data: {}", e);
-                        loop_handle.remove(token);
                         state.selection_offers.push((offer, Vec::new(), None));
 
-                        return;
+                        return PostAction::Remove;
                     }
                 };
                 reader.consume(consumed);
+                PostAction::Continue
             }) {
                 cur_offer.2 = Some(token);
             }
@@ -719,16 +719,15 @@ impl DataDeviceHandler for DataDeviceWindow {
             self.accept_counter += 1;
             cur_offer.0.accept_mime_type(self.accept_counter, Some(mime_type));
             cur_offer.0.set_actions(DndAction::Copy, DndAction::Copy);
-            let loop_handle = self.loop_handle.clone();
             let cur_offer_ = cur_offer.0.clone();
             match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
                 let offer = match state.dnd_offers.iter().position(|o| o.0 == cur_offer_) {
                     Some(s) => state.dnd_offers.remove(s),
-                    None => return,
+                    None => return PostAction::Continue,
                 };
                 let (offer, mut data, token) = match offer {
                     (o, d, Some(t)) => (o, d, t),
-                    _ => return,
+                    _ => return PostAction::Continue,
                 };
                 // SAFETY: it's safe as long as we don't close the underlying file.
                 let f: &mut fs::File = unsafe { f.get_mut() };
@@ -736,12 +735,11 @@ impl DataDeviceHandler for DataDeviceWindow {
                 let consumed = match reader.fill_buf() {
                     Ok(buf) => {
                         if buf.is_empty() {
-                            loop_handle.remove(token);
                             println!("Dropped data: {:?}", String::from_utf8(data.clone()));
                             offer.finish();
                             offer.destroy();
                             state.dnd_offers.push((offer, Vec::new(), None));
-                            return;
+                            return PostAction::Remove;
                         } else {
                             data.extend_from_slice(buf);
                             state.dnd_offers.push((offer, data, Some(token)));
@@ -750,18 +748,18 @@ impl DataDeviceHandler for DataDeviceWindow {
                     }
                     Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
                         state.dnd_offers.push((offer, data, Some(token)));
-                        return;
+                        return PostAction::Continue;
                     }
                     Err(e) => {
                         eprintln!("Error reading dropped data: {}", e);
                         offer.finish();
                         offer.destroy();
-                        loop_handle.remove(token);
 
-                        return;
+                        return PostAction::Remove;
                     }
                 };
                 reader.consume(consumed);
+                PostAction::Continue
             }) {
                 Ok(token) => {
                     cur_offer.2 = Some(token);
@@ -918,16 +916,15 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                     return;
                 }
             };
-            let loop_handle = self.loop_handle.clone();
             if let Ok(token) = self.loop_handle.insert_source(read_pipe, move |_, f, state| {
                 let offer = match state.primary_selection_offers.iter().position(|of| of.0 == offer)
                 {
                     Some(s) => state.primary_selection_offers.remove(s),
-                    None => return,
+                    None => return PostAction::Continue,
                 };
                 let (offer, mut data, token) = match offer {
                     (o, d, Some(t)) => (o, d, t),
-                    _ => return,
+                    _ => return PostAction::Continue,
                 };
                 // SAFETY: it's safe as long as we don't close the underlying file.
                 let f: &mut fs::File = unsafe { f.get_mut() };
@@ -935,13 +932,12 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                 let consumed = match reader.fill_buf() {
                     Ok(buf) => {
                         if buf.is_empty() {
-                            loop_handle.remove(token);
                             println!(
                                 "primary selection data: {:?}",
                                 String::from_utf8(data.clone())
                             );
                             state.primary_selection_offers.push((offer, Vec::new(), None));
-                            return;
+                            return PostAction::Remove;
                         } else {
                             data.extend_from_slice(buf);
                             state.primary_selection_offers.push((offer, data, Some(token)));
@@ -950,17 +946,17 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                     }
                     Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
                         state.primary_selection_offers.push((offer, data, Some(token)));
-                        return;
+                        return PostAction::Continue;
                     }
                     Err(e) => {
                         eprintln!("Error reading selection data: {}", e);
-                        loop_handle.remove(token);
                         state.primary_selection_offers.push((offer, Vec::new(), None));
 
-                        return;
+                        return PostAction::Remove;
                     }
                 };
                 reader.consume(consumed);
+                PostAction::Continue
             }) {
                 self.primary_selection_offers.last_mut().unwrap().2 = Some(token);
             }
