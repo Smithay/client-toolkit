@@ -163,9 +163,6 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     fs, io,
     os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
@@ -297,7 +294,7 @@
     <span class="kw">type </span>Event = ();
     <span class="kw">type </span>Error = std::io::Error;
     <span class="kw">type </span>Metadata = calloop::generic::NoIoDrop&lt;fs::File&gt;;
-    <span class="kw">type </span>Ret = ();
+    <span class="kw">type </span>Ret = calloop::PostAction;
 
     <span class="kw">fn </span>process_events&lt;F&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -306,12 +303,9 @@
         <span class="kw-2">mut </span>callback: F,
     ) -&gt; std::io::Result&lt;calloop::PostAction&gt;
     <span class="kw">where
-        </span>F: FnMut((), <span class="kw-2">&amp;mut </span>calloop::generic::NoIoDrop&lt;fs::File&gt;),
+        </span>F: FnMut((), <span class="kw-2">&amp;mut </span>calloop::generic::NoIoDrop&lt;fs::File&gt;) -&gt; <span class="self">Self</span>::Ret,
     {
-        <span class="self">self</span>.file.process_events(readiness, token, |<span class="kw">_</span>, file| {
-            callback((), file);
-            <span class="prelude-val">Ok</span>(calloop::PostAction::Continue)
-        })
+        <span class="self">self</span>.file.process_events(readiness, token, |<span class="kw">_</span>, file| <span class="prelude-val">Ok</span>(callback((), file)))
     }
 
     <span class="kw">fn </span>register(
