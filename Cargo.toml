@@ -22,7 +22,7 @@ cursor-icon = "1.0.0"
 dlib = "0.5"
 libc = "0.2.148"
 log = "0.4"
-memmap2 = "0.8.0"
+memmap2 = "0.9.0"
 rustix = { version = "0.38.15", features = ["fs", "pipe", "shm"] }
 thiserror = "1.0.30"
 wayland-backend = "0.3.0"
