@@ -10,7 +10,7 @@ use crate::data_device_manager::ReadPipe;
 
 use super::PrimarySelectionManagerState;
 
-/// RAII wrapper around the [`ZwpPrimarySelectionOfferV1`].
+/// Wrapper around the [`ZwpPrimarySelectionOfferV1`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrimarySelectionOffer {
     pub(crate) offer: ZwpPrimarySelectionOfferV1,
@@ -51,12 +51,6 @@ impl PrimarySelectionOffer {
     /// once the contents are written.
     pub fn receive_to_fd(&self, mime_type: String, writefd: OwnedFd) {
         self.offer.receive(mime_type, writefd.as_fd());
-    }
-}
-
-impl Drop for PrimarySelectionOffer {
-    fn drop(&mut self) {
-        self.offer.destroy();
     }
 }
 
