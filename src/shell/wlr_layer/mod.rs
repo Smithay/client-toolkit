@@ -55,7 +55,7 @@ impl LayerShell {
         State: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData> + 'static,
     {
         // Freeze the queue during the creation of the Arc to avoid a race between events on the
-        // new objects being processed and the Weak in the PopupData becoming usable.
+        // new objects being processed and the Weak in the LayerSurfaceData becoming usable.
         let freeze = qh.freeze();
         let surface = surface.into();
 
