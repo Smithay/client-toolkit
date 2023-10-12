@@ -90,7 +90,7 @@ impl XdgShell {
         let surface = surface.into();
 
         // Freeze the queue during the creation of the Arc to avoid a race between events on the
-        // new objects being processed and the Weak in the PopupData becoming usable.
+        // new objects being processed and the Weak in the WindowData becoming usable.
         let freeze = qh.freeze();
 
         let inner = Arc::new_cyclic(|weak| {
