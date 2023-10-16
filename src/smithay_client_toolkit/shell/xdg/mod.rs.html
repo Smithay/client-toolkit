@@ -427,7 +427,7 @@
         <span class="kw">let </span>surface = surface.into();
 
         <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the
-        // new objects being processed and the Weak in the PopupData becoming usable.
+        // new objects being processed and the Weak in the WindowData becoming usable.
         </span><span class="kw">let </span>freeze = qh.freeze();
 
         <span class="kw">let </span>inner = Arc::new_cyclic(|weak| {

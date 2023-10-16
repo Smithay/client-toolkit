@@ -405,7 +405,7 @@
         </span>State: Dispatch&lt;zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData&gt; + <span class="lifetime">&#39;static</span>,
     {
         <span class="comment">// Freeze the queue during the creation of the Arc to avoid a race between events on the
-        // new objects being processed and the Weak in the PopupData becoming usable.
+        // new objects being processed and the Weak in the LayerSurfaceData becoming usable.
         </span><span class="kw">let </span>freeze = qh.freeze();
         <span class="kw">let </span>surface = surface.into();
 
