@@ -42,8 +42,14 @@ pub trait CompositorHandler: Sized {
 
     /// A frame callback has been completed.
     ///
-    /// This function will be called after sending a [`WlSurface::frame`](wl_surface::WlSurface::frame) request
-    /// and committing the surface.
+    /// Frame callbacks are used to avoid updating surfaces that are not currently visible.  If a
+    /// frame callback is requested prior to committing a surface, the client should avoid drawing
+    /// to that surface until the callback completes.  See the
+    /// [`WlSurface::frame`](wl_surface::WlSurface::frame) request for more details.
+    ///
+    /// This function will be called if you request a frame callback by passing the surface itself
+    /// as the userdata (`surface.frame(&queue, &surface)`); you can also implement [`Dispatch`]
+    /// for other values to more easily dispatch rendering for specific surface types.
     fn frame(
         &mut self,
         conn: &Connection,
