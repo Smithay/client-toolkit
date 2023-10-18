@@ -185,7 +185,7 @@ pub struct Surface(wl_surface::WlSurface);
 
 impl Surface {
     pub fn new<D>(
-        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
         qh: &QueueHandle<D>,
     ) -> Result<Self, GlobalError>
     where
@@ -195,7 +195,7 @@ impl Surface {
     }
 
     pub fn with_data<D, U>(
-        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
         qh: &QueueHandle<D>,
         data: U,
     ) -> Result<Self, GlobalError>
@@ -386,7 +386,7 @@ pub struct Region(wl_region::WlRegion);
 
 impl Region {
     pub fn new(
-        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5>,
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
     ) -> Result<Region, GlobalError> {
         compositor
             .bound_global()
@@ -445,7 +445,7 @@ where
     }
 }
 
-impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 5> for CompositorState {
+impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6> for CompositorState {
     fn bound_global(&self) -> Result<wl_compositor::WlCompositor, GlobalError> {
         Ok(self.wl_compositor.clone())
     }

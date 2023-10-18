@@ -50,7 +50,7 @@ impl Popup {
         parent: &xdg_surface::XdgSurface,
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
-        compositor: &impl ProvidesBoundGlobal<WlCompositor, 5>,
+        compositor: &impl ProvidesBoundGlobal<WlCompositor, 6>,
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
     ) -> Result<Popup, GlobalError>
     where
