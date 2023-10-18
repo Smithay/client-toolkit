@@ -171,41 +171,35 @@ impl PointerDataExt for PointerData {
 #[macro_export]
 macro_rules! delegate_pointer {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_pointer::WlPointer: $crate::seat::pointer::PointerData
-            ] => $crate::seat::SeatState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1: $crate::globals::GlobalData
-            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1: $crate::globals::GlobalData
-            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
-        );
-     };
+        $crate::delegate_pointer!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; pointer: []);
+        $crate::delegate_pointer!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; pointer-only: $crate::seat::pointer::PointerData);
+    };
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, pointer: [$($pointer_data:ty),* $(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $(
-                    $crate::reexports::client::protocol::wl_pointer::WlPointer: $pointer_data,
-                )*
-            ] => $crate::seat::SeatState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        $crate::delegate_pointer!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; pointer: [ $($pointer_data),* ]);
+    };
+    (@{$($ty:tt)*}; pointer: []) => {
+        $crate::reexports::client::delegate_dispatch!($($ty)*:
             [
                 $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1: $crate::globals::GlobalData
             ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
         );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        $crate::reexports::client::delegate_dispatch!($($ty)*:
             [
                 $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1: $crate::globals::GlobalData
             ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
         );
     };
+    (@{$($ty:tt)*}; pointer-only: $pointer_data:ty) => {
+        $crate::reexports::client::delegate_dispatch!($($ty)*:
+            [
+                $crate::reexports::client::protocol::wl_pointer::WlPointer: $pointer_data
+            ] => $crate::seat::SeatState
+        );
+    };
+    (@$ty:tt; pointer: [$($pointer:ty),*]) => {
+        $crate::delegate_pointer!(@$ty; pointer: []);
+        $( $crate::delegate_pointer!(@$ty; pointer-only: $pointer); )*
+    }
 }
 
 #[derive(Debug, Default)]
