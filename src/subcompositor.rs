@@ -97,29 +97,28 @@ impl SubsurfaceData {
 #[macro_export]
 macro_rules! delegate_subcompositor {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor: $crate::globals::GlobalData
-            ] => $crate::subcompositor::SubcompositorState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-        [
-            $crate::reexports::client::protocol::wl_subsurface::WlSubsurface: $crate::subcompositor::SubsurfaceData
-        ] => $crate::subcompositor::SubcompositorState
-        );
+        $crate::delegate_subcompositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; subsurface: []);
+        $crate::delegate_subcompositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; subsurface-only: $crate::subcompositor::SubsurfaceData);
     };
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, subsurface: [$($subsurface: ty),*$(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        $crate::delegate_subcompositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; subsurface: [ $($subsurface),* ]);
+    };
+    (@{$($ty:tt)*}; subsurface: []) => {
+        $crate::reexports::client::delegate_dispatch!($($ty)*:
             [
                 $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor: $crate::globals::GlobalData
             ] => $crate::subcompositor::SubcompositorState
         );
-        $(
-            $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+    };
+    (@{$($ty:tt)*}; subsurface-only: $subsurface:ty) => {
+        $crate::reexports::client::delegate_dispatch!($($ty)*:
             [
                     $crate::reexports::client::protocol::wl_subsurface::WlSubsurface: $subsurface
             ] => $crate::subcompositor::SubcompositorState
-            );
-        )*
+        );
+    };
+    (@$ty:tt; subsurface: [ $($subsurface:ty),+ ]) => {
+        $crate::delegate_subcompositor!(@$ty; subsurface: []);
+        $( $crate::delegate_subcompositor!(@$ty; subsurface-only: $subsurface); )*
     };
 }
