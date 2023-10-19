@@ -69,6 +69,12 @@ pub struct CompositorState {
 }
 
 impl CompositorState {
+    /// The maximum API version for WlCompositor that this object will bind.
+    // Note: if bumping this version number, check if the changes to the wayland XML cause an API
+    // break in the rust interfaces.  If it does, be sure to remove other ProvidesBoundGlobal
+    // impls; if it does not, consider adding one for the previous (compatible) version.
+    pub const API_VERSION_MAX: u32 = 6;
+
     pub fn bind<State>(
         globals: &GlobalList,
         qh: &QueueHandle<State>,
@@ -76,7 +82,7 @@ impl CompositorState {
     where
         State: Dispatch<wl_compositor::WlCompositor, GlobalData, State> + 'static,
     {
-        let wl_compositor = globals.bind(qh, 1..=6, GlobalData)?;
+        let wl_compositor = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
         Ok(CompositorState { wl_compositor })
     }
 
@@ -185,7 +191,10 @@ pub struct Surface(wl_surface::WlSurface);
 
 impl Surface {
     pub fn new<D>(
-        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
+        compositor: &impl ProvidesBoundGlobal<
+            wl_compositor::WlCompositor,
+            { CompositorState::API_VERSION_MAX },
+        >,
         qh: &QueueHandle<D>,
     ) -> Result<Self, GlobalError>
     where
@@ -195,7 +204,10 @@ impl Surface {
     }
 
     pub fn with_data<D, U>(
-        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
+        compositor: &impl ProvidesBoundGlobal<
+            wl_compositor::WlCompositor,
+            { CompositorState::API_VERSION_MAX },
+        >,
         qh: &QueueHandle<D>,
         data: U,
     ) -> Result<Self, GlobalError>
@@ -386,7 +398,10 @@ pub struct Region(wl_region::WlRegion);
 
 impl Region {
     pub fn new(
-        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
+        compositor: &impl ProvidesBoundGlobal<
+            wl_compositor::WlCompositor,
+            { CompositorState::API_VERSION_MAX },
+        >,
     ) -> Result<Region, GlobalError> {
         compositor
             .bound_global()
@@ -445,7 +460,9 @@ where
     }
 }
 
-impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6> for CompositorState {
+impl ProvidesBoundGlobal<wl_compositor::WlCompositor, { CompositorState::API_VERSION_MAX }>
+    for CompositorState
+{
     fn bound_global(&self) -> Result<wl_compositor::WlCompositor, GlobalError> {
         Ok(self.wl_compositor.clone())
     }
