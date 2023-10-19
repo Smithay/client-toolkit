@@ -51,7 +51,7 @@ impl Popup {
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
         compositor: &impl ProvidesBoundGlobal<WlCompositor, 6>,
-        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<wl_surface::WlSurface, SurfaceData>
@@ -78,7 +78,7 @@ impl Popup {
         position: &xdg_positioner::XdgPositioner,
         qh: &QueueHandle<D>,
         surface: impl Into<Surface>,
-        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Popup, GlobalError>
     where
         D: Dispatch<xdg_surface::XdgSurface, PopupData>

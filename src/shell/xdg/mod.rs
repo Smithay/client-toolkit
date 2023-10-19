@@ -168,7 +168,7 @@ pub struct XdgPositioner(xdg_positioner::XdgPositioner);
 
 impl XdgPositioner {
     pub fn new(
-        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Self, GlobalError> {
         wm_base
             .bound_global()
@@ -240,7 +240,7 @@ impl XdgShellSurface {
     /// [`XdgSurface`]: xdg_surface::XdgSurface
     /// [`WlSurface`]: wl_surface::WlSurface
     pub fn new<U, D>(
-        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
         qh: &QueueHandle<D>,
         surface: impl Into<Surface>,
         udata: U,
@@ -307,8 +307,14 @@ impl Drop for XdgShellSurface {
     }
 }
 
-// Version 4 adds the configure_bounds event, which is a break
-impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 4> for XdgShell {
+// Version 5 adds the wm_capabilities event, which is a break
+impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5> for XdgShell {
+    fn bound_global(&self) -> Result<xdg_wm_base::XdgWmBase, GlobalError> {
+        Ok(self.xdg_wm_base.clone())
+    }
+}
+
+impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 6> for XdgShell {
     fn bound_global(&self) -> Result<xdg_wm_base::XdgWmBase, GlobalError> {
         Ok(self.xdg_wm_base.clone())
     }
