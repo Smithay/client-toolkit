@@ -40,6 +40,12 @@ pub struct XdgShell {
 }
 
 impl XdgShell {
+    /// The maximum API version for XdgWmBase that this object will bind.
+    // Note: if bumping this version number, check if the changes to the wayland XML cause an API
+    // break in the rust interfaces.  If it does, be sure to remove other ProvidesBoundGlobal
+    // impls; if it does not, consider adding one for the previous (compatible) version.
+    pub const API_VERSION_MAX: u32 = 6;
+
     /// Binds the xdg shell global, `xdg_wm_base`.
     ///
     /// If available, the `zxdg_decoration_manager_v1` global will be bound to allow server side decorations
@@ -54,7 +60,7 @@ impl XdgShell {
             + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State>
             + 'static,
     {
-        let xdg_wm_base = globals.bind(qh, 1..=6, GlobalData)?;
+        let xdg_wm_base = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
         let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Ok(Self { xdg_wm_base, xdg_decoration_manager })
     }
@@ -168,7 +174,7 @@ pub struct XdgPositioner(xdg_positioner::XdgPositioner);
 
 impl XdgPositioner {
     pub fn new(
-        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }>,
     ) -> Result<Self, GlobalError> {
         wm_base
             .bound_global()
@@ -240,7 +246,7 @@ impl XdgShellSurface {
     /// [`XdgSurface`]: xdg_surface::XdgSurface
     /// [`WlSurface`]: wl_surface::WlSurface
     pub fn new<U, D>(
-        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
+        wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }>,
         qh: &QueueHandle<D>,
         surface: impl Into<Surface>,
         udata: U,
@@ -310,11 +316,11 @@ impl Drop for XdgShellSurface {
 // Version 5 adds the wm_capabilities event, which is a break
 impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5> for XdgShell {
     fn bound_global(&self) -> Result<xdg_wm_base::XdgWmBase, GlobalError> {
-        Ok(self.xdg_wm_base.clone())
+        <Self as ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 6>>::bound_global(self)
     }
 }
 
-impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 6> for XdgShell {
+impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }> for XdgShell {
     fn bound_global(&self) -> Result<xdg_wm_base::XdgWmBase, GlobalError> {
         Ok(self.xdg_wm_base.clone())
     }
