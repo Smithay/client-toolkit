@@ -122,7 +122,6 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::reexports::client::globals::{BindError, GlobalList};
 <span class="kw">use </span><span class="kw">crate</span>::reexports::client::protocol::wl_compositor::WlCompositor;
 <span class="kw">use </span><span class="kw">crate</span>::reexports::client::protocol::wl_subcompositor::WlSubcompositor;
@@ -222,30 +221,29 @@
 <span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>delegate_subcompositor {
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-            [
-                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
-            </span>] =&gt; <span class="macro-nonterminal">$crate::subcompositor::SubcompositorState
-        </span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-        [
-            <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_subsurface::WlSubsurface</span>: <span class="macro-nonterminal">$crate::subcompositor::SubsurfaceData
-        </span>] =&gt; <span class="macro-nonterminal">$crate::subcompositor::SubcompositorState
-        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_subcompositor!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; subsurface: []);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_subcompositor!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; subsurface-only: <span class="macro-nonterminal">$crate::subcompositor::SubsurfaceData</span>);
     };
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, subsurface: [$(<span class="macro-nonterminal">$subsurface</span>: ty),<span class="kw-2">*</span>$(,)<span class="question-mark">?</span>]) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_subcompositor!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; subsurface: [ $(<span class="macro-nonterminal">$subsurface</span>),* ]);
+    };
+    (@{$(<span class="macro-nonterminal">$ty</span>:tt)<span class="kw-2">*</span>}; subsurface: []) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(<span class="macro-nonterminal">$ty</span>)<span class="kw-2">*</span>:
             [
                 <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
             </span>] =&gt; <span class="macro-nonterminal">$crate::subcompositor::SubcompositorState
         </span>);
-        $(
-            <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+    };
+    (@{$(<span class="macro-nonterminal">$ty</span>:tt)<span class="kw-2">*</span>}; subsurface-only: <span class="macro-nonterminal">$subsurface</span>:ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(<span class="macro-nonterminal">$ty</span>)<span class="kw-2">*</span>:
             [
                     <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_subsurface::WlSubsurface</span>: <span class="macro-nonterminal">$subsurface
             </span>] =&gt; <span class="macro-nonterminal">$crate::subcompositor::SubcompositorState
-            </span>);
-        )*
+        </span>);
+    };
+    (@<span class="macro-nonterminal">$ty</span>:tt; subsurface: [ $(<span class="macro-nonterminal">$subsurface</span>:ty),+ ]) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_subcompositor!</span>(@<span class="macro-nonterminal">$ty</span>; subsurface: []);
+        $( <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_subcompositor!</span>(@<span class="macro-nonterminal">$ty</span>; subsurface-only: <span class="macro-nonterminal">$subsurface</span>); )*
     };
 }
 </code></pre></div></section></main></body></html>

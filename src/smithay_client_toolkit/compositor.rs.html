@@ -472,6 +472,8 @@
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::os::unix::io::OwnedFd;
 <span class="kw">use </span>std::sync::MutexGuard;
@@ -516,8 +518,14 @@
 
     <span class="doccomment">/// A frame callback has been completed.
     ///
-    /// This function will be called after sending a [`WlSurface::frame`](wl_surface::WlSurface::frame) request
-    /// and committing the surface.
+    /// Frame callbacks are used to avoid updating surfaces that are not currently visible.  If a
+    /// frame callback is requested prior to committing a surface, the client should avoid drawing
+    /// to that surface until the callback completes.  See the
+    /// [`WlSurface::frame`](wl_surface::WlSurface::frame) request for more details.
+    ///
+    /// This function will be called if you request a frame callback by passing the surface itself
+    /// as the userdata (`surface.frame(&amp;queue, &amp;surface)`); you can also implement [`Dispatch`]
+    /// for other values to more easily dispatch rendering for specific surface types.
     </span><span class="kw">fn </span>frame(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         conn: <span class="kw-2">&amp;</span>Connection,
@@ -700,40 +708,36 @@
 <span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>delegate_compositor {
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-            [
-                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_compositor::WlCompositor</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
-            </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
-        </span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-        [
-            <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_surface::WlSurface</span>: <span class="macro-nonterminal">$crate::compositor::SurfaceData
-        </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
-        </span>);
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-        [
-            <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_surface::WlSurface
-        </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
-        </span>);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_compositor!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; surface: []);
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_compositor!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; surface-only: <span class="macro-nonterminal">$crate::compositor::SurfaceData</span>);
     };
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, surface: [$(<span class="macro-nonterminal">$surface</span>: ty),<span class="kw-2">*</span>$(,)<span class="question-mark">?</span>]) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_compositor!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; surface: [ $(<span class="macro-nonterminal">$surface</span>),* ]);
+    };
+    (@{$(<span class="macro-nonterminal">$ty</span>:tt)<span class="kw-2">*</span>}; surface: []) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(<span class="macro-nonterminal">$ty</span>)<span class="kw-2">*</span>:
             [
                 <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_compositor::WlCompositor</span>: <span class="macro-nonterminal">$crate::globals::GlobalData
             </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
         </span>);
-        $(
-            <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(<span class="macro-nonterminal">$ty</span>)<span class="kw-2">*</span>:
+            [
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_surface::WlSurface
+            </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
+        </span>);
+    };
+    (@{$(<span class="macro-nonterminal">$ty</span>:tt)<span class="kw-2">*</span>}; surface-only: <span class="macro-nonterminal">$surface</span>:ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(<span class="macro-nonterminal">$ty</span>)<span class="kw-2">*</span>:
             [
                     <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_surface::WlSurface</span>: <span class="macro-nonterminal">$surface
             </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
-            </span>);
-        )*
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-        [
-            <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_callback::WlCallback</span>: <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_surface::WlSurface
-        </span>] =&gt; <span class="macro-nonterminal">$crate::compositor::CompositorState
         </span>);
+    };
+    (@<span class="macro-nonterminal">$ty</span>:tt; surface: [ $(<span class="macro-nonterminal">$surface</span>:ty),+ ]) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_compositor!</span>(@<span class="macro-nonterminal">$ty</span>; surface: []);
+        $(
+            <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_compositor!</span>(@<span class="macro-nonterminal">$ty</span>; surface-only: <span class="macro-nonterminal">$surface</span>);
+        )*
     };
 }
 

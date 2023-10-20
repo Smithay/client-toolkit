@@ -219,6 +219,8 @@
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Mutex;
 
 <span class="kw">use </span>wayland_client::protocol::wl_seat::WlSeat;
@@ -256,20 +258,22 @@
 <span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>delegate_touch {
     ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_touch!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; touch: <span class="macro-nonterminal">$crate::seat::touch::TouchData</span>);
+    };
+    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, touch: [$(<span class="macro-nonterminal">$td</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_touch!</span>(@{ $(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty </span>}; [ $(<span class="macro-nonterminal">$td</span>),* ]);
+    };
+    (@{$(<span class="macro-nonterminal">$ty</span>:tt)<span class="kw-2">*</span>}; touch: <span class="macro-nonterminal">$td</span>:ty) =&gt; {
+        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(<span class="macro-nonterminal">$ty</span>)<span class="kw-2">*</span>:
             [
-                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$crate::seat::touch::TouchData
+                <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$td
             </span>] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
         </span>);
     };
-    ($(@&lt;$( <span class="macro-nonterminal">$lt</span>:tt $( : <span class="macro-nonterminal">$clt</span>:tt $(+ <span class="macro-nonterminal">$dlt</span>:tt )* )<span class="question-mark">? </span>),+&gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>: ty, touch: [$(<span class="macro-nonterminal">$td</span>:ty),* $(,)<span class="question-mark">?</span>]) =&gt; {
-        <span class="macro-nonterminal">$</span><span class="macro">crate::reexports::client::delegate_dispatch!</span>($(@&lt; $( <span class="macro-nonterminal">$lt </span>$( : <span class="macro-nonterminal">$clt </span>$(+ <span class="macro-nonterminal">$dlt </span>)* )<span class="question-mark">? </span>),+ &gt;)<span class="question-mark">? </span><span class="macro-nonterminal">$ty</span>:
-            [
-                $(
-                    <span class="macro-nonterminal">$crate::reexports::client::protocol::wl_touch::WlTouch</span>: <span class="macro-nonterminal">$td</span>,
-                )*
-            ] =&gt; <span class="macro-nonterminal">$crate::seat::SeatState
-        </span>);
+    (@<span class="macro-nonterminal">$ty</span>:tt; [$(<span class="macro-nonterminal">$td</span>:ty),<span class="kw-2">*</span>] ) =&gt; {
+        $(
+            <span class="macro-nonterminal">$</span><span class="macro">crate::delegate_touch!</span>(@<span class="macro-nonterminal">$ty</span>, touch: <span class="macro-nonterminal">$td</span>);
+        )*
     };
 }
 
