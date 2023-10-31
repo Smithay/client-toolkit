@@ -18,6 +18,7 @@ pub mod reexports {
     pub use wayland_protocols_wlr as protocols_wlr;
 }
 
+pub mod activation;
 pub mod compositor;
 pub mod data_device_manager;
 pub mod dmabuf;
