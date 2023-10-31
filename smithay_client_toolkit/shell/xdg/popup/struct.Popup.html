@@ -2,8 +2,8 @@
     parent: &amp;XdgSurface,
     position: &amp;XdgPositioner,
     qh: &amp;QueueHandle&lt;D&gt;,
-    compositor: &amp;impl <a class="trait" href="../../../globals/trait.ProvidesBoundGlobal.html" title="trait smithay_client_toolkit::globals::ProvidesBoundGlobal">ProvidesBoundGlobal</a>&lt;WlCompositor, 5&gt;,
-    wm_base: &amp;impl <a class="trait" href="../../../globals/trait.ProvidesBoundGlobal.html" title="trait smithay_client_toolkit::globals::ProvidesBoundGlobal">ProvidesBoundGlobal</a>&lt;XdgWmBase, 4&gt;
+    compositor: &amp;impl <a class="trait" href="../../../globals/trait.ProvidesBoundGlobal.html" title="trait smithay_client_toolkit::globals::ProvidesBoundGlobal">ProvidesBoundGlobal</a>&lt;WlCompositor, 6&gt;,
+    wm_base: &amp;impl <a class="trait" href="../../../globals/trait.ProvidesBoundGlobal.html" title="trait smithay_client_toolkit::globals::ProvidesBoundGlobal">ProvidesBoundGlobal</a>&lt;XdgWmBase, 5&gt;
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.73.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.Popup.html" title="struct smithay_client_toolkit::shell::xdg::popup::Popup">Popup</a>, <a class="enum" href="../../../error/enum.GlobalError.html" title="enum smithay_client_toolkit::error::GlobalError">GlobalError</a>&gt;<span class="where fmt-newline">where
     D: Dispatch&lt;WlSurface, <a class="struct" href="../../../compositor/struct.SurfaceData.html" title="struct smithay_client_toolkit::compositor::SurfaceData">SurfaceData</a>&gt; + Dispatch&lt;XdgSurface, <a class="struct" href="struct.PopupData.html" title="struct smithay_client_toolkit::shell::xdg::popup::PopupData">PopupData</a>&gt; + Dispatch&lt;XdgPopup, <a class="struct" href="struct.PopupData.html" title="struct smithay_client_toolkit::shell::xdg::popup::PopupData">PopupData</a>&gt; + <a class="trait" href="trait.PopupHandler.html" title="trait smithay_client_toolkit::shell::xdg::popup::PopupHandler">PopupHandler</a> + 'static,</span></h4></section></summary><div class="docblock"><p>Create a new popup.</p>
 <p>This creates the popup and sends the initial commit.  You must wait for
@@ -13,7 +13,7 @@
     position: &amp;XdgPositioner,
     qh: &amp;QueueHandle&lt;D&gt;,
     surface: impl <a class="trait" href="https://doc.rust-lang.org/1.73.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="../../../compositor/struct.Surface.html" title="struct smithay_client_toolkit::compositor::Surface">Surface</a>&gt;,
-    wm_base: &amp;impl <a class="trait" href="../../../globals/trait.ProvidesBoundGlobal.html" title="trait smithay_client_toolkit::globals::ProvidesBoundGlobal">ProvidesBoundGlobal</a>&lt;XdgWmBase, 4&gt;
+    wm_base: &amp;impl <a class="trait" href="../../../globals/trait.ProvidesBoundGlobal.html" title="trait smithay_client_toolkit::globals::ProvidesBoundGlobal">ProvidesBoundGlobal</a>&lt;XdgWmBase, 5&gt;
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.73.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.Popup.html" title="struct smithay_client_toolkit::shell::xdg::popup::Popup">Popup</a>, <a class="enum" href="../../../error/enum.GlobalError.html" title="enum smithay_client_toolkit::error::GlobalError">GlobalError</a>&gt;<span class="where fmt-newline">where
     D: Dispatch&lt;XdgSurface, <a class="struct" href="struct.PopupData.html" title="struct smithay_client_toolkit::shell::xdg::popup::PopupData">PopupData</a>&gt; + Dispatch&lt;XdgPopup, <a class="struct" href="struct.PopupData.html" title="struct smithay_client_toolkit::shell::xdg::popup::PopupData">PopupData</a>&gt; + 'static,</span></h4></section></summary><div class="docblock"><p>Create a new popup from an existing surface.</p>
 <p>If you do not specify a parent surface, you must configure the parent using an alternate

@@ -338,8 +338,8 @@
         parent: <span class="kw-2">&amp;</span>xdg_surface::XdgSurface,
         position: <span class="kw-2">&amp;</span>xdg_positioner::XdgPositioner,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
-        compositor: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;WlCompositor, <span class="number">5</span>&gt;,
-        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+        compositor: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;WlCompositor, <span class="number">6</span>&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">5</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Popup, GlobalError&gt;
     <span class="kw">where
         </span>D: Dispatch&lt;wl_surface::WlSurface, SurfaceData&gt;
@@ -366,7 +366,7 @@
         position: <span class="kw-2">&amp;</span>xdg_positioner::XdgPositioner,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         surface: <span class="kw">impl </span>Into&lt;Surface&gt;,
-        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">5</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Popup, GlobalError&gt;
     <span class="kw">where
         </span>D: Dispatch&lt;xdg_surface::XdgSurface, PopupData&gt;

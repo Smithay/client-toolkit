@@ -335,6 +335,18 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ## Cross desktop group (XDG) shell
 </span><span class="comment">// TODO: Examples
 
@@ -377,6 +389,12 @@
 }
 
 <span class="kw">impl </span>XdgShell {
+    <span class="doccomment">/// The maximum API version for XdgWmBase that this object will bind.
+    </span><span class="comment">// Note: if bumping this version number, check if the changes to the wayland XML cause an API
+    // break in the rust interfaces.  If it does, be sure to remove other ProvidesBoundGlobal
+    // impls; if it does not, consider adding one for the previous (compatible) version.
+    </span><span class="kw">pub const </span>API_VERSION_MAX: u32 = <span class="number">6</span>;
+
     <span class="doccomment">/// Binds the xdg shell global, `xdg_wm_base`.
     ///
     /// If available, the `zxdg_decoration_manager_v1` global will be bound to allow server side decorations
@@ -391,7 +409,7 @@
             + Dispatch&lt;zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State&gt;
             + <span class="lifetime">&#39;static</span>,
     {
-        <span class="kw">let </span>xdg_wm_base = globals.bind(qh, <span class="number">1</span>..=<span class="number">6</span>, GlobalData)<span class="question-mark">?</span>;
+        <span class="kw">let </span>xdg_wm_base = globals.bind(qh, <span class="number">1</span>..=<span class="self">Self</span>::API_VERSION_MAX, GlobalData)<span class="question-mark">?</span>;
         <span class="kw">let </span>xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, <span class="number">1</span>..=<span class="number">1</span>, GlobalData));
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ xdg_wm_base, xdg_decoration_manager })
     }
@@ -505,7 +523,7 @@
 
 <span class="kw">impl </span>XdgPositioner {
     <span class="kw">pub fn </span>new(
-        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, GlobalError&gt; {
         wm_base
             .bound_global()
@@ -577,7 +595,7 @@
     /// [`XdgSurface`]: xdg_surface::XdgSurface
     /// [`WlSurface`]: wl_surface::WlSurface
     </span><span class="kw">pub fn </span>new&lt;U, D&gt;(
-        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt;,
+        wm_base: <span class="kw-2">&amp;</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }&gt;,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         surface: <span class="kw">impl </span>Into&lt;Surface&gt;,
         udata: U,
@@ -644,8 +662,14 @@
     }
 }
 
-<span class="comment">// Version 4 adds the configure_bounds event, which is a break
-</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">4</span>&gt; <span class="kw">for </span>XdgShell {
+<span class="comment">// Version 5 adds the wm_capabilities event, which is a break
+</span><span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">5</span>&gt; <span class="kw">for </span>XdgShell {
+    <span class="kw">fn </span>bound_global(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;xdg_wm_base::XdgWmBase, GlobalError&gt; {
+        &lt;<span class="self">Self </span><span class="kw">as </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, <span class="number">6</span>&gt;&gt;::bound_global(<span class="self">self</span>)
+    }
+}
+
+<span class="kw">impl </span>ProvidesBoundGlobal&lt;xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }&gt; <span class="kw">for </span>XdgShell {
     <span class="kw">fn </span>bound_global(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;xdg_wm_base::XdgWmBase, GlobalError&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.xdg_wm_base.clone())
     }
