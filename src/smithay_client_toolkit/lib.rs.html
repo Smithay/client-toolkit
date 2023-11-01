@@ -31,6 +31,7 @@
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(
 <span class="comment">//    missing_docs, // Commented out for now so the project isn&#39;t all yellow.
@@ -51,6 +52,7 @@
     <span class="kw">pub use </span>wayland_protocols_wlr <span class="kw">as </span>protocols_wlr;
 }
 
+<span class="kw">pub mod </span>activation;
 <span class="kw">pub mod </span>compositor;
 <span class="kw">pub mod </span>data_device_manager;
 <span class="kw">pub mod </span>dmabuf;
