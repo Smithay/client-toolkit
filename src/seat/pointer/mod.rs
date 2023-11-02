@@ -1,6 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    env, mem,
+    env, iter, mem,
     sync::{Arc, Mutex},
 };
 
@@ -458,31 +458,41 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
         let mut themes = self.themes.lock().unwrap();
 
         let scale = self.surface.data::<S>().unwrap().surface_data().scale_factor();
-        let cursor = themes
-            .get_cursor(conn, icon.name(), scale as u32, &self.shm)
-            .map_err(PointerThemeError::InvalidId)?
-            .ok_or(PointerThemeError::CursorNotFound)?;
+        for cursor_icon_name in iter::once(icon.name()).chain(icon.alt_names().iter().copied()) {
+            if let Some(cursor) = themes
+                .get_cursor(conn, cursor_icon_name, scale as u32, &self.shm)
+                .map_err(PointerThemeError::InvalidId)?
+            {
+                let image = &cursor[0];
+                let (w, h) = image.dimensions();
+                let (hx, hy) = image.hotspot();
 
-        let image = &cursor[0];
-        let (w, h) = image.dimensions();
-        let (hx, hy) = image.hotspot();
+                self.surface.set_buffer_scale(scale);
+                self.surface.attach(Some(image), 0, 0);
 
-        self.surface.set_buffer_scale(scale);
-        self.surface.attach(Some(image), 0, 0);
+                if self.surface.version() >= 4 {
+                    self.surface.damage_buffer(0, 0, w as i32, h as i32);
+                } else {
+                    // Fallback for the old old surface.
+                    self.surface.damage(0, 0, w as i32 / scale, h as i32 / scale);
+                }
 
-        if self.surface.version() >= 4 {
-            self.surface.damage_buffer(0, 0, w as i32, h as i32);
-        } else {
-            // Fallback for the old old surface.
-            self.surface.damage(0, 0, w as i32 / scale, h as i32 / scale);
+                // Commit the surface to place the cursor image in the compositor's memory.
+                self.surface.commit();
+
+                // Set the pointer surface to change the pointer.
+                self.pointer.set_cursor(
+                    serial,
+                    Some(&self.surface),
+                    hx as i32 / scale,
+                    hy as i32 / scale,
+                );
+
+                return Ok(());
+            }
         }
 
-        // Commit the surface to place the cursor image in the compositor's memory.
-        self.surface.commit();
-
-        // Set the pointer surface to change the pointer.
-        self.pointer.set_cursor(serial, Some(&self.surface), hx as i32 / scale, hy as i32 / scale);
-        Ok(())
+        Err(PointerThemeError::CursorNotFound)
     }
 
     /// Hide the cursor by providing empty surface for it.
