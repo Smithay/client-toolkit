@@ -60,3 +60,7 @@ pollster = "0.3.0"
 [[example]]
 name = "wgpu"
 required-features = ["wayland-backend/client_system"]
+
+# temporary - TODO: remove
+[patch.crates-io]
+cursor-icon = { git = "https://github.com/rust-windowing/cursor-icon.git", rev = "4baa20f" }
