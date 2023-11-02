@@ -458,7 +458,7 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
         let mut themes = self.themes.lock().unwrap();
 
         let scale = self.surface.data::<S>().unwrap().surface_data().scale_factor();
-        for cursor_icon_name in iter::once(icon.name()).chain(icon.alt_names().iter().copied()) {
+        for cursor_icon_name in iter::once(&icon.name()).chain(icon.alt_names().iter()) {
             if let Some(cursor) = themes
                 .get_cursor(conn, cursor_icon_name, scale as u32, &self.shm)
                 .map_err(PointerThemeError::InvalidId)?
