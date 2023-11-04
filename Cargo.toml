@@ -1,6 +1,6 @@
 [package]
 name = "smithay-client-toolkit"
-version = "0.18.0"
+version = "0.18.1"
 authors = ["Elinor Berger <elinor@safaradeg.net>", "i509VCB <mail@i509.me>", "Ashley Wulber <ashley@system76.com>"]
 documentation = "https://smithay.github.io/client-toolkit"
 repository = "https://github.com/smithay/client-toolkit"

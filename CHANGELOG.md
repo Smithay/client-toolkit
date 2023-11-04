@@ -8,6 +8,20 @@
 
 #### Additions
 
+## 0.18.1 - 2023-11-04
+
+#### Fixed
+
+- Properly bump the `XdgWmBase` API version.
+- Properly bump the `WlCompositor` API version.
+- Fix `delegate_*` macros with custom UserData.
+
+#### Additions
+
+- Add support for `xdg-activation-v1`.
+- Add support for `ext-session-lock-v1`.
+- Update `cursor-icon` dependency.
+
 ## 0.18.0 - 2023-09-23
 
 #### Breaking Changes
