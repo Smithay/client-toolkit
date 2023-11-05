@@ -44,6 +44,17 @@ impl SubcompositorState {
     }
 }
 
+impl
+    crate::globals::ProvidesBoundGlobal<
+        WlCompositor,
+        { crate::compositor::CompositorState::API_VERSION_MAX },
+    > for SubcompositorState
+{
+    fn bound_global(&self) -> Result<WlCompositor, crate::error::GlobalError> {
+        Ok(self.compositor.clone())
+    }
+}
+
 impl<D> Dispatch<WlSubsurface, SubsurfaceData, D> for SubcompositorState
 where
     D: Dispatch<WlSubsurface, SubsurfaceData>,
