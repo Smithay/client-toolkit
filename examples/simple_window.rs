@@ -368,6 +368,7 @@ impl KeyboardHandler for SimpleWindow {
         _: &wl_keyboard::WlKeyboard,
         _serial: u32,
         modifiers: Modifiers,
+        _layout: u32,
     ) {
         println!("Update modifiers: {modifiers:?}");
     }

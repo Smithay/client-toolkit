@@ -188,6 +188,7 @@ pub trait KeyboardHandler: Sized {
         keyboard: &wl_keyboard::WlKeyboard,
         serial: u32,
         modifiers: Modifiers,
+        layout: u32,
     );
 
     /// The keyboard has updated the rate and delay between repeating key inputs.
@@ -827,7 +828,7 @@ where
 
                 // Always issue the modifiers update for the user.
                 let modifiers = udata.update_modifiers();
-                data.update_modifiers(conn, qh, keyboard, serial, modifiers);
+                data.update_modifiers(conn, qh, keyboard, serial, modifiers, group);
             }
 
             wl_keyboard::Event::RepeatInfo { rate, delay } => {
