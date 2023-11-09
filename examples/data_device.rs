@@ -438,6 +438,7 @@ impl KeyboardHandler for DataDeviceWindow {
         _: &wl_keyboard::WlKeyboard,
         _serial: u32,
         _modifiers: Modifiers,
+        _layout: u32,
     ) {
     }
 }
