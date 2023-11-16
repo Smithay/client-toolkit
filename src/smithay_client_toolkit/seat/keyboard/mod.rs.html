@@ -853,6 +853,7 @@
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
 <a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     convert::TryInto,
     env,
@@ -1043,6 +1044,7 @@
         keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
         serial: u32,
         modifiers: Modifiers,
+        layout: u32,
     );
 
     <span class="doccomment">/// The keyboard has updated the rate and delay between repeating key inputs.
@@ -1682,7 +1684,7 @@
 
                 <span class="comment">// Always issue the modifiers update for the user.
                 </span><span class="kw">let </span>modifiers = udata.update_modifiers();
-                data.update_modifiers(conn, qh, keyboard, serial, modifiers);
+                data.update_modifiers(conn, qh, keyboard, serial, modifiers, group);
             }
 
             wl_keyboard::Event::RepeatInfo { rate, delay } =&gt; {
