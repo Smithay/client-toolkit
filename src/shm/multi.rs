@@ -322,7 +322,7 @@ impl<K> MultiPool<K> {
         let size = (stride * height) as usize;
         let buf_slot = self.buffer_list.get_mut(index).ok_or(PoolError::NotFound)?;
 
-        if buf_slot.size > size {
+        if size > buf_slot.size {
             return Err(PoolError::Overlap);
         }
 
