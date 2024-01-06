@@ -77,12 +77,12 @@ macro_rules! delegate_virtual_keyboard {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
-                $crate::reexports::wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1: $crate::globals::GlobalData
+                $crate::reexports::protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1: $crate::globals::GlobalData
             ] => $crate::virtual_keyboard::VirtualKeyboardManager
         );
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
-                $crate::reexports::wayland_protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1: $crate::virtual_keyboard::VirtualKeyboard
+                $crate::reexports::protocols_misc::zwp_virtual_keyboard_v1::client::zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1: $crate::virtual_keyboard::VirtualKeyboard
             ] => $crate::virtual_keyboard::VirtualKeyboardManager
         );
     };
