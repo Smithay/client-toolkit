@@ -52,9 +52,9 @@ drm-fourcc = "2.2.0"
 font-kit = "0.11.0"
 image = "0.24"
 env_logger = "0.10"
-wgpu = "0.18.0"
+wgpu = "0.19.0"
 raqote = "0.8.2"
-raw-window-handle = "0.5.2"
+raw-window-handle = "0.6.0"
 pollster = "0.3.0"
 
 [[example]]
