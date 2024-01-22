@@ -67,8 +67,9 @@ use wayland_protocols::wp::primary_selection::zv1::client::{
 
 fn main() {
     println!(
-        "Press c to set the selection, p to set primary selection, or click and drag on\
-         the window to drag and drop. Selection contents are printed automatically."
+        "Press c to set the selection, p to set primary selection, or click and drag on \
+         the window to drag and drop. Selection contents are printed automatically. Ctrl \
+         + click and drag to start an internal drag."
     );
     env_logger::init();
 
@@ -135,6 +136,7 @@ fn main() {
         width: 256,
         keyboard: None,
         keyboard_focus: false,
+        modifiers: Modifiers::default(),
         pointer: None,
         seat_objects: Vec::new(),
         copy_paste_sources: Vec::new(),
@@ -177,6 +179,7 @@ struct DataDeviceWindow {
     window: Window,
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
+    modifiers: Modifiers,
     pointer: Option<wl_pointer::WlPointer>,
     dnd_offers: Vec<(DragOffer, Vec<u8>, Option<RegistrationToken>)>,
     selection_offers: Vec<(SelectionOffer, Vec<u8>, Option<RegistrationToken>)>,
@@ -437,9 +440,10 @@ impl KeyboardHandler for DataDeviceWindow {
         _: &QueueHandle<Self>,
         _: &wl_keyboard::WlKeyboard,
         _serial: u32,
-        _modifiers: Modifiers,
+        modifiers: Modifiers,
         _layout: u32,
     ) {
+        self.modifiers = modifiers;
     }
 }
 
@@ -458,7 +462,21 @@ impl PointerHandler for DataDeviceWindow {
                 continue;
             }
             let surface = event.surface.clone();
+
             match event.kind {
+                Press { button, serial, .. } if button == BTN_LEFT && self.modifiers.ctrl => {
+                    if let Some(seat) =
+                        self.seat_objects.iter().find(|seat| seat.pointer.as_ref() == Some(pointer))
+                    {
+                        println!("Starting an internal drag...");
+                        DragSource::start_internal_drag(
+                            &seat.data_device,
+                            self.window.wl_surface(),
+                            None,
+                            serial,
+                        );
+                    }
+                }
                 Press { button, serial, .. } if button == BTN_LEFT => {
                     if let Some(seat) =
                         self.seat_objects.iter().find(|seat| seat.pointer.as_ref() == Some(pointer))
@@ -475,9 +493,7 @@ impl PointerHandler for DataDeviceWindow {
                         self.drag_sources.push((source, false));
                     }
                 }
-                Motion { .. } => {
-                    // dbg!(event.position);
-                }
+                Motion { .. } => {}
                 _ => {}
             }
         }
@@ -562,15 +578,22 @@ impl DataDeviceHandler for DataDeviceWindow {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         wl_data_device: &WlDataDevice,
+        x: f64,
+        y: f64,
+        _surface: &wl_surface::WlSurface,
     ) {
+        println!("Data device enter x: {x:.2} y: {y:.2}");
         let data_device = &self
             .seat_objects
             .iter()
             .find(|seat| seat.data_device.inner() == wl_data_device)
             .unwrap()
             .data_device;
-        let drag_offer = data_device.data().drag_offer().unwrap();
-        println!("data offer entered x: {:.2} y: {:.2}", drag_offer.x, drag_offer.y);
+
+        let Some(drag_offer) = data_device.data().drag_offer() else {
+            println!("Internal drag");
+            return;
+        };
 
         // Accept the first mime type we support.
         if let Some(mime) = drag_offer.with_mime_types(|mime_types| {
@@ -590,24 +613,18 @@ impl DataDeviceHandler for DataDeviceWindow {
     }
 
     fn leave(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _data_device: &WlDataDevice) {
-        println!("Data offer left");
+        println!("Data device leave event");
     }
 
     fn motion(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        wl_data_device: &WlDataDevice,
+        _wl_data_device: &WlDataDevice,
+        x: f64,
+        y: f64,
     ) {
-        let data_device = &self
-            .seat_objects
-            .iter()
-            .find(|seat| seat.data_device.inner() == wl_data_device)
-            .unwrap()
-            .data_device;
-        let DragOffer { x, y, time, .. } = data_device.data().drag_offer().unwrap();
-
-        dbg!((time, x, y));
+        println!("Data Device motion event x: {:.2} y: {:.2}", x, y);
     }
 
     fn selection(
@@ -702,7 +719,7 @@ impl DataDeviceHandler for DataDeviceWindow {
             .unwrap()
             .data_device;
         if let Some(offer) = data_device.data().drag_offer() {
-            println!("Dropped: {offer:?}");
+            println!("Data device dropped event: {offer:?}");
             self.dnd_offers.push((offer.clone(), Vec::new(), None));
             let cur_offer = self.dnd_offers.last_mut().unwrap();
             let mime_type = match offer.with_mime_types(pick_mime) {
@@ -770,6 +787,8 @@ impl DataDeviceHandler for DataDeviceWindow {
                     cur_offer.0.finish();
                 }
             }
+        } else {
+            println!("Internal drop performed");
         }
     }
 }

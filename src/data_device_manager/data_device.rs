@@ -3,6 +3,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use wayland_client::protocol::wl_surface::WlSurface;
+
 use crate::{
     data_device_manager::data_offer::DataDeviceOffer,
     reexports::client::{
@@ -37,7 +39,15 @@ pub trait DataDeviceHandler: Sized {
     // );
 
     /// The data device pointer has entered a surface at the provided location
-    fn enter(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: &WlDataDevice);
+    fn enter(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        data_device: &WlDataDevice,
+        x: f64,
+        y: f64,
+        wl_surface: &WlSurface,
+    );
 
     /// The drag and drop pointer has left the surface and the session ends.
     /// The offer will be destroyed unless it was previously dropped.
@@ -45,7 +55,14 @@ pub trait DataDeviceHandler: Sized {
     fn leave(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: &WlDataDevice);
 
     /// Drag and Drop motion.
-    fn motion(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: &WlDataDevice);
+    fn motion(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        data_device: &WlDataDevice,
+        x: f64,
+        y: f64,
+    );
 
     /// Advertises a new selection.
     fn selection(&mut self, conn: &Connection, qh: &QueueHandle<Self>, data_device: &WlDataDevice);
@@ -129,13 +146,13 @@ where
                     }
 
                     let data = offer.data::<DataOfferData>().unwrap();
-                    data.to_dnd_offer(serial, surface, x, y, None);
+                    data.to_dnd_offer(serial, surface.clone(), x, y, None);
 
                     inner.drag_offer = Some(offer.clone());
-                    // XXX Drop done here to prevent Mutex deadlocks.
-                    drop(inner);
-                    state.enter(conn, qh, data_device);
                 }
+                // XXX Drop done here to prevent Mutex deadlocks.
+                drop(inner);
+                state.enter(conn, qh, data_device, x, y, &surface);
             }
             Event::Leave => {
                 // We must destroy the offer we've got on enter.
@@ -159,7 +176,7 @@ where
 
                 // XXX Drop done here to prevent Mutex deadlocks.
                 drop(inner);
-                state.motion(conn, qh, data_device);
+                state.motion(conn, qh, data_device, x, y);
             }
             Event::Drop => {
                 if let Some(offer) = inner.drag_offer.take() {
