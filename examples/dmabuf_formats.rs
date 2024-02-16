@@ -92,8 +92,8 @@ fn main() {
 
             return;
         }
-        Some(4..) => {
-            println!("Version `4` of `zwp_linux_dmabuf_v1` supported. Showing default dmabuf feedback.\n");
+        Some(ver @ 4..) => {
+            println!("Version `{}` of `zwp_linux_dmabuf_v1` supported. Showing default dmabuf feedback.\n", ver);
 
             app_data.dmabuf_state.get_default_feedback(&qh).unwrap();
 
