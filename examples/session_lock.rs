@@ -86,8 +86,8 @@ impl SessionLockHandler for AppData {
         // After 5 seconds, destroy lock
         self.loop_handle
             .insert_source(Timer::from_duration(Duration::from_secs(5)), |_, _, app_data| {
-                // Destroy the session lock
-                app_data.session_lock.take();
+                // Unlock the lock
+                app_data.session_lock.take().unwrap().unlock();
                 // Sync connection to make sure compostor receives destroy
                 app_data.conn.roundtrip().unwrap();
                 // Then we can exit

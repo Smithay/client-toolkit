@@ -89,19 +89,18 @@ pub struct SessionLockInner {
 
 impl Drop for SessionLockInner {
     fn drop(&mut self) {
-        if self.locked.load(Ordering::SeqCst) {
-            self.session_lock.unlock_and_destroy();
-        } else {
-            self.session_lock.destroy();
-        }
+        // This does nothing if unlock() was called.  It may trigger a protocol error if unlock was
+        // not called; this is an application bug, and choosing not to unlock here results in us
+        // failing secure.
+        self.session_lock.destroy();
     }
 }
 
 /// A session lock
 ///
-/// The lock is destroyed on drop, which must be done after `locked` or `finished`
-/// is received.
-#[must_use]
+/// Once a lock is created, you must wait for either a `locked` or `finished` event before
+/// destroying this object.  If you get a `locked` event, you must explicitly call `unlock` prior
+/// to dropping this object.
 #[derive(Debug, Clone)]
 pub struct SessionLock(Arc<SessionLockInner>);
 
@@ -112,6 +111,12 @@ impl SessionLock {
 
     pub fn is_locked(&self) -> bool {
         self.0.locked.load(Ordering::SeqCst)
+    }
+
+    pub fn unlock(&self) {
+        if self.0.locked.load(Ordering::SeqCst) {
+            self.0.session_lock.unlock_and_destroy();
+        }
     }
 }
 
