@@ -435,6 +435,9 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 <span class="kw">use </span>memmap2::{Mmap, MmapOptions};
 <span class="kw">use </span>std::{fmt, mem, os::unix::io::BorrowedFd, slice, sync::Mutex};
@@ -561,7 +564,7 @@
         </span>D: Dispatch&lt;zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, GlobalData&gt; + <span class="lifetime">'static</span>,
     {
         <span class="comment">// Mesa (at least the latest version) also requires version 3 or 4
-        </span><span class="kw">let </span>zwp_linux_dmabuf = GlobalProxy::from(globals.bind(qh, <span class="number">3</span>..=<span class="number">4</span>, GlobalData));
+        </span><span class="kw">let </span>zwp_linux_dmabuf = GlobalProxy::from(globals.bind(qh, <span class="number">3</span>..=<span class="number">5</span>, GlobalData));
         <span class="self">Self </span>{ zwp_linux_dmabuf, modifiers: Vec::new() }
     }
 
@@ -667,6 +670,9 @@
     ///
     /// In version `4`, it is a protocol error if `format`/`modifier` pair wasn't
     /// advertised as supported.
+    ///
+    /// `modifier` should be the same for all planes. It is a protocol error in version `5` if
+    /// they differ.
     </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, fd: BorrowedFd&lt;<span class="lifetime">'_</span>&gt;, plane_idx: u32, offset: u32, stride: u32, modifier: u64) {
         <span class="kw">let </span>modifier_hi = (modifier &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
         <span class="kw">let </span>modifier_lo = (modifier &amp; <span class="number">0xffffffff</span>) <span class="kw">as </span>u32;
