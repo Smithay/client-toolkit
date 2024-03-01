@@ -222,6 +222,36 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Mutex;
 
 <span class="kw">use </span>wayland_client::protocol::wl_seat::WlSeat;
@@ -254,6 +284,7 @@
 <span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TouchDataInner {
     events: Vec&lt;TouchEvent&gt;,
+    active_touch_points: Vec&lt;i32&gt;,
 }
 
 <span class="attr">#[macro_export]
@@ -387,30 +418,59 @@
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
         <span class="kw">let </span>udata = udata.touch_data();
-        <span class="kw">match </span>event {
+        <span class="kw">let </span><span class="kw-2">mut </span>guard: std::sync::MutexGuard&lt;<span class="lifetime">'_</span>, TouchDataInner&gt; = udata.inner.lock().unwrap();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>save_event = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>process_events = <span class="bool-val">false</span>;
+
+        <span class="kw">match </span><span class="kw-2">&amp;</span>event {
             <span class="comment">// Buffer events until frame is received.
-            </span>TouchEvent::Down { .. }
-            | TouchEvent::Up { .. }
-            | TouchEvent::Motion { .. }
+            </span>TouchEvent::Down { id, .. } =&gt; {
+                save_event = <span class="bool-val">true</span>;
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(insert_pos) = guard.active_touch_points.binary_search(id) {
+                    guard.active_touch_points.insert(insert_pos, <span class="kw-2">*</span>id);
+                }
+            }
+            TouchEvent::Up { id, .. } =&gt; {
+                save_event = <span class="bool-val">true</span>;
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(remove_pos) = guard.active_touch_points.binary_search(id) {
+                    guard.active_touch_points.remove(remove_pos);
+                }
+
+                <span class="comment">// Weston doesn't always send a frame even after the last touch point was released:
+                // https://gitlab.freedesktop.org/wayland/weston/-/issues/44
+                // Work around this by processing pending events when there are no more touch points
+                // active.
+                </span><span class="kw">if </span>guard.active_touch_points.is_empty() {
+                    process_events = <span class="bool-val">true</span>;
+                }
+            }
+            TouchEvent::Motion { .. }
             | TouchEvent::Shape { .. }
             | TouchEvent::Orientation { .. } =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
-                guard.events.push(event);
+                save_event = <span class="bool-val">true</span>;
             }
             <span class="comment">// Process all buffered events.
             </span>TouchEvent::Frame =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
-                <span class="kw">for </span>event <span class="kw">in </span>guard.events.drain(..) {
-                    process_framed_event(data, touch, conn, qh, event);
-                }
+                process_events = <span class="bool-val">true</span>;
             }
             TouchEvent::Cancel =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>guard = udata.inner.lock().unwrap();
                 guard.events.clear();
+                guard.active_touch_points.clear();
 
                 data.cancel(conn, qh, touch);
             }
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        }
+
+        <span class="kw">if </span>save_event {
+            guard.events.push(event);
+        }
+
+        <span class="kw">if </span>process_events {
+            <span class="kw">for </span>event <span class="kw">in </span>guard.events.drain(..) {
+                process_framed_event(data, touch, conn, qh, event);
+            }
         }
     }
 }
