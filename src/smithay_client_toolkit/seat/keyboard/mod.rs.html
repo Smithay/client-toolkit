@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/keyboard/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/keyboard/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -870,7 +871,7 @@
 <span class="attr">#[doc(inline)]
 </span><span class="kw">pub use </span>xkeysym::{KeyCode, Keysym};
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
 </span><span class="kw">use </span>calloop::timer::{TimeoutAction, Timer};
 <span class="kw">use </span>wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
@@ -879,12 +880,12 @@
 
 <span class="kw">use </span>xkbcommon::xkb;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
 </span><span class="kw">use </span>repeat::{RepeatData, RepeatedKey};
 
 <span class="kw">use super</span>::{Capability, SeatError, SeatHandler, SeatState};
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
 </span><span class="kw">pub mod </span>repeat;
 
 <span class="doccomment">/// Error when creating a keyboard.
@@ -896,7 +897,7 @@
     </span>Seat(<span class="attr">#[from] </span>SeatError),
 
     <span class="doccomment">/// The specified keymap (RMLVO) is not valid.
-    </span><span class="attr">#[error(<span class="string">&quot;invalid keymap was specified&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid keymap was specified"</span>)]
     </span>InvalidKeymap,
 }
 
@@ -911,7 +912,7 @@
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    </span><span class="kw">pub fn </span>get_keyboard&lt;D, T: <span class="lifetime">&#39;static</span>&gt;(
+    </span><span class="kw">pub fn </span>get_keyboard&lt;D, T: <span class="lifetime">'static</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
         seat: <span class="kw-2">&amp;</span>wl_seat::WlSeat,
@@ -921,7 +922,7 @@
         </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, KeyboardData&lt;T&gt;&gt;
             + SeatHandler
             + KeyboardHandler
-            + <span class="lifetime">&#39;static</span>,
+            + <span class="lifetime">'static</span>,
     {
         <span class="kw">let </span>udata = <span class="kw">match </span>rmlvo {
             <span class="prelude-val">Some</span>(rmlvo) =&gt; KeyboardData::from_rmlvo(seat.clone(), rmlvo)<span class="question-mark">?</span>,
@@ -948,8 +949,8 @@
         udata: U,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;wl_keyboard::WlKeyboard, KeyboardError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, U&gt; + SeatHandler + KeyboardHandler + <span class="lifetime">&#39;static</span>,
-        U: KeyboardDataExt + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;wl_keyboard::WlKeyboard, U&gt; + SeatHandler + KeyboardHandler + <span class="lifetime">'static</span>,
+        U: KeyboardDataExt + <span class="lifetime">'static</span>,
     {
         <span class="kw">let </span>inner =
             <span class="self">self</span>.seats.iter().find(|inner| <span class="kw-2">&amp;</span>inner.seat == seat).ok_or(SeatError::DeadObject)<span class="question-mark">?</span>;
@@ -964,9 +965,9 @@
 
 <span class="doccomment">/// Wrapper around a libxkbcommon keymap
 </span><span class="attr">#[allow(missing_debug_implementations)]
-</span><span class="kw">pub struct </span>Keymap&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>xkb::Keymap);
+</span><span class="kw">pub struct </span>Keymap&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>xkb::Keymap);
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Keymap&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Keymap&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Get keymap as string in text format. The keymap should always be valid.
     </span><span class="kw">pub fn </span>as_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.<span class="number">0</span>.get_as_string(xkb::KEYMAP_FORMAT_TEXT_V1)
@@ -1035,7 +1036,7 @@
 
     <span class="doccomment">/// Keyboard modifiers have been updated.
     ///
-    /// This happens when one of the modifier keys, such as &quot;Shift&quot;, &quot;Control&quot; or &quot;Alt&quot; is pressed or
+    /// This happens when one of the modifier keys, such as "Shift", "Control" or "Alt" is pressed or
     /// released.
     </span><span class="kw">fn </span>update_modifiers(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1072,7 +1073,7 @@
         _conn: <span class="kw-2">&amp;</span>Connection,
         _qh: <span class="kw-2">&amp;</span>QueueHandle&lt;<span class="self">Self</span>&gt;,
         _keyboard: <span class="kw-2">&amp;</span>wl_keyboard::WlKeyboard,
-        _keymap: Keymap&lt;<span class="lifetime">&#39;_</span>&gt;,
+        _keymap: Keymap&lt;<span class="lifetime">'_</span>&gt;,
     ) {
     }
 }
@@ -1120,26 +1121,26 @@
 /// Depending on the modifier, the modifier key may currently be pressed or toggled.
 </span><span class="attr">#[derive(Debug, Clone, Copy, Default)]
 </span><span class="kw">pub struct </span>Modifiers {
-    <span class="doccomment">/// The &quot;control&quot; key
+    <span class="doccomment">/// The "control" key
     </span><span class="kw">pub </span>ctrl: bool,
 
-    <span class="doccomment">/// The &quot;alt&quot; key
+    <span class="doccomment">/// The "alt" key
     </span><span class="kw">pub </span>alt: bool,
 
-    <span class="doccomment">/// The &quot;shift&quot; key
+    <span class="doccomment">/// The "shift" key
     </span><span class="kw">pub </span>shift: bool,
 
-    <span class="doccomment">/// The &quot;Caps lock&quot; key
+    <span class="doccomment">/// The "Caps lock" key
     </span><span class="kw">pub </span>caps_lock: bool,
 
-    <span class="doccomment">/// The &quot;logo&quot; key
+    <span class="doccomment">/// The "logo" key
     ///
-    /// Also known as the &quot;windows&quot; or &quot;super&quot; key on a keyboard.
-    </span><span class="attr">#[doc(alias = <span class="string">&quot;windows&quot;</span>)]
-    #[doc(alias = <span class="string">&quot;super&quot;</span>)]
+    /// Also known as the "windows" or "super" key on a keyboard.
+    </span><span class="attr">#[doc(alias = <span class="string">"windows"</span>)]
+    #[doc(alias = <span class="string">"super"</span>)]
     </span><span class="kw">pub </span>logo: bool,
 
-    <span class="doccomment">/// The &quot;Num lock&quot; key
+    <span class="doccomment">/// The "Num lock" key
     </span><span class="kw">pub </span>num_lock: bool,
 }
 
@@ -1177,15 +1178,15 @@
     </span>user_specified_rmlvo: bool,
     xkb_state: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::State&gt;&gt;,
     xkb_compose: Mutex&lt;<span class="prelude-ty">Option</span>&lt;xkb::compose::State&gt;&gt;,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
     </span>repeat_data: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;RepeatData&lt;T&gt;&gt;&gt;&gt;,
     focus: Mutex&lt;<span class="prelude-ty">Option</span>&lt;wl_surface::WlSurface&gt;&gt;,
     _phantom_data: PhantomData&lt;T&gt;,
 }
 
 <span class="kw">impl</span>&lt;T&gt; Debug <span class="kw">for </span>KeyboardData&lt;T&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        f.debug_struct(<span class="string">&quot;KeyboardData&quot;</span>).finish_non_exhaustive()
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">"KeyboardData"</span>).finish_non_exhaustive()
     }
 }
 
@@ -1224,7 +1225,7 @@
             xkb_state: Mutex::new(<span class="prelude-val">None</span>),
             user_specified_rmlvo: <span class="bool-val">false</span>,
             xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+            <span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
             </span>repeat_data: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
             focus: Mutex::new(<span class="prelude-val">None</span>),
             _phantom_data: PhantomData,
@@ -1264,7 +1265,7 @@
             xkb_state: Mutex::new(xkb_state),
             user_specified_rmlvo: <span class="bool-val">true</span>,
             xkb_compose: Mutex::new(<span class="prelude-val">None</span>),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+            <span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
             </span>repeat_data: Arc::new(Mutex::new(<span class="prelude-val">None</span>)),
             focus: Mutex::new(<span class="prelude-val">None</span>),
             _phantom_data: PhantomData,
@@ -1278,13 +1279,13 @@
     <span class="kw">fn </span>init_compose(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">let </span>xkb_context = <span class="self">self</span>.xkb_context.lock().unwrap();
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(locale) = env::var_os(<span class="string">&quot;LC_ALL&quot;</span>)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(locale) = env::var_os(<span class="string">"LC_ALL"</span>)
             .and_then(|v| <span class="kw">if </span>v.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(v) })
-            .or_else(|| env::var_os(<span class="string">&quot;LC_CTYPE&quot;</span>))
+            .or_else(|| env::var_os(<span class="string">"LC_CTYPE"</span>))
             .and_then(|v| <span class="kw">if </span>v.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(v) })
-            .or_else(|| env::var_os(<span class="string">&quot;LANG&quot;</span>))
+            .or_else(|| env::var_os(<span class="string">"LANG"</span>))
             .and_then(|v| <span class="kw">if </span>v.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(v) })
-            .unwrap_or_else(|| <span class="string">&quot;C&quot;</span>.into())
+            .unwrap_or_else(|| <span class="string">"C"</span>.into())
             .to_str()
         {
             <span class="comment">// TODO: Pending new release of xkbcommon to use new_from_locale with OsStr
@@ -1316,12 +1317,12 @@
 }
 
 <span class="kw">pub trait </span>KeyboardDataExt: Send + Sync {
-    <span class="kw">type </span>State: <span class="lifetime">&#39;static</span>;
+    <span class="kw">type </span>State: <span class="lifetime">'static</span>;
     <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData&lt;<span class="self">Self</span>::State&gt;;
     <span class="kw">fn </span>keyboard_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>KeyboardData&lt;<span class="self">Self</span>::State&gt;;
 }
 
-<span class="kw">impl</span>&lt;T: <span class="lifetime">&#39;static</span>&gt; KeyboardDataExt <span class="kw">for </span>KeyboardData&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: <span class="lifetime">'static</span>&gt; KeyboardDataExt <span class="kw">for </span>KeyboardData&lt;T&gt; {
     <span class="doccomment">/// The type of the user defined state
     </span><span class="kw">type </span>State = T;
     <span class="kw">fn </span>keyboard_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyboardData&lt;T&gt; {
@@ -1367,7 +1368,7 @@
                 <span class="kw">match </span>format {
                     WEnum::Value(format) =&gt; <span class="kw">match </span>format {
                         wl_keyboard::KeymapFormat::NoKeymap =&gt; {
-                            <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;non-xkb compatible keymap&quot;</span>);
+                            <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"non-xkb compatible keymap"</span>);
                         }
 
                         wl_keyboard::KeymapFormat::XkbV1 =&gt; {
@@ -1406,11 +1407,11 @@
                                 }
 
                                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
-                                    <span class="macro">log::error!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;invalid keymap&quot;</span>);
+                                    <span class="macro">log::error!</span>(target: <span class="string">"sctk"</span>, <span class="string">"invalid keymap"</span>);
                                 }
 
                                 <span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="macro">log::error!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}&quot;</span>, err);
+                                    <span class="macro">log::error!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}"</span>, err);
                                 }
                             }
                         }
@@ -1419,7 +1420,7 @@
                     },
 
                     WEnum::Unknown(value) =&gt; {
-                        <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown keymap format 0x{:x}&quot;</span>, value)
+                        <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"unknown keymap format 0x{:x}"</span>, value)
                     }
                 }
             }
@@ -1463,7 +1464,7 @@
             wl_keyboard::Event::Leave { serial, surface } =&gt; {
                 <span class="comment">// We can send this event without any other checks in the protocol will guarantee a leave is
                 // sent before entering a new surface.
-                </span><span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                </span><span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
                 </span>{
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
                         repeat_data.current_repeat.take();
@@ -1511,7 +1512,7 @@
 
                         <span class="kw">match </span>state {
                             wl_keyboard::KeyState::Released =&gt; {
-                                <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                                <span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
                                 </span>{
                                     <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) =
                                         udata.repeat_data.lock().unwrap().as_mut()
@@ -1530,7 +1531,7 @@
                             }
 
                             wl_keyboard::KeyState::Pressed =&gt; {
-                                <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                                <span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
                                 </span>{
                                     <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) =
                                         udata.repeat_data.lock().unwrap().as_mut()
@@ -1557,7 +1558,7 @@
                                                 .unwrap()
                                                 .as_ref()
                                                 .cloned()
-                                                .expect(<span class="string">&quot;wl_keyboard::key with no focused surface&quot;</span>);
+                                                .expect(<span class="string">"wl_keyboard::key with no focused surface"</span>);
 
                                             <span class="comment">// Update the current repeat key.
                                             </span>repeat_data.current_repeat.replace(RepeatedKey {
@@ -1625,7 +1626,7 @@
                 }
 
                 WEnum::Unknown(unknown) =&gt; {
-                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: compositor sends invalid key state: {:x}&quot;</span>, keyboard.id(), unknown);
+                    <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}: compositor sends invalid key state: {:x}"</span>, keyboard.id(), unknown);
                 }
             },
 
@@ -1647,7 +1648,7 @@
                 </span><span class="kw">let _ </span>= state.update_mask(mods_depressed, mods_latched, mods_locked, <span class="number">0</span>, <span class="number">0</span>, group);
 
                 <span class="comment">// Update the currently repeating key if any.
-                </span><span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                </span><span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>event) = repeat_data.current_repeat.take() {
                         <span class="comment">// Apply new modifiers to get new utf8.
@@ -1697,7 +1698,7 @@
                     RepeatInfo::Disable
                 };
 
-                <span class="attr">#[cfg(feature = <span class="string">&quot;calloop&quot;</span>)]
+                <span class="attr">#[cfg(feature = <span class="string">"calloop"</span>)]
                 </span>{
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
                         repeat_data.repeat_info = info;

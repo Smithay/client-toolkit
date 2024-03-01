@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/output.rs`."><title>output.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/output.rs`."><title>output.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -861,10 +862,10 @@
 
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>OutputState {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
-        fmt.debug_struct(<span class="string">&quot;OutputState&quot;</span>)
-            .field(<span class="string">&quot;xdg&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.xdg)
-            .field(<span class="string">&quot;outputs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.outputs)
-            .field(<span class="string">&quot;callbacks&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.callbacks.len())
+        fmt.debug_struct(<span class="string">"OutputState"</span>)
+            .field(<span class="string">"xdg"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.xdg)
+            .field(<span class="string">"outputs"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.outputs)
+            .field(<span class="string">"callbacks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.callbacks.len())
             .finish()
     }
 }
@@ -873,7 +874,7 @@
 
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>ScaleWatcherHandle {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
-        fmt.debug_struct(<span class="string">&quot;ScaleWatcherHandle&quot;</span>).finish_non_exhaustive()
+        fmt.debug_struct(<span class="string">"ScaleWatcherHandle"</span>).finish_non_exhaustive()
     }
 }
 
@@ -882,7 +883,7 @@
         D: Dispatch&lt;wl_output::WlOutput, OutputData&gt;
             + Dispatch&lt;zxdg_output_v1::ZxdgOutputV1, OutputData&gt;
             + Dispatch&lt;zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData&gt;
-            + <span class="lifetime">&#39;static</span>,
+            + <span class="lifetime">'static</span>,
     &gt;(
         global_list: <span class="kw-2">&amp;</span>GlobalList,
         qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
@@ -895,7 +896,7 @@
                 <span class="number">1</span>..=<span class="number">4</span>,
                 OutputData::new,
             )
-            .expect(<span class="string">&quot;Failed to bind global&quot;</span>);
+            .expect(<span class="string">"Failed to bind global"</span>);
             <span class="kw">let </span>xdg =
                 <span class="kw">crate</span>::registry::bind_one(global_list.registry(), globals, qh, <span class="number">1</span>..=<span class="number">3</span>, GlobalData)
                     .into();
@@ -927,8 +928,8 @@
 
     <span class="kw">pub fn </span>add_scale_watcher&lt;F, D&gt;(data: <span class="kw-2">&amp;mut </span>D, f: F) -&gt; ScaleWatcherHandle
     <span class="kw">where
-        </span>D: OutputHandler + <span class="lifetime">&#39;static</span>,
-        F: Fn(<span class="kw-2">&amp;mut </span>D, <span class="kw-2">&amp;</span>Connection, <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;, <span class="kw-2">&amp;</span>wl_output::WlOutput) + Send + Sync + <span class="lifetime">&#39;static</span>,
+        </span>D: OutputHandler + <span class="lifetime">'static</span>,
+        F: Fn(<span class="kw-2">&amp;mut </span>D, <span class="kw-2">&amp;</span>Connection, <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;, <span class="kw-2">&amp;</span>wl_output::WlOutput) + Send + Sync + <span class="lifetime">'static</span>,
     {
         <span class="kw">let </span>state = data.output_state();
         <span class="kw">let </span>rv = ScaleWatcherHandle(Arc::new(<span class="kw">move </span>|data, conn, qh, output| {
@@ -943,7 +944,7 @@
 
     <span class="kw">fn </span>setup&lt;D&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, wl_output: wl_output::WlOutput, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;)
     <span class="kw">where
-        </span>D: Dispatch&lt;zxdg_output_v1::ZxdgOutputV1, OutputData&gt; + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;zxdg_output_v1::ZxdgOutputV1, OutputData&gt; + <span class="lifetime">'static</span>,
     {
         <span class="kw">let </span>data = wl_output.data::&lt;OutputData&gt;().unwrap().clone();
 
@@ -1036,18 +1037,18 @@
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>Mode {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">if </span><span class="self">self</span>.current {
-            <span class="macro">write!</span>(f, <span class="string">&quot;(current) &quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">"(current) "</span>)<span class="question-mark">?</span>;
         }
 
         <span class="kw">if </span><span class="self">self</span>.preferred {
-            <span class="macro">write!</span>(f, <span class="string">&quot;(preferred) &quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">"(preferred) "</span>)<span class="question-mark">?</span>;
         }
 
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;{}×{}px @ {}.{:03} Hz&quot;</span>,
+            <span class="string">"{}×{}px @ {}.{:03} Hz"</span>,
             <span class="self">self</span>.dimensions.<span class="number">0</span>,
             <span class="self">self</span>.dimensions.<span class="number">1</span>,
             <span class="comment">// Print the refresh rate in hertz since it is more familiar unit.
@@ -1115,7 +1116,7 @@
 
     <span class="doccomment">/// The name of the this output as advertised by the surface.
     ///
-    /// Examples of names include &#39;HDMI-A-1&#39;, &#39;WL-1&#39;, &#39;X11-1&#39;, etc. However, do not assume that the name is a
+    /// Examples of names include 'HDMI-A-1', 'WL-1', 'X11-1', etc. However, do not assume that the name is a
     /// reflection of an underlying DRM connector, X11 connection, etc.
     ///
     /// Compositors are not required to provide a name for the output and the value may be [`None`].
@@ -1127,8 +1128,8 @@
     <span class="doccomment">/// The description of this output as advertised by the server
     ///
     /// The description is a UTF-8 string with no convention defined for its contents. The description is not
-    /// guaranteed to be unique among all wl_output globals. Examples might include &#39;Foocorp 11&quot; Display&#39; or
-    /// &#39;Virtual X11 output via :1&#39;.
+    /// guaranteed to be unique among all wl_output globals. Examples might include 'Foocorp 11" Display' or
+    /// 'Virtual X11 output via :1'.
     ///
     /// Compositors are not required to provide a description of the output and the value may be [`None`].
     ///
@@ -1154,7 +1155,7 @@
 
 <span class="kw">impl</span>&lt;D&gt; Dispatch&lt;wl_output::WlOutput, OutputData, D&gt; <span class="kw">for </span>OutputState
 <span class="kw">where
-    </span>D: Dispatch&lt;wl_output::WlOutput, OutputData&gt; + OutputHandler + <span class="lifetime">&#39;static</span>,
+    </span>D: Dispatch&lt;wl_output::WlOutput, OutputData&gt; + OutputHandler + <span class="lifetime">'static</span>,
 {
     <span class="kw">fn </span>event(
         state: <span class="kw-2">&amp;mut </span>D,
@@ -1169,7 +1170,7 @@
             .outputs
             .iter_mut()
             .find(|inner| <span class="kw-2">&amp;</span>inner.wl_output == output)
-            .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
+            .expect(<span class="string">"Received event for dead output"</span>);
 
         <span class="kw">match </span>event {
             wl_output::Event::Geometry {
@@ -1186,13 +1187,13 @@
                 inner.pending_info.physical_size = (physical_width, physical_height);
                 inner.pending_info.subpixel = <span class="kw">match </span>subpixel {
                     WEnum::Value(subpixel) =&gt; subpixel,
-                    WEnum::Unknown(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;Warn about invalid subpixel value&quot;</span>),
+                    WEnum::Unknown(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"Warn about invalid subpixel value"</span>),
                 };
                 inner.pending_info.make = make;
                 inner.pending_info.model = model;
                 inner.pending_info.transform = <span class="kw">match </span>transform {
                     WEnum::Value(subpixel) =&gt; subpixel,
-                    WEnum::Unknown(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;Warn about invalid transform value&quot;</span>),
+                    WEnum::Unknown(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"Warn about invalid transform value"</span>),
                 };
                 inner.pending_wl = <span class="bool-val">true</span>;
             }
@@ -1205,13 +1206,13 @@
 
                 <span class="kw">let </span>flags = <span class="kw">match </span>flags {
                     WEnum::Value(flags) =&gt; flags,
-                    WEnum::Unknown(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid flags&quot;</span>),
+                    WEnum::Unknown(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Invalid flags"</span>),
                 };
 
                 <span class="kw">let </span>current = flags.contains(wl_output::Mode::Current);
                 <span class="kw">let </span>preferred = flags.contains(wl_output::Mode::Preferred);
 
-                <span class="comment">// Any mode that isn&#39;t current is deprecated, let&#39;s deprecate any existing modes that may be
+                <span class="comment">// Any mode that isn't current is deprecated, let's deprecate any existing modes that may be
                 // marked as current.
                 //
                 // If a new mode is advertised as preferred, then mark the existing preferred mode as not.
@@ -1261,7 +1262,7 @@
                 <span class="comment">// Set the user data, see if we need to run scale callbacks
                 </span><span class="kw">let </span>run_callbacks = data.set(info);
 
-                <span class="comment">// Don&#39;t call `new_output` until we have xdg output info
+                <span class="comment">// Don't call `new_output` until we have xdg output info
                 </span><span class="kw">if </span>!inner.pending_xdg {
                     <span class="kw">if </span>inner.just_created {
                         inner.just_created = <span class="bool-val">false</span>;
@@ -1298,7 +1299,7 @@
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;,
     ) {
-        <span class="macro">unreachable!</span>(<span class="string">&quot;zxdg_output_manager_v1 has no events&quot;</span>)
+        <span class="macro">unreachable!</span>(<span class="string">"zxdg_output_manager_v1 has no events"</span>)
     }
 }
 
@@ -1319,7 +1320,7 @@
             .outputs
             .iter_mut()
             .find(|inner| inner.xdg_output.as_ref() == <span class="prelude-val">Some</span>(output))
-            .expect(<span class="string">&quot;Received event for dead output&quot;</span>);
+            .expect(<span class="string">"Received event for dead output"</span>);
 
         <span class="comment">// zxdg_output_v1::done is deprecated in version 3. So we only need
         // to wait for wl_output::done, once we get any xdg output info.
@@ -1398,7 +1399,7 @@
         + Dispatch&lt;zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData&gt;
         + OutputHandler
         + ProvidesRegistryState
-        + <span class="lifetime">&#39;static</span>,
+        + <span class="lifetime">'static</span>,
 {
     <span class="kw">fn </span>new_global(
         data: <span class="kw-2">&amp;mut </span>D,
@@ -1408,11 +1409,11 @@
         interface: <span class="kw-2">&amp;</span>str,
         _version: u32,
     ) {
-        <span class="kw">if </span>interface == <span class="string">&quot;wl_output&quot; </span>{
+        <span class="kw">if </span>interface == <span class="string">"wl_output" </span>{
             <span class="kw">let </span>output = data
                 .registry()
                 .bind_specific(qh, name, <span class="number">1</span>..=<span class="number">4</span>, OutputData::new(name))
-                .expect(<span class="string">&quot;Failed to bind global&quot;</span>);
+                .expect(<span class="string">"Failed to bind global"</span>);
             data.output_state().setup(output, qh);
         }
     }
@@ -1424,13 +1425,13 @@
         name: u32,
         interface: <span class="kw-2">&amp;</span>str,
     ) {
-        <span class="kw">if </span>interface == <span class="string">&quot;wl_output&quot; </span>{
+        <span class="kw">if </span>interface == <span class="string">"wl_output" </span>{
             <span class="kw">let </span>output = data
                 .output_state()
                 .outputs
                 .iter()
                 .position(|o| o.name == name)
-                .expect(<span class="string">&quot;Removed non-existing output&quot;</span>);
+                .expect(<span class="string">"Removed non-existing output"</span>);
 
             <span class="kw">let </span>wl_output = data.output_state().outputs[output].wl_output.clone();
             data.output_destroyed(conn, qh, wl_output);

@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/pointer/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/seat/pointer/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -671,9 +672,9 @@
 </span><span class="kw">pub const </span>BTN_LEFT: u32 = <span class="number">0x110</span>;
 <span class="kw">pub const </span>BTN_RIGHT: u32 = <span class="number">0x111</span>;
 <span class="kw">pub const </span>BTN_MIDDLE: u32 = <span class="number">0x112</span>;
-<span class="doccomment">/// The fourth non-scroll button, which is often used as &quot;back&quot; in web browsers.
+<span class="doccomment">/// The fourth non-scroll button, which is often used as "back" in web browsers.
 </span><span class="kw">pub const </span>BTN_SIDE: u32 = <span class="number">0x113</span>;
-<span class="doccomment">/// The fifth non-scroll button, which is often used as &quot;forward&quot; in web browsers.
+<span class="doccomment">/// The fifth non-scroll button, which is often used as "forward" in web browsers.
 </span><span class="kw">pub const </span>BTN_EXTRA: u32 = <span class="number">0x114</span>;
 
 <span class="doccomment">/// See also [`BTN_EXTRA`].
@@ -905,7 +906,7 @@
                         PointerEventKind::Release { time, button, serial }
                     }
                     WEnum::Unknown(unknown) =&gt; {
-                        <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer button state: {:x}&quot;</span>, pointer.id(), unknown);
+                        <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}: invalid pointer button state: {:x}"</span>, pointer.id(), unknown);
                         <span class="kw">return</span>;
                     }
                     <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
@@ -928,7 +929,7 @@
                     PointerEventKind::Axis { time, horizontal, vertical, source: <span class="prelude-val">None </span>}
                 }
                 WEnum::Unknown(unknown) =&gt; {
-                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, pointer.id(), unknown);
+                    <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}: invalid pointer axis: {:x}"</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
             },
@@ -941,7 +942,7 @@
                     time: <span class="number">0</span>,
                 },
                 WEnum::Unknown(unknown) =&gt; {
-                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;unknown pointer axis source: {:x}&quot;</span>, unknown);
+                    <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"unknown pointer axis source: {:x}"</span>, unknown);
                     <span class="kw">return</span>;
                 }
             },
@@ -960,7 +961,7 @@
                 }
 
                 WEnum::Unknown(unknown) =&gt; {
-                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, pointer.id(), unknown);
+                    <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}: invalid pointer axis: {:x}"</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
             },
@@ -984,7 +985,7 @@
                 }
 
                 WEnum::Unknown(unknown) =&gt; {
-                    <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: invalid pointer axis: {:x}&quot;</span>, pointer.id(), unknown);
+                    <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}: invalid pointer axis: {:x}"</span>, pointer.id(), unknown);
                     <span class="kw">return</span>;
                 }
             },
@@ -1005,7 +1006,7 @@
             (<span class="prelude-val">Some</span>(surface), <span class="kw">_</span>) =&gt; surface,
             (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(surface)) =&gt; surface.clone(),
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; {
-                <span class="macro">log::warn!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;{}: got pointer event {:?} without an entered surface&quot;</span>, pointer.id(), kind);
+                <span class="macro">log::warn!</span>(target: <span class="string">"sctk"</span>, <span class="string">"{}: got pointer event {:?} without an entered surface"</span>, pointer.id(), kind);
                 <span class="kw">return</span>;
             }
         };
@@ -1032,7 +1033,7 @@
                 },
             ) = (guard.pending.last_mut(), <span class="kw-2">&amp;</span>event)
             {
-                <span class="comment">// A time of 0 is &quot;don&#39;t know&quot;, so avoid using it if possible.
+                <span class="comment">// A time of 0 is "don't know", so avoid using it if possible.
                 </span><span class="kw">if </span><span class="kw-2">*</span>ot == <span class="number">0 </span>{
                     <span class="kw-2">*</span>ot = <span class="kw-2">*</span>nt;
                 }
@@ -1061,7 +1062,7 @@
     <span class="kw">pub</span>(<span class="kw">super</span>) _surface_data: std::marker::PhantomData&lt;S&gt;,
 }
 
-<span class="kw">impl</span>&lt;U: PointerDataExt + <span class="lifetime">&#39;static</span>, S: SurfaceDataExt + <span class="lifetime">&#39;static</span>&gt; ThemedPointer&lt;U, S&gt; {
+<span class="kw">impl</span>&lt;U: PointerDataExt + <span class="lifetime">'static</span>, S: SurfaceDataExt + <span class="lifetime">'static</span>&gt; ThemedPointer&lt;U, S&gt; {
     <span class="doccomment">/// Set the cursor to the given [`CursorIcon`].
     ///
     /// The cursor icon should be reloaded on every [`PointerEventKind::Enter`] event.
@@ -1113,7 +1114,7 @@
                     </span><span class="self">self</span>.surface.damage(<span class="number">0</span>, <span class="number">0</span>, w <span class="kw">as </span>i32 / scale, h <span class="kw">as </span>i32 / scale);
                 }
 
-                <span class="comment">// Commit the surface to place the cursor image in the compositor&#39;s memory.
+                <span class="comment">// Commit the surface to place the cursor image in the compositor's memory.
                 </span><span class="self">self</span>.surface.commit();
 
                 <span class="comment">// Set the pointer surface to change the pointer.
@@ -1170,11 +1171,11 @@
 
 <span class="doccomment">/// Specifies which cursor theme should be used by the theme manager.
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>ThemeSpec&lt;<span class="lifetime">&#39;a</span>&gt; {
+</span><span class="kw">pub enum </span>ThemeSpec&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Use this specific theme with the given base size.
     </span>Named {
         <span class="doccomment">/// Name of the cursor theme.
-        </span>name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str,
+        </span>name: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
 
         <span class="doccomment">/// Base size of the cursor names.
         ///
@@ -1191,7 +1192,7 @@
     </span>System,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Default <span class="kw">for </span>ThemeSpec&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Default <span class="kw">for </span>ThemeSpec&lt;<span class="lifetime">'a</span>&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::System
     }
@@ -1201,19 +1202,19 @@
 </span><span class="attr">#[derive(Debug, thiserror::Error)]
 </span><span class="kw">pub enum </span>PointerThemeError {
     <span class="doccomment">/// An invalid ObjectId was used.
-    </span><span class="attr">#[error(<span class="string">&quot;Invalid ObjectId&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Invalid ObjectId"</span>)]
     </span>InvalidId(InvalidId),
 
     <span class="doccomment">/// A global error occurred.
-    </span><span class="attr">#[error(<span class="string">&quot;A Global Error occured&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"A Global Error occured"</span>)]
     </span>GlobalError(GlobalError),
 
     <span class="doccomment">/// The requested cursor was not found.
-    </span><span class="attr">#[error(<span class="string">&quot;Cursor not found&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Cursor not found"</span>)]
     </span>CursorNotFound,
 
     <span class="doccomment">/// There has been no enter event yet for the pointer.
-    </span><span class="attr">#[error(<span class="string">&quot;Missing enter event serial&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"Missing enter event serial"</span>)]
     </span>MissingEnterSerial,
 }
 
@@ -1236,8 +1237,8 @@
         <span class="kw">let </span>(name, size) = <span class="kw">match </span>spec {
             ThemeSpec::Named { name, size } =&gt; (name.into(), size),
             ThemeSpec::System =&gt; {
-                <span class="kw">let </span>name = env::var(<span class="string">&quot;XCURSOR_THEME&quot;</span>).ok().unwrap_or_else(|| <span class="string">&quot;default&quot;</span>.into());
-                <span class="kw">let </span>size = env::var(<span class="string">&quot;XCURSOR_SIZE&quot;</span>).ok().and_then(|s| s.parse().ok()).unwrap_or(<span class="number">24</span>);
+                <span class="kw">let </span>name = env::var(<span class="string">"XCURSOR_THEME"</span>).ok().unwrap_or_else(|| <span class="string">"default"</span>.into());
+                <span class="kw">let </span>size = env::var(<span class="string">"XCURSOR_SIZE"</span>).ok().and_then(|s| s.parse().ok()).unwrap_or(<span class="number">24</span>);
                 (name, size)
             }
         };

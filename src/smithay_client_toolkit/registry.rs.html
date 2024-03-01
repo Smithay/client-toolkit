@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/registry.rs`."><title>registry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/registry.rs`."><title>registry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -584,10 +585,10 @@
 //!     D: Dispatch&lt;wl_output::WlOutput, ()&gt;
 //!         // ProvidesRegistryState provides a function to access the RegistryState within the impl.
 //!         + ProvidesRegistryState
-//!         // We need some way to access our part of the application&#39;s state.  This uses AsMut,
+//!         // We need some way to access our part of the application's state.  This uses AsMut,
 //!         // but you may prefer to create your own trait to avoid making .as_mut() ambiguous.
 //!         + AsMut&lt;Delegate&gt;
-//!         + &#39;static,
+//!         + 'static,
 //! {
 //!   /// New global added after initial enumeration.
 //!    fn new_global(
@@ -598,7 +599,7 @@
 //!        interface: &amp;str,
 //!        version: u32,
 //!    ) {
-//!         if interface == &quot;wl_output&quot; {
+//!         if interface == "wl_output" {
 //!             // Bind `wl_output` with newest version from 1 to 4 the compositor supports
 //!             let output = data.registry().bind_specific(qh, name, 1..=4, ()).unwrap();
 //!             data.as_mut().outputs.push(output);
@@ -619,7 +620,7 @@
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
-<span class="doccomment">/// A trait implemented by modular parts of a smithay&#39;s client toolkit and protocol delegates that may be used
+<span class="doccomment">/// A trait implemented by modular parts of a smithay's client toolkit and protocol delegates that may be used
 /// to receive notification of a global being created or destroyed.
 ///
 /// Delegates that choose to implement this trait may be used in [`registry_handlers`] which
@@ -668,7 +669,7 @@
 <span class="doccomment">/// Trait which asserts a data type may provide a mutable reference to the registry state.
 ///
 /// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
-/// to access the registry utilities provided by Smithay&#39;s client toolkit.
+/// to access the registry utilities provided by Smithay's client toolkit.
 </span><span class="kw">pub trait </span>ProvidesRegistryState: Sized {
     <span class="doccomment">/// Returns a mutable reference to the registry state.
     </span><span class="kw">fn </span>registry(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>RegistryState;
@@ -695,7 +696,7 @@
     );
 }
 
-<span class="doccomment">/// State object associated with the registry handling for smithay&#39;s client toolkit.
+<span class="doccomment">/// State object associated with the registry handling for smithay's client toolkit.
 ///
 /// This object provides utilities to cache bound globals that are needed by multiple modules.
 </span><span class="attr">#[derive(Debug)]
@@ -725,17 +726,17 @@
     /// enumeration.
     ///
     /// No guarantees are provided about the ordering of the globals in this iterator.
-    </span><span class="kw">pub fn </span>globals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Global&gt; + <span class="lifetime">&#39;_ </span>{
+    </span><span class="kw">pub fn </span>globals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Global&gt; + <span class="lifetime">'_ </span>{
         <span class="self">self</span>.globals.iter()
     }
 
     <span class="doccomment">/// Returns an iterator over all globals implementing the given interface.
     ///
     /// This may be more efficient than searching [Self::globals].
-    </span><span class="kw">pub fn </span>globals_by_interface&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
-        interface: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str,
-    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Global&gt; + <span class="lifetime">&#39;a </span>{
+    </span><span class="kw">pub fn </span>globals_by_interface&lt;<span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
+        interface: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
+    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Global&gt; + <span class="lifetime">'a </span>{
         <span class="self">self</span>.globals.iter().filter(<span class="kw">move </span>|g| g.interface == interface)
     }
 
@@ -750,9 +751,9 @@
         udata: U,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;I, BindError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
-        I: Proxy + <span class="lifetime">&#39;static</span>,
-        U: Send + Sync + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">'static</span>,
+        I: Proxy + <span class="lifetime">'static</span>,
+        U: Send + Sync + <span class="lifetime">'static</span>,
     {
         bind_one(<span class="kw-2">&amp;</span><span class="self">self</span>.registry, <span class="kw-2">&amp;</span><span class="self">self</span>.globals, qh, version, udata)
     }
@@ -769,14 +770,14 @@
         udata: U,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;I, BindError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
-        I: Proxy + <span class="lifetime">&#39;static</span>,
-        U: Send + Sync + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">'static</span>,
+        I: Proxy + <span class="lifetime">'static</span>,
+        U: Send + Sync + <span class="lifetime">'static</span>,
     {
         <span class="kw">let </span>iface = I::interface();
         <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
-            <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
-            </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+            <span class="comment">// This is a panic because it's a compile-time programmer error, not a runtime error.
+            </span><span class="macro">panic!</span>(<span class="string">"Maximum version ({}) was higher than the proxy's maximum version ({}); outdated wayland XML files?"</span>,
                 version.end(), iface.version);
         }
         <span class="comment">// Optimize for runtime_add_global which will use the last entry
@@ -789,7 +790,7 @@
             }
             <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
             <span class="kw">let </span>proxy = <span class="self">self</span>.registry.bind(global.name, version, qh, udata);
-            <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
+            <span class="macro">log::debug!</span>(target: <span class="string">"sctk"</span>, <span class="string">"Bound new global [{}] {} v{}"</span>, global.name, iface.name, version);
 
             <span class="kw">return </span><span class="prelude-val">Ok</span>(proxy);
         }
@@ -804,10 +805,10 @@
         make_udata: F,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;I&gt;, BindError&gt;
     <span class="kw">where
-        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
-        I: Proxy + <span class="lifetime">&#39;static</span>,
+        </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">'static</span>,
+        I: Proxy + <span class="lifetime">'static</span>,
         F: FnMut(u32) -&gt; U,
-        U: Send + Sync + <span class="lifetime">&#39;static</span>,
+        U: Send + Sync + <span class="lifetime">'static</span>,
     {
         bind_all(<span class="kw-2">&amp;</span><span class="self">self</span>.registry, <span class="kw-2">&amp;</span><span class="self">self</span>.globals, qh, version, make_udata)
     }
@@ -875,7 +876,7 @@
                 }
             }
 
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;wl_registry is frozen&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"wl_registry is frozen"</span>),
         }
     }
 }
@@ -929,10 +930,10 @@
     proxy: GlobalProxy&lt;I&gt;,
 }
 
-<span class="kw">impl</span>&lt;I: Proxy + <span class="lifetime">&#39;static</span>, <span class="kw">const </span>MAX_VERSION: u32&gt; SimpleGlobal&lt;I, MAX_VERSION&gt; {
+<span class="kw">impl</span>&lt;I: Proxy + <span class="lifetime">'static</span>, <span class="kw">const </span>MAX_VERSION: u32&gt; SimpleGlobal&lt;I, MAX_VERSION&gt; {
     <span class="kw">pub fn </span>bind&lt;State&gt;(globals: <span class="kw-2">&amp;</span>GlobalList, qh: <span class="kw-2">&amp;</span>QueueHandle&lt;State&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, BindError&gt;
     <span class="kw">where
-        </span>State: Dispatch&lt;I, (), State&gt; + <span class="lifetime">&#39;static</span>,
+        </span>State: Dispatch&lt;I, (), State&gt; + <span class="lifetime">'static</span>,
     {
         <span class="kw">let </span>proxy = globals.bind(qh, <span class="number">0</span>..=MAX_VERSION, ())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ proxy: GlobalProxy::Bound(proxy) })
@@ -961,7 +962,7 @@
     I: Proxy,
 {
     <span class="kw">fn </span>event(<span class="kw">_</span>: <span class="kw-2">&amp;mut </span>D, <span class="kw">_</span>: <span class="kw-2">&amp;</span>I, <span class="kw">_</span>: &lt;I <span class="kw">as </span>Proxy&gt;::Event, <span class="kw">_</span>: <span class="kw-2">&amp;</span>(), <span class="kw">_</span>: <span class="kw-2">&amp;</span>Connection, <span class="kw">_</span>: <span class="kw-2">&amp;</span>QueueHandle&lt;D&gt;) {
-        <span class="macro">unreachable!</span>(<span class="string">&quot;SimpleGlobal is not suitable for {} which has events&quot;</span>, I::interface().name);
+        <span class="macro">unreachable!</span>(<span class="string">"SimpleGlobal is not suitable for {} which has events"</span>, I::interface().name);
     }
 }
 
@@ -974,15 +975,15 @@
     <span class="kw-2">mut </span>make_udata: F,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;I&gt;, BindError&gt;
 <span class="kw">where
-    </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
-    I: Proxy + <span class="lifetime">&#39;static</span>,
+    </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">'static</span>,
+    I: Proxy + <span class="lifetime">'static</span>,
     F: FnMut(u32) -&gt; U,
-    U: Send + Sync + <span class="lifetime">&#39;static</span>,
+    U: Send + Sync + <span class="lifetime">'static</span>,
 {
     <span class="kw">let </span>iface = I::interface();
     <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
-        <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
-        </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+        <span class="comment">// This is a panic because it's a compile-time programmer error, not a runtime error.
+        </span><span class="macro">panic!</span>(<span class="string">"Maximum version ({}) was higher than the proxy's maximum version ({}); outdated wayland XML files?"</span>,
             version.end(), iface.version);
     }
     <span class="kw">let </span><span class="kw-2">mut </span>rv = Vec::new();
@@ -996,7 +997,7 @@
         <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
         <span class="kw">let </span>udata = make_udata(global.name);
         <span class="kw">let </span>proxy = registry.bind(global.name, version, qh, udata);
-        <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
+        <span class="macro">log::debug!</span>(target: <span class="string">"sctk"</span>, <span class="string">"Bound new global [{}] {} v{}"</span>, global.name, iface.name, version);
 
         rv.push(proxy);
     }
@@ -1012,20 +1013,20 @@
     udata: U,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;I, BindError&gt;
 <span class="kw">where
-    </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">&#39;static</span>,
-    I: Proxy + <span class="lifetime">&#39;static</span>,
-    U: Send + Sync + <span class="lifetime">&#39;static</span>,
+    </span>D: Dispatch&lt;I, U&gt; + <span class="lifetime">'static</span>,
+    I: Proxy + <span class="lifetime">'static</span>,
+    U: Send + Sync + <span class="lifetime">'static</span>,
 {
     <span class="kw">let </span>iface = I::interface();
     <span class="kw">if </span><span class="kw-2">*</span>version.end() &gt; iface.version {
-        <span class="comment">// This is a panic because it&#39;s a compile-time programmer error, not a runtime error.
-        </span><span class="macro">panic!</span>(<span class="string">&quot;Maximum version ({}) of {} was higher than the proxy&#39;s maximum version ({}); outdated wayland XML files?&quot;</span>,
+        <span class="comment">// This is a panic because it's a compile-time programmer error, not a runtime error.
+        </span><span class="macro">panic!</span>(<span class="string">"Maximum version ({}) of {} was higher than the proxy's maximum version ({}); outdated wayland XML files?"</span>,
             version.end(), iface.name, iface.version);
     }
     <span class="kw">if </span><span class="kw-2">*</span>version.end() &lt; iface.version {
         <span class="comment">// This is a reminder to evaluate the new API and bump the maximum in order to be able
         // to use new APIs.  Actual use of new APIs still needs runtime version checks.
-        </span><span class="macro">log::trace!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Version {} of {} is available; binding is currently limited to {}&quot;</span>, iface.version, iface.name, version.end());
+        </span><span class="macro">log::trace!</span>(target: <span class="string">"sctk"</span>, <span class="string">"Version {} of {} is available; binding is currently limited to {}"</span>, iface.version, iface.name, version.end());
     }
     <span class="kw">for </span>global <span class="kw">in </span>globals {
         <span class="kw">if </span>global.interface != iface.name {
@@ -1036,7 +1037,7 @@
         }
         <span class="kw">let </span>version = global.version.min(<span class="kw-2">*</span>version.end());
         <span class="kw">let </span>proxy = registry.bind(global.name, version, qh, udata);
-        <span class="macro">log::debug!</span>(target: <span class="string">&quot;sctk&quot;</span>, <span class="string">&quot;Bound new global [{}] {} v{}&quot;</span>, global.name, iface.name, version);
+        <span class="macro">log::debug!</span>(target: <span class="string">"sctk"</span>, <span class="string">"Bound new global [{}] {} v{}"</span>, global.name, iface.name, version);
 
         <span class="kw">return </span><span class="prelude-val">Ok</span>(proxy);
     }

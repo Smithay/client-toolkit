@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/data_device_manager/data_offer.rs`."><title>data_offer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/data_device_manager/data_offer.rs`."><title>data_offer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -517,10 +518,10 @@
 <span class="doccomment">/// An error that may occur when working with data offers.
 </span><span class="attr">#[derive(Debug, thiserror::Error)]
 </span><span class="kw">pub enum </span>DataOfferError {
-    <span class="attr">#[error(<span class="string">&quot;offer is not valid to receive from yet&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"offer is not valid to receive from yet"</span>)]
     </span>InvalidReceive,
 
-    <span class="attr">#[error(<span class="string">&quot;IO error&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"IO error"</span>)]
     </span>Io(std::io::Error),
 }
 
@@ -528,7 +529,7 @@
 </span><span class="kw">pub struct </span>DragOffer {
     <span class="doccomment">/// the wl_data offer if it exists
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) data_offer: WlDataOffer,
-    <span class="doccomment">/// the serial for this data offer&#39;s enter event
+    <span class="doccomment">/// the serial for this data offer's enter event
     </span><span class="kw">pub </span>serial: u32,
     <span class="doccomment">/// the surface that this DnD is active on
     </span><span class="kw">pub </span>surface: WlSurface,
@@ -575,16 +576,16 @@
     /// This request may happen multiple times for different mime types, both before and after wl_data_device.drop.
     /// Drag-and-drop destination clients may preemptively fetch data or examine it more closely to determine acceptance.
     </span><span class="kw">pub fn </span>receive(<span class="kw-2">&amp;</span><span class="self">self</span>, mime_type: String) -&gt; std::io::Result&lt;ReadPipe&gt; {
-        <span class="comment">// When the data device has left, we can&#39;t receive unless it was previously dropped.
+        <span class="comment">// When the data device has left, we can't receive unless it was previously dropped.
         </span><span class="kw">if </span>!<span class="self">self</span>.left || <span class="self">self</span>.dropped {
             receive(<span class="kw-2">&amp;</span><span class="self">self</span>.data_offer, mime_type)
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::Other, <span class="string">&quot;offer has left&quot;</span>))
+            <span class="prelude-val">Err</span>(std::io::Error::new(std::io::ErrorKind::Other, <span class="string">"offer has left"</span>))
         }
     }
 
     <span class="doccomment">/// Accept the given mime type, or None to reject the offer.
-    /// In version 2, this request is used for feedback, but doesn&#39;t affect the final result of the drag-and-drop operation.
+    /// In version 2, this request is used for feedback, but doesn't affect the final result of the drag-and-drop operation.
     /// In version 3, this request determines the final result of the drag-and-drop operation.
     </span><span class="kw">pub fn </span>accept_mime_type(<span class="kw-2">&amp;</span><span class="self">self</span>, serial: u32, mime_type: <span class="prelude-ty">Option</span>&lt;String&gt;) {
         <span class="kw">if </span>!<span class="self">self</span>.left {
@@ -786,7 +787,7 @@
                 !o.dropped
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;DataDeviceOffer::leave called on non-drag offer&quot;</span>);
+                <span class="macro">warn!</span>(<span class="string">"DataDeviceOffer::leave called on non-drag offer"</span>);
                 <span class="bool-val">false
             </span>}
         }
