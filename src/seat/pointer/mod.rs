@@ -215,7 +215,7 @@ pub(crate) struct PointerDataInner {
     /// The serial of the latest enter event for the pointer
     pub(crate) latest_enter: Option<u32>,
 
-    /// The serial of the latest enter event for the pointer
+    /// The serial of the latest button event for the pointer
     pub(crate) latest_btn: Option<u32>,
 }
 

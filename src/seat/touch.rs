@@ -25,12 +25,20 @@ impl TouchData {
     pub fn seat(&self) -> &WlSeat {
         &self.seat
     }
+
+    /// Serial from the latest touch down event.
+    pub fn latest_down_serial(&self) -> Option<u32> {
+        self.inner.lock().unwrap().latest_down
+    }
 }
 
 #[derive(Debug, Default)]
 pub(crate) struct TouchDataInner {
     events: Vec<TouchEvent>,
     active_touch_points: Vec<i32>,
+
+    /// The serial of the latest touch down event
+    latest_down: Option<u32>,
 }
 
 #[macro_export]
@@ -171,7 +179,8 @@ where
 
         match &event {
             // Buffer events until frame is received.
-            TouchEvent::Down { id, .. } => {
+            TouchEvent::Down { serial, id, .. } => {
+                guard.latest_down = Some(*serial);
                 save_event = true;
                 if let Err(insert_pos) = guard.active_touch_points.binary_search(id) {
                     guard.active_touch_points.insert(insert_pos, *id);
