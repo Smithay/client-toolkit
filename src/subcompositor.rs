@@ -42,6 +42,21 @@ impl SubcompositorState {
             self.subcompositor.get_subsurface(&surface, &parent, queue_handle, subsurface_data);
         (subsurface, surface)
     }
+
+    pub fn subsurface_from_surface<State>(
+        &self,
+        surface: &WlSurface,
+        queue_handle: &QueueHandle<State>,
+    ) -> Option<WlSubsurface>
+    where
+        State: Dispatch<WlSurface, SurfaceData> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    {
+        let parent = surface.data::<SurfaceData>().unwrap().parent_surface();
+        let subsurface_data = SubsurfaceData::new(surface.clone());
+        parent.map(|parent| {
+            self.subcompositor.get_subsurface(surface, parent, queue_handle, subsurface_data)
+        })
+    }
 }
 
 impl<D> Dispatch<WlSubsurface, SubsurfaceData, D> for SubcompositorState
