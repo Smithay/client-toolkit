@@ -163,6 +163,12 @@ impl XdgShell {
     pub fn xdg_wm_base(&self) -> &xdg_wm_base::XdgWmBase {
         &self.xdg_wm_base
     }
+
+    pub fn xdg_decoration_manager(
+        &self,
+    ) -> &GlobalProxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1> {
+        &self.xdg_decoration_manager
+    }
 }
 
 /// A trivial wrapper for an [`xdg_positioner::XdgPositioner`].
