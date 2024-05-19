@@ -4,6 +4,7 @@
 
 #### Breaking Changes
 - Updated `calloop` to 0.13.0, `calloop-wayland-source` to `0.3.0`
+- Add `surface_enter`/`surface_leave` methods to `CompositorHandler` trait.
 
 #### Fixed
 
