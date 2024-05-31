@@ -27,8 +27,8 @@ thiserror = "1.0.30"
 wayland-backend = "0.3.0"
 wayland-client = "0.31.1"
 wayland-cursor = "0.31.0"
-wayland-protocols = { version = "0.31.2", features = ["client", "staging", "unstable"] }
-wayland-protocols-wlr = { version = "0.2.0", features = ["client"] }
+wayland-protocols = { version = "0.32.1", features = ["client", "staging", "unstable"] }
+wayland-protocols-wlr = { version = "0.3.1", features = ["client"] }
 wayland-scanner = "0.31.0"
 wayland-csd-frame = "0.3.0"
 
