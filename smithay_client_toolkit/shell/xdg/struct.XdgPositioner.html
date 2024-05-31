@@ -35,7 +35,10 @@ will be placed towards the specified gravity; otherwise, the child
 surface will be centered over the anchor point on any axis that had no
 gravity specified. If the gravity is not in the ‘gravity’ enum, an
 invalid_input error is raised.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.set_constraint_adjustment" class="method"><h4 class="code-header">pub fn <a href="#method.set_constraint_adjustment" class="fn">set_constraint_adjustment</a>(&amp;self, constraint_adjustment: <a class="primitive" href="https://doc.rust-lang.org/1.78.0/std/primitive.u32.html">u32</a>)</h4></section></summary><div class="docblock"><p>set the adjustment to be done when constrained</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.set_constraint_adjustment" class="method"><h4 class="code-header">pub fn <a href="#method.set_constraint_adjustment" class="fn">set_constraint_adjustment</a>(
+    &amp;self,
+    constraint_adjustment: ConstraintAdjustment
+)</h4></section></summary><div class="docblock"><p>set the adjustment to be done when constrained</p>
 <p>Specify how the window should be positioned if the originally intended
 position caused the surface to be constrained, meaning at least
 partially outside positioning boundaries set by the compositor. The
