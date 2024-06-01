@@ -2,13 +2,28 @@
 
 ## Unreleased
 
+## 0.19.0 - 2024-05-31
+
 #### Breaking Changes
-- Updated `calloop` to 0.13.0, `calloop-wayland-source` to `0.3.0`
+- Update `calloop` to 0.13.0, `calloop-wayland-source` to `0.3.0`.
 - Add `surface_enter`/`surface_leave` methods to `CompositorHandler` trait.
+- Require explicit unlock call in SessionLock.
+- Pass layout to `KeyboardHandler::update_modifiers`.
+- Update `wayland-protocols-*`.
 
 #### Fixed
+- Require explicit unlock call in `SessionLock` to avoid accidental unlock.
+- Work around touch up events delivered too late with certain Weston versions.
+- Internal DnD event handlers are provided position and surface.
+- `MultiPool::get` returns an overlap error when its appropriate.
+- Fix `delegate_*` macros with custom `UserData`.
 
 #### Additions
+- Method to make subsurface from surface.
+- Track latest touch_down event serial.
+- Try alternative cursor icon names.
+- Implement support for xdg-activation.
+- Implement support for session-lock.
 
 ## 0.18.0 - 2023-09-23
 
