@@ -87,7 +87,7 @@ impl SurfaceDataExt for SurfaceData {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CompositorState {
     wl_compositor: wl_compositor::WlCompositor,
 }
