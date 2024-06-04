@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.19.1 - 2024-06-04
+
+#### Additions
+
+- `clone` derive for `CompositorState`
+
 ## 0.19.0 - 2024-05-31
 
 #### Breaking Changes
