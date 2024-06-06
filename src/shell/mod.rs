@@ -32,13 +32,13 @@
 //!
 //! The layer shell may be used to implement many desktop shell components, such as backgrounds, docks and
 //! launchers.
-//! 
+//!
 //! ## Wl shell
-//! 
+//!
 //! The Wl shell is a deprecated protocol which is like xdg shell but less functional.
-//! 
+//!
 //! ### Why use the Wl shell
-//! 
+//!
 //! The Wl shell uses like xdg shell for application windows creation.
 //! It's deprecated, so it uses only in some legacy projects like Sailfish OS.
 //!

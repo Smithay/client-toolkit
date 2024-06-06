@@ -1,40 +1,42 @@
 use std::sync::{Arc, Weak};
 
 use crate::{compositor::Surface, shell::WaylandSurface};
-use wayland_client::{protocol::{
-    wl_output::WlOutput,
-    wl_seat::WlSeat,
-    wl_shell_surface::{Resize, WlShellSurface},
-    wl_surface::WlSurface
-}, Connection, QueueHandle};
+use wayland_client::{
+    protocol::{
+        wl_output::WlOutput,
+        wl_seat::WlSeat,
+        wl_shell_surface::{Resize, WlShellSurface},
+        wl_surface::WlSurface,
+    },
+    Connection, QueueHandle,
+};
 
 pub trait WindowHandler: Sized {
-    fn configure(&mut self,
+    fn configure(
+        &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
         wl_surface: &WlSurface,
-        configure: (Resize, u32, u32)
+        configure: (Resize, u32, u32),
     );
-    
+
     fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, wl_surface: &WlSurface);
 }
 
 #[derive(Debug)]
 pub struct WlShellWindowInner {
     pub surface: Surface,
-    pub wl_shell_surface: WlShellSurface
+    pub wl_shell_surface: WlShellSurface,
 }
 
 #[derive(Clone, Debug)]
-pub struct Window (Arc<WlShellWindowInner>);
+pub struct Window(Arc<WlShellWindowInner>);
 
 impl Window {
     pub fn new(surface: impl Into<Surface>, wl_shell_surface: WlShellSurface) -> Self {
-        Self(Arc::new_cyclic(|_weak| {
-            WlShellWindowInner{
-                surface: surface.into(),
-                wl_shell_surface
-            }
+        Self(Arc::new_cyclic(|_weak| WlShellWindowInner {
+            surface: surface.into(),
+            wl_shell_surface,
         }))
     }
 
@@ -50,7 +52,11 @@ impl Window {
     }
 
     pub fn set_fullscreen(&self, output: Option<&WlOutput>) {
-        self.0.wl_shell_surface.set_fullscreen(wayland_client::protocol::wl_shell_surface::FullscreenMethod::Fill, 60000, output);
+        self.0.wl_shell_surface.set_fullscreen(
+            wayland_client::protocol::wl_shell_surface::FullscreenMethod::Fill,
+            60000,
+            output,
+        );
     }
 
     pub fn resize(&self, seat: &WlSeat, serial: u32, edges: Resize) {
