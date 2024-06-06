@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add wl shell protocol implementation
+
 ## 0.19.1 - 2024-06-04
 
 #### Additions
