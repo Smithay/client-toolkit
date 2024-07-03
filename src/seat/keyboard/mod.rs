@@ -695,13 +695,17 @@ where
                                                 loop_handle.remove(token);
                                             }
 
-                                            let surface = udata
-                                                .focus
-                                                .lock()
-                                                .unwrap()
-                                                .as_ref()
-                                                .cloned()
-                                                .expect("wl_keyboard::key with no focused surface");
+                                            let surface =
+                                                match udata.focus.lock().unwrap().as_ref().cloned()
+                                                {
+                                                    Some(surface) => surface,
+
+                                                    None => {
+                                                        log::warn!(
+                                                "wl_keyboard::key with no focused surface");
+                                                        return;
+                                                    }
+                                                };
 
                                             // Update the current repeat key.
                                             repeat_data.current_repeat.replace(RepeatedKey {

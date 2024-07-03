@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
+use log::warn;
 use wayland_client::{
     globals::GlobalList,
     protocol::wl_output::{self, Subpixel, Transform},
@@ -417,12 +418,18 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let inner = state
+        let inner = match state
             .output_state()
             .outputs
             .iter_mut()
             .find(|inner| &inner.wl_output == output)
-            .expect("Received event for dead output");
+        {
+            Some(inner) => inner,
+            None => {
+                warn!("Received {event:?} for dead wl_output");
+                return;
+            }
+        };
 
         match event {
             wl_output::Event::Geometry {
@@ -533,7 +540,6 @@ where
                     }
                 }
             }
-
             _ => unreachable!(),
         }
     }
@@ -567,12 +573,18 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let inner = state
+        let inner = match state
             .output_state()
             .outputs
             .iter_mut()
             .find(|inner| inner.xdg_output.as_ref() == Some(output))
-            .expect("Received event for dead output");
+        {
+            Some(inner) => inner,
+            None => {
+                warn!("Received {event:?} for dead xdg_output");
+                return;
+            }
+        };
 
         // zxdg_output_v1::done is deprecated in version 3. So we only need
         // to wait for wl_output::done, once we get any xdg output info.
