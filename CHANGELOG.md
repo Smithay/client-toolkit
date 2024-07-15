@@ -1,6 +1,10 @@
 # Change Log
 
-## Unreleased
+## 0.19.2 - 2024-07-15
+
+#### Fixed
+
+- Fix crash when compositor sends event to dead `wl_output`.
 
 ## 0.19.1 - 2024-06-04
 
