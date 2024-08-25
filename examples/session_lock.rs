@@ -62,6 +62,20 @@ fn main() {
     app_data.session_lock =
         Some(app_data.session_lock_state.lock(&qh).expect("ext-session-lock not supported"));
 
+    // After locking the session, we're expected to create a lock surface for each output.
+    // As soon as all lock surfaces are created, `SessionLockHandler::locked` will be called
+    // and the every surface receives a `SessionLockHandler::configure` call.
+    let qh: QueueHandle<AppData> = event_queue.handle();
+    for output in app_data.output_state().outputs() {
+        let session_lock = app_data.session_lock.as_ref().unwrap();
+        let surface = app_data.compositor_state.create_surface(&qh);
+
+        // It's important to keep the `SessionLockSurface` returned here around, as the
+        // surface will be destroyed when the `SessionLockSurface` is dropped.
+        let lock_surface = session_lock.create_lock_surface(surface, &output, &qh);
+        app_data.lock_surfaces.push(lock_surface);
+    }
+
     WaylandSource::new(conn.clone(), event_queue).insert(event_loop.handle()).unwrap();
 
     loop {
@@ -74,14 +88,8 @@ fn main() {
 }
 
 impl SessionLockHandler for AppData {
-    fn locked(&mut self, _conn: &Connection, qh: &QueueHandle<Self>, session_lock: SessionLock) {
+    fn locked(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _session_lock: SessionLock) {
         println!("Locked");
-
-        for output in self.output_state.outputs() {
-            let surface = self.compositor_state.create_surface(&qh);
-            let lock_surface = session_lock.create_lock_surface(surface, &output, qh);
-            self.lock_surfaces.push(lock_surface);
-        }
 
         // After 5 seconds, destroy lock
         self.loop_handle
@@ -103,7 +111,7 @@ impl SessionLockHandler for AppData {
         _qh: &QueueHandle<Self>,
         _session_lock: SessionLock,
     ) {
-        println!("Finished");
+        println!("Session could not be locked");
         self.exit = true;
     }
 
