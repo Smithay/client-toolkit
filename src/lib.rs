@@ -23,6 +23,7 @@ pub mod compositor;
 pub mod data_device_manager;
 pub mod dmabuf;
 pub mod error;
+pub mod foreign_toplevel_list;
 pub mod globals;
 pub mod output;
 pub mod primary_selection;
