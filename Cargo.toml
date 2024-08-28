@@ -24,7 +24,7 @@ log = "0.4"
 memmap2 = "0.9.0"
 rustix = { version = "0.38.15", features = ["fs", "pipe", "shm"] }
 thiserror = "1.0.30"
-wayland-backend = { version = "0.3.0", features = ["client_system"] }
+wayland-backend = "0.3.0"
 wayland-client = "0.31.1"
 wayland-cursor = "0.31.0"
 wayland-protocols = { version = "0.32.1", features = ["client", "staging", "unstable"] }
