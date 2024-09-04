@@ -19,7 +19,7 @@ type dev_t = u64;
 use libc::dev_t;
 
 /// A preference tranche of dmabuf formats
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DmabufFeedbackTranche {
     /// `dev_t` value for preferred target device. May be scan-out or
     /// renderer device.
@@ -43,6 +43,7 @@ impl Default for DmabufFeedbackTranche {
 /// A single dmabuf format/modifier pair
 // Must have correct representation to be able to mmap format table
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct DmabufFormat {
     /// Fourcc format
     pub format: u32,
