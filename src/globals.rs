@@ -7,13 +7,13 @@ use wayland_client::Proxy;
 /// argument.  For example:
 ///
 /// - A global that binds to `wl_compositor` with maximum version 4 could implement
-/// `ProvidesBoundGlobal<WlCompositor, 4>`, `ProvidesBoundGlobal<WlCompositor, 3>`,
-/// `ProvidesBoundGlobal<WlCompositor, 2>`, and `ProvidesBoundGlobal<WlCompositor, 1>` because
-/// versions 2-4 only add additional requests to the `wl_surface` API.
+///   `ProvidesBoundGlobal<WlCompositor, 4>`, `ProvidesBoundGlobal<WlCompositor, 3>`,
+///   `ProvidesBoundGlobal<WlCompositor, 2>`, and `ProvidesBoundGlobal<WlCompositor, 1>` because
+///   versions 2-4 only add additional requests to the `wl_surface` API.
 /// - A global that binds to `wl_compositor` with maximum version 5 may only implement
-/// `ProvidesBoundGlobal<WlCompositor, 5>` because version 5 makes using `wl_surface::attach` with
-/// a nonzero offset a protocol error.  A caller who is only aware of the version 4 API risks
-/// causing these protocol errors if it uses surfaces created by such a global.
+///   `ProvidesBoundGlobal<WlCompositor, 5>` because version 5 makes using `wl_surface::attach` with
+///   a nonzero offset a protocol error.  A caller who is only aware of the version 4 API risks
+///   causing these protocol errors if it uses surfaces created by such a global.
 ///
 /// Changes that cause compatibility breaks include:
 ///
