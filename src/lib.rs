@@ -26,6 +26,7 @@ pub mod error;
 pub mod foreign_toplevel_list;
 pub mod globals;
 pub mod output;
+pub mod presentation_time;
 pub mod primary_selection;
 pub mod registry;
 pub mod seat;
