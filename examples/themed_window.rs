@@ -19,7 +19,7 @@ use smithay_client_toolkit::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
-        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
+        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
         pointer::{
             CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
             ThemedPointer,
@@ -483,6 +483,7 @@ impl KeyboardHandler for SimpleWindow {
         _: &wl_keyboard::WlKeyboard,
         _serial: u32,
         _: Modifiers,
+        _raw_modifiers: RawModifiers,
         _layout: u32,
     ) {
     }
