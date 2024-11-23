@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Handler trait for keyboard input."><title>KeyboardHandler in smithay_client_toolkit::seat::keyboard - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../smithay_client_toolkit/index.html">smithay_client_toolkit</a><span class="version">0.19.2</span></h2></div><h2 class="location"><a href="#">KeyboardHandler</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.enter">enter</a></li><li><a href="#tymethod.leave">leave</a></li><li><a href="#tymethod.press_key">press_key</a></li><li><a href="#tymethod.release_key">release_key</a></li><li><a href="#tymethod.update_modifiers">update_modifiers</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.update_keymap">update_keymap</a></li><li><a href="#method.update_repeat_info">update_repeat_info</a></li></ul><h3><a href="#object-safety">Object Safety</a></h3><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In smithay_client_toolkit::seat::keyboard</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">smithay_client_toolkit</a>::<wbr><a href="../index.html">seat</a>::<wbr><a href="index.html">keyboard</a>::<wbr><a class="trait" href="#">KeyboardHandler</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#123-222">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait KeyboardHandler: <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a> {
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Handler trait for keyboard input."><title>KeyboardHandler in smithay_client_toolkit::seat::keyboard - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-492a78a4a87dcc01.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="smithay_client_toolkit" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0 (f6e511eec 2024-10-15)" data-channel="1.82.0" data-search-js="search-a99f1315e7cc5121.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-921df33f47b8780c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../smithay_client_toolkit/index.html">smithay_<wbr>client_<wbr>toolkit</a><span class="version">0.19.2</span></h2></div><h2 class="location"><a href="#">Keyboard<wbr>Handler</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.enter">enter</a></li><li><a href="#tymethod.leave">leave</a></li><li><a href="#tymethod.press_key">press_key</a></li><li><a href="#tymethod.release_key">release_key</a></li><li><a href="#tymethod.update_modifiers">update_modifiers</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.update_keymap">update_keymap</a></li><li><a href="#method.update_repeat_info">update_repeat_info</a></li></ul><h3><a href="#object-safety">Object Safety</a></h3><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In smithay_<wbr>client_<wbr>toolkit::<wbr>seat::<wbr>keyboard</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">smithay_client_toolkit</a>::<wbr><a href="../index.html">seat</a>::<wbr><a href="index.html">keyboard</a>::<wbr><a class="trait" href="#">KeyboardHandler</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#123-224">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait KeyboardHandler: <a class="trait" href="https://doc.rust-lang.org/1.82.0/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a> {
     // Required methods
     fn <a href="#tymethod.enter" class="fn">enter</a>(
         &amp;mut self,
@@ -6,8 +6,8 @@
         qh: &amp;QueueHandle&lt;Self&gt;,
         keyboard: &amp;WlKeyboard,
         surface: &amp;WlSurface,
-        serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
-        raw: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>],
+        serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
+        raw: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>],
         keysyms: &amp;[<a class="struct" href="struct.Keysym.html" title="struct smithay_client_toolkit::seat::keyboard::Keysym">Keysym</a>],
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.leave" class="fn">leave</a>(
@@ -16,14 +16,14 @@
         qh: &amp;QueueHandle&lt;Self&gt;,
         keyboard: &amp;WlKeyboard,
         surface: &amp;WlSurface,
-        serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+        serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.press_key" class="fn">press_key</a>(
         &amp;mut self,
         conn: &amp;Connection,
         qh: &amp;QueueHandle&lt;Self&gt;,
         keyboard: &amp;WlKeyboard,
-        serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+        serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
         event: <a class="struct" href="struct.KeyEvent.html" title="struct smithay_client_toolkit::seat::keyboard::KeyEvent">KeyEvent</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.release_key" class="fn">release_key</a>(
@@ -31,7 +31,7 @@
         conn: &amp;Connection,
         qh: &amp;QueueHandle&lt;Self&gt;,
         keyboard: &amp;WlKeyboard,
-        serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+        serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
         event: <a class="struct" href="struct.KeyEvent.html" title="struct smithay_client_toolkit::seat::keyboard::KeyEvent">KeyEvent</a>,
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.update_modifiers" class="fn">update_modifiers</a>(
@@ -39,9 +39,10 @@
         conn: &amp;Connection,
         qh: &amp;QueueHandle&lt;Self&gt;,
         keyboard: &amp;WlKeyboard,
-        serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+        serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
         modifiers: <a class="struct" href="struct.Modifiers.html" title="struct smithay_client_toolkit::seat::keyboard::Modifiers">Modifiers</a>,
-        layout: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+        raw_modifiers: <a class="struct" href="struct.RawModifiers.html" title="struct smithay_client_toolkit::seat::keyboard::RawModifiers">RawModifiers</a>,
+        layout: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
     );
 
     // Provided methods
@@ -67,8 +68,8 @@
     qh: &amp;QueueHandle&lt;Self&gt;,
     keyboard: &amp;WlKeyboard,
     surface: &amp;WlSurface,
-    serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
-    raw: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>],
+    serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
+    raw: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>],
     keysyms: &amp;[<a class="struct" href="struct.Keysym.html" title="struct smithay_client_toolkit::seat::keyboard::Keysym">Keysym</a>],
 )</h4></section></summary><div class="docblock"><p>The keyboard has entered a surface.</p>
 <p>When called, you may assume the specified surface has keyboard focus.</p>
@@ -80,7 +81,7 @@ pressed.</p>
     qh: &amp;QueueHandle&lt;Self&gt;,
     keyboard: &amp;WlKeyboard,
     surface: &amp;WlSurface,
-    serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+    serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
 )</h4></section></summary><div class="docblock"><p>The keyboard has left a surface.</p>
 <p>When called, keyboard focus leaves the specified surface.</p>
 <p>All currently held down keys are released when this event occurs.</p>
@@ -89,7 +90,7 @@ pressed.</p>
     conn: &amp;Connection,
     qh: &amp;QueueHandle&lt;Self&gt;,
     keyboard: &amp;WlKeyboard,
-    serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+    serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
     event: <a class="struct" href="struct.KeyEvent.html" title="struct smithay_client_toolkit::seat::keyboard::KeyEvent">KeyEvent</a>,
 )</h4></section></summary><div class="docblock"><p>A key has been pressed on the keyboard.</p>
 <p>The key will repeat if there is no other press event afterwards or the key is released.</p>
@@ -98,22 +99,23 @@ pressed.</p>
     conn: &amp;Connection,
     qh: &amp;QueueHandle&lt;Self&gt;,
     keyboard: &amp;WlKeyboard,
-    serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+    serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
     event: <a class="struct" href="struct.KeyEvent.html" title="struct smithay_client_toolkit::seat::keyboard::KeyEvent">KeyEvent</a>,
 )</h4></section></summary><div class="docblock"><p>A key has been released.</p>
 <p>This stops the key from being repeated if the key is the last key which was pressed.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.update_modifiers" class="method"><a class="src rightside" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#184-192">source</a><h4 class="code-header">fn <a href="#tymethod.update_modifiers" class="fn">update_modifiers</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.update_modifiers" class="method"><a class="src rightside" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#185-194">source</a><h4 class="code-header">fn <a href="#tymethod.update_modifiers" class="fn">update_modifiers</a>(
     &amp;mut self,
     conn: &amp;Connection,
     qh: &amp;QueueHandle&lt;Self&gt;,
     keyboard: &amp;WlKeyboard,
-    serial: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+    serial: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
     modifiers: <a class="struct" href="struct.Modifiers.html" title="struct smithay_client_toolkit::seat::keyboard::Modifiers">Modifiers</a>,
-    layout: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u32.html">u32</a>,
+    raw_modifiers: <a class="struct" href="struct.RawModifiers.html" title="struct smithay_client_toolkit::seat::keyboard::RawModifiers">RawModifiers</a>,
+    layout: <a class="primitive" href="https://doc.rust-lang.org/1.82.0/std/primitive.u32.html">u32</a>,
 )</h4></section></summary><div class="docblock"><p>Keyboard modifiers have been updated.</p>
 <p>This happens when one of the modifier keys, such as “Shift”, “Control” or “Alt” is pressed or
 released.</p>
-</div></details></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.update_repeat_info" class="method"><a class="src rightside" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#198-205">source</a><h4 class="code-header">fn <a href="#method.update_repeat_info" class="fn">update_repeat_info</a>(
+</div></details></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.update_repeat_info" class="method"><a class="src rightside" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#200-207">source</a><h4 class="code-header">fn <a href="#method.update_repeat_info" class="fn">update_repeat_info</a>(
     &amp;mut self,
     _conn: &amp;Connection,
     _qh: &amp;QueueHandle&lt;Self&gt;,
@@ -122,7 +124,7 @@ released.</p>
 )</h4></section></summary><div class="docblock"><p>The keyboard has updated the rate and delay between repeating key inputs.</p>
 <p>This function does nothing by default but is provided if a repeat mechanism outside of calloop is<br />
 used.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.update_keymap" class="method"><a class="src rightside" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#214-221">source</a><h4 class="code-header">fn <a href="#method.update_keymap" class="fn">update_keymap</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.update_keymap" class="method"><a class="src rightside" href="../../../src/smithay_client_toolkit/seat/keyboard/mod.rs.html#216-223">source</a><h4 class="code-header">fn <a href="#method.update_keymap" class="fn">update_keymap</a>(
     &amp;mut self,
     _conn: &amp;Connection,
     _qh: &amp;QueueHandle&lt;Self&gt;,
@@ -133,4 +135,4 @@ used.</p>
 as an <code>xkbcommon::xkb::Keymap</code> due to the fact xkbcommon uses non-thread-safe reference
 counting. But can be used to create an independent <code>Keymap</code>.</p>
 <p>This is called after the default handler for keymap changes and does nothing by default.</p>
-</div></details></div><h2 id="object-safety" class="section-header">Object Safety<a href="#object-safety" class="anchor">§</a></h2><div class="object-safety-info">This trait is <b>not</b> <a href="https://doc.rust-lang.org/1.81.0/reference/items/traits.html#object-safety">object safe</a>.</div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../../trait.impl/smithay_client_toolkit/seat/keyboard/trait.KeyboardHandler.js" async></script></section></div></main></body></html>
+</div></details></div><h2 id="object-safety" class="section-header">Object Safety<a href="#object-safety" class="anchor">§</a></h2><div class="object-safety-info">This trait is <b>not</b> <a href="https://doc.rust-lang.org/1.82.0/reference/items/traits.html#object-safety">object safe</a>.</div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../../trait.impl/smithay_client_toolkit/seat/keyboard/trait.KeyboardHandler.js" async></script></section></div></main></body></html>
