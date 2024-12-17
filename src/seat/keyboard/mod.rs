@@ -110,7 +110,7 @@ impl SeatState {
 #[allow(missing_debug_implementations)]
 pub struct Keymap<'a>(&'a xkb::Keymap);
 
-impl<'a> Keymap<'a> {
+impl Keymap<'_> {
     /// Get keymap as string in text format. The keymap should always be valid.
     pub fn as_string(&self) -> String {
         self.0.get_as_string(xkb::KEYMAP_FORMAT_TEXT_V1)
