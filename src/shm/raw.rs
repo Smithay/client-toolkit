@@ -10,7 +10,7 @@ use rustix::{
 use std::{
     fs::File,
     io,
-    os::unix::prelude::{AsFd, OwnedFd},
+    os::unix::prelude::{AsFd, BorrowedFd, OwnedFd},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -148,6 +148,12 @@ impl RawPool {
     /// Returns the pool object used to communicate with the server.
     pub fn pool(&self) -> &wl_shm_pool::WlShmPool {
         &self.pool
+    }
+}
+
+impl AsFd for RawPool {
+    fn as_fd(&self) -> BorrowedFd {
+        self.mem_file.as_fd()
     }
 }
 
