@@ -118,6 +118,7 @@ fn main() {
     }
 
     let mut simple_window = DataDeviceWindow {
+        compositor,
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
@@ -147,6 +148,7 @@ fn main() {
         dnd_offers: Vec::new(),
         selection_offers: Vec::new(),
         primary_selection_offers: Vec::new(),
+        drag_surface: None,
     };
 
     // We don't draw immediately, the configure will notify us when to first draw.
@@ -162,6 +164,7 @@ fn main() {
 }
 
 struct DataDeviceWindow {
+    compositor: CompositorState,
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
@@ -190,6 +193,7 @@ struct DataDeviceWindow {
     drag_sources: Vec<(DragSource, bool)>,
     loop_handle: LoopHandle<'static, DataDeviceWindow>,
     accept_counter: u32,
+    drag_surface: Option<wl_surface::WlSurface>,
 }
 
 impl CompositorHandler for DataDeviceWindow {
@@ -510,7 +514,22 @@ impl PointerHandler for DataDeviceWindow {
                             DndAction::Copy,
                         );
 
-                        source.start_drag(&seat.data_device, &surface, None, serial);
+                        // Create a solid blue surface to use as drag surface
+                        let drag_surface = self.compositor.create_surface(qh);
+                        let mut pool = SlotPool::new(64 * 64 * 4, &self.shm_state)
+                            .expect("Failed to create pool");
+                        let (buffer, data) = pool
+                            .create_buffer(64, 64, 64 * 4, wl_shm::Format::Argb8888)
+                            .expect("create buffer");
+                        for i in data.chunks_mut(4) {
+                            i.copy_from_slice(&[255, 0, 0, 255]);
+                        }
+                        buffer.attach_to(&drag_surface).unwrap();
+                        drag_surface.damage(0, 0, i32::MAX, i32::MAX);
+                        drag_surface.commit();
+
+                        source.start_drag(&seat.data_device, &surface, Some(&drag_surface), serial);
+                        self.drag_surface = Some(drag_surface);
                         self.drag_sources.push((source, false));
                     }
                 }
@@ -883,6 +902,7 @@ impl DataSourceHandler for DataDeviceWindow {
         source: &wayland_client::protocol::wl_data_source::WlDataSource,
     ) {
         self.drag_sources.retain(|s| s.0.inner() != source);
+        self.drag_surface = None;
         source.destroy();
     }
 
@@ -903,6 +923,7 @@ impl DataSourceHandler for DataDeviceWindow {
     ) {
         println!("Finished");
         self.drag_sources.retain(|s| s.0.inner() != source);
+        self.drag_surface = None;
         source.destroy();
     }
 
