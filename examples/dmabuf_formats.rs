@@ -89,8 +89,6 @@ fn main() {
             for entry in app_data.dmabuf_state.modifiers() {
                 print_format(entry);
             }
-
-            return;
         }
         Some(ver @ 4..) => {
             println!("Version `{}` of `zwp_linux_dmabuf_v1` supported. Showing default dmabuf feedback.\n", ver);

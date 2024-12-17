@@ -555,7 +555,7 @@ pub enum ThemeSpec<'a> {
     System,
 }
 
-impl<'a> Default for ThemeSpec<'a> {
+impl Default for ThemeSpec<'_> {
     fn default() -> Self {
         Self::System
     }

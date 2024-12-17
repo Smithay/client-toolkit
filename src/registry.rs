@@ -192,7 +192,7 @@ impl RegistryState {
     pub fn globals_by_interface<'a>(
         &'a self,
         interface: &'a str,
-    ) -> impl Iterator<Item = &Global> + 'a {
+    ) -> impl Iterator<Item = &'a Global> + 'a {
         self.globals.iter().filter(move |g| g.interface == interface)
     }
 
