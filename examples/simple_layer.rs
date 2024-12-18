@@ -1,6 +1,6 @@
 //! This example is horrible. Please make a better one soon.
 
-use std::convert::TryInto;
+use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
@@ -215,13 +215,8 @@ impl LayerShellHandler for SimpleLayer {
         configure: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        if configure.new_size.0 == 0 || configure.new_size.1 == 0 {
-            self.width = 256;
-            self.height = 256;
-        } else {
-            self.width = configure.new_size.0;
-            self.height = configure.new_size.1;
-        }
+        self.width = NonZeroU32::new(configure.new_size.0).map_or(256, NonZeroU32::get);
+        self.height = NonZeroU32::new(configure.new_size.1).map_or(256, NonZeroU32::get);
 
         // Initiate the first draw.
         if self.first_configure {
