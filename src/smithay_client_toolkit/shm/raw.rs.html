@@ -265,7 +265,13 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a></pre></div><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a></pre></div><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.
 //!
 //! This is intended as a safe building block for higher level shared memory pool abstractions and is not
 //! encouraged for most library users.
@@ -277,7 +283,7 @@
 <span class="kw">use </span>std::{
     fs::File,
     io,
-    os::unix::prelude::{AsFd, OwnedFd},
+    os::unix::prelude::{AsFd, BorrowedFd, OwnedFd},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -415,6 +421,12 @@
     <span class="doccomment">/// Returns the pool object used to communicate with the server.
     </span><span class="kw">pub fn </span>pool(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>wl_shm_pool::WlShmPool {
         <span class="kw-2">&amp;</span><span class="self">self</span>.pool
+    }
+}
+
+<span class="kw">impl </span>AsFd <span class="kw">for </span>RawPool {
+    <span class="kw">fn </span>as_fd(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BorrowedFd {
+        <span class="self">self</span>.mem_file.as_fd()
     }
 }
 
