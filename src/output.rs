@@ -55,7 +55,7 @@ pub trait OutputHandler: Sized {
 type ScaleWatcherFn =
     dyn Fn(&mut dyn Any, &Connection, &dyn Any, &wl_output::WlOutput) + Send + Sync;
 
-/// A handler for delegating [`wl_output::WlOutput`](wayland_client::protocol::wl_output::WlOutput).
+/// A handler for delegating [`wl_output::WlOutput`].
 ///
 /// When implementing [`ProvidesRegistryState`],
 /// [`registry_handlers!`](crate::registry_handlers) may be used to delegate all

@@ -134,7 +134,7 @@ impl CompositorState {
     }
 }
 
-/// Data associated with a [`WlSurface`](wl_surface::WlSurface).
+/// Data associated with a [`WlSurface`].
 #[derive(Debug)]
 pub struct SurfaceData {
     /// The scale factor of the output with the highest scale factor.
@@ -207,7 +207,7 @@ impl Default for SurfaceDataInner {
     }
 }
 
-/// An owned [`WlSurface`](wl_surface::WlSurface).
+/// An owned [`WlSurface`].
 ///
 /// This destroys the surface on drop.
 #[derive(Debug)]

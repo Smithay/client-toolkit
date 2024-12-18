@@ -106,7 +106,7 @@ impl ActivationState {
 
     /// Request a token for surface activation with user data.
     ///
-    /// To use this method you need to provide [`delegate_activation`] with your custom type.
+    /// To use this method you need to provide [`delegate_activation`][crate::delegate_activation] with your custom type.
     /// E.g. `delegate_activation!(SimpleWindow, MyRequestData);`
     pub fn request_token_with_data<D, R>(&self, qh: &QueueHandle<D>, request_data: R)
     where

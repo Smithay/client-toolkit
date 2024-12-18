@@ -511,7 +511,7 @@ macro_rules! delegate_simple {
 
 /// A helper macro for implementing [`ProvidesRegistryState`].
 ///
-/// See [`delegate_registry`] for an example.
+/// See [`delegate_registry`][crate::delegate_registry] for an example.
 #[macro_export]
 macro_rules! registry_handlers {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $($ty:ty),* $(,)?) => {
