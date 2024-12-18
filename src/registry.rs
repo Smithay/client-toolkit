@@ -402,6 +402,13 @@ impl<I: Proxy + 'static, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
     pub fn with_min_version(&self, min_version: u32) -> Result<&I, GlobalError> {
         self.proxy.with_min_version(min_version)
     }
+
+    /// Construct an instance from an already bound proxy.
+    ///
+    /// Useful when a [`ProvidesBoundGlobal`] implementation is needed.
+    pub fn from_bound(proxy: I) -> Self {
+        Self { proxy: GlobalProxy::Bound(proxy) }
+    }
 }
 
 impl<I: Proxy + Clone, const MAX_VERSION: u32> ProvidesBoundGlobal<I, MAX_VERSION>
