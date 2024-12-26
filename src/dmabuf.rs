@@ -14,9 +14,9 @@ use wayland_protocols::wp::linux_dmabuf::zv1::client::{
 
 // Workaround until `libc` updates to FreeBSD 12 ABI
 #[cfg(target_os = "freebsd")]
-type dev_t = u64;
+pub(crate) type dev_t = u64;
 #[cfg(not(target_os = "freebsd"))]
-use libc::dev_t;
+pub(crate) use libc::dev_t;
 
 /// A preference tranche of dmabuf formats
 #[derive(Clone, Debug)]
