@@ -33,7 +33,7 @@ wayland-protocols-wlr = { version = "0.3.1", features = ["client"] }
 wayland-scanner = "0.31.0"
 wayland-csd-frame = "0.3.0"
 
-xkbcommon = { version = "0.7.0", optional = true, features = ["wayland"] }
+xkbcommon = { version = "0.8.0", optional = true, features = ["wayland"] }
 xkeysym = "0.2.0"
 
 calloop = { version = "0.14.0", optional = true }
