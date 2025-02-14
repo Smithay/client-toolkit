@@ -271,7 +271,25 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a></pre></div><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a></pre></div><pre class="rust"><code><span class="doccomment">//! A raw shared memory pool handler.
 //!
 //! This is intended as a safe building block for higher level shared memory pool abstractions and is not
 //! encouraged for most library users.
@@ -283,6 +301,7 @@
 <span class="kw">use </span>std::{
     fs::File,
     io,
+    ops::Deref,
     os::unix::prelude::{AsFd, BorrowedFd, OwnedFd},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -306,7 +325,7 @@
 /// This pool does not release buffers. If you need this, use one of the higher level pools.
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>RawPool {
-    pool: wl_shm_pool::WlShmPool,
+    pool: DestroyOnDropPool,
     len: usize,
     mem_file: File,
     mmap: MmapMut,
@@ -330,7 +349,7 @@
             .unwrap_or_else(|<span class="kw">_</span>| Proxy::inert(shm.backend().clone()));
         <span class="kw">let </span>mmap = <span class="kw">unsafe </span>{ MmapMut::map_mut(<span class="kw-2">&amp;</span>mem_file)<span class="question-mark">? </span>};
 
-        <span class="prelude-val">Ok</span>(RawPool { pool, len, mem_file, mmap })
+        <span class="prelude-val">Ok</span>(RawPool { pool: DestroyOnDropPool(pool), len, mem_file, mmap })
     }
 
     <span class="doccomment">/// Resizes the memory pool, notifying the server the pool has changed in size.
@@ -430,6 +449,12 @@
     }
 }
 
+<span class="kw">impl </span>From&lt;RawPool&gt; <span class="kw">for </span>OwnedFd {
+    <span class="kw">fn </span>from(pool: RawPool) -&gt; <span class="self">Self </span>{
+        pool.mem_file.into()
+    }
+}
+
 <span class="kw">impl </span>io::Write <span class="kw">for </span>RawPool {
     <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;usize&gt; {
         io::Write::write(<span class="kw-2">&amp;mut </span><span class="self">self</span>.mem_file, buf)
@@ -524,9 +549,20 @@
     }
 }
 
-<span class="kw">impl </span>Drop <span class="kw">for </span>RawPool {
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">struct </span>DestroyOnDropPool(wl_shm_pool::WlShmPool);
+
+<span class="kw">impl </span>Deref <span class="kw">for </span>DestroyOnDropPool {
+    <span class="kw">type </span>Target = wl_shm_pool::WlShmPool;
+
+    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+    </span>}
+}
+
+<span class="kw">impl </span>Drop <span class="kw">for </span>DestroyOnDropPool {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.pool.destroy();
+        <span class="self">self</span>.<span class="number">0</span>.destroy();
     }
 }
 
