@@ -61,7 +61,7 @@ jobs:
           rust-version: ${{ matrix.rust }}
 
       - name: Install system dependencies
-        run: sudo apt-get install libxkbcommon-dev libwayland-dev
+        run: sudo apt-get install libfontconfig1-dev libxkbcommon-dev libwayland-dev
 
       - name: Test lib no features
         run: cargo test --no-default-features --lib
