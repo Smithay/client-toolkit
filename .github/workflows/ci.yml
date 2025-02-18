@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Cargo cache
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.cargo
           key: cargo-${{ matrix.rust }}
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Cargo cache
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.cargo
           key: cargo-${{ matrix.rust }}
@@ -61,7 +61,7 @@ jobs:
           rust-version: ${{ matrix.rust }}
 
       - name: Install system dependencies
-        run: sudo apt-get install libxkbcommon-dev libwayland-dev
+        run: sudo apt-get install libfontconfig1-dev libxkbcommon-dev libwayland-dev
 
       - name: Test lib no features
         run: cargo test --no-default-features --lib
