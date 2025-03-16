@@ -1,0 +1,167 @@
+#![allow(unused_variables)]
+
+// TODO, stub, just enough so it doesn’t crash if a pad is added (hopefully).
+// I, Chris Morgan, hooked all the rest of this stuff up,
+// but I don’t have a pad, and don’t see any good dummy device for testing,
+// and I won’t benefit from this stuff myself anyway.
+// It should be straightforward to implement, but there’s a fair bit of surface area.
+// Sorry if you wanted it now.
+// Offer to buy me a suitable device, and I’ll be interested.
+
+use wayland_client::{
+    event_created_child,
+    Connection,
+    Dispatch,
+    QueueHandle,
+};
+use wayland_protocols::wp::tablet::zv2::client::{
+    // TODO: zwp_tablet_pad_ring_v2, zwp_tablet_pad_strip_v2, zwp_tablet_pad_group_v2.
+    zwp_tablet_pad_ring_v2::{self, ZwpTabletPadRingV2},
+    zwp_tablet_pad_strip_v2::{self, ZwpTabletPadStripV2},
+    zwp_tablet_pad_group_v2::{self, ZwpTabletPadGroupV2, EVT_STRIP_OPCODE, EVT_RING_OPCODE},
+    zwp_tablet_pad_v2::{self, ZwpTabletPadV2, EVT_GROUP_OPCODE},
+};
+use super::TabletState;
+
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct TabletPadData;
+
+impl TabletPadData {
+    pub fn new() -> TabletPadData { TabletPadData }
+}
+
+// zwp_tablet_pad_v2
+// Request: set_feedback
+// Request: destroy
+// Event: group
+// Event: path
+// Event: buttons
+// Event: done
+// Event: button
+// Event: enter
+// Event: leave
+// Event: removed
+// Enum: button_state
+
+impl<D> Dispatch<ZwpTabletPadV2, TabletPadData, D>
+    for TabletState
+where
+    D: Dispatch<ZwpTabletPadV2, TabletPadData>
+     + Dispatch<ZwpTabletPadGroupV2, TabletPadGroupData>
+     //+ TabletPadHandler
+     + 'static,
+{
+    event_created_child!(D, ZwpTabletPadV2, [
+        EVT_GROUP_OPCODE => (ZwpTabletPadGroupV2, TabletPadGroupData),
+    ]);
+
+    fn event(
+        data: &mut D,
+        pad: &ZwpTabletPadV2,
+        event: zwp_tablet_pad_v2::Event,
+        udata: &TabletPadData,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        log::warn!(target: "sctk", "got tablet pad event, unimplemented");
+    }
+}
+
+impl<D> Dispatch<ZwpTabletPadGroupV2, TabletPadGroupData, D>
+    for TabletState
+where
+    D: Dispatch<ZwpTabletPadGroupV2, TabletPadGroupData>
+     + Dispatch<ZwpTabletPadRingV2, TabletPadRingData>
+     + Dispatch<ZwpTabletPadStripV2, TabletPadStripData>
+     //+ TabletPadGroupHandler
+     + 'static,
+{
+    event_created_child!(D, ZwpTabletPadV2, [
+        EVT_RING_OPCODE => (ZwpTabletPadRingV2, TabletPadRingData),
+        EVT_STRIP_OPCODE => (ZwpTabletPadStripV2, TabletPadStripData),
+    ]);
+
+    fn event(
+        data: &mut D,
+        group: &ZwpTabletPadGroupV2,
+        event: zwp_tablet_pad_group_v2::Event,
+        udata: &TabletPadGroupData,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        log::warn!(target: "sctk", "got tablet pad group event, unimplemented");
+    }
+}
+
+impl<D> Dispatch<ZwpTabletPadRingV2, TabletPadRingData, D>
+    for TabletState
+where
+    D: Dispatch<ZwpTabletPadRingV2, TabletPadRingData>
+     //+ TabletPadRingHandler,
+{
+    fn event(
+        data: &mut D,
+        ring: &ZwpTabletPadRingV2,
+        event: zwp_tablet_pad_ring_v2::Event,
+        udata: &TabletPadRingData,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        log::warn!(target: "sctk", "got tablet pad ring event, unimplemented");
+    }
+}
+
+impl<D> Dispatch<ZwpTabletPadStripV2, TabletPadStripData, D>
+    for TabletState
+where
+    D: Dispatch<ZwpTabletPadStripV2, TabletPadStripData>
+     //+ TabletPadStripHandler,
+{
+    fn event(
+        data: &mut D,
+        strip: &ZwpTabletPadStripV2,
+        event: zwp_tablet_pad_strip_v2::Event,
+        udata: &TabletPadStripData,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        log::warn!(target: "sctk", "got tablet pad strip event, unimplemented");
+    }
+}
+
+// zwp_tablet_pad_group_v2
+// Request: destroy
+// Event: buttons
+// Event: ring
+// Event: strip
+// Event: modes
+// Event: done
+// Event: mode_switch
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct TabletPadGroupData;
+
+// zwp_tablet_pad_ring_v2
+// Request: set_feedback
+// Request: destroy
+// Event: source
+// Event: angle
+// Event: stop
+// Event: frame
+// Enum: source
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct TabletPadRingData;
+
+// zwp_tablet_pad_strip_v2
+// Request: set_feedback
+// Request: destroy
+// Event: source
+// Event: position
+// Event: stop
+// Event: frame
+// Enum: source
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct TabletPadStripData;
