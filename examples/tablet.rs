@@ -4,14 +4,14 @@ use std::collections::{HashSet, HashMap};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_pointer,
+    delegate_compositor, delegate_output, delegate_keyboard,
     delegate_registry, delegate_tablet, delegate_seat, delegate_shm, delegate_xdg_shell,
     delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
-        pointer::{PointerEvent, PointerEventKind, PointerHandler},
+        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
         tablet::{
             ToolType,
             ToolCapability,
@@ -31,11 +31,11 @@ use smithay_client_toolkit::{
         },
         WaylandSurface,
     },
-    shm::{slot::SlotPool, Shm, ShmHandler},
+    shm::{slot::{SlotPool, Buffer}, Shm, ShmHandler},
 };
 use wayland_client::{
     globals::registry_queue_init,
-    protocol::{wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface},
+    protocol::{wl_output, wl_keyboard, wl_region, wl_seat, wl_shm, wl_surface},
     Connection, Dispatch, QueueHandle,
     Proxy,
 };
@@ -75,30 +75,14 @@ fn main() {
         .load()
         .unwrap();
 
-    let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&globals),
-        seat_state: SeatState::new(&globals, &qh),
-        output_state: OutputState::new(&globals, &qh),
-        compositor_state: CompositorState::bind(&globals, &qh)
-            .expect("wl_compositor not available"),
-        shm_state: Shm::bind(&globals, &qh).expect("wl_shm not available"),
-        xdg_shell_state: XdgShell::bind(&globals, &qh).expect("xdg shell not available"),
-        tablet_state: TabletState::bind(&globals, &qh),
+    let compositor_state = CompositorState::bind(&globals, &qh)
+                    .expect("wl_compositor not available");
+    let shm_state = Shm::bind(&globals, &qh).expect("wl_shm not available");
+    let xdg_shell_state = XdgShell::bind(&globals, &qh).expect("xdg shell not available");
 
-        exit: false,
-        width: 256,
-        height: 256,
-        window: None,
-        tablet_seat: None,
-        tablets: HashMap::new(),
-        tools: HashMap::new(),
-        font,
-    };
+    let surface = compositor_state.create_surface(&qh);
 
-    let surface = simple_window.compositor_state.create_surface(&qh);
-
-    let window =
-        simple_window.xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
+    let window = xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
 
     window.set_title("A wayland window");
     window.set_app_id("io.github.smithay.client-toolkit.Tablet");
@@ -106,7 +90,34 @@ fn main() {
 
     window.commit();
 
-    simple_window.window = Some(window);
+    let width = 256;
+    let height = 256;
+    // Initial size, but it grows automatically as needed.
+    let pool = SlotPool::new(width as usize * height as usize * 4, &shm_state)
+        .expect("Failed to create pool");
+
+    let mut simple_window = SimpleWindow {
+        registry_state: RegistryState::new(&globals),
+        seat_state: SeatState::new(&globals, &qh),
+        output_state: OutputState::new(&globals, &qh),
+        compositor_state,
+        shm_state,
+        xdg_shell_state,
+        tablet_state: TabletState::bind(&globals, &qh),
+
+        exit: false,
+        width,
+        height,
+        window,
+        keyboard: None,
+        keyboard_focus: false,
+        tablet_seat: None,
+        tablets: HashMap::new(),
+        tools: HashMap::new(),
+        pool,
+        mode: Mode::Points,
+        font,
+    };
 
     while !simple_window.exit {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
@@ -224,11 +235,14 @@ struct SimpleWindow {
     exit: bool,
     width: u32,
     height: u32,
-    window: Option<Window>,
+    window: Window,
+    keyboard: Option<wl_keyboard::WlKeyboard>,
+    keyboard_focus: bool,
     tablet_seat: Option<ZwpTabletSeatV2>,
-
-    tools: HashMap<ZwpTabletToolV2, ToolInfoAndState>,
     tablets: HashMap<ZwpTabletV2, TabletMetadata>,
+    tools: HashMap<ZwpTabletToolV2, ToolInfoAndState>,
+    pool: SlotPool,
+    mode: Mode,
 
     font: font_kit::loaders::freetype::Font,
 }
@@ -330,6 +344,9 @@ impl WindowHandler for SimpleWindow {
     ) {
         self.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
         self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
+        if self.mode.is_sketch() {
+            self.reset_sketch_mode();
+        }
         self.draw(conn, qh);
     }
 }
@@ -351,8 +368,21 @@ impl SeatHandler for SimpleWindow {
         _conn: &Connection,
         qh: &QueueHandle<Self>,
         seat: wl_seat::WlSeat,
-        _capability: Capability,
+        capability: Capability,
     ) {
+        if capability == Capability::Keyboard && self.keyboard.is_none() {
+            println!("Set keyboard capability");
+            let keyboard = self
+                .seat_state
+                .get_keyboard(
+                    qh,
+                    &seat,
+                    None,
+                )
+                .expect("Failed to create keyboard");
+
+            self.keyboard = Some(keyboard);
+        }
         if self.tablet_seat.is_none() {
             let tablet_seat = self.tablet_state.get_tablet_seat(&seat, qh).ok();
             if tablet_seat.is_some() {
@@ -378,19 +408,80 @@ impl SeatHandler for SimpleWindow {
     }
 }
 
-impl PointerHandler for SimpleWindow {
-    fn pointer_frame(
+impl KeyboardHandler for SimpleWindow {
+    fn enter(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        _pointer: &wl_pointer::WlPointer,
-        events: &[PointerEvent],
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_keyboard::WlKeyboard,
+        surface: &wl_surface::WlSurface,
+        _: u32,
+        _: &[u32],
+        _: &[Keysym],
     ) {
-        for event in events {
-            if let PointerEventKind::Release { .. } = event.kind {
-                self.change_constraint(conn, qh);
-            }
+        if self.window.wl_surface() == surface {
+            self.keyboard_focus = true;
         }
+    }
+
+    fn leave(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_keyboard::WlKeyboard,
+        surface: &wl_surface::WlSurface,
+        _: u32,
+    ) {
+        if self.window.wl_surface() == surface {
+            self.keyboard_focus = false;
+        }
+    }
+
+    fn press_key(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_keyboard::WlKeyboard,
+        _: u32,
+        event: KeyEvent,
+    ) {
+        match event.keysym {
+            Keysym::n => self.toggle_mode(),
+            Keysym::r if self.mode.is_sketch() => self.reset_sketch_mode(),
+            _ => (),
+        }
+    }
+
+    fn repeat_key(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: KeyEvent,
+    ) {
+    }
+
+    fn release_key(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_keyboard::WlKeyboard,
+        _: u32,
+        _: KeyEvent,
+    ) {
+    }
+
+    fn update_modifiers(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_keyboard::WlKeyboard,
+        _: u32,
+        _: Modifiers,
+        _: RawModifiers,
+        _: u32,
+    ) {
     }
 }
 
@@ -627,84 +718,249 @@ impl ShmHandler for SimpleWindow {
 }
 
 impl SimpleWindow {
-    pub fn draw(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
-        if let Some(window) = self.window.as_ref() {
-            let width = self.width;
-            let height = self.height;
-            let stride = self.width as i32 * 4;
+    pub fn draw(&mut self, conn: &Connection, qh: &QueueHandle<Self>) {
+        match self.mode {
+            Mode::Points => self.draw_point(conn, qh),
+            Mode::Sketch { .. } => self.draw_sketch(conn, qh),
+        }
+    }
 
-            let mut pool = SlotPool::new(width as usize * height as usize * 4, &self.shm_state)
-                .expect("Failed to create pool");
+    pub fn draw_point(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
+        let width = self.width;
+        let height = self.height;
+        let stride = self.width as i32 * 4;
 
-            let buffer = pool
-                .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Xrgb8888)
-                .expect("create buffer")
-                .0;
+        let buffer = self.pool
+            .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Xrgb8888)
+            .expect("create buffer")
+            .0;
 
-            let mut dt = raqote::DrawTarget::from_backing(
-                width as i32,
-                height as i32,
-                bytemuck::cast_slice_mut(pool.canvas(&buffer).unwrap()),
+        let mut dt = raqote::DrawTarget::from_backing(
+            width as i32,
+            height as i32,
+            bytemuck::cast_slice_mut(self.pool.canvas(&buffer).unwrap()),
+        );
+        dt.clear(WHITE);
+        let mut y = 16.;
+        if self.tablets.is_empty() {
+            dt.draw_text(
+                &self.font,
+                14.,
+                "No tablets found",
+                raqote::Point::new(2., y),
+                &SOLID_RED,
+                &raqote::DrawOptions::new(),
             );
-            dt.clear(WHITE);
-            let mut y = 16.;
-            if self.tablets.is_empty() {
+        } else {
+            for (id, tablet_metadata) in &self.tablets {
+                let text = match &tablet_metadata.name {
+                    Some(name) => name,
+                    None => &*id.id().to_string(),
+                };
                 dt.draw_text(
                     &self.font,
                     14.,
-                    "No tablets found",
+                    text,
                     raqote::Point::new(2., y),
-                    &SOLID_RED,
+                    &SOLID_BLACK,
                     &raqote::DrawOptions::new(),
                 );
-            } else {
-                for (id, tablet_metadata) in &self.tablets {
-                    let text = match &tablet_metadata.name {
-                        Some(name) => name,
-                        None => &*id.id().to_string(),
-                    };
-                    dt.draw_text(
-                        &self.font,
-                        14.,
-                        text,
-                        raqote::Point::new(2., y),
-                        &SOLID_BLACK,
-                        &raqote::DrawOptions::new(),
-                    );
-                    y += 16.0;
-                }
+                y += 16.0;
             }
-
-            for tias in self.tools.values() {
-                if let Some(state) = &tias.state {
-                    let mut pb = raqote::PathBuilder::new();
-                    let pressure = tias.pressure_web();
-                    pb.arc(
-                        state.x as f32,// * self.width as f32,
-                        state.y as f32,// * self.height as f32,
-                        10.0 + 30.0 * pressure as f32,
-                        0.,
-                        2. * std::f32::consts::PI,
-                    );
-                    pb.close();
-                    dt.fill(
-                        &pb.finish(),
-                        &if state.down.is_some() { SOLID_GREEN } else { SOLID_RED },
-                        &raqote::DrawOptions::new(),
-                    );
-                }
-            }
-
-            // Damage the entire window
-            window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
-
-            // Request our next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone());
-
-            // Attach and commit to present.
-            buffer.attach_to(window.wl_surface()).expect("buffer attach");
-            window.wl_surface().commit();
         }
+
+        for tias in self.tools.values() {
+            if let Some(state) = &tias.state {
+                let mut pb = raqote::PathBuilder::new();
+                let pressure = tias.pressure_web();
+                pb.arc(
+                    state.x as f32,// * self.width as f32,
+                    state.y as f32,// * self.height as f32,
+                    10.0 + 30.0 * pressure as f32,
+                    0.,
+                    2. * std::f32::consts::PI,
+                );
+                pb.close();
+                dt.fill(
+                    &pb.finish(),
+                    &if state.down.is_some() { SOLID_GREEN } else { SOLID_RED },
+                    &raqote::DrawOptions::new(),
+                );
+            }
+        }
+
+        // Damage the entire window
+        let surface = self.window.wl_surface();
+        surface.damage_buffer(0, 0, self.width as i32, self.height as i32);
+
+        // Request our next frame
+        surface.frame(qh, surface.clone());
+
+        // Attach and commit to present.
+        buffer.attach_to(surface).expect("buffer attach");
+        surface.commit();
+    }
+
+    fn draw_sketch(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
+        let Mode::Sketch { buffer, busy_buffer } = &mut self.mode
+        else { unreachable!() };
+
+        println!("draw_sketch");
+        let canvas = match self.pool.canvas(buffer) {
+            Some(canvas) => canvas,
+            None => {
+                // I don’t know if I’m using this wrong,
+                // but I want to copy from one buffer to another buffer,
+                // which I understand is allowed (see below),
+                // and I suppose they should both go in the same SlotPool,
+                // but the use of &mut prevents me accessing both at once,
+                // and… and… and… meh, I’m just going to do something stupid for now.
+                // TODO find out from someone who actually knows what they’re doing,
+                // what the appropriate solution is.
+                let old_canvas = unsafe {
+                    std::mem::transmute::<&'_ mut [u8], &'static [u8]>(
+                        self.pool.raw_data_mut(&buffer.slot())
+                    )
+                };
+
+                // This should be rare
+                // (TODO: the rest of this ssentence is found in other examples here,
+                // but I seem to hit it immediatley in Sway, so I dunno if it’s even true),
+                // but if the compositor has not released the previous
+                // buffer, we need double-buffering.
+                let (mut second_buffer, canvas) = self
+                    .pool
+                    .create_buffer(
+                        self.width as i32,
+                        self.height as i32,
+                        self.width as i32 * 4,
+                        wl_shm::Format::Xrgb8888,
+                    )
+                    .expect("create buffer");
+                // Now, we copy from the busy buffer to the new one.
+                // <https://lists.freedesktop.org/archives/wayland-devel/2020-June/041490.html#:~:text=you%20can%20play%20tricks,readbacks%20may%20have%20issues>
+                // tells me that this is safe, but that there may be issues.
+                // I’m out of my depth here.
+                // Maybe that’s why there isn’t a &Buffer → &[u8] method?
+                // Anyway, for now I’ll just do this and hope for the best.
+                canvas.copy_from_slice(old_canvas);
+                // And we swap them. We’ll later need to mark the damage
+                // regions that the busy buffer needs to copy back from this one.
+                std::mem::swap(buffer, &mut second_buffer);
+                *busy_buffer = Some((second_buffer, vec![]));
+                // … but y’know what? For now I’m just going to trash it,
+                // instead of implementing that.
+                // Consider this a stub for a possibly bad idea.
+                *busy_buffer = None;
+                canvas
+            }
+        };
+        let mut dt = raqote::DrawTarget::from_backing(
+            self.width as i32,
+            self.height as i32,
+            //bytemuck::cast_slice_mut(self.pool.canvas(&buffer).unwrap()),
+            bytemuck::cast_slice_mut(canvas),
+        );
+
+        let surface = self.window.wl_surface();
+
+        for tool in self.tools.values() {
+            if let Some(state @ TabletToolState { down: Some(_), .. }) = &tool.state {
+                let mut pb = raqote::PathBuilder::new();
+                let pressure = tool.pressure_web();
+
+                let radius = 10.0 * pressure as f32;
+                pb.arc(
+                    state.x as f32,
+                    state.y as f32,
+                    radius,
+                    0.,
+                    2. * std::f32::consts::PI,
+                );
+                pb.close();
+                dt.fill(
+                    &pb.finish(),
+                    &raqote::Source::Solid(raqote::SolidSource {
+                        r: (state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
+                        g: (state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
+                        b: (state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
+                        a: if tool.info.capabilities.slider {
+                            ((state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
+                        } else {
+                            // Sure, 0 is the neutraal position and all that,
+                            // but semitransparent looks a bit odd,
+                            // so sans slider support, we’ll just go opaque.
+                            // (b being 0 if rotation is not supported is fine.)
+                            255
+                        },
+                    }),
+                    &raqote::DrawOptions::new(),
+                );
+
+                surface.damage_buffer(
+                    ((state.x as f32) - radius).floor() as i32,
+                    ((state.y as f32) - radius).floor() as i32,
+                    ((state.x as f32) + radius).ceil() as i32,
+                    ((state.y as f32) + radius).ceil() as i32,
+                );
+            }
+        }
+
+        // Request our next frame
+        surface.frame(qh, surface.clone());
+
+        // Attach and commit to present.
+        buffer.attach_to(surface).expect("buffer attach");
+        surface.commit();
+    }
+
+    fn reset_sketch_mode(&mut self) {
+        let buffer = self.pool
+            .create_buffer(
+                self.width as i32,
+                self.height as i32,
+                self.width as i32 * 4,
+                wl_shm::Format::Xrgb8888,
+            )
+            .expect("create buffer")
+            .0;
+
+        // Now we actually clear the buffer, making everything opaque white.
+        for x in buffer.canvas(&mut self.pool).unwrap() {
+            *x = 255;
+        }
+        self.window.wl_surface().damage_buffer(0, 0, i32::MAX, i32::MAX);
+        self.mode = Mode::Sketch { buffer, busy_buffer: None };
+    }
+
+    fn toggle_mode(&mut self) {
+        println!("Switching mode to {:?}", self.mode);
+        match self.mode {
+            Mode::Points => self.reset_sketch_mode(),
+            Mode::Sketch { .. } => self.mode = Mode::Points,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Mode {
+    Points,
+    Sketch {
+        /// The buffer that gets drawn to and attached to the surface.
+        buffer: Buffer,
+        /// If the first buffer is not released, we swap to this buffer.
+        /// The buffer that gets copied to after drawing, and 
+        busy_buffer: Option<(Buffer, Vec<(i32, i32, i32, i32)>)>,
+    },
+}
+
+impl Mode {
+    fn is_points(&self) -> bool {
+        matches!(self, Mode::Points)
+    }
+
+    fn is_sketch(&self) -> bool {
+        matches!(self, Mode::Sketch { .. })
     }
 }
 
@@ -713,7 +969,7 @@ delegate_output!(SimpleWindow);
 delegate_shm!(SimpleWindow);
 
 delegate_seat!(SimpleWindow);
-delegate_pointer!(SimpleWindow);
+delegate_keyboard!(SimpleWindow);
 delegate_tablet!(SimpleWindow);
 
 delegate_xdg_shell!(SimpleWindow);
