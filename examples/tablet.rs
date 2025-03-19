@@ -545,16 +545,16 @@ impl tablet_tool::Handler for SimpleWindow {
         };
         for event in events {
             match event {
-                tablet_tool::InitEvent::Type { tool_type: t } => tool_type = Some(t),
-                tablet_tool::InitEvent::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => hardware_serial = Some((hardware_serial_hi, hardware_serial_lo)),
-                tablet_tool::InitEvent::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => hardware_id_wacom = Some((hardware_id_hi, hardware_id_lo)),
-                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Tilt } => capabilities.tilt = true,
-                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Pressure } => capabilities.pressure = true,
-                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Distance } => capabilities.distance = true,
-                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Rotation } => capabilities.rotation = true,
-                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Slider } => capabilities.slider = true,
-                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Wheel } => capabilities.wheel = true,
-                tablet_tool::InitEvent::Capability { capability: _ } => (),
+                tablet_tool::InitEvent::Type(t) => tool_type = Some(t),
+                tablet_tool::InitEvent::HardwareSerial { hi, lo } => hardware_serial = Some((hi, lo)),
+                tablet_tool::InitEvent::HardwareIdWacom { hi, lo } => hardware_id_wacom = Some((hi, lo)),
+                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Tilt) => capabilities.tilt = true,
+                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Pressure) => capabilities.pressure = true,
+                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Distance) => capabilities.distance = true,
+                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Rotation) => capabilities.rotation = true,
+                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Slider) => capabilities.slider = true,
+                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Wheel) => capabilities.wheel = true,
+                tablet_tool::InitEvent::Capability(_) => (),
             }
         }
         let info = TabletToolInfo {
