@@ -1,7 +1,6 @@
 use std::mem;
 use std::sync::Mutex;
 
-use wayland_backend::smallvec::SmallVec;
 use wayland_client::{
     Connection,
     Dispatch,
@@ -32,13 +31,13 @@ pub enum TabletEvent {
 
 pub trait TabletHandler: Sized {
     /// This is fired at the time of the `zwp_tablet_v2.done` event,
-    /// and coalesces any `name`, `id` and `path` events that precede it.
+    /// and collects any preceding `name`, `id` and `path` events into a [`TabletMetadata`].
     fn init_done(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        events: TabletEventList,
+        metadata: TabletMetadata,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -51,62 +50,6 @@ pub trait TabletHandler: Sized {
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
     );
-}
-
-#[doc(hidden)]
-#[derive(Debug)]
-pub struct TabletData {
-    //seat: WlSeat,
-    //tablet_seat: ZwpTabletSeatV2,
-    inner: Mutex<TabletDataInner>,
-}
-
-impl TabletData {
-    pub fn new() -> Self {
-        Self { inner: Default::default() }
-    }
-}
-
-// This will typically reach 3 events: name, id, path;
-// but it could be as few as zero for an unnamed virtual device,
-// and it could be more for something with multiple paths.
-pub type TabletEventList = SmallVec<[TabletEvent; 3]>;
-
-#[derive(Debug, Default)]
-struct TabletDataInner {
-    /// List of pending events.
-    pending: TabletEventList,
-}
-
-impl<D> Dispatch<ZwpTabletV2, TabletData, D>
-    for TabletState
-where
-    D: Dispatch<ZwpTabletV2, TabletData> + TabletHandler,
-{
-    fn event(
-        data: &mut D,
-        tablet: &ZwpTabletV2,
-        event: zwp_tablet_v2::Event,
-        udata: &TabletData,
-        conn: &Connection,
-        qh: &QueueHandle<D>,
-    ) {
-        let mut guard = udata.inner.lock().unwrap();
-        match event {
-            zwp_tablet_v2::Event::Name { name } => guard.pending.push(TabletEvent::Name { name }),
-            zwp_tablet_v2::Event::Id { vid, pid } => guard.pending.push(TabletEvent::Id { vid, pid }),
-            zwp_tablet_v2::Event::Path { path } => guard.pending.push(TabletEvent::Path { path }),
-            zwp_tablet_v2::Event::Done => {
-                let pending = mem::take(&mut guard.pending);
-                drop(guard);
-                data.init_done(conn, qh, tablet, pending);
-            },
-            zwp_tablet_v2::Event::Removed => {
-                data.removed(conn, qh, tablet);
-            },
-            _ => unreachable!(),
-        }
-    }
 }
 
 /// An accumulator of tablet metadata events.
@@ -123,22 +66,45 @@ pub struct TabletMetadata {
     pub paths: Vec<String>,
 }
 
-impl From<TabletEventList> for TabletMetadata {
-    fn from(events: TabletEventList) -> Self {
-        TabletMetadata::from_iter(events)
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct TabletData {
+    metadata: Mutex<TabletMetadata>,
+}
+
+impl TabletData {
+    pub fn new() -> Self {
+        Self { metadata: Default::default() }
     }
 }
 
-impl FromIterator<TabletEvent> for TabletMetadata {
-    fn from_iter<T: IntoIterator<Item = TabletEvent>>(events: T) -> Self {
-        let mut metadata = TabletMetadata::default();
-        for event in events {
-            match event {
-                TabletEvent::Name { name } => metadata.name = Some(name),
-                TabletEvent::Id { vid, pid } => metadata.id = Some((vid, pid)),
-                TabletEvent::Path { path } => metadata.paths.push(path),
-            }
+impl<D> Dispatch<ZwpTabletV2, TabletData, D>
+    for TabletState
+where
+    D: Dispatch<ZwpTabletV2, TabletData> + TabletHandler,
+{
+    fn event(
+        data: &mut D,
+        tablet: &ZwpTabletV2,
+        event: zwp_tablet_v2::Event,
+        udata: &TabletData,
+        conn: &Connection,
+        qh: &QueueHandle<D>,
+    ) {
+        let mut guard = udata.metadata.lock().unwrap();
+        match event {
+            zwp_tablet_v2::Event::Name { name } => guard.name = Some(name),
+            zwp_tablet_v2::Event::Id { vid, pid } => guard.id = Some((vid, pid)),
+            zwp_tablet_v2::Event::Path { path } => guard.paths.push(path),
+            zwp_tablet_v2::Event::Done => {
+                let metadata = mem::take(&mut *guard);
+                drop(guard);
+                data.init_done(conn, qh, tablet, metadata);
+            },
+            zwp_tablet_v2::Event::Removed => {
+                data.removed(conn, qh, tablet);
+            },
+            _ => unreachable!(),
         }
-        metadata
     }
 }
