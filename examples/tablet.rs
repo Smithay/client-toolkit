@@ -21,6 +21,7 @@ use smithay_client_toolkit::{
             TabletToolInitEvent, TabletToolInitEventList,
             TabletToolEventFrame,
             TabletToolEvent, TabletToolHandler,
+            tablet::TabletMetadata,
         },
         Capability, SeatHandler, SeatState,
     },
@@ -122,19 +123,6 @@ fn main() {
     while !simple_window.exit {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
     }
-}
-
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct TabletMetadata {
-    /// The descriptive name of the tablet device.
-    name: Option<String>,
-    /// The USB vendor and product IDs for the tablet device.
-    id: Option<(u32, u32)>,
-    /// System-specific device paths for the tablet.
-    ///
-    /// Path format is unspecified.
-    /// Clients must figure out what to do with them, if they care.
-    paths: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -523,27 +511,20 @@ impl TabletSeatHandler for SimpleWindow {
 impl TabletHandler for SimpleWindow {
     fn init_done(
         &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        _: &Connection,
+        _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
         events: TabletEventList,
     ) {
-        let mut metadata = TabletMetadata::default();
-        for event in events {
-            match event {
-                TabletEvent::Name { name } => metadata.name = Some(name),
-                TabletEvent::Id { vid, pid } => metadata.id = Some((vid, pid)),
-                TabletEvent::Path { path } => metadata.paths.push(path),
-            }
-        }
+        let metadata = TabletMetadata::from(events);
         println!("Tablet {} initialised: {:#?}", tablet.id(), metadata);
         self.tablets.insert(tablet.clone(), metadata);
     }
 
     fn removed(
         &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        _: &Connection,
+        _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
     ) {
         println!("Tablet {} removed", tablet.id());

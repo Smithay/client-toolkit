@@ -108,3 +108,37 @@ where
         }
     }
 }
+
+/// An accumulator of tablet metadata events.
+#[derive(Debug, Default)]
+pub struct TabletMetadata {
+    /// The descriptive name of the tablet device.
+    pub name: Option<String>,
+    /// The USB vendor and product IDs for the tablet device.
+    pub id: Option<(u32, u32)>,
+    /// System-specific device paths for the tablet.
+    ///
+    /// Path format is unspecified.
+    /// Clients must figure out what to do with them, if they care.
+    pub paths: Vec<String>,
+}
+
+impl From<TabletEventList> for TabletMetadata {
+    fn from(events: TabletEventList) -> Self {
+        TabletMetadata::from_iter(events)
+    }
+}
+
+impl FromIterator<TabletEvent> for TabletMetadata {
+    fn from_iter<T: IntoIterator<Item = TabletEvent>>(events: T) -> Self {
+        let mut metadata = TabletMetadata::default();
+        for event in events {
+            match event {
+                TabletEvent::Name { name } => metadata.name = Some(name),
+                TabletEvent::Id { vid, pid } => metadata.id = Some((vid, pid)),
+                TabletEvent::Path { path } => metadata.paths.push(path),
+            }
+        }
+        metadata
+    }
+}
