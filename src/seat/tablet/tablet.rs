@@ -31,13 +31,13 @@ pub enum TabletEvent {
 
 pub trait TabletHandler: Sized {
     /// This is fired at the time of the `zwp_tablet_v2.done` event,
-    /// and collects any preceding `name`, `id` and `path` events into a [`TabletMetadata`].
+    /// and collects any preceding `name`, `id` and `path` events into a [`TabletDescription`].
     fn init_done(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        metadata: TabletMetadata,
+        description: TabletDescription,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -52,9 +52,9 @@ pub trait TabletHandler: Sized {
     );
 }
 
-/// An accumulator of tablet metadata events.
+/// The description of a tablet device.
 #[derive(Debug, Default)]
-pub struct TabletMetadata {
+pub struct TabletDescription {
     /// The descriptive name of the tablet device.
     pub name: Option<String>,
     /// The USB vendor and product IDs for the tablet device.
@@ -69,12 +69,12 @@ pub struct TabletMetadata {
 #[doc(hidden)]
 #[derive(Debug)]
 pub struct TabletData {
-    metadata: Mutex<TabletMetadata>,
+    description: Mutex<TabletDescription>,
 }
 
 impl TabletData {
     pub fn new() -> Self {
-        Self { metadata: Default::default() }
+        Self { description: Default::default() }
     }
 }
 
@@ -91,15 +91,15 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let mut guard = udata.metadata.lock().unwrap();
+        let mut guard = udata.description.lock().unwrap();
         match event {
             zwp_tablet_v2::Event::Name { name } => guard.name = Some(name),
             zwp_tablet_v2::Event::Id { vid, pid } => guard.id = Some((vid, pid)),
             zwp_tablet_v2::Event::Path { path } => guard.paths.push(path),
             zwp_tablet_v2::Event::Done => {
-                let metadata = mem::take(&mut *guard);
+                let description = mem::take(&mut *guard);
                 drop(guard);
-                data.init_done(conn, qh, tablet, metadata);
+                data.init_done(conn, qh, tablet, description);
             },
             zwp_tablet_v2::Event::Removed => {
                 data.removed(conn, qh, tablet);
