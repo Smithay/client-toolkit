@@ -1,3 +1,4 @@
+use std::fmt;
 use std::mem;
 use std::sync::Mutex;
 
@@ -40,8 +41,33 @@ pub struct HardwareSerialOrId {
     pub lo: u32,
 }
 
+bitflags::bitflags! {
+    /// What the tool is capable of, beyond basic X/Y coordinates.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct Capabilities: u8 {
+        /// Whether the tool supports tilt.
+        const TILT     = 0b00000001;
+        /// Whether the tool supports pressure.
+        const PRESSURE = 0b00000010;
+        /// Whether the tool can track its distance from the surface.
+        const DISTANCE = 0b00000100;
+        /// Whether the tool can measure z-axis rotation.
+        const ROTATION = 0b00001000;
+        /// Whether the tool has a slider.
+        const SLIDER   = 0b00010000;
+        /// Whether the tool has a wheel.
+        const WHEEL    = 0b00100000;
+
+        // Reserve them, but don’t make them part of the public interface.
+        const _        = 0b01000000;
+        const _        = 0b10000000;
+    }
+}
+const HARDWARE_SERIAL:   Capabilities = Capabilities::from_bits_retain(0b01000000);
+const HARDWARE_ID_WACOM: Capabilities = Capabilities::from_bits_retain(0b10000000);
+
 /// Static information about the tool and its capabilities.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Description {
     // Wish this was #[repr(u8)]… it’s wasting four bytes.
     r#type: Type,
@@ -51,7 +77,19 @@ pub struct Description {
     hardware_id_wacom: HardwareSerialOrId,
     // Could have used bitflags here—it is already a dep—but we don’t need its complexity.
     // Only real loss from this simplicity is meaningful Debug.
-    capabilities: u8,
+    capabilities: Capabilities,
+}
+
+// Manual to Option<…> hardware_serial and hardware_id_wacom.
+impl fmt::Debug for Description {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Description")
+            .field("r#type", &self.r#type)
+            .field("hardware_serial", &self.hardware_serial())
+            .field("hardware_id_wacom", &self.hardware_id_wacom())
+            .field("capabilities", &self.capabilities)
+            .finish()
+    }
 }
 
 impl Default for Description {
@@ -63,20 +101,10 @@ impl Default for Description {
             r#type: Type::Pen,
             hardware_serial: HardwareSerialOrId { hi: 0, lo: 0 },
             hardware_id_wacom: HardwareSerialOrId { hi: 0, lo: 0 },
-            capabilities: 0,
+            capabilities: Capabilities::empty(),
         }
     }
 }
-
-const TILT:              u8 = 0b00000001;
-const PRESSURE:          u8 = 0b00000010;
-const DISTANCE:          u8 = 0b00000100;
-const ROTATION:          u8 = 0b00001000;
-const SLIDER:            u8 = 0b00010000;
-const WHEEL:             u8 = 0b00100000;
-
-const HARDWARE_SERIAL:   u8 = 0b01000000;
-const HARDWARE_ID_WACOM: u8 = 0b10000000;
 
 impl Description {
     /// The type of tool.
@@ -84,7 +112,7 @@ impl Description {
 
     /// What the hardware serial number of the tool is, if any.
     pub fn hardware_serial(&self) -> Option<HardwareSerialOrId> {
-        if self.capabilities & HARDWARE_SERIAL != 0 {
+        if self.capabilities.contains(HARDWARE_SERIAL) {
             Some(self.hardware_serial)
         } else {
             None
@@ -93,25 +121,27 @@ impl Description {
 
     /// What the Wacom hardware ID of the tool is, if any.
     pub fn hardware_id_wacom(&self) -> Option<HardwareSerialOrId> {
-        if self.capabilities & HARDWARE_ID_WACOM != 0 {
+        if self.capabilities.contains(HARDWARE_ID_WACOM) {
             Some(self.hardware_id_wacom)
         } else {
             None
         }
     }
 
+    /// What the tool is capable of, beyond basic X/Y coordinates.
+    pub fn capabilities(&self) -> Capabilities { self.capabilities.clone() }
     /// Whether the tool supports tilt.
-    pub fn supports_tilt(&self)     -> bool { self.capabilities & TILT     != 0 }
+    pub fn supports_tilt(&self)     -> bool { self.capabilities.contains(Capabilities::TILT) }
     /// Whether the tool supports pressure.
-    pub fn supports_pressure(&self) -> bool { self.capabilities & PRESSURE != 0 }
+    pub fn supports_pressure(&self) -> bool { self.capabilities.contains(Capabilities::PRESSURE) }
     /// Whether the tool can track its distance from the surface.
-    pub fn supports_distance(&self) -> bool { self.capabilities & DISTANCE != 0 }
+    pub fn supports_distance(&self) -> bool { self.capabilities.contains(Capabilities::DISTANCE) }
     /// Whether the tool can measure z-axis rotation.
-    pub fn supports_rotation(&self) -> bool { self.capabilities & ROTATION != 0 }
+    pub fn supports_rotation(&self) -> bool { self.capabilities.contains(Capabilities::ROTATION) }
     /// Whether the tool has a slider.
-    pub fn supports_slider(&self)   -> bool { self.capabilities & SLIDER   != 0 }
+    pub fn supports_slider(&self)   -> bool { self.capabilities.contains(Capabilities::SLIDER) }
     /// Whether the tool has a wheel.
-    pub fn supports_wheel(&self)    -> bool { self.capabilities & WHEEL    != 0 }
+    pub fn supports_wheel(&self)    -> bool { self.capabilities.contains(Capabilities::WHEEL) }
 }
 
 #[derive(Debug)]
@@ -253,7 +283,8 @@ pub enum Event {
 
 pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_tool_v2.done` event,
-    /// and coalesces any `type`, `hardware_serial`, `hardware_serial_wacom` and `capability` events that precede it.
+    /// and collects any preceding `name`, `id` and `path` `type`, `hardware_serial`,
+    /// `hardware_serial_wacom` and `capability` events into a [`Description`].
     fn init_done(
         &mut self,
         conn: &Connection,
@@ -352,22 +383,22 @@ where
                 guard.description.capabilities |= HARDWARE_ID_WACOM;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Tilt) } => {
-                guard.description.capabilities |= TILT;
+                guard.description.capabilities |= Capabilities::TILT;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Pressure) } => {
-                guard.description.capabilities |= PRESSURE;
+                guard.description.capabilities |= Capabilities::PRESSURE;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Distance) } => {
-                guard.description.capabilities |= DISTANCE;
+                guard.description.capabilities |= Capabilities::DISTANCE;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Rotation) } => {
-                guard.description.capabilities |= ROTATION;
+                guard.description.capabilities |= Capabilities::ROTATION;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Slider) } => {
-                guard.description.capabilities |= SLIDER;
+                guard.description.capabilities |= Capabilities::SLIDER;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Wheel) } => {
-                guard.description.capabilities |= WHEEL;
+                guard.description.capabilities |= Capabilities::WHEEL;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(_) } => (),
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Unknown(unknown) } => {
