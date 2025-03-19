@@ -124,24 +124,6 @@ struct Button {
     button: u32,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct TabletToolCapabilities {
-    tilt: bool,
-    pressure: bool,
-    distance: bool,
-    rotation: bool,
-    slider: bool,
-    wheel: bool,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct TabletToolInfo {
-    tool_type: tablet_tool::Type,
-    hardware_serial: Option<(u32, u32)>,
-    hardware_id_wacom: Option<(u32, u32)>,
-    capabilities: TabletToolCapabilities,
-}
-
 /// The current state of the tool.
 ///
 /// This covers everything, and may, for some applications,
@@ -182,8 +164,7 @@ struct TabletToolState {
 }
 
 struct ToolInfoAndState {
-    /// Static info about the tool and its capabilities.
-    info: TabletToolInfo,
+    description: tablet_tool::Description,
     /// The time the last frame was sent,
     /// or zero if no frames have come yet.
     last_frame_time: u32,
@@ -196,7 +177,7 @@ impl ToolInfoAndState {
     /// scaled in the range \[0, 1\],
     /// and set to 0.5 when down if pressure isn’t supported.
     fn pressure_web(&self) -> f64 {
-        match (self.info.capabilities.pressure, &self.state) {
+        match (self.description.supports_pressure(), &self.state) {
             (true, &Some(TabletToolState { pressure, .. })) => pressure as f64 / 65535.0,
             (false, Some(TabletToolState { down: Some(_), .. })) => 0.5,
             _ => 0.0,
@@ -530,42 +511,11 @@ impl tablet_tool::Handler for SimpleWindow {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         tablet_tool: &ZwpTabletToolV2,
-        events: tablet_tool::InitEventList,
+        description: tablet_tool::Description,
     ) {
-        let mut tool_type = None;
-        let mut hardware_serial = None;
-        let mut hardware_id_wacom = None;
-        let mut capabilities = TabletToolCapabilities {
-            tilt: false,
-            pressure: false,
-            distance: false,
-            rotation: false,
-            slider: false,
-            wheel: false,
-        };
-        for event in events {
-            match event {
-                tablet_tool::InitEvent::Type(t) => tool_type = Some(t),
-                tablet_tool::InitEvent::HardwareSerial { hi, lo } => hardware_serial = Some((hi, lo)),
-                tablet_tool::InitEvent::HardwareIdWacom { hi, lo } => hardware_id_wacom = Some((hi, lo)),
-                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Tilt) => capabilities.tilt = true,
-                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Pressure) => capabilities.pressure = true,
-                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Distance) => capabilities.distance = true,
-                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Rotation) => capabilities.rotation = true,
-                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Slider) => capabilities.slider = true,
-                tablet_tool::InitEvent::Capability(tablet_tool::Capability::Wheel) => capabilities.wheel = true,
-                tablet_tool::InitEvent::Capability(_) => (),
-            }
-        }
-        let info = TabletToolInfo {
-            tool_type: tool_type.expect("zwp_tablet_tool_v2.type event missing"),
-            hardware_serial,
-            hardware_id_wacom,
-            capabilities,
-        };
-        println!("Tablet tool {} initialised: {:#?}", tablet_tool.id(), info);
+        println!("Tablet tool {} initialised: {:#?}", tablet_tool.id(), description);
         self.tools.insert(tablet_tool.clone(), ToolInfoAndState {
-            info,
+            description,
             last_frame_time: 0,
             state: None,
         });
@@ -857,7 +807,7 @@ impl SimpleWindow {
                         r: (state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
                         g: (state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
                         b: (state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
-                        a: if tool.info.capabilities.slider {
+                        a: if tool.description.supports_slider() {
                             ((state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
                         } else {
                             // Sure, 0 is the neutraal position and all that,
