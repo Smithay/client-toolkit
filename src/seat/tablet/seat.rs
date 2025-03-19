@@ -12,7 +12,10 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_pad_v2::ZwpTabletPadV2,
 };
 
-use super::{TabletState, TabletData, TabletToolData, TabletPadData};
+use super::TabletState;
+use super::tablet::TabletData;
+use super::tool::TabletToolData;
+use super::pad::TabletPadData;
 
 pub trait TabletSeatHandler: Sized {
     fn tablet_added(
