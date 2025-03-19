@@ -33,6 +33,87 @@ pub enum InitEvent {
     Capability(Capability),
 }
 
+// Just a named tuple.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct HardwareSerialOrId {
+    pub hi: u32,
+    pub lo: u32,
+}
+
+/// Static information about the tool and its capabilities.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Description {
+    // Wish this was #[repr(u8)]… it’s wasting four bytes.
+    r#type: Type,
+    // These are really Option<_>, but I squeezed their None discriminant into capabilities,
+    // as it had two spare bits. This saves eight bytes. You’re welcome. 😛
+    hardware_serial: HardwareSerialOrId,
+    hardware_id_wacom: HardwareSerialOrId,
+    // Could have used bitflags here—it is already a dep—but we don’t need its complexity.
+    // Only real loss from this simplicity is meaningful Debug.
+    capabilities: u8,
+}
+
+impl Default for Description {
+    fn default() -> Description {
+        Description {
+            // I get the impression type is mandatory,
+            // so this should be overwritten with the correct value.
+            // But if not… meh, Pen would be the default anyway.
+            r#type: Type::Pen,
+            hardware_serial: HardwareSerialOrId { hi: 0, lo: 0 },
+            hardware_id_wacom: HardwareSerialOrId { hi: 0, lo: 0 },
+            capabilities: 0,
+        }
+    }
+}
+
+const TILT:              u8 = 0b00000001;
+const PRESSURE:          u8 = 0b00000010;
+const DISTANCE:          u8 = 0b00000100;
+const ROTATION:          u8 = 0b00001000;
+const SLIDER:            u8 = 0b00010000;
+const WHEEL:             u8 = 0b00100000;
+
+const HARDWARE_SERIAL:   u8 = 0b01000000;
+const HARDWARE_ID_WACOM: u8 = 0b10000000;
+
+impl Description {
+    /// The type of tool.
+    pub fn r#type(&self) -> Type { self.r#type }
+
+    /// What the hardware serial number of the tool is, if any.
+    pub fn hardware_serial(&self) -> Option<HardwareSerialOrId> {
+        if self.capabilities & HARDWARE_SERIAL != 0 {
+            Some(self.hardware_serial)
+        } else {
+            None
+        }
+    }
+
+    /// What the Wacom hardware ID of the tool is, if any.
+    pub fn hardware_id_wacom(&self) -> Option<HardwareSerialOrId> {
+        if self.capabilities & HARDWARE_ID_WACOM != 0 {
+            Some(self.hardware_id_wacom)
+        } else {
+            None
+        }
+    }
+
+    /// Whether the tool supports tilt.
+    pub fn supports_tilt(&self)     -> bool { self.capabilities & TILT     != 0 }
+    /// Whether the tool supports pressure.
+    pub fn supports_pressure(&self) -> bool { self.capabilities & PRESSURE != 0 }
+    /// Whether the tool can track its distance from the surface.
+    pub fn supports_distance(&self) -> bool { self.capabilities & DISTANCE != 0 }
+    /// Whether the tool can measure z-axis rotation.
+    pub fn supports_rotation(&self) -> bool { self.capabilities & ROTATION != 0 }
+    /// Whether the tool has a slider.
+    pub fn supports_slider(&self)   -> bool { self.capabilities & SLIDER   != 0 }
+    /// Whether the tool has a wheel.
+    pub fn supports_wheel(&self)    -> bool { self.capabilities & WHEEL    != 0 }
+}
+
 #[derive(Debug)]
 pub struct Frame {
     /// The time of the event with millisecond granularity
@@ -178,7 +259,7 @@ pub trait Handler: Sized {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletToolV2,
-        events: InitEventList,
+        description: Description,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -222,9 +303,9 @@ pub type EventList = SmallVec<[Event; 3]>;
 
 #[derive(Debug, Default)]
 struct DataInner {
-    /// List of pending init-time events, flushed when a `done` event comes in,
+    /// An accumulation of pending init-time events, flushed when a `done` event comes in,
     /// after which it will be perpetually empty.
-    pending_init: InitEventList,
+    description: Description,
 
     /// List of pending events, flushed when a `frame` event comes in.
     pending_frame: EventList,
@@ -244,6 +325,7 @@ where
         qh: &QueueHandle<D>,
     ) {
         let mut guard = udata.inner.lock().unwrap();
+
         match event {
 
             // Initial burst of static description events
@@ -252,35 +334,50 @@ where
             // zero or one HardwareIdWacom,
             // zero or more Capability,
             // then finished with Done).
-
             zwp_tablet_tool_v2::Event::Type { tool_type } => {
-                guard.pending_init.push(InitEvent::Type(match tool_type {
+                guard.description.r#type = match tool_type {
                     WEnum::Value(tool_type) => tool_type,
                     WEnum::Unknown(unknown) => {
                         log::warn!(target: "sctk", "{}: invalid tablet tool type: {:x}", tool.id(), unknown);
                         return;
                     },
-                }));
+                };
             },
-            zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
-                guard.pending_init.push(InitEvent::HardwareSerial { hi: hardware_serial_hi, lo: hardware_serial_lo });
+            zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi: hi, hardware_serial_lo: lo } => {
+                guard.description.hardware_serial = HardwareSerialOrId { hi, lo };
+                guard.description.capabilities |= HARDWARE_SERIAL;
             },
-            zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => {
-                guard.pending_init.push(InitEvent::HardwareIdWacom { hi: hardware_id_hi, lo: hardware_id_lo });
+            zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi: hi, hardware_id_lo: lo } => {
+                guard.description.hardware_id_wacom = HardwareSerialOrId { hi, lo };
+                guard.description.capabilities |= HARDWARE_ID_WACOM;
             },
-            zwp_tablet_tool_v2::Event::Capability { capability } => {
-                guard.pending_init.push(InitEvent::Capability(match capability {
-                    WEnum::Value(capability) => capability,
-                    WEnum::Unknown(unknown) => {
-                        log::warn!(target: "sctk", "{}: invalid tablet tool capability: {:x}", tool.id(), unknown);
-                        return;
-                    },
-                }));
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Tilt) } => {
+                guard.description.capabilities |= TILT;
+            },
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Pressure) } => {
+                guard.description.capabilities |= PRESSURE;
+            },
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Distance) } => {
+                guard.description.capabilities |= DISTANCE;
+            },
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Rotation) } => {
+                guard.description.capabilities |= ROTATION;
+            },
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Slider) } => {
+                guard.description.capabilities |= SLIDER;
+            },
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Wheel) } => {
+                guard.description.capabilities |= WHEEL;
+            },
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(_) } => (),
+            zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Unknown(unknown) } => {
+                log::warn!(target: "sctk", "{}: invalid tablet tool type: {:x}", tool.id(), unknown);
+                return;
             },
             zwp_tablet_tool_v2::Event::Done => {
-                let events = mem::take(&mut guard.pending_init);
+                let description = mem::take(&mut guard.description);
                 drop(guard);
-                data.init_done(conn, qh, tool, events);
+                data.init_done(conn, qh, tool, description);
             },
 
             // Destruction
