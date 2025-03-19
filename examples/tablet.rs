@@ -21,7 +21,7 @@ use smithay_client_toolkit::{
             TabletToolInitEvent, TabletToolInitEventList,
             TabletToolEventFrame,
             TabletToolEvent, TabletToolHandler,
-            tablet::TabletMetadata,
+            tablet::TabletDescription,
         },
         Capability, SeatHandler, SeatState,
     },
@@ -227,7 +227,7 @@ struct SimpleWindow {
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     tablet_seat: Option<ZwpTabletSeatV2>,
-    tablets: HashMap<ZwpTabletV2, TabletMetadata>,
+    tablets: HashMap<ZwpTabletV2, TabletDescription>,
     tools: HashMap<ZwpTabletToolV2, ToolInfoAndState>,
     pool: SlotPool,
     mode: Mode,
@@ -514,10 +514,10 @@ impl TabletHandler for SimpleWindow {
         _: &Connection,
         _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        metadata: TabletMetadata,
+        description: TabletDescription,
     ) {
-        println!("Tablet {} initialised: {:#?}", tablet.id(), metadata);
-        self.tablets.insert(tablet.clone(), metadata);
+        println!("Tablet {} initialised: {:#?}", tablet.id(), description);
+        self.tablets.insert(tablet.clone(), description);
     }
 
     fn removed(
@@ -732,10 +732,10 @@ impl SimpleWindow {
                 &raqote::DrawOptions::new(),
             );
         } else {
-            for (id, tablet_metadata) in &self.tablets {
-                let text = match &tablet_metadata.name {
+            for (tablet, description) in &self.tablets {
+                let text = match &description.name {
                     Some(name) => name,
-                    None => &*id.id().to_string(),
+                    None => &*tablet.id().to_string(),
                 };
                 dt.draw_text(
                     &self.font,
