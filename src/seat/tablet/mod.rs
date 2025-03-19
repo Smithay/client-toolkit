@@ -8,7 +8,7 @@ pub use seat::{TabletSeatHandler, TabletSeatData};
 
 // zwp_tablet_v2
 pub mod tablet;
-pub use tablet::{TabletEvent, TabletHandler, TabletData, TabletEventList};
+pub use tablet::{TabletEvent, TabletHandler, TabletData};
 
 // zwp_tablet_tool_v2
 mod tool;

@@ -17,7 +17,7 @@ use smithay_client_toolkit::{
             ToolCapability,
             TabletState,
             TabletSeatHandler,
-            TabletEvent, TabletEventList, TabletHandler,
+            TabletHandler,
             TabletToolInitEvent, TabletToolInitEventList,
             TabletToolEventFrame,
             TabletToolEvent, TabletToolHandler,
@@ -514,9 +514,8 @@ impl TabletHandler for SimpleWindow {
         _: &Connection,
         _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        events: TabletEventList,
+        metadata: TabletMetadata,
     ) {
-        let metadata = TabletMetadata::from(events);
         println!("Tablet {} initialised: {:#?}", tablet.id(), metadata);
         self.tablets.insert(tablet.clone(), metadata);
     }
