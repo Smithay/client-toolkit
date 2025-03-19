@@ -21,14 +21,13 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_pad_group_v2::{self, ZwpTabletPadGroupV2, EVT_STRIP_OPCODE, EVT_RING_OPCODE},
     zwp_tablet_pad_v2::{self, ZwpTabletPadV2, EVT_GROUP_OPCODE},
 };
-use super::TabletState;
 
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletPadData;
+pub struct Data;
 
-impl TabletPadData {
-    pub fn new() -> TabletPadData { TabletPadData }
+impl Data {
+    pub fn new() -> Data { Data }
 }
 
 // zwp_tablet_pad_v2
@@ -44,23 +43,23 @@ impl TabletPadData {
 // Event: removed
 // Enum: button_state
 
-impl<D> Dispatch<ZwpTabletPadV2, TabletPadData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletPadV2, Data, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletPadV2, TabletPadData>
-     + Dispatch<ZwpTabletPadGroupV2, TabletPadGroupData>
-     //+ TabletPadHandler
+    D: Dispatch<ZwpTabletPadV2, Data>
+     + Dispatch<ZwpTabletPadGroupV2, GroupData>
+     //+ Handler
      + 'static,
 {
     event_created_child!(D, ZwpTabletPadV2, [
-        EVT_GROUP_OPCODE => (ZwpTabletPadGroupV2, TabletPadGroupData),
+        EVT_GROUP_OPCODE => (ZwpTabletPadGroupV2, GroupData),
     ]);
 
     fn event(
         data: &mut D,
         pad: &ZwpTabletPadV2,
         event: zwp_tablet_pad_v2::Event,
-        udata: &TabletPadData,
+        udata: &Data,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -68,25 +67,25 @@ where
     }
 }
 
-impl<D> Dispatch<ZwpTabletPadGroupV2, TabletPadGroupData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletPadGroupV2, GroupData, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletPadGroupV2, TabletPadGroupData>
-     + Dispatch<ZwpTabletPadRingV2, TabletPadRingData>
-     + Dispatch<ZwpTabletPadStripV2, TabletPadStripData>
-     //+ TabletPadGroupHandler
+    D: Dispatch<ZwpTabletPadGroupV2, GroupData>
+     + Dispatch<ZwpTabletPadRingV2, RingData>
+     + Dispatch<ZwpTabletPadStripV2, StripData>
+     //+ GroupHandler
      + 'static,
 {
     event_created_child!(D, ZwpTabletPadV2, [
-        EVT_RING_OPCODE => (ZwpTabletPadRingV2, TabletPadRingData),
-        EVT_STRIP_OPCODE => (ZwpTabletPadStripV2, TabletPadStripData),
+        EVT_RING_OPCODE => (ZwpTabletPadRingV2, RingData),
+        EVT_STRIP_OPCODE => (ZwpTabletPadStripV2, StripData),
     ]);
 
     fn event(
         data: &mut D,
         group: &ZwpTabletPadGroupV2,
         event: zwp_tablet_pad_group_v2::Event,
-        udata: &TabletPadGroupData,
+        udata: &GroupData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -94,17 +93,17 @@ where
     }
 }
 
-impl<D> Dispatch<ZwpTabletPadRingV2, TabletPadRingData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletPadRingV2, RingData, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletPadRingV2, TabletPadRingData>
-     //+ TabletPadRingHandler,
+    D: Dispatch<ZwpTabletPadRingV2, RingData>
+     //+ RingHandler,
 {
     fn event(
         data: &mut D,
         ring: &ZwpTabletPadRingV2,
         event: zwp_tablet_pad_ring_v2::Event,
-        udata: &TabletPadRingData,
+        udata: &RingData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -112,17 +111,17 @@ where
     }
 }
 
-impl<D> Dispatch<ZwpTabletPadStripV2, TabletPadStripData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletPadStripV2, StripData, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletPadStripV2, TabletPadStripData>
-     //+ TabletPadStripHandler,
+    D: Dispatch<ZwpTabletPadStripV2, StripData>
+     //+ StripHandler,
 {
     fn event(
         data: &mut D,
         strip: &ZwpTabletPadStripV2,
         event: zwp_tablet_pad_strip_v2::Event,
-        udata: &TabletPadStripData,
+        udata: &StripData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -140,7 +139,7 @@ where
 // Event: mode_switch
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletPadGroupData;
+pub struct GroupData;
 
 // zwp_tablet_pad_ring_v2
 // Request: set_feedback
@@ -152,7 +151,7 @@ pub struct TabletPadGroupData;
 // Enum: source
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletPadRingData;
+pub struct RingData;
 
 // zwp_tablet_pad_strip_v2
 // Request: set_feedback
@@ -164,4 +163,4 @@ pub struct TabletPadRingData;
 // Enum: source
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletPadStripData;
+pub struct StripData;

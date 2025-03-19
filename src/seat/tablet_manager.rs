@@ -13,17 +13,12 @@ use wayland_protocols::wp::tablet::zv2::client::{
 
 use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
-pub mod seat;
-pub mod tablet;
-pub mod tool;
-pub mod pad;
-
 #[derive(Debug)]
-pub struct TabletState {
+pub struct TabletManager {
     tablet_manager: GlobalProxy<ZwpTabletManagerV2>,
 }
 
-impl TabletState {
+impl TabletManager {
     /// Bind `zwp_tablet_manager_v2` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
@@ -40,15 +35,15 @@ impl TabletState {
         qh: &QueueHandle<D>,
     ) -> Result<ZwpTabletSeatV2, GlobalError>
     where
-        D: Dispatch<ZwpTabletSeatV2, seat::TabletSeatData> + 'static,
+        D: Dispatch<ZwpTabletSeatV2, super::tablet_seat::Data> + 'static,
     {
-        let udata = seat::TabletSeatData { wl_seat: seat.clone() };
+        let udata = super::tablet_seat::Data { wl_seat: seat.clone() };
         Ok(self.tablet_manager.get()?.get_tablet_seat(seat, qh, udata))
     }
 }
 
 impl<D> Dispatch<ZwpTabletManagerV2, GlobalData, D>
-    for TabletState
+    for TabletManager
 where
     D: Dispatch<ZwpTabletManagerV2, GlobalData>,
 {
@@ -69,27 +64,27 @@ macro_rules! delegate_tablet {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_manager_v2::ZwpTabletManagerV2: $crate::globals::GlobalData
-        ] => $crate::seat::tablet::TabletState);
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_seat_v2::ZwpTabletSeatV2: $crate::seat::tablet::seat::TabletSeatData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_seat_v2::ZwpTabletSeatV2: $crate::seat::tablet_seat::Data
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_v2::ZwpTabletV2: $crate::seat::tablet::tablet::TabletData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_v2::ZwpTabletV2: $crate::seat::tablet::Data
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_tool_v2::ZwpTabletToolV2: $crate::seat::tablet::tool::TabletToolData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_tool_v2::ZwpTabletToolV2: $crate::seat::tablet_tool::Data
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_v2::ZwpTabletPadV2: $crate::seat::tablet::pad::TabletPadData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_v2::ZwpTabletPadV2: $crate::seat::tablet_pad::Data
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_group_v2::ZwpTabletPadGroupV2: $crate::seat::tablet::pad::TabletPadGroupData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_group_v2::ZwpTabletPadGroupV2: $crate::seat::tablet_pad::GroupData
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_ring_v2::ZwpTabletPadRingV2: $crate::seat::tablet::pad::TabletPadRingData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_ring_v2::ZwpTabletPadRingV2: $crate::seat::tablet_pad::RingData
+        ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_strip_v2::ZwpTabletPadStripV2: $crate::seat::tablet::pad::TabletPadStripData
-        ] => $crate::seat::tablet::TabletState);
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_pad_strip_v2::ZwpTabletPadStripV2: $crate::seat::tablet_pad::StripData
+        ] => $crate::seat::TabletManager);
     };
 }

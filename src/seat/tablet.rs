@@ -8,10 +8,8 @@ use wayland_client::{
 };
 use wayland_protocols::wp::tablet::zv2::client::zwp_tablet_v2::{self, ZwpTabletV2};
 
-use super::TabletState;
-
 #[derive(Debug)]
-pub enum TabletEvent {
+pub enum Event {
     /// The descriptive name of the tablet device
     Name {
         name: String,
@@ -29,15 +27,15 @@ pub enum TabletEvent {
     },
 }
 
-pub trait TabletHandler: Sized {
+pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_v2.done` event,
-    /// and collects any preceding `name`, `id` and `path` events into a [`TabletDescription`].
+    /// and collects any preceding `name`, `id` and `path` events into a [`Description`].
     fn init_done(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        description: TabletDescription,
+        description: Description,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -54,7 +52,7 @@ pub trait TabletHandler: Sized {
 
 /// The description of a tablet device.
 #[derive(Debug, Default)]
-pub struct TabletDescription {
+pub struct Description {
     /// The descriptive name of the tablet device.
     pub name: Option<String>,
     /// The USB vendor and product IDs for the tablet device.
@@ -68,26 +66,26 @@ pub struct TabletDescription {
 
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletData {
-    description: Mutex<TabletDescription>,
+pub struct Data {
+    description: Mutex<Description>,
 }
 
-impl TabletData {
+impl Data {
     pub fn new() -> Self {
         Self { description: Default::default() }
     }
 }
 
-impl<D> Dispatch<ZwpTabletV2, TabletData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletV2, Data, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletV2, TabletData> + TabletHandler,
+    D: Dispatch<ZwpTabletV2, Data> + Handler,
 {
     fn event(
         data: &mut D,
         tablet: &ZwpTabletV2,
         event: zwp_tablet_v2::Event,
-        udata: &TabletData,
+        udata: &Data,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {

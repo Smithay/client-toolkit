@@ -12,12 +12,7 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_pad_v2::ZwpTabletPadV2,
 };
 
-use super::TabletState;
-use super::tablet::TabletData;
-use super::tool::TabletToolData;
-use super::pad::TabletPadData;
-
-pub trait TabletSeatHandler: Sized {
+pub trait Handler: Sized {
     fn tablet_added(
         &mut self,
         conn: &Connection,
@@ -48,31 +43,31 @@ pub trait TabletSeatHandler: Sized {
 
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletSeatData {
+pub struct Data {
     pub(crate) wl_seat: WlSeat,
 }
 
-impl<D> Dispatch<ZwpTabletSeatV2, TabletSeatData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletSeatV2, Data, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletSeatV2, TabletSeatData>
-     + Dispatch<ZwpTabletV2, TabletData>
-     + Dispatch<ZwpTabletToolV2, TabletToolData>
-     + Dispatch<ZwpTabletPadV2, TabletPadData>
-     + TabletSeatHandler
+    D: Dispatch<ZwpTabletSeatV2, Data>
+     + Dispatch<ZwpTabletV2, super::tablet::Data>
+     + Dispatch<ZwpTabletToolV2, super::tablet_tool::Data>
+     + Dispatch<ZwpTabletPadV2, super::tablet_pad::Data>
+     + Handler
      + 'static,
 {
     event_created_child!(D, ZwpTabletSeatV2, [
-        EVT_TABLET_ADDED_OPCODE => (ZwpTabletV2, TabletData::new()),
-        EVT_TOOL_ADDED_OPCODE => (ZwpTabletToolV2, TabletToolData::new()),
-        EVT_PAD_ADDED_OPCODE => (ZwpTabletPadV2, TabletPadData::new()),
+        EVT_TABLET_ADDED_OPCODE => (ZwpTabletV2, super::tablet::Data::new()),
+        EVT_TOOL_ADDED_OPCODE => (ZwpTabletToolV2, super::tablet_tool::Data::new()),
+        EVT_PAD_ADDED_OPCODE => (ZwpTabletPadV2, super::tablet_pad::Data::new()),
     ]);
 
     fn event(
         data: &mut D,
         tablet_seat: &ZwpTabletSeatV2,
         event: zwp_tablet_seat_v2::Event,
-        udata: &TabletSeatData,
+        udata: &Data,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
