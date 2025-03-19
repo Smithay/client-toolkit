@@ -13,15 +13,15 @@ use smithay_client_toolkit::{
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
         tablet::{
-            ToolType,
-            ToolCapability,
             TabletState,
-            TabletSeatHandler,
-            TabletHandler,
-            TabletToolInitEvent, TabletToolInitEventList,
-            TabletToolEventFrame,
-            TabletToolEvent, TabletToolHandler,
-            tablet::TabletDescription,
+            seat::TabletSeatHandler,
+            tablet::{TabletHandler, TabletDescription},
+            tool::{
+                ToolType, ToolCapability,
+                TabletToolInitEvent, TabletToolInitEventList,
+                TabletToolEventFrame,
+                TabletToolEvent, TabletToolHandler,
+            },
         },
         Capability, SeatHandler, SeatState,
     },
