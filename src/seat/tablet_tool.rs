@@ -21,20 +21,16 @@ pub use zwp_tablet_tool_v2::{Capability, Type};
 
 #[derive(Debug)]
 pub enum InitEvent {
-    Type {
-        tool_type: Type,
-    },
+    Type(Type),
     HardwareSerial {
-        hardware_serial_hi: u32,
-        hardware_serial_lo: u32,
+        hi: u32,
+        lo: u32,
     },
     HardwareIdWacom {
-        hardware_id_hi: u32,
-        hardware_id_lo: u32,
+        hi: u32,
+        lo: u32,
     },
-    Capability {
-        capability: Capability,
-    },
+    Capability(Capability),
 }
 
 #[derive(Debug)]
@@ -258,32 +254,28 @@ where
             // then finished with Done).
 
             zwp_tablet_tool_v2::Event::Type { tool_type } => {
-                guard.pending_init.push(InitEvent::Type {
-                    tool_type: match tool_type {
-                        WEnum::Value(tool_type) => tool_type,
-                        WEnum::Unknown(unknown) => {
-                            log::warn!(target: "sctk", "{}: invalid tablet tool type: {:x}", tool.id(), unknown);
-                            return;
-                        },
+                guard.pending_init.push(InitEvent::Type(match tool_type {
+                    WEnum::Value(tool_type) => tool_type,
+                    WEnum::Unknown(unknown) => {
+                        log::warn!(target: "sctk", "{}: invalid tablet tool type: {:x}", tool.id(), unknown);
+                        return;
                     },
-                });
+                }));
             },
             zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
-                guard.pending_init.push(InitEvent::HardwareSerial { hardware_serial_hi, hardware_serial_lo });
+                guard.pending_init.push(InitEvent::HardwareSerial { hi: hardware_serial_hi, lo: hardware_serial_lo });
             },
             zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => {
-                guard.pending_init.push(InitEvent::HardwareIdWacom { hardware_id_hi, hardware_id_lo });
+                guard.pending_init.push(InitEvent::HardwareIdWacom { hi: hardware_id_hi, lo: hardware_id_lo });
             },
             zwp_tablet_tool_v2::Event::Capability { capability } => {
-                guard.pending_init.push(InitEvent::Capability {
-                    capability: match capability {
-                        WEnum::Value(capability) => capability,
-                        WEnum::Unknown(unknown) => {
-                            log::warn!(target: "sctk", "{}: invalid tablet tool capability: {:x}", tool.id(), unknown);
-                            return;
-                        },
+                guard.pending_init.push(InitEvent::Capability(match capability {
+                    WEnum::Value(capability) => capability,
+                    WEnum::Unknown(unknown) => {
+                        log::warn!(target: "sctk", "{}: invalid tablet tool capability: {:x}", tool.id(), unknown);
+                        return;
                     },
-                });
+                }));
             },
             zwp_tablet_tool_v2::Event::Done => {
                 let events = mem::take(&mut guard.pending_init);
