@@ -17,13 +17,12 @@ use wayland_protocols::wp::tablet::zv2::client::{
     //zwp_tablet_pad_v2::{self, ZwpTabletPadV2},
 };
 
-use super::TabletState;
-pub use zwp_tablet_tool_v2::{Capability as ToolCapability, Type as ToolType};
+pub use zwp_tablet_tool_v2::{Capability, Type};
 
 #[derive(Debug)]
-pub enum TabletToolInitEvent {
+pub enum InitEvent {
     Type {
-        tool_type: ToolType,
+        tool_type: Type,
     },
     HardwareSerial {
         hardware_serial_hi: u32,
@@ -34,20 +33,20 @@ pub enum TabletToolInitEvent {
         hardware_id_lo: u32,
     },
     Capability {
-        capability: ToolCapability,
+        capability: Capability,
     },
 }
 
 #[derive(Debug)]
-pub struct TabletToolEventFrame {
+pub struct Frame {
     /// The time of the event with millisecond granularity
     pub time: u32,
     /// All the state changes that have occurred since the previous frame
-    pub events: TabletToolEventList,
+    pub events: EventList,
 }
 
 #[derive(Debug)]
-pub enum TabletToolEvent {
+pub enum Event {
     /// Notification that this tool is focused on a certain surface.
     ///
     /// This event can be received when the tool has moved from one surface to another,
@@ -175,7 +174,7 @@ pub enum TabletToolEvent {
     },
 }
 
-pub trait TabletToolHandler: Sized {
+pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_tool_v2.done` event,
     /// and coalesces any `type`, `hardware_serial`, `hardware_serial_wacom` and `capability` events that precede it.
     fn init_done(
@@ -183,7 +182,7 @@ pub trait TabletToolHandler: Sized {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletToolV2,
-        events: TabletToolInitEventList,
+        events: InitEventList,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -204,47 +203,47 @@ pub trait TabletToolHandler: Sized {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletToolV2,
-        frame: TabletToolEventFrame,
+        frame: Frame,
     );
 }
 
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct TabletToolData {
+pub struct Data {
     //seat: WlSeat,
     //tablet_seat: ZwpTabletToolSeatV2,
-    inner: Mutex<TabletToolDataInner>,
+    inner: Mutex<DataInner>,
 }
 
-impl TabletToolData {
+impl Data {
     pub fn new() -> Self {
         Self { inner: Default::default() }
     }
 }
 
-pub type TabletToolInitEventList = Vec<TabletToolInitEvent>;
-pub type TabletToolEventList = SmallVec<[TabletToolEvent; 3]>;
+pub type InitEventList = Vec<InitEvent>;
+pub type EventList = SmallVec<[Event; 3]>;
 
 #[derive(Debug, Default)]
-struct TabletToolDataInner {
+struct DataInner {
     /// List of pending init-time events, flushed when a `done` event comes in,
     /// after which it will be perpetually empty.
-    pending_init: TabletToolInitEventList,
+    pending_init: InitEventList,
 
     /// List of pending events, flushed when a `frame` event comes in.
-    pending_frame: TabletToolEventList,
+    pending_frame: EventList,
 }
 
-impl<D> Dispatch<ZwpTabletToolV2, TabletToolData, D>
-    for TabletState
+impl<D> Dispatch<ZwpTabletToolV2, Data, D>
+    for super::TabletManager
 where
-    D: Dispatch<ZwpTabletToolV2, TabletToolData> + TabletToolHandler,
+    D: Dispatch<ZwpTabletToolV2, Data> + Handler,
 {
     fn event(
         data: &mut D,
         tool: &ZwpTabletToolV2,
         event: zwp_tablet_tool_v2::Event,
-        udata: &TabletToolData,
+        udata: &Data,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -259,7 +258,7 @@ where
             // then finished with Done).
 
             zwp_tablet_tool_v2::Event::Type { tool_type } => {
-                guard.pending_init.push(TabletToolInitEvent::Type {
+                guard.pending_init.push(InitEvent::Type {
                     tool_type: match tool_type {
                         WEnum::Value(tool_type) => tool_type,
                         WEnum::Unknown(unknown) => {
@@ -270,13 +269,13 @@ where
                 });
             },
             zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => {
-                guard.pending_init.push(TabletToolInitEvent::HardwareSerial { hardware_serial_hi, hardware_serial_lo });
+                guard.pending_init.push(InitEvent::HardwareSerial { hardware_serial_hi, hardware_serial_lo });
             },
             zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => {
-                guard.pending_init.push(TabletToolInitEvent::HardwareIdWacom { hardware_id_hi, hardware_id_lo });
+                guard.pending_init.push(InitEvent::HardwareIdWacom { hardware_id_hi, hardware_id_lo });
             },
             zwp_tablet_tool_v2::Event::Capability { capability } => {
-                guard.pending_init.push(TabletToolInitEvent::Capability {
+                guard.pending_init.push(InitEvent::Capability {
                     capability: match capability {
                         WEnum::Value(capability) => capability,
                         WEnum::Unknown(unknown) => {
@@ -305,45 +304,45 @@ where
             // then finished with Frame).
 
             zwp_tablet_tool_v2::Event::ProximityIn { serial, tablet, surface } => {
-                guard.pending_frame.push(TabletToolEvent::ProximityIn { serial, tablet, surface });
+                guard.pending_frame.push(Event::ProximityIn { serial, tablet, surface });
             },
             zwp_tablet_tool_v2::Event::ProximityOut => {
-                guard.pending_frame.push(TabletToolEvent::ProximityOut);
+                guard.pending_frame.push(Event::ProximityOut);
             },
             zwp_tablet_tool_v2::Event::Down { serial } => {
-                guard.pending_frame.push(TabletToolEvent::Down { serial });
+                guard.pending_frame.push(Event::Down { serial });
             },
             zwp_tablet_tool_v2::Event::Up => {
-                guard.pending_frame.push(TabletToolEvent::Up);
+                guard.pending_frame.push(Event::Up);
             },
             zwp_tablet_tool_v2::Event::Motion { x, y } => {
-                guard.pending_frame.push(TabletToolEvent::Motion { x, y });
+                guard.pending_frame.push(Event::Motion { x, y });
             },
             zwp_tablet_tool_v2::Event::Pressure { pressure } => {
                 // “The value of this event is normalized to a value between 0 and 65535.”
                 // But the wayland Wire format only supports 32-bit integers, so we cast it.
                 // <https://wayland.freedesktop.org/docs/html/ch04.html#:~:text=xml.-,Wire%20Format>.
-                guard.pending_frame.push(TabletToolEvent::Pressure { pressure: pressure as u16 });
+                guard.pending_frame.push(Event::Pressure { pressure: pressure as u16 });
             },
             zwp_tablet_tool_v2::Event::Distance { distance } => {
                 // Same deal, “normalized to a value between 0 and 65535”.
-                guard.pending_frame.push(TabletToolEvent::Distance { distance: distance as u16 });
+                guard.pending_frame.push(Event::Distance { distance: distance as u16 });
             },
             zwp_tablet_tool_v2::Event::Tilt { tilt_x, tilt_y } => {
-                guard.pending_frame.push(TabletToolEvent::Tilt { tilt_x, tilt_y });
+                guard.pending_frame.push(Event::Tilt { tilt_x, tilt_y });
             },
             zwp_tablet_tool_v2::Event::Rotation { degrees } => {
-                guard.pending_frame.push(TabletToolEvent::Rotation { degrees });
+                guard.pending_frame.push(Event::Rotation { degrees });
             },
             zwp_tablet_tool_v2::Event::Slider { position } => {
                 // This one is “normalized between -65535 and 65535”, 17 bits, so it stays i32.
-                guard.pending_frame.push(TabletToolEvent::Slider { position });
+                guard.pending_frame.push(Event::Slider { position });
             },
             zwp_tablet_tool_v2::Event::Wheel { degrees, clicks } => {
-                guard.pending_frame.push(TabletToolEvent::Wheel { degrees, clicks });
+                guard.pending_frame.push(Event::Wheel { degrees, clicks });
             },
             zwp_tablet_tool_v2::Event::Button { serial, button, state } => {
-                guard.pending_frame.push(TabletToolEvent::Button {
+                guard.pending_frame.push(Event::Button {
                     serial,
                     button,
                     pressed: match state {
@@ -365,7 +364,7 @@ where
                 // The only issue is that it exposes SmallVec what is nicer an implementation type.
                 let events = mem::take(&mut guard.pending_frame);
                 drop(guard);
-                data.tablet_tool_frame(conn, qh, tool, TabletToolEventFrame {
+                data.tablet_tool_frame(conn, qh, tool, Frame {
                     time,
                     events,
                 });

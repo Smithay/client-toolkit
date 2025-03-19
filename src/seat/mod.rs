@@ -28,7 +28,12 @@ pub mod pointer;
 pub mod pointer_constraints;
 pub mod relative_pointer;
 pub mod touch;
+mod tablet_manager;
+pub use tablet_manager::TabletManager;
+pub mod tablet_seat;
 pub mod tablet;
+pub mod tablet_tool;
+pub mod tablet_pad;
 
 use pointer::cursor_shape::CursorShapeManager;
 use pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes};

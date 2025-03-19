@@ -12,17 +12,10 @@ use smithay_client_toolkit::{
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
-        tablet::{
-            TabletState,
-            seat::TabletSeatHandler,
-            tablet::{TabletHandler, TabletDescription},
-            tool::{
-                ToolType, ToolCapability,
-                TabletToolInitEvent, TabletToolInitEventList,
-                TabletToolEventFrame,
-                TabletToolEvent, TabletToolHandler,
-            },
-        },
+        TabletManager,
+        tablet_seat,
+        tablet,
+        tablet_tool,
         Capability, SeatHandler, SeatState,
     },
     shell::{
@@ -104,7 +97,7 @@ fn main() {
         compositor_state,
         shm_state,
         xdg_shell_state,
-        tablet_state: TabletState::bind(&globals, &qh),
+        tablet_manager: TabletManager::bind(&globals, &qh),
 
         exit: false,
         width,
@@ -143,7 +136,7 @@ struct TabletToolCapabilities {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct TabletToolInfo {
-    tool_type: ToolType,
+    tool_type: tablet_tool::Type,
     hardware_serial: Option<(u32, u32)>,
     hardware_id_wacom: Option<(u32, u32)>,
     capabilities: TabletToolCapabilities,
@@ -218,7 +211,7 @@ struct SimpleWindow {
     compositor_state: CompositorState,
     shm_state: Shm,
     xdg_shell_state: XdgShell,
-    tablet_state: TabletState,
+    tablet_manager: TabletManager,
 
     exit: bool,
     width: u32,
@@ -227,7 +220,7 @@ struct SimpleWindow {
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     tablet_seat: Option<ZwpTabletSeatV2>,
-    tablets: HashMap<ZwpTabletV2, TabletDescription>,
+    tablets: HashMap<ZwpTabletV2, tablet::Description>,
     tools: HashMap<ZwpTabletToolV2, ToolInfoAndState>,
     pool: SlotPool,
     mode: Mode,
@@ -372,7 +365,7 @@ impl SeatHandler for SimpleWindow {
             self.keyboard = Some(keyboard);
         }
         if self.tablet_seat.is_none() {
-            let tablet_seat = self.tablet_state.get_tablet_seat(&seat, qh).ok();
+            let tablet_seat = self.tablet_manager.get_tablet_seat(&seat, qh).ok();
             if tablet_seat.is_some() {
                 println!("Created tablet seat");
             } else {
@@ -473,7 +466,7 @@ impl KeyboardHandler for SimpleWindow {
     }
 }
 
-impl TabletSeatHandler for SimpleWindow {
+impl tablet_seat::Handler for SimpleWindow {
     fn tablet_added(
         &mut self,
         _conn: &Connection,
@@ -508,13 +501,13 @@ impl TabletSeatHandler for SimpleWindow {
     // }
 }
 
-impl TabletHandler for SimpleWindow {
+impl tablet::Handler for SimpleWindow {
     fn init_done(
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        description: TabletDescription,
+        description: tablet::Description,
     ) {
         println!("Tablet {} initialised: {:#?}", tablet.id(), description);
         self.tablets.insert(tablet.clone(), description);
@@ -531,13 +524,13 @@ impl TabletHandler for SimpleWindow {
     }
 }
 
-impl TabletToolHandler for SimpleWindow {
+impl tablet_tool::Handler for SimpleWindow {
     fn init_done(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         tablet_tool: &ZwpTabletToolV2,
-        events: TabletToolInitEventList,
+        events: tablet_tool::InitEventList,
     ) {
         let mut tool_type = None;
         let mut hardware_serial = None;
@@ -552,16 +545,16 @@ impl TabletToolHandler for SimpleWindow {
         };
         for event in events {
             match event {
-                TabletToolInitEvent::Type { tool_type: t } => tool_type = Some(t),
-                TabletToolInitEvent::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => hardware_serial = Some((hardware_serial_hi, hardware_serial_lo)),
-                TabletToolInitEvent::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => hardware_id_wacom = Some((hardware_id_hi, hardware_id_lo)),
-                TabletToolInitEvent::Capability { capability: ToolCapability::Tilt } => capabilities.tilt = true,
-                TabletToolInitEvent::Capability { capability: ToolCapability::Pressure } => capabilities.pressure = true,
-                TabletToolInitEvent::Capability { capability: ToolCapability::Distance } => capabilities.distance = true,
-                TabletToolInitEvent::Capability { capability: ToolCapability::Rotation } => capabilities.rotation = true,
-                TabletToolInitEvent::Capability { capability: ToolCapability::Slider } => capabilities.slider = true,
-                TabletToolInitEvent::Capability { capability: ToolCapability::Wheel } => capabilities.wheel = true,
-                TabletToolInitEvent::Capability { capability: _ } => (),
+                tablet_tool::InitEvent::Type { tool_type: t } => tool_type = Some(t),
+                tablet_tool::InitEvent::HardwareSerial { hardware_serial_hi, hardware_serial_lo } => hardware_serial = Some((hardware_serial_hi, hardware_serial_lo)),
+                tablet_tool::InitEvent::HardwareIdWacom { hardware_id_hi, hardware_id_lo } => hardware_id_wacom = Some((hardware_id_hi, hardware_id_lo)),
+                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Tilt } => capabilities.tilt = true,
+                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Pressure } => capabilities.pressure = true,
+                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Distance } => capabilities.distance = true,
+                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Rotation } => capabilities.rotation = true,
+                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Slider } => capabilities.slider = true,
+                tablet_tool::InitEvent::Capability { capability: tablet_tool::Capability::Wheel } => capabilities.wheel = true,
+                tablet_tool::InitEvent::Capability { capability: _ } => (),
             }
         }
         let info = TabletToolInfo {
@@ -592,14 +585,14 @@ impl TabletToolHandler for SimpleWindow {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         tablet_tool: &ZwpTabletToolV2,
-        frame: TabletToolEventFrame,
+        frame: tablet_tool::Frame,
     ) {
         println!("Tablet tool {} frame: {:#?}", tablet_tool.id(), frame);
-        let TabletToolEventFrame { time, events } = frame;
+        let tablet_tool::Frame { time, events } = frame;
         let mut events = events.into_iter();
         let tias = self.tools.get_mut(tablet_tool).unwrap();
         let state = tias.state.get_or_insert_with(|| {
-            let Some(TabletToolEvent::ProximityIn { serial, tablet, surface }) = events.next()
+            let Some(tablet_tool::Event::ProximityIn { serial, tablet, surface }) = events.next()
             else {
                 panic!("First zwp_tablet_tool_v2 frame didn’t start with a proximity_in event");
             };
@@ -635,12 +628,12 @@ impl TabletToolHandler for SimpleWindow {
 
         for event in events {
             match event {
-                TabletToolEvent::ProximityIn { serial, tablet, surface } => {
+                tablet_tool::Event::ProximityIn { serial, tablet, surface } => {
                     state.serial = serial;
                     state.tablet = tablet;
                     state.surface = surface;
                 },
-                TabletToolEvent::ProximityOut => {
+                tablet_tool::Event::ProximityOut => {
                     tias.state = None;
                     // Given that a frame is supposed to represent a single hardware event,
                     // I think you can fairly say it’d be mad to proximity_out and
@@ -648,38 +641,38 @@ impl TabletToolHandler for SimpleWindow {
                     // So I think we’re OK to just break.
                     break;
                 },
-                TabletToolEvent::Down { serial } => {
+                tablet_tool::Event::Down { serial } => {
                     state.down = Some(serial);
                 },
-                TabletToolEvent::Up => {
+                tablet_tool::Event::Up => {
                     state.down = None;
                 },
-                TabletToolEvent::Motion { x, y } => {
+                tablet_tool::Event::Motion { x, y } => {
                     state.x = x;
                     state.y = y;
                 },
-                TabletToolEvent::Pressure { pressure } => {
+                tablet_tool::Event::Pressure { pressure } => {
                     state.pressure = pressure;
                 },
-                TabletToolEvent::Distance { distance } => {
+                tablet_tool::Event::Distance { distance } => {
                     state.distance = distance;
                 },
-                TabletToolEvent::Tilt { tilt_x, tilt_y } => {
+                tablet_tool::Event::Tilt { tilt_x, tilt_y } => {
                     state.tilt_x = tilt_x;
                     state.tilt_y = tilt_y;
                 },
-                TabletToolEvent::Rotation { degrees } => {
+                tablet_tool::Event::Rotation { degrees } => {
                     state.rotation_degrees = degrees;
                 },
-                TabletToolEvent::Slider { position } => {
+                tablet_tool::Event::Slider { position } => {
                     state.slider_position = position;
                 },
-                TabletToolEvent::Wheel { degrees, clicks } => {
+                tablet_tool::Event::Wheel { degrees, clicks } => {
                     // These ones use += because they’re deltas, unlike the rest.
                     state.wheel_degrees += degrees;
                     state.wheel_clicks += clicks;
                 },
-                TabletToolEvent::Button { serial, button, pressed } => {
+                tablet_tool::Event::Button { serial, button, pressed } => {
                     if pressed {
                         state.buttons.insert(Button { serial, button });
                     } else {
