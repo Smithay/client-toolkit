@@ -1,6 +1,5 @@
 use wayland_client::{
     event_created_child,
-    protocol::wl_seat::WlSeat,
     Connection,
     Dispatch,
     QueueHandle,
@@ -30,7 +29,6 @@ pub trait Handler: Sized {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet_seat: &ZwpTabletSeatV2,
-        seat: &WlSeat,
         id: ZwpTabletV2,
     ) {}
 
@@ -42,7 +40,6 @@ pub trait Handler: Sized {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet_seat: &ZwpTabletSeatV2,
-        seat: &WlSeat,
         id: ZwpTabletToolV2,
     ) {}
 
@@ -54,21 +51,14 @@ pub trait Handler: Sized {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet_seat: &ZwpTabletSeatV2,
-        seat: &WlSeat,
         id: ZwpTabletPadV2,
     ) {}
 }
 
-#[doc(hidden)]
-#[derive(Debug)]
-pub struct Data {
-    pub(crate) wl_seat: WlSeat,
-}
-
-impl<D> Dispatch<ZwpTabletSeatV2, Data, D>
+impl<D> Dispatch<ZwpTabletSeatV2, (), D>
     for super::TabletManager
 where
-    D: Dispatch<ZwpTabletSeatV2, Data>
+    D: Dispatch<ZwpTabletSeatV2, ()>
      + Dispatch<ZwpTabletV2, super::tablet::Data>
      + Dispatch<ZwpTabletToolV2, super::tablet_tool::Data>
      + Dispatch<ZwpTabletPadV2, super::tablet_pad::Data>
@@ -85,19 +75,19 @@ where
         data: &mut D,
         tablet_seat: &ZwpTabletSeatV2,
         event: zwp_tablet_seat_v2::Event,
-        udata: &Data,
+        _udata: &(),
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
             zwp_tablet_seat_v2::Event::TabletAdded { id } => {
-                data.tablet_added(conn, qh, tablet_seat, &udata.wl_seat, id);
+                data.tablet_added(conn, qh, tablet_seat, id);
             },
             zwp_tablet_seat_v2::Event::ToolAdded { id } => {
-                data.tool_added(conn, qh, tablet_seat, &udata.wl_seat, id);
+                data.tool_added(conn, qh, tablet_seat, id);
             },
             zwp_tablet_seat_v2::Event::PadAdded { id } => {
-                data.pad_added(conn, qh, tablet_seat, &udata.wl_seat, id);
+                data.pad_added(conn, qh, tablet_seat, id);
             },
             _ => unreachable!(),
         }

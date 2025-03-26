@@ -35,10 +35,9 @@ impl TabletManager {
         qh: &QueueHandle<D>,
     ) -> Result<ZwpTabletSeatV2, GlobalError>
     where
-        D: Dispatch<ZwpTabletSeatV2, super::tablet_seat::Data> + 'static,
+        D: Dispatch<ZwpTabletSeatV2, ()> + 'static,
     {
-        let udata = super::tablet_seat::Data { wl_seat: seat.clone() };
-        Ok(self.tablet_manager.get()?.get_tablet_seat(seat, qh, udata))
+        Ok(self.tablet_manager.get()?.get_tablet_seat(seat, qh, ()))
     }
 }
 
@@ -66,7 +65,7 @@ macro_rules! delegate_tablet {
             $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_manager_v2::ZwpTabletManagerV2: $crate::globals::GlobalData
         ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_seat_v2::ZwpTabletSeatV2: $crate::seat::tablet_seat::Data
+            $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_seat_v2::ZwpTabletSeatV2: ()
         ] => $crate::seat::TabletManager);
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_v2::ZwpTabletV2: $crate::seat::tablet::Data
