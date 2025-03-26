@@ -475,7 +475,7 @@ impl tablet_tool::Handler for SimpleWindow {
         info: tablet_tool::Info,
     ) {
         println!("Tablet tool {} initialised: {:#?}", tool.id(), info);
-        self.tools.add(tool.clone(), info);
+        self.tools.insert(tool.clone(), info);
     }
 
     fn removed(

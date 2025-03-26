@@ -189,15 +189,13 @@ impl Tools {
         Tools::default()
     }
 
+    /// Get the info and state for a tool.
     pub fn get(&self, tool: &ZwpTabletToolV2) -> Option<&InfoAndState> {
         self.map.get(tool)
     }
 
-    pub fn get_mut(&mut self, tool: &ZwpTabletToolV2) -> Option<&mut InfoAndState> {
-        self.map.get_mut(tool)
-    }
-
-    pub fn add(&mut self, tool: ZwpTabletToolV2, info: Info) {
+    /// Add a tool with its info and no state.
+    pub fn insert(&mut self, tool: ZwpTabletToolV2, info: Info) {
         self.map.insert(tool.clone(), InfoAndState {
             info,
             last_frame_time: 0,
@@ -205,13 +203,17 @@ impl Tools {
         });
     }
 
+    /// Remove a tool from the collection.
     pub fn remove(&mut self, tool: &ZwpTabletToolV2) {
         self.map.remove(tool);
     }
 
-    /// Apply the events to the record state.
+    /// Apply the events to the tool’s state.
     ///
-    /// Returns it in order to save a superfluous [`.get()`](Self::get) call.
+    /// Returns the updated [`InfoAndState`] for convenience,
+    /// and to save a superfluous [`.get()`](Self::get) call.
+    ///
+    /// Panics if the tool is not in the collection.
     pub fn ingest_frame(&mut self, tool: &ZwpTabletToolV2, events: &[Event]) -> &InfoAndState {
         let mut events = events.into_iter();
         let ias = self.map.get_mut(tool).unwrap();
@@ -239,6 +241,12 @@ impl Tools {
         &*ias
     }
 
+    /// Iterate over each tablet tool and its data.
+    pub fn iter(&self) -> hash_map::Iter<'_, ZwpTabletToolV2, InfoAndState> {
+        self.map.iter()
+    }
+
+    /// Iterate over the data for each tablet tool.
     pub fn values(&self) -> hash_map::Values<'_, ZwpTabletToolV2, InfoAndState> {
         self.map.values()
     }
@@ -249,38 +257,6 @@ impl<'a> IntoIterator for &'a Tools {
     type IntoIter = hash_map::Iter<'a, ZwpTabletToolV2, InfoAndState>;
     fn into_iter(self) -> Self::IntoIter {
         self.map.iter()
-    }
-}
-
-// TODO: this isn’t the way, but what is?
-impl Handler for Tools {
-    fn info(
-        &mut self,
-        _: &Connection,
-        _: &QueueHandle<Self>,
-        tool: &ZwpTabletToolV2,
-        info: Info,
-    ) {
-        self.add(tool.clone(), info);
-    }
-
-    fn removed(
-        &mut self,
-        _: &Connection,
-        _: &QueueHandle<Self>,
-        tool: &ZwpTabletToolV2,
-    ) {
-        self.map.remove(tool);
-    }
-
-    fn frame(
-        &mut self,
-        _: &Connection,
-        _: &QueueHandle<Self>,
-        tool: &ZwpTabletToolV2,
-        events: &[Event],
-    ) {
-        self.ingest_frame(tool, &events);
     }
 }
 
