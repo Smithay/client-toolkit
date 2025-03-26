@@ -12,7 +12,19 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_pad_v2::ZwpTabletPadV2,
 };
 
+/// Handler for the tablet seat.
+///
+/// The `*_added` methods announce the creation of objects before they’re ready for use.
+/// If you might have multiple seats and want to associate devices with their tablet seat,
+/// then you can implement them, but otherwise you can just leave them blank.
+///
+/// What you *actually* care about is the corresponding handler’s `info` method.
+/// That’s when it’s ready to use.
+#[allow(unused_variables)]  // ← For all the trait method arguments
 pub trait Handler: Sized {
+    /// A tablet has been added.
+    ///
+    /// [`tablet::Handler::info`](super::tablet::Handler::info) will be called when it is ready for use.
     fn tablet_added(
         &mut self,
         conn: &Connection,
@@ -20,7 +32,11 @@ pub trait Handler: Sized {
         tablet_seat: &ZwpTabletSeatV2,
         seat: &WlSeat,
         id: ZwpTabletV2,
-    );
+    ) {}
+
+    /// A tablet tool has been added.
+    ///
+    /// [`tablet_tool::Handler::info`](super::tablet_tool::Handler::info) will be called when it is ready for use.
     fn tool_added(
         &mut self,
         conn: &Connection,
@@ -28,17 +44,19 @@ pub trait Handler: Sized {
         tablet_seat: &ZwpTabletSeatV2,
         seat: &WlSeat,
         id: ZwpTabletToolV2,
-    );
-    ///// TODO; non-functional stub, just so it doesn’t crash if a pad is present (I hope?).
-    ///// Nothing more is hooked up for pads.
-    //fn pad_added(
-    //    &mut self,
-    //    conn: &Connection,
-    //    qh: &QueueHandle<Self>,
-    //    tablet_seat: &ZwpTabletSeatV2,
-    //    seat: &WlSeat,
-    //    id: ZwpTabletPadV2,
-    //);
+    ) {}
+
+    /// A tablet pad has been added.
+    ///
+    /// [`tablet_pad::Handler::info`](super::tablet_pad::Handler::info) will be called when it is ready for use.
+    fn pad_added(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        tablet_seat: &ZwpTabletSeatV2,
+        seat: &WlSeat,
+        id: ZwpTabletPadV2,
+    ) {}
 }
 
 #[doc(hidden)]
@@ -79,9 +97,7 @@ where
                 data.tool_added(conn, qh, tablet_seat, &udata.wl_seat, id);
             },
             zwp_tablet_seat_v2::Event::PadAdded { id } => {
-                log::warn!(target: "sctk", "zwp_tablet_seat_v2.pad_added: unimplemented");
-                id.destroy();
-                //data.pad_added(conn, qh, tablet_seat, &udata.wl_seat, id);
+                data.pad_added(conn, qh, tablet_seat, &udata.wl_seat, id);
             },
             _ => unreachable!(),
         }
