@@ -70,7 +70,7 @@ const HARDWARE_ID_WACOM: Capabilities = Capabilities::from_bits_retain(0b1000000
 
 /// Static information about the tool and its capabilities.
 #[derive(Clone, PartialEq, Eq)]
-pub struct Description {
+pub struct Info {
     // Wish this was #[repr(u8)]… it’s wasting four bytes.
     r#type: Type,
     // These are really Option<_>, but I squeezed their None discriminant into capabilities,
@@ -83,9 +83,9 @@ pub struct Description {
 }
 
 // Manual to Option<…> hardware_serial and hardware_id_wacom.
-impl fmt::Debug for Description {
+impl fmt::Debug for Info {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Description")
+        f.debug_struct("Info")
             .field("r#type", &self.r#type)
             .field("hardware_serial", &self.hardware_serial())
             .field("hardware_id_wacom", &self.hardware_id_wacom())
@@ -94,9 +94,9 @@ impl fmt::Debug for Description {
     }
 }
 
-impl Default for Description {
-    fn default() -> Description {
-        Description {
+impl Default for Info {
+    fn default() -> Info {
+        Info {
             // I get the impression type is mandatory,
             // so this should be overwritten with the correct value.
             // But if not… meh, Pen would be the default anyway.
@@ -108,7 +108,7 @@ impl Default for Description {
     }
 }
 
-impl Description {
+impl Info {
     /// The type of tool.
     pub fn r#type(&self) -> Type { self.r#type }
 
@@ -148,7 +148,7 @@ impl Description {
 
 #[derive(Debug)]
 pub struct InfoAndState {
-    pub description: Description,
+    pub info: Info,
     /// The time the last frame was sent,
     /// or zero if no frames have come yet.
     pub last_frame_time: u32,
@@ -161,7 +161,7 @@ impl InfoAndState {
     /// scaled in the range \[0, 1\],
     /// and set to 0.5 when down if pressure isn’t supported.
     pub fn pressure_web(&self) -> f64 {
-        match (self.description.supports_pressure(), &self.state) {
+        match (self.info.supports_pressure(), &self.state) {
             (true, &Some(State { pressure, .. })) => pressure as f64 / 65535.0,
             (false, Some(State { down_serial: Some(_), .. })) => 0.5,
             _ => 0.0,
@@ -169,10 +169,10 @@ impl InfoAndState {
     }
 }
 
-impl From<Description> for InfoAndState {
-    fn from(description: Description) -> InfoAndState {
+impl From<Info> for InfoAndState {
+    fn from(info: Info) -> InfoAndState {
         InfoAndState {
-            description,
+            info,
             last_frame_time: 0,
             state: None,
         }
@@ -197,9 +197,9 @@ impl Tools {
         self.map.get_mut(tool)
     }
 
-    pub fn add(&mut self, tool: ZwpTabletToolV2, description: Description) {
+    pub fn add(&mut self, tool: ZwpTabletToolV2, info: Info) {
         self.map.insert(tool.clone(), InfoAndState {
-            description,
+            info,
             last_frame_time: 0,
             state: None,
         });
@@ -254,14 +254,14 @@ impl<'a> IntoIterator for &'a Tools {
 
 // TODO: this isn’t the way, but what is?
 impl Handler for Tools {
-    fn init_done(
+    fn info(
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
         tool: &ZwpTabletToolV2,
-        description: Description,
+        info: Info,
     ) {
-        self.add(tool.clone(), description);
+        self.add(tool.clone(), info);
     }
 
     fn removed(
@@ -273,7 +273,7 @@ impl Handler for Tools {
         self.map.remove(tool);
     }
 
-    fn tablet_tool_frame(
+    fn frame(
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
@@ -532,13 +532,13 @@ pub const BTN_STYLUS3: u32 = 0x149;
 pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_tool_v2.done` event,
     /// and collects any preceding `name`, `id` and `path` `type`, `hardware_serial`,
-    /// `hardware_serial_wacom` and `capability` events into a [`Description`].
-    fn init_done(
+    /// `hardware_serial_wacom` and `capability` events into an [`Info`].
+    fn info(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletToolV2,
-        description: Description,
+        info: Info,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -556,7 +556,7 @@ pub trait Handler: Sized {
     /// All the events within this frame should be considered one hardware event.
     /// The last event in the list passed will always be a `Frame` event,
     /// and there will only be that one frame.
-    fn tablet_tool_frame(
+    fn frame(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
@@ -583,7 +583,7 @@ impl Data {
 struct DataInner {
     /// An accumulation of pending init-time events, flushed when a `done` event comes in,
     /// after which it will be perpetually empty.
-    description: Description,
+    info: Info,
 
     /// List of pending events, flushed when a `frame` event comes in.
     pending: EventList,
@@ -634,7 +634,7 @@ where
             // zero or more Capability,
             // then finished with Done).
             zwp_tablet_tool_v2::Event::Type { tool_type } => {
-                guard.description.r#type = match tool_type {
+                guard.info.r#type = match tool_type {
                     WEnum::Value(tool_type) => tool_type,
                     WEnum::Unknown(unknown) => {
                         log::warn!(target: "sctk", "{}: invalid tablet tool type: {:x}", tool.id(), unknown);
@@ -643,30 +643,30 @@ where
                 };
             },
             zwp_tablet_tool_v2::Event::HardwareSerial { hardware_serial_hi: hi, hardware_serial_lo: lo } => {
-                guard.description.hardware_serial = HardwareSerialOrId { hi, lo };
-                guard.description.capabilities |= HARDWARE_SERIAL;
+                guard.info.hardware_serial = HardwareSerialOrId { hi, lo };
+                guard.info.capabilities |= HARDWARE_SERIAL;
             },
             zwp_tablet_tool_v2::Event::HardwareIdWacom { hardware_id_hi: hi, hardware_id_lo: lo } => {
-                guard.description.hardware_id_wacom = HardwareSerialOrId { hi, lo };
-                guard.description.capabilities |= HARDWARE_ID_WACOM;
+                guard.info.hardware_id_wacom = HardwareSerialOrId { hi, lo };
+                guard.info.capabilities |= HARDWARE_ID_WACOM;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Tilt) } => {
-                guard.description.capabilities |= Capabilities::TILT;
+                guard.info.capabilities |= Capabilities::TILT;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Pressure) } => {
-                guard.description.capabilities |= Capabilities::PRESSURE;
+                guard.info.capabilities |= Capabilities::PRESSURE;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Distance) } => {
-                guard.description.capabilities |= Capabilities::DISTANCE;
+                guard.info.capabilities |= Capabilities::DISTANCE;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Rotation) } => {
-                guard.description.capabilities |= Capabilities::ROTATION;
+                guard.info.capabilities |= Capabilities::ROTATION;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Slider) } => {
-                guard.description.capabilities |= Capabilities::SLIDER;
+                guard.info.capabilities |= Capabilities::SLIDER;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(Capability::Wheel) } => {
-                guard.description.capabilities |= Capabilities::WHEEL;
+                guard.info.capabilities |= Capabilities::WHEEL;
             },
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Value(_) } => (),
             zwp_tablet_tool_v2::Event::Capability { capability: WEnum::Unknown(unknown) } => {
@@ -674,9 +674,9 @@ where
                 return;
             },
             zwp_tablet_tool_v2::Event::Done => {
-                let description = mem::take(&mut guard.description);
+                let info = mem::take(&mut guard.info);
                 drop(guard);
-                data.init_done(conn, qh, tool, description);
+                data.info(conn, qh, tool, info);
             },
 
             // Destruction
@@ -695,7 +695,7 @@ where
                 let mut events = mem::take(&mut guard.pending);
                 drop(guard);
                 events.push(event);
-                data.tablet_tool_frame(conn, qh, tool, &events);
+                data.frame(conn, qh, tool, &events);
             },
             // Could enumerate all the events,
             // but honestly it’s just easier to do this,

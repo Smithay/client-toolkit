@@ -10,13 +10,13 @@ use wayland_protocols::wp::tablet::zv2::client::zwp_tablet_v2::{self, ZwpTabletV
 
 pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_v2.done` event,
-    /// and collects any preceding `name`, `id` and `path` events into a [`Description`].
-    fn init_done(
+    /// and collects any preceding `name`, `id` and `path` events into an [`Info`].
+    fn info(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        description: Description,
+        info: Info,
     );
 
     /// Sent when the tablet has been removed from the system.
@@ -33,7 +33,7 @@ pub trait Handler: Sized {
 
 /// The description of a tablet device.
 #[derive(Debug, Default)]
-pub struct Description {
+pub struct Info {
     /// The descriptive name of the tablet device.
     pub name: Option<String>,
     /// The USB vendor and product IDs for the tablet device.
@@ -48,12 +48,12 @@ pub struct Description {
 #[doc(hidden)]
 #[derive(Debug)]
 pub struct Data {
-    description: Mutex<Description>,
+    info: Mutex<Info>,
 }
 
 impl Data {
     pub fn new() -> Self {
-        Self { description: Default::default() }
+        Self { info: Default::default() }
     }
 }
 
@@ -70,15 +70,15 @@ where
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let mut guard = udata.description.lock().unwrap();
+        let mut guard = udata.info.lock().unwrap();
         match event {
             zwp_tablet_v2::Event::Name { name } => guard.name = Some(name),
             zwp_tablet_v2::Event::Id { vid, pid } => guard.id = Some((vid, pid)),
             zwp_tablet_v2::Event::Path { path } => guard.paths.push(path),
             zwp_tablet_v2::Event::Done => {
-                let description = mem::take(&mut *guard);
+                let info = mem::take(&mut *guard);
                 drop(guard);
-                data.init_done(conn, qh, tablet, description);
+                data.info(conn, qh, tablet, info);
             },
             zwp_tablet_v2::Event::Removed => {
                 data.removed(conn, qh, tablet);

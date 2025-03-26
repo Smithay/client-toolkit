@@ -138,7 +138,7 @@ struct SimpleWindow {
     keyboard: Option<wl_keyboard::WlKeyboard>,
     keyboard_focus: bool,
     tablet_seat: Option<ZwpTabletSeatV2>,
-    tablets: HashMap<ZwpTabletV2, tablet::Description>,
+    tablets: HashMap<ZwpTabletV2, tablet::Info>,
     tools: tablet_tool::Tools,
     pool: SlotPool,
     buffer: Option<Buffer>,
@@ -444,15 +444,15 @@ impl tablet_seat::Handler for SimpleWindow {
 }
 
 impl tablet::Handler for SimpleWindow {
-    fn init_done(
+    fn info(
         &mut self,
         _: &Connection,
         _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
-        description: tablet::Description,
+        info: tablet::Info,
     ) {
-        println!("Tablet {} initialised: {:#?}", tablet.id(), description);
-        self.tablets.insert(tablet.clone(), description);
+        println!("Tablet {} initialised: {:#?}", tablet.id(), info);
+        self.tablets.insert(tablet.clone(), info);
     }
 
     fn removed(
@@ -467,15 +467,15 @@ impl tablet::Handler for SimpleWindow {
 }
 
 impl tablet_tool::Handler for SimpleWindow {
-    fn init_done(
+    fn info(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         tool: &ZwpTabletToolV2,
-        description: tablet_tool::Description,
+        info: tablet_tool::Info,
     ) {
-        println!("Tablet tool {} initialised: {:#?}", tool.id(), description);
-        self.tools.add(tool.clone(), description);
+        println!("Tablet tool {} initialised: {:#?}", tool.id(), info);
+        self.tools.add(tool.clone(), info);
     }
 
     fn removed(
@@ -488,7 +488,7 @@ impl tablet_tool::Handler for SimpleWindow {
         self.tools.remove(tool);
     }
 
-    fn tablet_tool_frame(
+    fn frame(
         &mut self,
         _conn: &Connection,
         qh: &QueueHandle<Self>,
@@ -510,7 +510,7 @@ impl tablet_tool::Handler for SimpleWindow {
                         r: (state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
                         g: (state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
                         b: (state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
-                        a: if tias.description.supports_slider() {
+                        a: if tias.info.supports_slider() {
                             ((state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
                         } else {
                             // Sure, 0 is the neutraal position and all that,
@@ -560,22 +560,22 @@ impl tablet_tool::Handler for SimpleWindow {
                 if state.is_down() { "down" } else { " up " },
                 state.x,
                 state.y);
-            if tias.description.supports_pressure() {
+            if tias.info.supports_pressure() {
                 print!(" pressure={:5}", state.pressure);
             }
-            if tias.description.supports_tilt() {
+            if tias.info.supports_tilt() {
                 print!(" tilt_x={:5.2} tilt_y={:5.2}", state.tilt_x, state.tilt_y);
             }
-            if tias.description.supports_distance() {
+            if tias.info.supports_distance() {
                 print!(" distance={:5}", state.distance);
             }
-            if tias.description.supports_rotation() {
+            if tias.info.supports_rotation() {
                 print!(" rotation={:6.2}", state.rotation_degrees);
             }
-            if tias.description.supports_slider() {
+            if tias.info.supports_slider() {
                 print!(" slider={:6}", state.slider_position);
             }
-            if tias.description.supports_wheel() {
+            if tias.info.supports_wheel() {
                 print!(" wheel={:6.2}", state.wheel_degrees);
             }
             if state.stylus_button_1_pressed {
