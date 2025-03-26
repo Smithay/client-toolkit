@@ -408,40 +408,7 @@ impl KeyboardHandler for SimpleWindow {
     }
 }
 
-impl tablet_seat::Handler for SimpleWindow {
-    fn tablet_added(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _tablet_seat: &ZwpTabletSeatV2,
-        _seat: &wl_seat::WlSeat,
-        tablet: ZwpTabletV2,
-    ) {
-        println!("Added tablet: {}", tablet.id());
-    }
-
-    fn tool_added(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _tablet_seat: &ZwpTabletSeatV2,
-        _seat: &wl_seat::WlSeat,
-        tool: ZwpTabletToolV2,
-    ) {
-        println!("Added tablet tool: {}", tool.id());
-    }
-
-    // fn pad_added(
-    //     &mut self,
-    //     _conn: &Connection,
-    //     _qh: &QueueHandle<Self>,
-    //     _tablet_seat: &ZwpTabletSeatV2,
-    //     _seat: &wl_seat::WlSeat,
-    //     pad: ZwpTabletPadV2,
-    // ) {
-    //     println!("Added tablet pad: {}", pad.id());
-    // }
-}
+impl tablet_seat::Handler for SimpleWindow {}
 
 impl tablet::Handler for SimpleWindow {
     fn info(
