@@ -8,25 +8,6 @@ use wayland_client::{
 };
 use wayland_protocols::wp::tablet::zv2::client::zwp_tablet_v2::{self, ZwpTabletV2};
 
-#[derive(Debug)]
-pub enum Event {
-    /// The descriptive name of the tablet device
-    Name {
-        name: String,
-    },
-    /// The USB vendor and product IDs for the tablet device
-    Id {
-        vid: u32,
-        pid: u32,
-    },
-    /// System-specific device paths for the tablet.
-    ///
-    /// Path format is unspecified. Clients must figure out what to do with them, if they care.
-    Path {
-        path: String,
-    },
-}
-
 pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_v2.done` event,
     /// and collects any preceding `name`, `id` and `path` events into a [`Description`].
