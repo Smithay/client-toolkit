@@ -1,9 +1,9 @@
 //! An example demonstrating tablets
 
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
+    compositor::{CompositorHandler, CompositorState, Surface},
     delegate_compositor, delegate_output, delegate_keyboard,
     delegate_registry, delegate_tablet, delegate_seat, delegate_shm, delegate_xdg_shell,
     delegate_xdg_window,
@@ -43,6 +43,8 @@ use wayland_protocols::wp::tablet::zv2::client::{
     // zwp_tablet_pad_strip_v2::ZwpTabletPadStripV2,
 };
 
+const TWO_PI: f32 = 2. * std::f32::consts::PI;
+
 const RED: raqote::SolidSource = raqote::SolidSource { r: 221, g: 0, b: 0, a: 255 };
 const GREEN: raqote::SolidSource = raqote::SolidSource { r: 0, g: 170, b: 0, a: 255 };
 const SOLID_RED: raqote::Source = raqote::Source::Solid(RED);
@@ -78,7 +80,7 @@ fn main() {
 
     let window = xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
 
-    window.set_title("A wayland window");
+    window.set_title("Tablet drawing");
     window.set_app_id("io.github.smithay.client-toolkit.Tablet");
     window.set_min_size(Some((256, 256)));
 
@@ -107,81 +109,16 @@ fn main() {
         keyboard_focus: false,
         tablet_seat: None,
         tablets: HashMap::new(),
-        tools: HashMap::new(),
+        tools: tablet_tool::Tools::new(),
+        buffer: None,
+        queued_circles: Vec::new(),
+        redraw_queued: false,
         pool,
-        mode: Mode::Points,
         font,
     };
 
     while !simple_window.exit {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct Button {
-    serial: u32,
-    button: u32,
-}
-
-/// The current state of the tool.
-///
-/// This covers everything, and may, for some applications,
-/// be the most practical way of perceiving it;
-/// but button is more likely to be desired as events,
-/// and wheel is fundamentally a delta thing,
-/// so for at least them you probably want to consume the events.
-///
-/// Also you won’t get the last frame’s time, if you view it this way,
-/// as a proximity_out event deletes the state.
-#[derive(Debug)]
-struct TabletToolState {
-    // ProximityIn
-    serial: u32,
-    tablet: ZwpTabletV2,
-    surface: wl_surface::WlSurface,
-    // Down (cleared on Up), stores serial
-    down: Option<u32>,
-    // Motion
-    x: f64,
-    y: f64,
-    // Pressure
-    pressure: u16,
-    // Distance
-    distance: u16,
-    // Tilt
-    tilt_x: f64,
-    tilt_y: f64,
-    // Rotation
-    rotation_degrees: f64,
-    // Slider
-    slider_position: i32,
-    // Wheel
-    wheel_degrees: f64,
-    wheel_clicks: i32,
-    // Button
-    buttons: HashSet<Button>,
-}
-
-struct ToolInfoAndState {
-    description: tablet_tool::Description,
-    /// The time the last frame was sent,
-    /// or zero if no frames have come yet.
-    last_frame_time: u32,
-    /// The current state of the tool, if in proximity.
-    state: Option<TabletToolState>,
-}
-
-impl ToolInfoAndState {
-    /// Get the pressure according to the Web Pointer Events API:
-    /// scaled in the range \[0, 1\],
-    /// and set to 0.5 when down if pressure isn’t supported.
-    fn pressure_web(&self) -> f64 {
-        match (self.description.supports_pressure(), &self.state) {
-            (true, &Some(TabletToolState { pressure, .. })) => pressure as f64 / 65535.0,
-            (false, Some(TabletToolState { down: Some(_), .. })) => 0.5,
-            _ => 0.0,
-        }
     }
 }
 
@@ -202,11 +139,20 @@ struct SimpleWindow {
     keyboard_focus: bool,
     tablet_seat: Option<ZwpTabletSeatV2>,
     tablets: HashMap<ZwpTabletV2, tablet::Description>,
-    tools: HashMap<ZwpTabletToolV2, ToolInfoAndState>,
+    tools: tablet_tool::Tools,
     pool: SlotPool,
-    mode: Mode,
+    buffer: Option<Buffer>,
+    queued_circles: Vec<Circle>,
+    redraw_queued: bool,
 
     font: font_kit::loaders::freetype::Font,
+}
+
+struct Circle {
+    x: f32,
+    y: f32,
+    radius: f32,
+    color: raqote::SolidSource,
 }
 
 impl CompositorHandler for SimpleWindow {
@@ -234,10 +180,14 @@ impl CompositorHandler for SimpleWindow {
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
-        _surface: &wl_surface::WlSurface,
+        surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.draw(conn, qh);
+        println!("t={_time} DRAWING FRAME, got {} pending circles", self.queued_circles.len());
+        if surface == self.window.wl_surface() {
+            self.redraw_queued = false;
+            self.draw(conn, qh, false);
+        }
     }
 
     fn surface_enter(
@@ -304,12 +254,14 @@ impl WindowHandler for SimpleWindow {
         configure: WindowConfigure,
         _serial: u32,
     ) {
-        self.width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
-        self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
-        if self.mode.is_sketch() {
-            self.reset_sketch_mode();
+        let new_width = configure.new_size.0.map(|v| v.get()).unwrap_or(256);
+        let new_height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
+        if self.width != new_width || self.height != new_height || self.buffer.is_none() {
+            self.width = new_width;
+            self.height = new_height;
+            self.init_canvas();
         }
-        self.draw(conn, qh);
+        self.draw(conn, qh, true);
     }
 }
 
@@ -345,6 +297,8 @@ impl SeatHandler for SimpleWindow {
 
             self.keyboard = Some(keyboard);
         }
+        // FIXME: this doesn’t seem like the right place to put this.
+        // Where *should* it go?
         if self.tablet_seat.is_none() {
             let tablet_seat = self.tablet_manager.get_tablet_seat(&seat, qh).ok();
             if tablet_seat.is_some() {
@@ -408,8 +362,15 @@ impl KeyboardHandler for SimpleWindow {
         event: KeyEvent,
     ) {
         match event.keysym {
-            Keysym::n => self.toggle_mode(),
-            Keysym::r if self.mode.is_sketch() => self.reset_sketch_mode(),
+            Keysym::Delete => {
+                self.clear_canvas();
+                self.queued_circles.clear();
+                if let Some(buffer) = &self.buffer {
+                    let surface = self.window.wl_surface();
+                    buffer.attach_to(surface).expect("buffer attach");
+                    surface.commit();
+                }
+            },
             _ => (),
         }
     }
@@ -510,127 +471,126 @@ impl tablet_tool::Handler for SimpleWindow {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        tablet_tool: &ZwpTabletToolV2,
+        tool: &ZwpTabletToolV2,
         description: tablet_tool::Description,
     ) {
-        println!("Tablet tool {} initialised: {:#?}", tablet_tool.id(), description);
-        self.tools.insert(tablet_tool.clone(), ToolInfoAndState {
-            description,
-            last_frame_time: 0,
-            state: None,
-        });
+        println!("Tablet tool {} initialised: {:#?}", tool.id(), description);
+        self.tools.add(tool.clone(), description);
     }
 
     fn removed(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        tablet_tool: &ZwpTabletToolV2,
+        tool: &ZwpTabletToolV2,
     ) {
-        println!("Tablet tool {} removed", tablet_tool.id());
+        println!("Tablet tool {} removed", tool.id());
+        self.tools.remove(tool);
     }
 
     fn tablet_tool_frame(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        tablet_tool: &ZwpTabletToolV2,
-        frame: tablet_tool::Frame,
+        qh: &QueueHandle<Self>,
+        tool: &ZwpTabletToolV2,
+        events: &[tablet_tool::Event],
     ) {
-        println!("Tablet tool {} frame: {:#?}", tablet_tool.id(), frame);
-        let tablet_tool::Frame { time, events } = frame;
-        let mut events = events.into_iter();
-        let tias = self.tools.get_mut(tablet_tool).unwrap();
-        let state = tias.state.get_or_insert_with(|| {
-            let Some(tablet_tool::Event::ProximityIn { serial, tablet, surface }) = events.next()
-            else {
-                panic!("First zwp_tablet_tool_v2 frame didn’t start with a proximity_in event");
-            };
-            TabletToolState {
-                // ProximityIn
-                serial,
-                tablet,
-                surface,
-                // Down (cleared on Up)
-                down: None,
-                // Motion
-                x: 0.0,
-                y: 0.0,
-                // Pressure
-                pressure: 0,
-                // Distance
-                distance: 0,
-                // Tilt
-                tilt_x: 0.0,
-                tilt_y: 0.0,
-                // Rotation
-                rotation_degrees: 0.0,
-                // Slider
-                slider_position: 0,
-                // Wheel
-                wheel_degrees: 0.0,
-                wheel_clicks: 0,
-                // Button
-                buttons: HashSet::new(),
-            }
-        });
-        tias.last_frame_time = time;
+        //println!("Tablet tool {} frame: {:#?}", tool.id(), events);
+        let tias = self.tools.ingest_frame(tool, &events);
 
-        for event in events {
-            match event {
-                tablet_tool::Event::ProximityIn { serial, tablet, surface } => {
-                    state.serial = serial;
-                    state.tablet = tablet;
-                    state.surface = surface;
-                },
-                tablet_tool::Event::ProximityOut => {
-                    tias.state = None;
-                    // Given that a frame is supposed to represent a single hardware event,
-                    // I think you can fairly say it’d be mad to proximity_out and
-                    // immediately proximity_in in the same frame.
-                    // So I think we’re OK to just break.
-                    break;
-                },
-                tablet_tool::Event::Down { serial } => {
-                    state.down = Some(serial);
-                },
-                tablet_tool::Event::Up => {
-                    state.down = None;
-                },
-                tablet_tool::Event::Motion { x, y } => {
-                    state.x = x;
-                    state.y = y;
-                },
-                tablet_tool::Event::Pressure { pressure } => {
-                    state.pressure = pressure;
-                },
-                tablet_tool::Event::Distance { distance } => {
-                    state.distance = distance;
-                },
-                tablet_tool::Event::Tilt { tilt_x, tilt_y } => {
-                    state.tilt_x = tilt_x;
-                    state.tilt_y = tilt_y;
-                },
-                tablet_tool::Event::Rotation { degrees } => {
-                    state.rotation_degrees = degrees;
-                },
-                tablet_tool::Event::Slider { position } => {
-                    state.slider_position = position;
-                },
-                tablet_tool::Event::Wheel { degrees, clicks } => {
-                    // These ones use += because they’re deltas, unlike the rest.
-                    state.wheel_degrees += degrees;
-                    state.wheel_clicks += clicks;
-                },
-                tablet_tool::Event::Button { serial, button, pressed } => {
-                    if pressed {
-                        state.buttons.insert(Button { serial, button });
-                    } else {
-                        state.buttons.remove(&Button { serial, button });
-                    }
-                },
+        if let Some(state) = &tias.state {
+            if state.is_down() {
+                let pressure = tias.pressure_web();
+                let radius = 2.0 * pressure as f32;
+                self.queued_circles.push(Circle {
+                    x: state.x as f32,
+                    y: state.y as f32,
+                    radius,
+                    color: raqote::SolidSource {
+                        r: (state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
+                        g: (state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
+                        b: (state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
+                        a: if tias.description.supports_slider() {
+                            ((state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
+                        } else {
+                            // Sure, 0 is the neutraal position and all that,
+                            // but semitransparent looks a bit odd,
+                            // so sans slider support, we’ll just go opaque.
+                            // (b being 0 if rotation is not supported is fine.)
+                            255
+                        },
+                    },
+                });
             }
+
+            /*
+            let width = 32;
+            let height = 32;
+            let (buffer, canvas) = self.pool.create_buffer(
+                width as i32,
+                height as i32,
+                width as i32 * 4,
+                wl_shm::Format::Argb8888
+            ).expect("create buffer");
+            // https://github.com/Smithay/client-toolkit/issues/488 workaround.
+            let canvas = &mut canvas[..width as usize * height as usize * 4];
+
+            let radius = 6.0;
+            let mut dt = raqote::DrawTarget::from_backing(
+                width as i32,
+                height as i32,
+                bytemuck::cast_slice_mut(canvas),
+            );
+            let mut pb = raqote::PathBuilder::new();
+            pb.arc(width as f32 / 2.0, height as f32 / 2.0, radius, 0., TWO_PI);
+            dt.fill(&pb.finish(), &SOLID_RED, &raqote::DrawOptions::new());
+
+            // TODO: text.
+
+            let cursor_surface = Surface::new(&self.compositor_state, qh).unwrap();
+            let cursor_wl_surface = cursor_surface.wl_surface();
+            tool.set_cursor(state.proximity_in_serial, Some(cursor_wl_surface), width / 2, height / 2);
+            buffer.attach_to(cursor_wl_surface).expect("buffer attach");
+            cursor_wl_surface.damage_buffer(0, 0, width as i32, height as i32);
+            cursor_wl_surface.commit();
+            */
+
+            print!("t={} {} x={:7.2} y={:7.2}",
+                tias.last_frame_time,
+                if state.is_down() { "down" } else { " up " },
+                state.x,
+                state.y);
+            if tias.description.supports_pressure() {
+                print!(" pressure={:5}", state.pressure);
+            }
+            if tias.description.supports_tilt() {
+                print!(" tilt_x={:5.2} tilt_y={:5.2}", state.tilt_x, state.tilt_y);
+            }
+            if tias.description.supports_distance() {
+                print!(" distance={:5}", state.distance);
+            }
+            if tias.description.supports_rotation() {
+                print!(" rotation={:6.2}", state.rotation_degrees);
+            }
+            if tias.description.supports_slider() {
+                print!(" slider={:6}", state.slider_position);
+            }
+            if tias.description.supports_wheel() {
+                print!(" wheel={:6.2}", state.wheel_degrees);
+            }
+            if state.stylus_button_1_pressed {
+                print!(" button:1");
+            }
+            if state.stylus_button_2_pressed {
+                print!(" button:2");
+            }
+            if state.stylus_button_3_pressed {
+                print!(" button:3");
+            }
+            println!();
         }
+
+        self.queue_redraw_if_needed(qh);
     }
 }
 
@@ -641,249 +601,103 @@ impl ShmHandler for SimpleWindow {
 }
 
 impl SimpleWindow {
-    pub fn draw(&mut self, conn: &Connection, qh: &QueueHandle<Self>) {
-        match self.mode {
-            Mode::Points => self.draw_point(conn, qh),
-            Mode::Sketch { .. } => self.draw_sketch(conn, qh),
+    fn queue_redraw_if_needed(&mut self, qh: &QueueHandle<Self>) {
+        if !self.redraw_queued {
+            if !self.queued_circles.is_empty() {
+                self.queue_redraw(qh);
+            }
         }
     }
 
-    pub fn draw_point(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
-        let width = self.width;
-        let height = self.height;
-        let stride = self.width as i32 * 4;
-
-        let buffer = self.pool
-            .create_buffer(width as i32, height as i32, stride, wl_shm::Format::Xrgb8888)
-            .expect("create buffer")
-            .0;
-
-        let mut dt = raqote::DrawTarget::from_backing(
-            width as i32,
-            height as i32,
-            bytemuck::cast_slice_mut(self.pool.canvas(&buffer).unwrap()),
-        );
-        dt.clear(WHITE);
-        let mut y = 16.;
-        if self.tablets.is_empty() {
-            dt.draw_text(
-                &self.font,
-                14.,
-                "No tablets found",
-                raqote::Point::new(2., y),
-                &SOLID_RED,
-                &raqote::DrawOptions::new(),
-            );
-        } else {
-            for (tablet, description) in &self.tablets {
-                let text = match &description.name {
-                    Some(name) => name,
-                    None => &*tablet.id().to_string(),
-                };
-                dt.draw_text(
-                    &self.font,
-                    14.,
-                    text,
-                    raqote::Point::new(2., y),
-                    &SOLID_BLACK,
-                    &raqote::DrawOptions::new(),
-                );
-                y += 16.0;
-            }
+    fn queue_redraw(&mut self, qh: &QueueHandle<Self>) {
+        if !self.redraw_queued {
+            println!("   → Queueing redraw");
+            let surface = self.window.wl_surface();
+            surface.frame(qh, surface.clone());
+            // Have to commit to make the frame request.
+            surface.commit();
+            self.redraw_queued = true;
         }
-
-        for tias in self.tools.values() {
-            if let Some(state) = &tias.state {
-                let mut pb = raqote::PathBuilder::new();
-                let pressure = tias.pressure_web();
-                pb.arc(
-                    state.x as f32,// * self.width as f32,
-                    state.y as f32,// * self.height as f32,
-                    10.0 + 30.0 * pressure as f32,
-                    0.,
-                    2. * std::f32::consts::PI,
-                );
-                pb.close();
-                dt.fill(
-                    &pb.finish(),
-                    &if state.down.is_some() { SOLID_GREEN } else { SOLID_RED },
-                    &raqote::DrawOptions::new(),
-                );
-            }
-        }
-
-        // Damage the entire window
-        let surface = self.window.wl_surface();
-        surface.damage_buffer(0, 0, self.width as i32, self.height as i32);
-
-        // Request our next frame
-        surface.frame(qh, surface.clone());
-
-        // Attach and commit to present.
-        buffer.attach_to(surface).expect("buffer attach");
-        surface.commit();
     }
 
-    fn draw_sketch(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
-        let Mode::Sketch { buffer, busy_buffer } = &mut self.mode
-        else { unreachable!() };
+    pub fn draw(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, force: bool) {
+        if self.queued_circles.is_empty() && !force {
+            println!("[31mDraw called with nothing to do![m");
+            // False alarm, we don’t actually have anything to draw.
+            // Nothing to draw, wait until we have something to draw.
+            return;
+        }
 
-        println!("draw_sketch");
-        let canvas = match self.pool.canvas(buffer) {
-            Some(canvas) => canvas,
-            None => {
-                // I don’t know if I’m using this wrong,
-                // but I want to copy from one buffer to another buffer,
-                // which I understand is allowed (see below),
-                // and I suppose they should both go in the same SlotPool,
-                // but the use of &mut prevents me accessing both at once,
-                // and… and… and… meh, I’m just going to do something stupid for now.
-                // TODO find out from someone who actually knows what they’re doing,
-                // what the appropriate solution is.
-                let old_canvas = unsafe {
-                    std::mem::transmute::<&'_ mut [u8], &'static [u8]>(
-                        self.pool.raw_data_mut(&buffer.slot())
-                    )
-                };
-
-                // This should be rare
-                // (TODO: the rest of this ssentence is found in other examples here,
-                // but I seem to hit it immediatley in Sway, so I dunno if it’s even true),
-                // but if the compositor has not released the previous
-                // buffer, we need double-buffering.
-                let (mut second_buffer, canvas) = self
-                    .pool
-                    .create_buffer(
-                        self.width as i32,
-                        self.height as i32,
-                        self.width as i32 * 4,
-                        wl_shm::Format::Xrgb8888,
-                    )
-                    .expect("create buffer");
-                // Now, we copy from the busy buffer to the new one.
-                // <https://lists.freedesktop.org/archives/wayland-devel/2020-June/041490.html#:~:text=you%20can%20play%20tricks,readbacks%20may%20have%20issues>
-                // tells me that this is safe, but that there may be issues.
-                // I’m out of my depth here.
-                // Maybe that’s why there isn’t a &Buffer → &[u8] method?
-                // Anyway, for now I’ll just do this and hope for the best.
-                canvas.copy_from_slice(old_canvas);
-                // And we swap them. We’ll later need to mark the damage
-                // regions that the busy buffer needs to copy back from this one.
-                std::mem::swap(buffer, &mut second_buffer);
-                *busy_buffer = Some((second_buffer, vec![]));
-                // … but y’know what? For now I’m just going to trash it,
-                // instead of implementing that.
-                // Consider this a stub for a possibly bad idea.
-                *busy_buffer = None;
-                canvas
-            }
-        };
+        let buffer = self.buffer.as_ref().unwrap();
+        let canvas = self.pool.canvas(buffer).expect("buffer is still active");
         let mut dt = raqote::DrawTarget::from_backing(
             self.width as i32,
             self.height as i32,
-            //bytemuck::cast_slice_mut(self.pool.canvas(&buffer).unwrap()),
             bytemuck::cast_slice_mut(canvas),
         );
 
-        let surface = self.window.wl_surface();
-
-        for tool in self.tools.values() {
-            if let Some(state @ TabletToolState { down: Some(_), .. }) = &tool.state {
-                let mut pb = raqote::PathBuilder::new();
-                let pressure = tool.pressure_web();
-
-                let radius = 10.0 * pressure as f32;
-                pb.arc(
-                    state.x as f32,
-                    state.y as f32,
-                    radius,
-                    0.,
-                    2. * std::f32::consts::PI,
-                );
-                pb.close();
-                dt.fill(
-                    &pb.finish(),
-                    &raqote::Source::Solid(raqote::SolidSource {
-                        r: (state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
-                        g: (state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
-                        b: (state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
-                        a: if tool.description.supports_slider() {
-                            ((state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
-                        } else {
-                            // Sure, 0 is the neutraal position and all that,
-                            // but semitransparent looks a bit odd,
-                            // so sans slider support, we’ll just go opaque.
-                            // (b being 0 if rotation is not supported is fine.)
-                            255
-                        },
-                    }),
-                    &raqote::DrawOptions::new(),
-                );
-
-                surface.damage_buffer(
-                    ((state.x as f32) - radius).floor() as i32,
-                    ((state.y as f32) - radius).floor() as i32,
-                    ((state.x as f32) + radius).ceil() as i32,
-                    ((state.y as f32) + radius).ceil() as i32,
-                );
-            }
+        let mut min_x = i32::MAX;
+        let mut min_y = i32::MAX;
+        let mut max_x = i32::MIN;
+        let mut max_y = i32::MIN;
+        for circle in self.queued_circles.drain(..) {
+            let mut pb = raqote::PathBuilder::new();
+            pb.arc(
+                circle.x,
+                circle.y,
+                circle.radius,
+                0.,
+                TWO_PI,
+            );
+            pb.close();
+            dt.fill(
+                &pb.finish(),
+                &raqote::Source::Solid(circle.color),
+                &raqote::DrawOptions::new(),
+            );
+            min_x = min_x.min((circle.x - circle.radius).floor() as i32);
+            min_y = min_y.min((circle.y - circle.radius).floor() as i32);
+            max_x = max_x.max((circle.x + circle.radius).ceil() as i32);
+            max_y = max_y.max((circle.y + circle.radius).ceil() as i32);
         }
 
-        // Request our next frame
-        surface.frame(qh, surface.clone());
-
-        // Attach and commit to present.
+        let surface = self.window.wl_surface();
+        if let (Some(width), Some(height)) = (max_x.checked_sub(min_x), max_y.checked_sub(min_y)) {
+            surface.damage_buffer(min_x, min_y, width, height);
+        }
         buffer.attach_to(surface).expect("buffer attach");
         surface.commit();
+        println!("Finished drawing frame.");
     }
 
-    fn reset_sketch_mode(&mut self) {
-        let buffer = self.pool
+    /// Initialise the canvas buffer, damaging but not attaching/committing.
+    ///
+    /// This should be called whenever the window is resized, too.
+    fn init_canvas(&mut self) {
+        let (buffer, canvas) = self.pool
             .create_buffer(
                 self.width as i32,
                 self.height as i32,
                 self.width as i32 * 4,
                 wl_shm::Format::Xrgb8888,
             )
-            .expect("create buffer")
-            .0;
+            .expect("create buffer");
+        // Make everything white.
+        canvas.fill(0xff);
+        self.buffer = Some(buffer);
+        let surface = self.window.wl_surface();
+        surface.damage_buffer(0, 0, i32::MAX, i32::MAX);
+    }
 
-        // Now we actually clear the buffer, making everything opaque white.
-        for x in buffer.canvas(&mut self.pool).unwrap() {
-            *x = 255;
+    /// Clear the canvas to white, damaging but not attaching/committing.
+    fn clear_canvas(&mut self) {
+        if let Some(buffer) = &self.buffer {
+            let canvas = self.pool.canvas(buffer).expect("buffer is still active");
+            // Make everything white.
+            canvas.fill(0xff);
+            let surface = self.window.wl_surface();
+            surface.damage_buffer(0, 0, i32::MAX, i32::MAX);
         }
-        self.window.wl_surface().damage_buffer(0, 0, i32::MAX, i32::MAX);
-        self.mode = Mode::Sketch { buffer, busy_buffer: None };
-    }
-
-    fn toggle_mode(&mut self) {
-        println!("Switching mode to {:?}", self.mode);
-        match self.mode {
-            Mode::Points => self.reset_sketch_mode(),
-            Mode::Sketch { .. } => self.mode = Mode::Points,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Mode {
-    Points,
-    Sketch {
-        /// The buffer that gets drawn to and attached to the surface.
-        buffer: Buffer,
-        /// If the first buffer is not released, we swap to this buffer.
-        /// The buffer that gets copied to after drawing, and 
-        busy_buffer: Option<(Buffer, Vec<(i32, i32, i32, i32)>)>,
-    },
-}
-
-impl Mode {
-    fn is_points(&self) -> bool {
-        matches!(self, Mode::Points)
-    }
-
-    fn is_sketch(&self) -> bool {
-        matches!(self, Mode::Sketch { .. })
     }
 }
 
