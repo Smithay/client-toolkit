@@ -507,27 +507,15 @@ pub struct Button {
     pub serial: u32,
 }
 
-// From linux/input-event-codes.h.
-// There isn’t a good definition of which buttons tablet tools might use,
-// which I think is why it wasn’t made an enum like type was.
-// (The mailing list thread about this stuff seems a bit inconclusive;
-// I should ask follow-up questions.
-// <https://lists.freedesktop.org/archives/wayland-devel/2016-November/031734.html>)
-//
-// Most tools are stylus variants, and are likely to use these if they have buttons:
+// Based on <https://lists.freedesktop.org/archives/wayland-devel/2025-March/044025.html>:
+// BTN_STYLUS, BTN_STYLUS2 and BTN_STYLUS3 are the only codes likely.
+// Mouse tools are long gone, finger was a mistake—everything’s a stylus.
 /// The first button on a stylus.
 pub const BTN_STYLUS: u32 = 0x14b;
 /// The second button on a stylus.
 pub const BTN_STYLUS2: u32 = 0x14c;
 /// The third button on a stylus.
 pub const BTN_STYLUS3: u32 = 0x149;
-//
-// Mouse toools will use BTN_LEFT et al.; but they’re already exported from crate::seat::pointer,
-// and do mouse tools even exist any more?
-// Finger, I have no idea, and I bet they just come through as touchscreen anyway.
-// (Seriously, pen and eraser are probably the only two types of tool that will ever be used.)
-// BTN_0 to BTN_9, I don’t particularly expect such things, that sounds like a pad, not a tool.
-// So, I’ll leave it at just these three stylus constants.
 
 pub trait Handler: Sized {
     /// This is fired at the time of the `zwp_tablet_tool_v2.done` event,
@@ -568,8 +556,6 @@ pub trait Handler: Sized {
 #[doc(hidden)]
 #[derive(Debug)]
 pub struct Data {
-    //seat: WlSeat,
-    //tablet_seat: ZwpTabletToolSeatV2,
     inner: Mutex<DataInner>,
 }
 
@@ -586,29 +572,17 @@ struct DataInner {
     info: Info,
 
     /// List of pending events, flushed when a `frame` event comes in.
-    pending: EventList,
+    ///
+    /// Explanation on chosen inline array sizing:
+    ///  • There will always be at least two events: one axis change, and a Frame.
+    ///  • Three is fundamentally common, when you have proximity and tip events.
+    ///  • Pressure will be almost ubiquitous, so add one for that.
+    ///  • Tilt will be very common too.
+    /// My opinion, unmeasured save by eyeballing an event stream on a tilt+pressure-capable pen,
+    /// is that four is probably the sweet spot.
+    /// Ability to tweak that number would be a good reason to encapsulate this…!
+    pending: SmallVec<[Event; 4]>,
 }
-
-/// A list of data frame events.
-//
-// Whereas PointerHandler gets given &[PointerEvent],
-// I’ve chosen to expose SmallVec here for practicality,
-// and to skip unnecessary potential clones of `ProximityIn`’s tablet and surface.
-// If we wanted to keep this but not expose SmallVec,
-// we’d newtype smallvec::Drain, duplicating all its surface area.
-// I might have done that, but when it doesn’t implement as_slice like Vec’s,
-// I become less enthusiastic.
-// I’m not convinced it’s worth the bother.
-//
-// Explanation on chosen sizing:
-//  • There will always be at least two events: one axis change, and a Frame.
-//  • Three is fundamentally common, when you have proximity and tip events.
-//  • Pressure will be almost ubiquitous, so add one for that.
-//  • Tilt will be very common too.
-// My opinion, unmeasured save by eyeballing an event stream on a tilt+pressure-capable pen,
-// is that four is probably the sweet spot.
-// Ability to tweak that number would be a good reason to encapsulate this…!
-pub type EventList = SmallVec<[Event; 4]>;
 
 impl<D> Dispatch<ZwpTabletToolV2, Data, D>
     for super::TabletManager
