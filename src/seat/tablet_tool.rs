@@ -167,6 +167,16 @@ impl InfoAndState {
             _ => 0.0,
         }
     }
+
+    // I don’t think there’s anything else that warrants a method,
+    // because it needs to take both info and state into account:
+    //   • Tilt, 0/0 is a sane default when unsupported.
+    //   • Distance, you’ll probably want to handle supported/unsupported separately.
+    //   • Rotation, 0 is the natural position and a good default when unsupported.
+    //   • Slider, 0 is the neutral position and a good default when unsupported.
+    //   • Wheel, it’s all delta anyway so unsupported values are equivalent to unused.
+    // No, it’s only pressure, because you need the fallback to take down into account,
+    // because zero would be a horrible value to be stuck at.
 }
 
 impl From<Info> for InfoAndState {
