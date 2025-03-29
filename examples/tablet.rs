@@ -50,6 +50,8 @@ const DARK_GREEN: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r
 const DARK_RED: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 153, g: 0, b: 0, a: 255 });
 const HALF_WHITE: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 127, g: 127, b: 127, a: 127 });
 
+const NO_TIME: &'static str = "               ";
+
 fn main() {
     env_logger::init();
 
@@ -169,9 +171,9 @@ impl CompositorHandler for SimpleWindow {
         conn: &Connection,
         qh: &QueueHandle<Self>,
         surface: &wl_surface::WlSurface,
-        _time: u32,
+        time: u32,
     ) {
-        println!("t={_time} DRAWING FRAME, got {} pending circles", self.queued_circles.len());
+        println!("[33m[t={time:10}][m [35mdraw[m Frame callback, {} circles to draw", self.queued_circles.len());
         if surface == self.window.wl_surface() {
             self.redraw_queued = false;
             self.draw_cursors(conn, qh);
@@ -274,28 +276,17 @@ impl SeatHandler for SimpleWindow {
         capability: Capability,
     ) {
         if capability == Capability::Keyboard && self.keyboard.is_none() {
-            println!("Set keyboard capability");
-            let keyboard = self
-                .seat_state
-                .get_keyboard(
-                    qh,
-                    &seat,
-                    None,
-                )
-                .expect("Failed to create keyboard");
-
-            self.keyboard = Some(keyboard);
+            self.keyboard = self.seat_state.get_keyboard(qh, &seat, None).ok();
         }
         // FIXME: this doesn’t seem like the right place to put this.
         // Where *should* it go?
         if self.tablet_seat.is_none() {
-            let tablet_seat = self.seat_state.get_tablet_seat(qh, &seat).ok();
-            if tablet_seat.is_some() {
-                println!("Created tablet seat");
+            self.tablet_seat = self.seat_state.get_tablet_seat(qh, &seat).ok();
+            if self.tablet_seat.is_some() {
+                println!("[35mCreated tablet_seat[m");
             } else {
-                println!("Compositor does not support tablet events");
+                println!("[31mCompositor does not support tablet events[m");
             }
-            self.tablet_seat = tablet_seat;
         }
     }
 
@@ -407,7 +398,7 @@ impl tablet::Handler for SimpleWindow {
         tablet: &ZwpTabletV2,
         info: tablet::Info,
     ) {
-        println!("Tablet {} initialised: {:#?}", tablet.id(), info);
+        println!("{NO_TIME}[36mtablet.done[m {}: {:?}", tablet.id(), info);
         self.tablets.insert(tablet.clone(), info);
     }
 
@@ -417,7 +408,7 @@ impl tablet::Handler for SimpleWindow {
         _: &QueueHandle<Self>,
         tablet: &ZwpTabletV2,
     ) {
-        println!("Tablet {} removed", tablet.id());
+        println!("{NO_TIME}[32mtablet.removed[m {}", tablet.id());
         self.tablets.remove(tablet);
     }
 }
@@ -430,7 +421,7 @@ impl tablet_tool::Handler for SimpleWindow {
         wtool: &ZwpTabletToolV2,
         info: tablet_tool::Info,
     ) {
-        println!("Tablet tool {} initialised: {:#?}", wtool.id(), info);
+        println!("{NO_TIME}[36mtablet_tool.done[m {}: {:?}", wtool.id(), info);
         self.tools.insert(wtool.clone(), Tool {
             info,
             state: tablet_tool::State::new(),
@@ -444,7 +435,7 @@ impl tablet_tool::Handler for SimpleWindow {
         _qh: &QueueHandle<Self>,
         wtool: &ZwpTabletToolV2,
     ) {
-        println!("Tablet tool {} removed", wtool.id());
+        println!("{NO_TIME}[36mtablet_tool.removed[m {}", wtool.id());
         self.tools.remove(wtool);
     }
 
@@ -458,6 +449,7 @@ impl tablet_tool::Handler for SimpleWindow {
         let tool = self.tools.get_mut(wtool).expect("got frame for unknown tool");
         tool.state.ingest_frame(events);
 
+        print!("[33m[t={:10}][m [32mtablet_tool.frame[m ", tool.state.time);
         if tool.state.is_in_proximity() {
             if tool.state.is_down() {
                 let pressure = tool.state.pressure_web(&tool.info);
@@ -483,8 +475,7 @@ impl tablet_tool::Handler for SimpleWindow {
                 });
             }
 
-            print!("t={}   tablet state    {} x={:7.2} y={:7.2}",
-                tool.state.time,
+            print!("{} x={:7.2} y={:7.2}",
                 if tool.state.is_down() { "down" } else { "up  " },
                 tool.state.x,
                 tool.state.y);
@@ -516,6 +507,8 @@ impl tablet_tool::Handler for SimpleWindow {
                 print!(" button:3");
             }
             println!();
+        } else {
+            println!("left proximity");
         }
 
         // Even if the main window has nothing to redraw,
@@ -547,6 +540,7 @@ impl SimpleWindow {
 
     pub fn draw(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, force: bool) {
         if self.queued_circles.is_empty() && !force {
+            println!("{NO_TIME}[35mdraw[m Nothing to draw in the window");
             // Nothing needs updating.
             // (It was presumably the cursors needing to be updated.)
             return;
@@ -591,7 +585,7 @@ impl SimpleWindow {
         }
         buffer.attach_to(surface).expect("buffer attach");
         surface.commit();
-        println!("Finished drawing frame.");
+        println!("{NO_TIME}[35mdraw[m Finished drawing frame");
     }
 
     pub fn draw_cursors(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
