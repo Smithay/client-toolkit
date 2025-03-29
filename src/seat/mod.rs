@@ -39,6 +39,11 @@ use pointer::cursor_shape::CursorShapeManager;
 use pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes};
 use touch::{TouchData, TouchDataExt, TouchHandler};
 
+use wayland_protocols::wp::tablet::zv2::client::{
+    zwp_tablet_manager_v2::ZwpTabletManagerV2,
+    zwp_tablet_seat_v2::ZwpTabletSeatV2,
+};
+
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Capability {
@@ -70,18 +75,23 @@ pub enum SeatError {
     DeadObject,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("the tablet protocol is not supported")]
+pub struct TabletNotSupported;
+
 #[derive(Debug)]
 pub struct SeatState {
     // (name, seat)
     seats: Vec<SeatInner>,
-    cursor_shape_manager_state: CursorShapeManagerState,
+    cursor_shape_manager_state: ManagerState<CursorShapeManager>,
+    tablet_manager_state: ManagerState<TabletManager>,
 }
 
 #[derive(Debug)]
-enum CursorShapeManagerState {
+enum ManagerState<T> {
     NotPresent,
     Pending { registry: WlRegistry, global: Global },
-    Bound(CursorShapeManager),
+    Bound(T),
 }
 
 impl SeatState {
@@ -89,15 +99,25 @@ impl SeatState {
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> SeatState {
-        let (seats, cursor_shape_manager) = global_list.contents().with_list(|globals| {
-            let global = globals
-                .iter()
-                .find(|global| global.interface == WpCursorShapeManagerV1::interface().name)
-                .map(|global| CursorShapeManagerState::Pending {
-                    registry: global_list.registry().clone(),
-                    global: global.clone(),
-                })
-                .unwrap_or(CursorShapeManagerState::NotPresent);
+        let (seats, cursor_shape_manager_state, tablet_manager_state) =
+        global_list.contents().with_list(|globals| {
+            let mut csm = ManagerState::NotPresent;
+            let mut tm = ManagerState::NotPresent;
+            let csm_name = WpCursorShapeManagerV1::interface().name;
+            let tm_name = ZwpTabletManagerV2::interface().name;
+            for global in globals {
+                if global.interface == csm_name {
+                    csm = ManagerState::Pending {
+                        registry: global_list.registry().clone(),
+                        global: global.clone(),
+                    };
+                } else if global.interface == tm_name {
+                    tm = ManagerState::Pending {
+                        registry: global_list.registry().clone(),
+                        global: global.clone(),
+                    };
+                }
+            }
 
             (
                 crate::registry::bind_all(global_list.registry(), globals, qh, 1..=10, |id| {
@@ -110,12 +130,13 @@ impl SeatState {
                     }
                 })
                 .expect("failed to bind global"),
-                global,
+                csm,
+                tm,
             )
         });
 
         let mut state =
-            SeatState { seats: vec![], cursor_shape_manager_state: cursor_shape_manager };
+            SeatState { seats: vec![], cursor_shape_manager_state, tablet_manager_state };
 
         for seat in seats {
             let data = seat.data::<SeatData>().unwrap().clone();
@@ -254,7 +275,7 @@ impl SeatState {
 
         let wl_ptr = seat.get_pointer(qh, pointer_data);
 
-        if let CursorShapeManagerState::Pending { registry, global } =
+        if let ManagerState::Pending { registry, global } =
             &self.cursor_shape_manager_state
         {
             self.cursor_shape_manager_state = match crate::registry::bind_one(
@@ -265,14 +286,14 @@ impl SeatState {
                 GlobalData,
             ) {
                 Ok(bound) => {
-                    CursorShapeManagerState::Bound(CursorShapeManager::from_existing(bound))
+                    ManagerState::Bound(CursorShapeManager::from_existing(bound))
                 }
-                Err(_) => CursorShapeManagerState::NotPresent,
+                Err(_) => ManagerState::NotPresent,
             }
         }
 
         let shape_device =
-            if let CursorShapeManagerState::Bound(ref bound) = self.cursor_shape_manager_state {
+            if let ManagerState::Bound(ref bound) = self.cursor_shape_manager_state {
                 Some(bound.get_shape_device(&wl_ptr, qh))
             } else {
                 None
@@ -328,6 +349,36 @@ impl SeatState {
         }
 
         Ok(seat.get_touch(qh, udata))
+    }
+
+    /// Get a tablet seat, to gain access to tablets, tools, et cetera.
+    pub fn get_tablet_seat<D>(
+        &mut self,
+        qh: &QueueHandle<D>,
+        seat: &wl_seat::WlSeat,
+    ) -> Result<ZwpTabletSeatV2, TabletNotSupported>
+    where
+        D: Dispatch<ZwpTabletSeatV2, ()> + 'static,
+        D: Dispatch<ZwpTabletManagerV2, GlobalData> + 'static,
+    {
+        if let ManagerState::Pending { registry, global } =
+            &self.tablet_manager_state
+        {
+            self.tablet_manager_state =
+                match crate::registry::bind_one(registry, &[global.clone()], qh, 1..=1, GlobalData)
+                {
+                    Ok(bound) => {
+                        ManagerState::Bound(TabletManager::from_existing(bound))
+                    }
+                    Err(_) => ManagerState::NotPresent,
+                }
+        }
+
+        if let ManagerState::Bound(bound) = &self.tablet_manager_state {
+            Ok(bound.get_tablet_seat(seat, qh))
+        } else {
+            Err(TabletNotSupported)
+        }
     }
 }
 

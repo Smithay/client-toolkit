@@ -1,5 +1,5 @@
 use wayland_client::{
-    globals::GlobalList,
+    globals::{BindError, GlobalList},
     protocol::wl_seat::WlSeat,
     Connection,
     Dispatch,
@@ -11,33 +11,39 @@ use wayland_protocols::wp::tablet::zv2::client::{
     zwp_tablet_seat_v2::ZwpTabletSeatV2,
 };
 
-use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::globals::GlobalData;
 
 #[derive(Debug)]
 pub struct TabletManager {
-    tablet_manager: GlobalProxy<ZwpTabletManagerV2>,
+    tablet_manager: ZwpTabletManagerV2,
 }
 
 impl TabletManager {
     /// Bind `zwp_tablet_manager_v2` global, if it exists
-    pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
+    pub fn bind<State>(
+        globals: &GlobalList,
+        queue_handle: &QueueHandle<State>,
+    ) -> Result<Self, BindError>
     where
-        D: Dispatch<ZwpTabletManagerV2, GlobalData> + 'static,
+        State: Dispatch<ZwpTabletManagerV2, GlobalData> + 'static,
     {
-        Self {
-            tablet_manager: GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData)),
-        }
+        let tablet_manager = globals.bind(queue_handle, 1..=1, GlobalData)?;
+        Ok(Self { tablet_manager })
+    }
+
+    pub(crate) fn from_existing(tablet_manager: ZwpTabletManagerV2) -> Self {
+        Self { tablet_manager }
     }
 
     pub fn get_tablet_seat<D>(
         &self,
         seat: &WlSeat,
         qh: &QueueHandle<D>,
-    ) -> Result<ZwpTabletSeatV2, GlobalError>
+    ) -> ZwpTabletSeatV2
     where
         D: Dispatch<ZwpTabletSeatV2, ()> + 'static,
     {
-        Ok(self.tablet_manager.get()?.get_tablet_seat(seat, qh, ()))
+        self.tablet_manager.get_tablet_seat(seat, qh, ())
     }
 }
 
