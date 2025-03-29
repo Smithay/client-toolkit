@@ -21,20 +21,6 @@ use wayland_protocols::wp::tablet::zv2::client::{
 
 pub use zwp_tablet_tool_v2::{Capability, Type, Event};
 
-#[derive(Debug)]
-pub enum InitEvent {
-    Type(Type),
-    HardwareSerial {
-        hi: u32,
-        lo: u32,
-    },
-    HardwareIdWacom {
-        hi: u32,
-        lo: u32,
-    },
-    Capability(Capability),
-}
-
 // Just a named tuple.
 /// A hardware identifier, just two `u32`s with names `hi` and `lo`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -483,14 +469,6 @@ impl State {
             },
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Button {
-    /// Button state: `true` if pressed, `false` if released.
-    pub pressed: bool,
-    /// The serial for the most recent state change.
-    pub serial: u32,
 }
 
 // Based on <https://lists.freedesktop.org/archives/wayland-devel/2025-March/044025.html>:
