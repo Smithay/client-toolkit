@@ -109,7 +109,7 @@ fn main() {
         keyboard_focus: false,
         tablet_seat: None,
         tablets: HashMap::new(),
-        tools: tablet_tool::Tools::new(),
+        tools: HashMap::new(),
         buffer: None,
         queued_circles: Vec::new(),
         redraw_queued: false,
@@ -120,6 +120,12 @@ fn main() {
     while !simple_window.exit {
         event_queue.blocking_dispatch(&mut simple_window).unwrap();
     }
+}
+
+struct Tool {
+    info: tablet_tool::Info,
+    state: tablet_tool::State,
+    cursor_surface: Option<Surface>,
 }
 
 struct SimpleWindow {
@@ -139,7 +145,7 @@ struct SimpleWindow {
     keyboard_focus: bool,
     tablet_seat: Option<ZwpTabletSeatV2>,
     tablets: HashMap<ZwpTabletV2, tablet::Info>,
-    tools: tablet_tool::Tools,
+    tools: HashMap<ZwpTabletToolV2, Tool>,
     pool: SlotPool,
     buffer: Option<Buffer>,
     queued_circles: Vec<Circle>,
@@ -438,47 +444,51 @@ impl tablet_tool::Handler for SimpleWindow {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        tool: &ZwpTabletToolV2,
+        wtool: &ZwpTabletToolV2,
         info: tablet_tool::Info,
     ) {
-        println!("Tablet tool {} initialised: {:#?}", tool.id(), info);
-        self.tools.insert(tool.clone(), info);
+        println!("Tablet tool {} initialised: {:#?}", wtool.id(), info);
+        self.tools.insert(wtool.clone(), Tool {
+            info,
+            state: tablet_tool::State::new(),
+            cursor_surface: None,
+        });
     }
 
     fn removed(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        tool: &ZwpTabletToolV2,
+        wtool: &ZwpTabletToolV2,
     ) {
-        println!("Tablet tool {} removed", tool.id());
-        self.tools.remove(tool);
+        println!("Tablet tool {} removed", wtool.id());
+        self.tools.remove(wtool);
     }
 
     fn frame(
         &mut self,
         _conn: &Connection,
         qh: &QueueHandle<Self>,
-        tool: &ZwpTabletToolV2,
+        wtool: &ZwpTabletToolV2,
         events: &[tablet_tool::Event],
     ) {
-        //println!("Tablet tool {} frame: {:#?}", tool.id(), events);
-        let tias = self.tools.ingest_frame(tool, &events);
+        let tool = self.tools.get_mut(wtool).expect("got frame for unknown tool");
+        tool.state.ingest_frame(events);
 
-        if let Some(state) = &tias.state {
-            if state.is_down() {
-                let pressure = tias.pressure_web();
+        if tool.state.is_in_proximity() {
+            if tool.state.is_down() {
+                let pressure = tool.state.pressure_web(&tool.info);
                 let radius = 2.0 * pressure as f32;
                 self.queued_circles.push(Circle {
-                    x: state.x as f32,
-                    y: state.y as f32,
+                    x: tool.state.x as f32,
+                    y: tool.state.y as f32,
                     radius,
                     color: raqote::SolidSource {
-                        r: (state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
-                        g: (state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
-                        b: (state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
-                        a: if tias.info.supports_slider() {
-                            ((state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
+                        r: (tool.state.tilt_x + 90.0 / 180.0 * 255.0) as u8,
+                        g: (tool.state.tilt_y + 90.0 / 180.0 * 255.0) as u8,
+                        b: (tool.state.rotation_degrees / 360.0 * 255.0 % 255.0) as u8,
+                        a: if tool.info.supports_slider() {
+                            ((tool.state.slider_position + 65535) as f64 / 131071.0 * 255.0) as u8
                         } else {
                             // Sure, 0 is the neutraal position and all that,
                             // but semitransparent looks a bit odd,
@@ -490,68 +500,36 @@ impl tablet_tool::Handler for SimpleWindow {
                 });
             }
 
-            /*
-            let width = 32;
-            let height = 32;
-            let (buffer, canvas) = self.pool.create_buffer(
-                width as i32,
-                height as i32,
-                width as i32 * 4,
-                wl_shm::Format::Argb8888
-            ).expect("create buffer");
-            // https://github.com/Smithay/client-toolkit/issues/488 workaround.
-            let canvas = &mut canvas[..width as usize * height as usize * 4];
-
-            let radius = 6.0;
-            let mut dt = raqote::DrawTarget::from_backing(
-                width as i32,
-                height as i32,
-                bytemuck::cast_slice_mut(canvas),
-            );
-            let mut pb = raqote::PathBuilder::new();
-            pb.arc(width as f32 / 2.0, height as f32 / 2.0, radius, 0., TWO_PI);
-            dt.fill(&pb.finish(), &SOLID_RED, &raqote::DrawOptions::new());
-
-            // TODO: text.
-
-            let cursor_surface = Surface::new(&self.compositor_state, qh).unwrap();
-            let cursor_wl_surface = cursor_surface.wl_surface();
-            tool.set_cursor(state.proximity_in_serial, Some(cursor_wl_surface), width / 2, height / 2);
-            buffer.attach_to(cursor_wl_surface).expect("buffer attach");
-            cursor_wl_surface.damage_buffer(0, 0, width as i32, height as i32);
-            cursor_wl_surface.commit();
-            */
-
-            print!("t={} {} x={:7.2} y={:7.2}",
-                tias.last_frame_time,
-                if state.is_down() { "down" } else { " up " },
-                state.x,
-                state.y);
-            if tias.info.supports_pressure() {
-                print!(" pressure={:5}", state.pressure);
+            print!("t={}   tablet state    {} x={:7.2} y={:7.2}",
+                tool.state.time,
+                if tool.state.is_down() { "down" } else { "up  " },
+                tool.state.x,
+                tool.state.y);
+            if tool.info.supports_pressure() {
+                print!(" pressure={:5}", tool.state.pressure);
             }
-            if tias.info.supports_tilt() {
-                print!(" tilt_x={:5.2} tilt_y={:5.2}", state.tilt_x, state.tilt_y);
+            if tool.info.supports_tilt() {
+                print!(" tilt_x={:5.2} tilt_y={:5.2}", tool.state.tilt_x, tool.state.tilt_y);
             }
-            if tias.info.supports_distance() {
-                print!(" distance={:5}", state.distance);
+            if tool.info.supports_distance() {
+                print!(" distance={:5}", tool.state.distance);
             }
-            if tias.info.supports_rotation() {
-                print!(" rotation={:6.2}", state.rotation_degrees);
+            if tool.info.supports_rotation() {
+                print!(" rotation={:6.2}", tool.state.rotation_degrees);
             }
-            if tias.info.supports_slider() {
-                print!(" slider={:6}", state.slider_position);
+            if tool.info.supports_slider() {
+                print!(" slider={:6}", tool.state.slider_position);
             }
-            if tias.info.supports_wheel() {
-                print!(" wheel={:6.2}", state.wheel_degrees);
+            if tool.info.supports_wheel() {
+                print!(" wheel={:6.2}", tool.state.wheel_degrees);
             }
-            if state.stylus_button_1_pressed {
+            if tool.state.stylus_button_1_pressed {
                 print!(" button:1");
             }
-            if state.stylus_button_2_pressed {
+            if tool.state.stylus_button_2_pressed {
                 print!(" button:2");
             }
-            if state.stylus_button_3_pressed {
+            if tool.state.stylus_button_3_pressed {
                 print!(" button:3");
             }
             println!();
