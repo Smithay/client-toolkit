@@ -55,6 +55,7 @@ const HARDWARE_ID_WACOM: Capabilities = Capabilities::from_bits_retain(0b1000000
 
 /// Static information about the tool and its capabilities.
 #[derive(Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Info {
     // Wish this was #[repr(u8)]… it’s wasting four bytes.
     r#type: Type,

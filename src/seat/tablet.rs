@@ -33,6 +33,7 @@ pub trait Handler: Sized {
 
 /// The description of a tablet device.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct Info {
     /// The descriptive name of the tablet device.
     pub name: Option<String>,
