@@ -12,7 +12,6 @@ use smithay_client_toolkit::{
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
-        TabletManager,
         tablet_seat,
         tablet,
         tablet_tool,
@@ -87,7 +86,6 @@ fn main() {
         compositor_state,
         shm_state,
         _xdg_shell_state: xdg_shell_state,
-        tablet_manager: TabletManager::bind(&globals, &qh),
 
         exit: false,
         width,
@@ -122,7 +120,6 @@ struct SimpleWindow {
     compositor_state: CompositorState,
     shm_state: Shm,
     _xdg_shell_state: XdgShell,
-    tablet_manager: TabletManager,
 
     exit: bool,
     width: u32,
@@ -292,7 +289,7 @@ impl SeatHandler for SimpleWindow {
         // FIXME: this doesn’t seem like the right place to put this.
         // Where *should* it go?
         if self.tablet_seat.is_none() {
-            let tablet_seat = self.tablet_manager.get_tablet_seat(&seat, qh).ok();
+            let tablet_seat = self.seat_state.get_tablet_seat(qh, &seat).ok();
             if tablet_seat.is_some() {
                 println!("Created tablet seat");
             } else {
