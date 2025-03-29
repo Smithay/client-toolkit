@@ -1,4 +1,3 @@
-use std::collections::{hash_map, HashMap};
 use std::fmt;
 use std::mem;
 use std::sync::Mutex;
@@ -132,137 +131,13 @@ impl Info {
     pub fn supports_wheel(&self)    -> bool { self.capabilities.contains(Capabilities::WHEEL) }
 }
 
-#[derive(Debug)]
-pub struct InfoAndState {
-    pub info: Info,
-    /// The time the last frame was sent,
-    /// or zero if no frames have come yet.
-    pub last_frame_time: u32,
-    /// The current state of the tool, if in proximity.
-    pub state: Option<State>,
-}
-
-impl InfoAndState {
-    /// Get the pressure according to the web’s Pointer Events API:
-    /// scaled in the range \[0, 1\],
-    /// and set to 0.5 when down if pressure isn’t supported.
-    pub fn pressure_web(&self) -> f64 {
-        match (self.info.supports_pressure(), &self.state) {
-            (true, &Some(State { pressure, .. })) => pressure as f64 / 65535.0,
-            (false, Some(State { down_serial: Some(_), .. })) => 0.5,
-            _ => 0.0,
-        }
-    }
-
-    // I don’t think there’s anything else that warrants a method,
-    // because it needs to take both info and state into account:
-    //   • Tilt, 0/0 is a sane default when unsupported.
-    //   • Distance, you’ll probably want to handle supported/unsupported separately.
-    //   • Rotation, 0 is the natural position and a good default when unsupported.
-    //   • Slider, 0 is the neutral position and a good default when unsupported.
-    //   • Wheel, it’s all delta anyway so unsupported values are equivalent to unused.
-    // No, it’s only pressure, because you need the fallback to take down into account,
-    // because zero would be a horrible value to be stuck at.
-}
-
-impl From<Info> for InfoAndState {
-    fn from(info: Info) -> InfoAndState {
-        InfoAndState {
-            info,
-            last_frame_time: 0,
-            state: None,
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Tools {
-    map: HashMap<ZwpTabletToolV2, InfoAndState>,
-}
-
-impl Tools {
-    pub fn new() -> Tools {
-        Tools::default()
-    }
-
-    /// Get the info and state for a tool.
-    pub fn get(&self, tool: &ZwpTabletToolV2) -> Option<&InfoAndState> {
-        self.map.get(tool)
-    }
-
-    /// Add a tool with its info and no state.
-    pub fn insert(&mut self, tool: ZwpTabletToolV2, info: Info) {
-        self.map.insert(tool.clone(), InfoAndState {
-            info,
-            last_frame_time: 0,
-            state: None,
-        });
-    }
-
-    /// Remove a tool from the collection.
-    pub fn remove(&mut self, tool: &ZwpTabletToolV2) {
-        self.map.remove(tool);
-    }
-
-    /// Apply the events to the tool’s state.
-    ///
-    /// Returns the updated [`InfoAndState`] for convenience,
-    /// and to save a superfluous [`.get()`](Self::get) call.
-    ///
-    /// Panics if the tool is not in the collection.
-    pub fn ingest_frame(&mut self, tool: &ZwpTabletToolV2, events: &[Event]) -> &InfoAndState {
-        let mut events = events.into_iter();
-        let ias = self.map.get_mut(tool).unwrap();
-        let state = ias.state.get_or_insert_with(|| {
-            let Some(Event::ProximityIn { serial, tablet, surface }) = events.next()
-            else {
-                panic!("First zwp_tablet_tool_v2 frame didn’t start with a proximity_in event");
-            };
-            State::from_proximity_in(*serial, tablet.clone(), surface.clone())
-        });
-        let Some(Event::Frame { time }) = events.next_back() else { unreachable!() };
-        ias.last_frame_time = *time;
-
-        for event in events {
-            state.apply_event(&event);
-            if let Event::ProximityOut = event {
-                ias.state = None;
-                // Given that a frame is supposed to represent a single hardware event,
-                // I think you can fairly say it’d be mad to proximity_out and
-                // immediately proximity_in in the same frame.
-                // So I think we’re OK to just break.
-                break;
-            }
-        }
-        &*ias
-    }
-
-    /// Iterate over each tablet tool and its data.
-    pub fn iter(&self) -> hash_map::Iter<'_, ZwpTabletToolV2, InfoAndState> {
-        self.map.iter()
-    }
-
-    /// Iterate over the data for each tablet tool.
-    pub fn values(&self) -> hash_map::Values<'_, ZwpTabletToolV2, InfoAndState> {
-        self.map.values()
-    }
-}
-
-impl<'a> IntoIterator for &'a Tools {
-    type Item = (&'a ZwpTabletToolV2, &'a InfoAndState);
-    type IntoIter = hash_map::Iter<'a, ZwpTabletToolV2, InfoAndState>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.map.iter()
-    }
-}
-
-/// The current state of the tool, while in proximity.
+/// The current state of the tool.
 ///
 /// For many applications, when you receive a frame,
 /// you don’t so much care about the events,
 /// as about capturing the tool’s current total state.
 ///
-/// This lets you do that.
+/// This lets you view it that way, if you choose.
 ///
 /// Caveats:
 ///
@@ -280,19 +155,20 @@ impl<'a> IntoIterator for &'a Tools {
 ///   (nothing but stylus inputs have been available since the early-/mid-2010s),
 ///   and if you care about serials or other buttons you will surely prefer events.
 //
-// At 176 bytes on a 64-bit platform, this is much larger than it fundamentally *need* be.
-// With effort, you could losslessly encode all but wheel in less than 37 bytes,
-// and with negligible loss you could shrink it to 29 bytes.
+// At 184 bytes on a 64-bit platform, this is much larger than it fundamentally *need* be.
+// With effort, you could losslessly encode all but wheel in less than 41 bytes,
+// and with negligible loss you could shrink it to 33 bytes.
 // But we’re trying to make it usefully accessible, not packed ultra-tight.
 // So it’s mildly painfully wasteful instead.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct State {
-    // ProximityIn
-    /// The `Event::ProximityIn.serial` value,
-    /// needed for [`ZwpTabletToolV2::set_cursor`] requests.
-    pub proximity_in_serial: u32,
-    pub tablet: ZwpTabletV2,
-    pub surface: WlSurface,
+    // ProximityIn, ProximityOut
+    /// The proximity information.
+    ///
+    /// When this is `None` (initially and after a `ProximityOut` event),
+    /// tip state will be up and button states will be released,
+    /// but all other axes will have stale values.
+    pub proximity: Option<Proximity>,
 
     // Down, Up
     /// Whether the tool is in logical contact or not.
@@ -356,119 +232,154 @@ pub struct State {
     pub stylus_button_2_pressed: bool,
     /// Whether [`BTN_STYLUS3`] is pressed.
     pub stylus_button_3_pressed: bool,
+
+    // Frame
+    /// The time given in the last [Event::Frame].
+    pub time: u32,
+}
+
+/// Information from the `ProximityIn` event.
+#[derive(Debug, Clone)]
+pub struct Proximity {
+    /// The `Event::ProximityIn.serial` value,
+    /// needed for [`ZwpTabletToolV2::set_cursor`] requests.
+    pub serial: u32,
+    pub tablet: ZwpTabletV2,
+    pub surface: WlSurface,
 }
 
 impl State {
+    /// Create blank state for a tool not yet in proximity.
+    #[inline]
+    pub fn new() -> State {
+        State::default()
+    }
+
+    /// Whether the tool is in logical contact with the tablet.
+    #[inline]
     pub fn is_down(&self) -> bool {
         self.down_serial.is_some()
     }
+
+    /// Whether the tool is in proximity to a tablet.
+    pub fn is_in_proximity(&self) -> bool {
+        self.proximity.is_some()
+    }
+
+    /// Apply the events of a frame to this state.
+    ///
+    /// `Button` events are ignored for anything other than the stylus buttons,
+    /// and button serials are discarded.
+    /// If you want them, you must examine the event stream yourself.
+    pub fn ingest_frame(&mut self, events: &[Event]) {
+        for event in events {
+            match *event {
+                Event::ProximityIn { serial, ref tablet, ref surface } => {
+                    self.proximity = Some(Proximity {
+                        serial,
+                        tablet: tablet.clone(),
+                        surface: surface.clone(),
+                    });
+                },
+                Event::ProximityOut => {
+                    self.proximity = None;
+                },
+                Event::Down { serial } => {
+                    self.down_serial = Some(serial);
+                },
+                Event::Up => {
+                    self.down_serial = None;
+                },
+                Event::Motion { x, y } => {
+                    self.x = x;
+                    self.y = y;
+                },
+                Event::Pressure { pressure } => {
+                    // “The value of this event is normalized to a value between 0 and 65535.”
+                    // But the Wayland wire format only supports 32-bit integers,
+                    // so we cast it here. We might as well, I reckon.
+                    self.pressure = pressure as u16;
+                },
+                Event::Distance { distance } => {
+                    // Same deal, “normalized to a value between 0 and 65535”.
+                    self.distance = distance as u16;
+                },
+                Event::Tilt { tilt_x, tilt_y } => {
+                    self.tilt_x = tilt_x;
+                    self.tilt_y = tilt_y;
+                },
+                Event::Rotation { degrees } => {
+                    self.rotation_degrees = degrees;
+                },
+                Event::Slider { position } => {
+                    // This one is “normalized between -65535 and 65535”, 17 bits, so it stays i32.
+                    self.slider_position = position;
+                },
+                Event::Wheel { degrees, clicks } => {
+                    // These ones use += because they’re deltas, unlike the rest.
+                    self.wheel_degrees += degrees;
+                    self.wheel_clicks += clicks;
+                },
+                Event::Button { serial: _, button: BTN_STYLUS, state } => {
+                    self.stylus_button_1_pressed = button_state_to_bool(state);
+                },
+                Event::Button { serial: _, button: BTN_STYLUS2, state } => {
+                    self.stylus_button_2_pressed = button_state_to_bool(state);
+                },
+                Event::Button { serial: _, button: BTN_STYLUS3, state } => {
+                    self.stylus_button_3_pressed = button_state_to_bool(state);
+                },
+                Event::Button { .. } => {
+                    // Deliberately ignored. Very unlikely in 2025, but possible.
+                },
+                Event::Frame { time } => {
+                    self.time = time;
+                },
+                _ => {
+                    // Info events, or anything else unknown. Should be unreachable.
+                },
+            }
+        }
+    }
+
+    /// Get the pressure according to the web’s Pointer Events API:
+    /// scaled in the range \[0.0, 1.0\],
+    /// and, if pressure isn’t supported, set to 0.5 when down and 0.0 when up.
+    pub fn pressure_web(&self, info: &Info) -> f64 {
+        if info.supports_pressure() {
+            self.pressure as f64 / 65535.0
+        } else if self.is_down() {
+            0.5
+        } else {
+            0.0
+        }
+    }
+
+    // Pressure wants a special method, because falling back to 0 would be horrible,
+    // and there’s an established convention on tip-state-aware fallback,
+    // and mixing pressure-aware and pressure-unaware pointers is routine.
+    // (Mind you, within tablet tools they’re probably almost all aware.
+    // This method is *more* useful when you’ve merged tablet tools, touch and pointers.)
+    //
+    // Distance might like a special method, as it’s basically the opposite of pressure,
+    // distance *from* the surface rather than distance *into* the surface,
+    // but it’s nowhere near as commonly supported in hardware,
+    // and it’s not common to build stuff on it,
+    // and the web’s Pointer Events API doesn’t even expose it,
+    // so there’s no established convention.
+    // *Could* make its fallback the opposite of pressure’s, 0.0 if down else 0.5,
+    // but I think people using distance are likely to want to branch on support,
+    // a little more than is the case with pressure.
+    //
+    // As for the other capabilities, they’re all fine with a static fallback value of zero:
+    // for tilt, rotation, slider, it’s the natural or neutral position;
+    // and for wheel, it’s all delta anyway so unsupported is equivalent to unused.
 }
 
+/// Convert an event’s button state to a `bool` representing whether it’s pressed.
+#[inline]
 pub fn button_state_to_bool(state: WEnum<zwp_tablet_tool_v2::ButtonState>) -> bool {
     matches!(state, WEnum::Value(zwp_tablet_tool_v2::ButtonState::Pressed))
-}
-
-impl State {
-    pub fn from_proximity_in(serial: u32, tablet: ZwpTabletV2, surface: WlSurface) -> State {
-        State {
-            proximity_in_serial: serial,
-            tablet,
-            surface,
-            // Initialise the rest to the most meaningful values possible.
-            down_serial: None,
-            x: 0.0,
-            y: 0.0,
-            pressure: 0,
-            distance: 0,
-            tilt_x: 0.0,
-            tilt_y: 0.0,
-            rotation_degrees: 0.0,
-            slider_position: 0,
-            wheel_degrees: 0.0,
-            wheel_clicks: 0,
-            stylus_button_1_pressed: false,
-            stylus_button_2_pressed: false,
-            stylus_button_3_pressed: false,
-        }
-    }
-
-    /// Apply the change described in an event to this state.
-    ///
-    /// Certain events are ignored:
-    ///
-    /// - Static description events (e.g. `Type` and `Done`) aren’t applicable.
-    /// - `ProximityOut` invalidates this entirely and needs to be applied at a higher level.
-    /// - `ProximityIn` should already have been consumed by the caller
-    ///   (it was what led to creating this object).
-    /// - `Frame` should be consumed by the caller
-    ///   (you can’t store frame time inside here,
-    ///   since it will be deleted by `ProximityOut`,
-    ///   but you might still care about its frame time).
-    ///
-    /// For clarity:
-    /// `ProximityOut` is expected to be passed here (at present), though it’s no-op,
-    /// but `ProximityIn` and `Frame` should both have been consumed.
-    ///
-    /// Also, `Button` is ignored for anything other than the stylus buttons,
-    /// and button serials are discarded.
-    pub fn apply_event(&mut self, event: &Event) {
-        match *event {
-            Event::ProximityOut => {
-                // This invalidates `self`, and must be handled by the caller.
-            },
-            Event::Down { serial } => {
-                self.down_serial = Some(serial);
-            },
-            Event::Up => {
-                self.down_serial = None;
-            },
-            Event::Motion { x, y } => {
-                self.x = x;
-                self.y = y;
-            },
-            Event::Pressure { pressure } => {
-                // “The value of this event is normalized to a value between 0 and 65535.”
-                // But the Wayland wire format only supports 32-bit integers,
-                // so we cast it here. We might as well, I reckon.
-                self.pressure = pressure as u16;
-            },
-            Event::Distance { distance } => {
-                // Same deal, “normalized to a value between 0 and 65535”.
-                self.distance = distance as u16;
-            },
-            Event::Tilt { tilt_x, tilt_y } => {
-                self.tilt_x = tilt_x;
-                self.tilt_y = tilt_y;
-            },
-            Event::Rotation { degrees } => {
-                self.rotation_degrees = degrees;
-            },
-            Event::Slider { position } => {
-                // This one is “normalized between -65535 and 65535”, 17 bits, so it stays i32.
-                self.slider_position = position;
-            },
-            Event::Wheel { degrees, clicks } => {
-                // These ones use += because they’re deltas, unlike the rest.
-                self.wheel_degrees += degrees;
-                self.wheel_clicks += clicks;
-            },
-            Event::Button { serial: _, button: BTN_STYLUS, state } => {
-                self.stylus_button_1_pressed = button_state_to_bool(state);
-            },
-            Event::Button { serial: _, button: BTN_STYLUS2, state } => {
-                self.stylus_button_2_pressed = button_state_to_bool(state);
-            },
-            Event::Button { serial: _, button: BTN_STYLUS3, state } => {
-                self.stylus_button_3_pressed = button_state_to_bool(state);
-            },
-            Event::Button { .. } => {
-                // Ignored; see doc comment.
-            },
-            Event::ProximityIn { .. } | Event::Frame { .. } | _ => {
-                // Should be unreachable; see doc comment.
-            },
-        }
-    }
 }
 
 // Based on <https://lists.freedesktop.org/archives/wayland-devel/2025-March/044025.html>:
@@ -529,6 +440,7 @@ impl Data {
     }
 }
 
+// I’d make this an enum, but the overhead of keeping info forever is negligible, ~24 bytes.
 #[derive(Debug, Default)]
 struct DataInner {
     /// An accumulation of pending init-time events, flushed when a `done` event comes in,
@@ -639,6 +551,10 @@ where
             // but honestly it’s just easier to do this,
             // since we’re passing it through,
             // not reframing in any way.
+            //
+            // Any newly-defined info events will only be fired
+            // if we bump our declared version support,
+            // so no concerns there, this will only be the frame events.
             _ => guard.pending.push(event),
 
         }
