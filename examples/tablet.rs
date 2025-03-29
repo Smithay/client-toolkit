@@ -45,14 +45,11 @@ use wayland_protocols::wp::tablet::zv2::client::{
 
 const TWO_PI: f32 = 2. * std::f32::consts::PI;
 
-const RED: raqote::SolidSource = raqote::SolidSource { r: 221, g: 0, b: 0, a: 255 };
-const GREEN: raqote::SolidSource = raqote::SolidSource { r: 0, g: 170, b: 0, a: 255 };
-const SOLID_RED: raqote::Source = raqote::Source::Solid(RED);
-const SOLID_GREEN: raqote::Source = raqote::Source::Solid(GREEN);
-
-const WHITE: raqote::SolidSource = raqote::SolidSource { r: 255, g: 255, b: 255, a: 255 };
-const BLACK: raqote::SolidSource = raqote::SolidSource { r: 0, g: 0, b: 0, a: 255 };
-const SOLID_BLACK: raqote::Source = raqote::Source::Solid(BLACK);
+const BLACK: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 0, g: 0, b: 0, a: 255 });
+const WHITE: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 255, g: 255, b: 255, a: 255 });
+const DARK_GREEN: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 0, g: 102, b: 0, a: 255 });
+const DARK_RED: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 153, g: 0, b: 0, a: 255 });
+const HALF_WHITE: raqote::Source = raqote::Source::Solid(raqote::SolidSource { r: 127, g: 127, b: 127, a: 127 });
 
 fn main() {
     env_logger::init();
@@ -61,15 +58,6 @@ fn main() {
 
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
-
-    let font = font_kit::source::SystemSource::new()
-        .select_best_match(
-            &[font_kit::family_name::FamilyName::SansSerif],
-            &font_kit::properties::Properties::new(),
-        )
-        .unwrap()
-        .load()
-        .unwrap();
 
     let compositor_state = CompositorState::bind(&globals, &qh)
                     .expect("wl_compositor not available");
@@ -98,7 +86,7 @@ fn main() {
         output_state: OutputState::new(&globals, &qh),
         compositor_state,
         shm_state,
-        xdg_shell_state,
+        _xdg_shell_state: xdg_shell_state,
         tablet_manager: TabletManager::bind(&globals, &qh),
 
         exit: false,
@@ -114,7 +102,6 @@ fn main() {
         queued_circles: Vec::new(),
         redraw_queued: false,
         pool,
-        font,
     };
 
     while !simple_window.exit {
@@ -134,7 +121,7 @@ struct SimpleWindow {
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: Shm,
-    xdg_shell_state: XdgShell,
+    _xdg_shell_state: XdgShell,
     tablet_manager: TabletManager,
 
     exit: bool,
@@ -150,8 +137,6 @@ struct SimpleWindow {
     buffer: Option<Buffer>,
     queued_circles: Vec<Circle>,
     redraw_queued: bool,
-
-    font: font_kit::loaders::freetype::Font,
 }
 
 struct Circle {
@@ -192,6 +177,7 @@ impl CompositorHandler for SimpleWindow {
         println!("t={_time} DRAWING FRAME, got {} pending circles", self.queued_circles.len());
         if surface == self.window.wl_surface() {
             self.redraw_queued = false;
+            self.draw_cursors(conn, qh);
             self.draw(conn, qh, false);
         }
     }
@@ -535,7 +521,11 @@ impl tablet_tool::Handler for SimpleWindow {
             println!();
         }
 
-        self.queue_redraw_if_needed(qh);
+        // Even if the main window has nothing to redraw,
+        // the cursors probably do,
+        // and we’re doing only coarse reactivity here,
+        // so just queue a general redraw.
+        self.queue_redraw(qh);
     }
 }
 
@@ -546,18 +536,11 @@ impl ShmHandler for SimpleWindow {
 }
 
 impl SimpleWindow {
-    fn queue_redraw_if_needed(&mut self, qh: &QueueHandle<Self>) {
-        if !self.redraw_queued {
-            if !self.queued_circles.is_empty() {
-                self.queue_redraw(qh);
-            }
-        }
-    }
-
     fn queue_redraw(&mut self, qh: &QueueHandle<Self>) {
         if !self.redraw_queued {
-            println!("   → Queueing redraw");
             let surface = self.window.wl_surface();
+            // In theory, it might be better to do frame callbacks on cursor surfaces; don’t know.
+            // But in practice, doing it on the window surface is plenty good enough.
             surface.frame(qh, surface.clone());
             // Have to commit to make the frame request.
             surface.commit();
@@ -567,9 +550,8 @@ impl SimpleWindow {
 
     pub fn draw(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, force: bool) {
         if self.queued_circles.is_empty() && !force {
-            println!("[31mDraw called with nothing to do![m");
-            // False alarm, we don’t actually have anything to draw.
-            // Nothing to draw, wait until we have something to draw.
+            // Nothing needs updating.
+            // (It was presumably the cursors needing to be updated.)
             return;
         }
 
@@ -613,6 +595,85 @@ impl SimpleWindow {
         buffer.attach_to(surface).expect("buffer attach");
         surface.commit();
         println!("Finished drawing frame.");
+    }
+
+    pub fn draw_cursors(&mut self, _conn: &Connection, qh: &QueueHandle<Self>) {
+        for (wtool, tool) in &mut self.tools {
+            let Some(tablet_tool::Proximity { serial: proximity_in_serial, .. }) = tool.state.proximity
+            else { continue };
+            let width = 58;
+            let height = 33;
+            let (buffer, canvas) = self.pool.create_buffer(
+                width as i32,
+                height as i32,
+                width as i32 * 4,
+                wl_shm::Format::Argb8888
+            ).expect("create buffer");
+            // https://github.com/Smithay/client-toolkit/issues/488 workaround.
+            let canvas = &mut canvas[..width as usize * height as usize * 4];
+
+            let mut dt = raqote::DrawTarget::from_backing(
+                width as i32,
+                height as i32,
+                bytemuck::cast_slice_mut(canvas),
+            );
+            let o = &raqote::DrawOptions::new();
+            dt.clear(raqote::SolidSource { r: 0, g: 0, b: 0, a: 0 });
+
+            // Draw crosshairs, varyinig with pressure and contact state.
+            {
+                let mut pb = raqote::PathBuilder::new();
+                let radius = 4.0 + 4.0 * tool.state.pressure_web(&tool.info) as f32;
+                pb.move_to(16.5         ,  1.5         );
+                pb.line_to(16.5         , 16.5 - radius);
+                pb.move_to(16.5         , 16.5 + radius);
+                pb.line_to(16.5         , 31.5         );
+                pb.move_to( 1.5         , 16.5         );
+                pb.line_to(16.5 - radius, 16.5         );
+                pb.move_to(16.5 + radius, 16.5         );
+                pb.line_to(31.5         , 16.5         );
+                pb.arc(16.5, 16.5, radius, 0.0, TWO_PI);
+                let path = pb.finish();
+                let mut stroke_style = raqote::StrokeStyle {
+                    width: 3.0,
+                    cap: raqote::LineCap::Square,
+                    ..Default::default()
+                };
+                dt.stroke(&path, &HALF_WHITE, &stroke_style, o);
+                stroke_style.width = 1.0;
+                dt.stroke(&path, &if tool.state.is_down() { DARK_GREEN } else { DARK_RED }, &stroke_style, o);
+            }
+
+            // Draw button states, ’cos why not.
+            {
+                let y = 27.0;
+                let mut x = 30.0;
+                let width = 8.0;
+                let height = 6.0;
+                let dx = 10.0;
+                for pressed in [
+                    tool.state.stylus_button_1_pressed,
+                    tool.state.stylus_button_2_pressed,
+                    tool.state.stylus_button_3_pressed,
+                ] {
+                    dt.fill_rect(x, y, width, height, &BLACK, o);
+                    if !pressed {
+                        dt.fill_rect(x + 1.0, y + 1.0, width - 2.0, height - 2.0, &WHITE, o);
+                    }
+                    x += dx;
+                }
+            }
+
+            // Could draw more, but you get the idea.
+
+            let cursor_surface = Surface::new(&self.compositor_state, qh).unwrap();
+            let cursor_wl_surface = cursor_surface.wl_surface();
+            wtool.set_cursor(proximity_in_serial, Some(cursor_wl_surface), 16, 16);
+            buffer.attach_to(cursor_wl_surface).expect("buffer attach");
+            cursor_wl_surface.damage_buffer(0, 0, width as i32, height as i32);
+            cursor_wl_surface.commit();
+            tool.cursor_surface = Some(cursor_surface);
+        }
     }
 
     /// Initialise the canvas buffer, damaging but not attaching/committing.
