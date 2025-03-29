@@ -113,6 +113,21 @@ struct Tool {
     info: tablet_tool::Info,
     state: tablet_tool::State,
     cursor_surface: Option<Surface>,
+    // This demo is currently only hooked up for custom cursors,
+    // which were a mite easier to implement, more interesting,
+    // and may be more commonly desired with tablets anyway.
+    // If you want to use standard theme cursors,
+    // for now the easiest (but not quite perfect) way is:
+    //
+    // 1. Add this field:
+    //    cursor_shape_device: smithay_client_toolkit::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1,
+    //
+    // 2. Populate it from window.seat_state.cursor_shape_manager(qh).get_shape_device_for_tablet_tool(…).
+    //
+    // 3. On ProximityIn events, call cursor_shape_device.set_shape(state.proximity?.serial, shape).
+    //
+    // In the future, this should be better integrated, like it is with ThemedPointer,
+    // but for now that’s the general outline.
 }
 
 struct SimpleWindow {
