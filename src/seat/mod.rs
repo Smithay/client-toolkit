@@ -1,6 +1,5 @@
 use std::{
     fmt::{self, Display, Formatter},
-    slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -8,7 +7,7 @@ use std::{
 };
 
 use crate::reexports::client::{
-    globals::{Global, GlobalList},
+    globals::{BindError, Global, GlobalList},
     protocol::{wl_pointer, wl_registry::WlRegistry, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -75,10 +74,6 @@ pub enum SeatError {
     DeadObject,
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("the tablet protocol is not supported")]
-pub struct TabletNotSupported;
-
 #[derive(Debug)]
 pub struct SeatState {
     // (name, seat)
@@ -89,9 +84,36 @@ pub struct SeatState {
 
 #[derive(Debug)]
 enum ManagerState<T> {
-    NotPresent,
+    Failed(BindError),
     Pending { registry: WlRegistry, global: Global },
     Bound(T),
+}
+
+impl<T> ManagerState<T> {
+    fn bind<I, D>(&mut self, qh: &QueueHandle<D>, version: std::ops::RangeInclusive<u32>, f: impl FnOnce(I) -> T) -> Result<&T, BindError>
+    where
+        I: Proxy + 'static,
+        D: Dispatch<I, GlobalData> + 'static,
+    {
+        *self = match std::mem::replace(self, ManagerState::Failed(BindError::NotPresent)) {
+            ManagerState::Pending { registry, global } => {
+                match crate::registry::bind_one(&registry, &[global], qh, version, GlobalData) {
+                    Ok(bound) => ManagerState::Bound(f(bound)),
+                    Err(e) => ManagerState::Failed(e),
+                }
+            }
+            other => other,
+        };
+
+        match self {
+            ManagerState::Bound(bound) => Ok(bound),
+            // FIXME: make BindError impl Clone
+            //ManagerState::Failed(e) => Err(e.clone()),
+            ManagerState::Failed(BindError::UnsupportedVersion) => Err(BindError::UnsupportedVersion),
+            ManagerState::Failed(BindError::NotPresent) => Err(BindError::NotPresent),
+            ManagerState::Pending { .. } => unreachable!(),
+        }
+    }
 }
 
 impl SeatState {
@@ -101,8 +123,8 @@ impl SeatState {
     ) -> SeatState {
         let (seats, cursor_shape_manager_state, tablet_manager_state) =
         global_list.contents().with_list(|globals| {
-            let mut csm = ManagerState::NotPresent;
-            let mut tm = ManagerState::NotPresent;
+            let mut csm = ManagerState::Failed(BindError::NotPresent);
+            let mut tm = ManagerState::Failed(BindError::NotPresent);
             let csm_name = WpCursorShapeManagerV1::interface().name;
             let tm_name = ZwpTabletManagerV2::interface().name;
             for global in globals {
@@ -275,29 +297,8 @@ impl SeatState {
 
         let wl_ptr = seat.get_pointer(qh, pointer_data);
 
-        if let ManagerState::Pending { registry, global } =
-            &self.cursor_shape_manager_state
-        {
-            self.cursor_shape_manager_state = match crate::registry::bind_one(
-                registry,
-                slice::from_ref(global),
-                qh,
-                1..=2,
-                GlobalData,
-            ) {
-                Ok(bound) => {
-                    ManagerState::Bound(CursorShapeManager::from_existing(bound))
-                }
-                Err(_) => ManagerState::NotPresent,
-            }
-        }
-
-        let shape_device =
-            if let ManagerState::Bound(ref bound) = self.cursor_shape_manager_state {
-                Some(bound.get_shape_device(&wl_ptr, qh))
-            } else {
-                None
-            };
+        let shape_device = self.cursor_shape_manager(qh).ok()
+            .map(|csm| csm.get_shape_device(&wl_ptr, qh));
 
         Ok(ThemedPointer {
             themes: Arc::new(Mutex::new(Themes::new(theme))),
@@ -308,6 +309,16 @@ impl SeatState {
             _marker: std::marker::PhantomData,
             _surface_data: std::marker::PhantomData,
         })
+    }
+
+    pub fn cursor_shape_manager<D>(&mut self, qh: &QueueHandle<D>)
+        -> Result<&CursorShapeManager, BindError>
+    where
+        D: Dispatch<WpCursorShapeManagerV1, GlobalData>,
+        D: Dispatch<WpCursorShapeDeviceV1, GlobalData>,
+        D: 'static,
+    {
+        self.cursor_shape_manager_state.bind(qh, 1..=2, CursorShapeManager::from_existing)
     }
 
     /// Creates a touch handle from a seat.
@@ -356,29 +367,13 @@ impl SeatState {
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
-    ) -> Result<ZwpTabletSeatV2, TabletNotSupported>
+    ) -> Result<ZwpTabletSeatV2, BindError>
     where
         D: Dispatch<ZwpTabletSeatV2, ()> + 'static,
         D: Dispatch<ZwpTabletManagerV2, GlobalData> + 'static,
     {
-        if let ManagerState::Pending { registry, global } =
-            &self.tablet_manager_state
-        {
-            self.tablet_manager_state =
-                match crate::registry::bind_one(registry, &[global.clone()], qh, 1..=1, GlobalData)
-                {
-                    Ok(bound) => {
-                        ManagerState::Bound(TabletManager::from_existing(bound))
-                    }
-                    Err(_) => ManagerState::NotPresent,
-                }
-        }
-
-        if let ManagerState::Bound(bound) = &self.tablet_manager_state {
-            Ok(bound.get_tablet_seat(seat, qh))
-        } else {
-            Err(TabletNotSupported)
-        }
+        let tm = self.tablet_manager_state.bind(qh, 1..=1, TabletManager::from_existing)?;
+        Ok(tm.get_tablet_seat(seat, qh))
     }
 }
 
