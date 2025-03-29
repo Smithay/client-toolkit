@@ -121,40 +121,33 @@ impl SeatState {
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> SeatState {
-        let (seats, cursor_shape_manager_state, tablet_manager_state) =
-        global_list.contents().with_list(|globals| {
-            let mut csm = ManagerState::Failed(BindError::NotPresent);
-            let mut tm = ManagerState::Failed(BindError::NotPresent);
-            let csm_name = WpCursorShapeManagerV1::interface().name;
-            let tm_name = ZwpTabletManagerV2::interface().name;
+        let mut cursor_shape_manager_state = ManagerState::Failed(BindError::NotPresent);
+        let mut tablet_manager_state = ManagerState::Failed(BindError::NotPresent);
+        let seats = global_list.contents().with_list(|globals| {
             for global in globals {
-                if global.interface == csm_name {
-                    csm = ManagerState::Pending {
+                if global.interface == WpCursorShapeManagerV1::interface().name {
+                    cursor_shape_manager_state = ManagerState::Pending {
                         registry: global_list.registry().clone(),
                         global: global.clone(),
                     };
-                } else if global.interface == tm_name {
-                    tm = ManagerState::Pending {
+                } else if global.interface == ZwpTabletManagerV2::interface().name {
+                    tablet_manager_state = ManagerState::Pending {
                         registry: global_list.registry().clone(),
                         global: global.clone(),
                     };
                 }
             }
 
-            (
-                crate::registry::bind_all(global_list.registry(), globals, qh, 1..=10, |id| {
-                    SeatData {
-                        has_keyboard: Arc::new(AtomicBool::new(false)),
-                        has_pointer: Arc::new(AtomicBool::new(false)),
-                        has_touch: Arc::new(AtomicBool::new(false)),
-                        name: Arc::new(Mutex::new(None)),
-                        id,
-                    }
-                })
-                .expect("failed to bind global"),
-                csm,
-                tm,
-            )
+            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=10, |id| {
+                SeatData {
+                    has_keyboard: Arc::new(AtomicBool::new(false)),
+                    has_pointer: Arc::new(AtomicBool::new(false)),
+                    has_touch: Arc::new(AtomicBool::new(false)),
+                    name: Arc::new(Mutex::new(None)),
+                    id,
+                }
+            })
+            .expect("failed to bind global")
         });
 
         let mut state =
