@@ -19,6 +19,7 @@ use crate::{
     registry::{ProvidesRegistryState, RegistryHandler},
 };
 
+pub mod input_method;
 #[cfg(feature = "xkbcommon")]
 pub mod keyboard;
 pub mod pointer;
