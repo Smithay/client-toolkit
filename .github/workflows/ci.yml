@@ -25,7 +25,7 @@ jobs:
           key: cargo-${{ matrix.rust }}
 
       - name: Rust toolchain
-        uses: hecrj/setup-rust-action@v1
+        uses: hecrj/setup-rust-action@v2
         with:
           rust-version: ${{ matrix.rust }}
 
@@ -56,7 +56,7 @@ jobs:
           key: cargo-${{ matrix.rust }}
 
       - name: Rust toolchain
-        uses: hecrj/setup-rust-action@v1
+        uses: hecrj/setup-rust-action@v2
         with:
           rust-version: ${{ matrix.rust }}
 
@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Rust toolchain
-        uses: hecrj/setup-rust-action@v1
+        uses: hecrj/setup-rust-action@v2
         with:
           toolchain: stable
           override: true
