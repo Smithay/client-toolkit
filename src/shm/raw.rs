@@ -5,7 +5,7 @@
 
 use rustix::{
     io::Errno,
-    shm::{Mode, ShmOFlags},
+    shm::{Mode, OFlags},
 };
 use std::{
     fs::File,
@@ -201,12 +201,12 @@ impl RawPool {
         );
 
         loop {
-            let flags = ShmOFlags::CREATE | ShmOFlags::EXCL | ShmOFlags::RDWR;
+            let flags = OFlags::CREATE | OFlags::EXCL | OFlags::RDWR;
 
             let mode = Mode::RUSR | Mode::WUSR;
 
-            match rustix::shm::shm_open(mem_file_handle.as_str(), flags, mode) {
-                Ok(fd) => match rustix::shm::shm_unlink(mem_file_handle.as_str()) {
+            match rustix::shm::open(mem_file_handle.as_str(), flags, mode) {
+                Ok(fd) => match rustix::shm::unlink(mem_file_handle.as_str()) {
                     Ok(_) => return Ok(fd),
 
                     Err(errno) => {
