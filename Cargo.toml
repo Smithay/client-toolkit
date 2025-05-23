@@ -29,6 +29,7 @@ wayland-backend = "0.3.0"
 wayland-client = "0.31.1"
 wayland-cursor = "0.31.0"
 wayland-protocols = { version = "0.32.1", features = ["client", "staging", "unstable"] }
+wayland-protocols-experimental = { version = "20250721.0.1", features = ["client"] }
 wayland-protocols-misc = { version = "0.3.6", features = ["client"] }
 wayland-protocols-wlr = { version = "0.3.1", features = ["client"] }
 wayland-scanner = "0.31.0"
