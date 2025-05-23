@@ -20,6 +20,7 @@ use crate::{
 };
 
 pub mod input_method;
+pub mod input_method_v3;
 #[cfg(feature = "xkbcommon")]
 pub mod keyboard;
 pub mod pointer;
