@@ -21,7 +21,7 @@ impl CursorShapeManager {
     where
         State: Dispatch<WpCursorShapeManagerV1, GlobalData> + 'static,
     {
-        let cursor_shape_manager = globals.bind(queue_handle, 1..=1, GlobalData)?;
+        let cursor_shape_manager = globals.bind(queue_handle, 1..=2, GlobalData)?;
         Ok(Self { cursor_shape_manager })
     }
 
@@ -77,7 +77,7 @@ where
     }
 }
 
-pub(crate) fn cursor_icon_to_shape(cursor_icon: CursorIcon) -> Shape {
+pub(crate) fn cursor_icon_to_shape(cursor_icon: CursorIcon, version: u32) -> Shape {
     match cursor_icon {
         CursorIcon::Default => Shape::Default,
         CursorIcon::ContextMenu => Shape::ContextMenu,
@@ -113,6 +113,8 @@ pub(crate) fn cursor_icon_to_shape(cursor_icon: CursorIcon) -> Shape {
         CursorIcon::AllScroll => Shape::AllScroll,
         CursorIcon::ZoomIn => Shape::ZoomIn,
         CursorIcon::ZoomOut => Shape::ZoomOut,
+        CursorIcon::DndAsk if version >= 2 => Shape::DndAsk,
+        CursorIcon::AllResize if version >= 2 => Shape::AllResize,
         _ => Shape::Default,
     }
 }
