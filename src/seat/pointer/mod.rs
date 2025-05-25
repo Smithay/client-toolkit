@@ -440,7 +440,7 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
         };
 
         if let Some(shape_device) = self.shape_device.as_ref() {
-            shape_device.set_shape(serial, cursor_icon_to_shape(icon));
+            shape_device.set_shape(serial, cursor_icon_to_shape(icon, shape_device.version()));
             Ok(())
         } else {
             self.set_cursor_legacy(conn, serial, icon)
