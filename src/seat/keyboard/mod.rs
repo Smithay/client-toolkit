@@ -52,6 +52,9 @@ impl SeatState {
     /// Typically the compositor will provide a keymap, but you may specify your own keymap using the `rmlvo`
     /// field.
     ///
+    /// This keyboard only sends key repeats if they are issued by the compositor.
+    /// See wl_keyboard version 10.
+    ///
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
@@ -157,6 +160,18 @@ pub trait KeyboardHandler: Sized {
     ///
     /// The key will repeat if there is no other press event afterwards or the key is released.
     fn press_key(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        keyboard: &wl_keyboard::WlKeyboard,
+        serial: u32,
+        event: KeyEvent,
+    );
+
+    /// A key has been previously pressed and is now repeating.
+    ///
+    /// This is only called on supporting compositors.
+    fn repeat_key(
         &mut self,
         conn: &Connection,
         qh: &QueueHandle<Self>,
@@ -681,6 +696,10 @@ where
                                     }
                                 }
                                 data.release_key(conn, qh, keyboard, serial, event);
+                            }
+
+                            wl_keyboard::KeyState::Repeated => {
+                                data.repeat_key(conn, qh, keyboard, serial, event);
                             }
 
                             wl_keyboard::KeyState::Pressed => {

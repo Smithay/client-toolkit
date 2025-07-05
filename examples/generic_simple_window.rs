@@ -331,6 +331,17 @@ impl<T: Test + 'static> KeyboardHandler for SimpleWindow<T> {
         println!("Key press: {event:?}");
     }
 
+    fn repeat_key(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_keyboard::WlKeyboard,
+        _: u32,
+        event: KeyEvent,
+    ) {
+        println!("Key repeat: {event:?}");
+    }
+
     fn release_key(
         &mut self,
         _: &Connection,
