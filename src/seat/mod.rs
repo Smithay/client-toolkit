@@ -92,7 +92,7 @@ impl SeatState {
                 .unwrap_or(CursorShapeManagerState::NotPresent);
 
             (
-                crate::registry::bind_all(global_list.registry(), globals, qh, 1..=7, |id| {
+                crate::registry::bind_all(global_list.registry(), globals, qh, 1..=8, |id| {
                     SeatData {
                         has_keyboard: Arc::new(AtomicBool::new(false)),
                         has_pointer: Arc::new(AtomicBool::new(false)),

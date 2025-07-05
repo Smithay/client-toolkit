@@ -56,7 +56,12 @@ pub struct AxisScroll {
     ///
     /// Note: this might always be zero if the scrolling is due to a touchpad or other continuous
     /// source.
+    ///
+    /// This event is deprecated and will be sent only by older compositors.
     pub discrete: i32,
+
+    /// High-resolution wheel scroll information, with each multiple of 120 representing one logical scroll step.
+    pub value120: i32,
 
     /// The scroll was stopped.
     ///
@@ -73,6 +78,7 @@ impl AxisScroll {
     fn merge(&mut self, other: &Self) {
         self.absolute += other.absolute;
         self.discrete += other.discrete;
+        self.value120 += other.value120;
         self.stop |= other.stop;
     }
 }
@@ -339,6 +345,30 @@ where
 
                         wl_pointer::Axis::HorizontalScroll => {
                             horizontal.discrete = discrete;
+                        }
+
+                        _ => unreachable!(),
+                    };
+
+                    PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
+                }
+
+                WEnum::Unknown(unknown) => {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                    return;
+                }
+            },
+
+            wl_pointer::Event::AxisValue120 { axis, value120 } => match axis {
+                WEnum::Value(axis) => {
+                    let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
+                    match axis {
+                        wl_pointer::Axis::VerticalScroll => {
+                            vertical.value120 = value120;
+                        }
+
+                        wl_pointer::Axis::HorizontalScroll => {
+                            horizontal.value120 = value120;
                         }
 
                         _ => unreachable!(),
