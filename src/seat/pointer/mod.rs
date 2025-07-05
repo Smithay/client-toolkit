@@ -63,6 +63,9 @@ pub struct AxisScroll {
     /// High-resolution wheel scroll information, with each multiple of 120 representing one logical scroll step.
     pub value120: i32,
 
+    /// Relative directional information of the entity causing the axis motion.
+    pub relative_direction: Option<wl_pointer::AxisRelativeDirection>,
+
     /// The scroll was stopped.
     ///
     /// Generally this is encountered when hardware indicates the end of some continuous scrolling.
@@ -77,10 +80,25 @@ impl AxisScroll {
 
     /// Combines the magnitudes and stop status of events if the direction hasn't changed in between.
     fn merge(&self, other: &Self) -> Option<Self> {
+        // Events which are converted to new AxisScroll instances can carry partial data only.
+        // Assuming here that no specified direction means that the frame doesn't contain that event yet and it just needs to be filled in. However, this assumptoin doesn't hold universally. An AxisScroll instance can be created out of merged events across frames. In that case, the direction will be applied retroactively to the previous frame.
+        // It doesn't seem likely to me that a direction changes between frames, and the consequences of that are just a glitch in movement, so I'll let it in until it proves to be an issue - solving this properly may require a larger redesign.
+        let direction = match (self.relative_direction, other.relative_direction) {
+            (None, other) | (other, None) => other,
+            (Some(one), Some(other)) => {
+                if one != other {
+                    return None;
+                } else {
+                    Some(one)
+                }
+            }
+        };
+
         let mut ret = *self;
         ret.absolute += other.absolute;
         ret.discrete += other.discrete;
         ret.value120 += other.value120;
+        ret.relative_direction = direction;
         ret.stop |= other.stop;
         Some(ret)
     }
@@ -379,12 +397,44 @@ where
 
                     PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
                 }
-
                 WEnum::Unknown(unknown) => {
                     log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
                     return;
                 }
             },
+
+            wl_pointer::Event::AxisRelativeDirection { axis, direction } => {
+                let direction = match direction {
+                    WEnum::Value(dir) => Some(dir),
+                    WEnum::Unknown(unknown) => {
+                        log::warn!(target: "sctk", "{}: invalid axis direction: {:x}", pointer.id(), unknown);
+                        return;
+                    }
+                };
+                match axis {
+                    WEnum::Value(axis) => {
+                        let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
+                        match axis {
+                            wl_pointer::Axis::VerticalScroll => {
+                                vertical.relative_direction = direction;
+                            }
+
+                            wl_pointer::Axis::HorizontalScroll => {
+                                horizontal.relative_direction = direction;
+                            }
+
+                            _ => unreachable!(),
+                        };
+
+                        PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
+                    }
+
+                    WEnum::Unknown(unknown) => {
+                        log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                        return;
+                    }
+                }
+            }
 
             wl_pointer::Event::Frame => {
                 let pending = mem::take(&mut guard.pending);
