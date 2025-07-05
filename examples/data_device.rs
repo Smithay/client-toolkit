@@ -448,6 +448,16 @@ impl KeyboardHandler for DataDeviceWindow {
         };
     }
 
+    fn repeat_key(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: KeyEvent,
+    ) {
+    }
+
     fn release_key(
         &mut self,
         _: &Connection,

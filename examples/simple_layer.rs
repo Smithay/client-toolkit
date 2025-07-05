@@ -321,6 +321,17 @@ impl KeyboardHandler for SimpleLayer {
         }
     }
 
+    fn repeat_key(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wl_keyboard::WlKeyboard,
+        _serial: u32,
+        event: KeyEvent,
+    ) {
+        println!("Key repeat: {event:?}");
+    }
+
     fn release_key(
         &mut self,
         _: &Connection,
