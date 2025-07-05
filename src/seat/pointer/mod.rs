@@ -75,11 +75,14 @@ impl AxisScroll {
         *self == Self::default()
     }
 
-    fn merge(&mut self, other: &Self) {
-        self.absolute += other.absolute;
-        self.discrete += other.discrete;
-        self.value120 += other.value120;
-        self.stop |= other.stop;
+    /// Combines the magnitudes and stop status of events if the direction hasn't changed in between.
+    fn merge(&self, other: &Self) -> Option<Self> {
+        let mut ret = *self;
+        ret.absolute += other.absolute;
+        ret.discrete += other.discrete;
+        ret.value120 += other.value120;
+        ret.stop |= other.stop;
+        Some(ret)
     }
 }
 
@@ -430,10 +433,15 @@ where
                 if *ot == 0 {
                     *ot = *nt;
                 }
-                oh.merge(nh);
-                ov.merge(nv);
-                *os = os.or(*ns);
-                return;
+                let nh = oh.merge(nh);
+                let nv = ov.merge(nv);
+                // Merging doesn't make sense in some situations.
+                if let (Some(nh), Some(nv)) = (nh, nv) {
+                    *oh = nh;
+                    *ov = nv;
+                    *os = os.or(*ns);
+                    return;
+                }
             }
 
             guard.pending.push(event);
