@@ -684,6 +684,7 @@ where
                             }
 
                             wl_keyboard::KeyState::Pressed => {
+                                data.press_key(conn, qh, keyboard, serial, event.clone());
                                 #[cfg(feature = "calloop")]
                                 {
                                     if let Some(repeat_data) =
@@ -774,7 +775,6 @@ where
                                         }
                                     }
                                 }
-                                data.press_key(conn, qh, keyboard, serial, event);
                             }
 
                             _ => unreachable!(),
