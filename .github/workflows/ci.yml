@@ -60,6 +60,9 @@ jobs:
         with:
           rust-version: ${{ matrix.rust }}
 
+      - name: Update system repositories
+        run: sudo apt-get update
+
       - name: Install system dependencies
         run: sudo apt-get install libfontconfig1-dev libxkbcommon-dev libwayland-dev
 
