@@ -5,6 +5,8 @@
 )]
 #![forbid(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::new_without_default)]
+// keep existing usage
+#![allow(clippy::uninlined_format_args)]
 
 /// Re-exports of some crates, for convenience.
 pub mod reexports {
