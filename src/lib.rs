@@ -19,6 +19,7 @@ pub mod reexports {
     pub use wayland_protocols as protocols;
     pub use wayland_protocols_misc as protocols_misc;
     pub use wayland_protocols_wlr as protocols_wlr;
+    pub use wl_input_method;
 }
 
 pub mod activation;
