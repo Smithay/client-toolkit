@@ -1,5 +1,12 @@
 /*! This implements support for the experimental xx-input-method-v2 protocol.
  * That protocol will hopefully become -v3 without changing the API at some point.
+ *
+ *
+ * This is a low-level interface to the input method. It will generally not check if the client is allowed to issue a request in context, e.g. when the input method is inactive.
+ *
+ * It does handle some serials for the client, as well as it checks the validity of values for the current protocol version.
+ *
+ * The client is responsible for avoiding protocol errors.
  */
 
 use crate::compositor::Surface;
@@ -7,21 +14,21 @@ use crate::globals::GlobalData;
 
 use log::{debug, warn};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::num::Wrapping;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
+use crate::reexports::protocols_experimental::text_input::v3::client::xx_text_input_v3::{
+    Action, ChangeCause, ContentHint, ContentPurpose, SupportedFeatures,
+};
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_surface;
 use wayland_client::WEnum;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
-use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
-    ChangeCause, ContentHint, ContentPurpose,
-};
 
-use wayland_protocols_experimental::input_method::v1::client as protocol;
+use crate::reexports::protocols_experimental::input_method::v1::client as protocol;
 
 pub use protocol::xx_input_method_v1::XxInputMethodV1;
 pub use protocol::xx_input_popup_positioner_v1::XxInputPopupPositionerV1;
@@ -59,7 +66,7 @@ impl InputMethodManager {
     where
         D: Dispatch<XxInputMethodManagerV2, GlobalData> + 'static,
     {
-        let manager = globals.bind(qh, 2..=2, GlobalData)?;
+        let manager = globals.bind(qh, 2..=3, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -210,6 +217,15 @@ impl InputMethod {
         self.input_method.delete_surrounding_text(before_length, after_length)
     }
 
+    /// This method doesn't check if the action has been made available for this text input.
+    pub fn perform_action(&self, action: Action) {
+        self.input_method.perform_action(action)
+    }
+
+    pub fn move_cursor(&self, cursor: i32, anchor: i32) {
+        self.input_method.move_cursor(cursor, anchor)
+    }
+
     pub fn commit(&self) {
         let data = self.input_method.data::<InputMethodData>().unwrap();
         let inner = &data.inner.lock().unwrap();
@@ -341,27 +357,42 @@ pub struct SurroundingText {
     pub anchor: u32,
 }
 
+/// Describes operations that can be performed on this input method.
+#[non_exhaustive]
+// non exhaustive so that bumping protocol version and adding new ones
+// doesn't automatically break compat
+#[derive(Clone, Debug, PartialEq)]
+pub struct Capabilities {
+    pub surrounding_text: bool,
+    pub content_type: bool,
+    pub actions: HashSet<Action>,
+    pub supported_features: SupportedFeatures,
+}
+
+impl Default for Capabilities {
+    fn default() -> Self {
+        Self {
+            surrounding_text: false,
+            content_type: false,
+            actions: Default::default(),
+            supported_features: SupportedFeatures::empty(),
+        }
+    }
+}
+
 /// State machine for determining the capabilities of a text input
-#[derive(Clone, Debug, Default, Copy, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Active {
     #[default]
     Inactive,
-    NegotiatingCapabilities {
-        surrounding_text: bool,
-        content_type: bool,
-    },
-    Active {
-        surrounding_text: bool,
-        content_type: bool,
-    },
+    NegotiatingCapabilities(Capabilities),
+    Active(Capabilities),
 }
 
 impl Active {
     fn with_active(self) -> Self {
         match self {
-            Self::Inactive => {
-                Self::NegotiatingCapabilities { content_type: false, surrounding_text: false }
-            }
+            Self::Inactive => Self::NegotiatingCapabilities(Capabilities::default()),
             other => other,
         }
     }
@@ -369,8 +400,11 @@ impl Active {
     fn with_surrounding_text(self) -> Self {
         match self {
             Self::Inactive => Self::Inactive,
-            Self::NegotiatingCapabilities { content_type, .. } => {
-                Self::NegotiatingCapabilities { content_type, surrounding_text: true }
+            Self::NegotiatingCapabilities(capabilities) => {
+                Self::NegotiatingCapabilities(Capabilities {
+                    surrounding_text: true,
+                    ..capabilities
+                })
             }
             active @ Self::Active { .. } => active,
         }
@@ -379,8 +413,28 @@ impl Active {
     fn with_content_type(self) -> Self {
         match self {
             Self::Inactive => Self::Inactive,
-            Self::NegotiatingCapabilities { surrounding_text, .. } => {
-                Self::NegotiatingCapabilities { content_type: true, surrounding_text }
+            Self::NegotiatingCapabilities(capabilities) => {
+                Self::NegotiatingCapabilities(Capabilities { content_type: true, ..capabilities })
+            }
+            active @ Self::Active { .. } => active,
+        }
+    }
+
+    fn with_actions(self, actions: HashSet<Action>) -> Self {
+        match self {
+            Self::Inactive => Self::Inactive,
+            Self::NegotiatingCapabilities(capabilities) => {
+                Self::NegotiatingCapabilities(Capabilities { actions, ..capabilities })
+            }
+            active @ Self::Active { .. } => active,
+        }
+    }
+
+    fn with_extra_features(self, supported_features: SupportedFeatures) -> Self {
+        match self {
+            Self::Inactive => Self::Inactive,
+            Self::NegotiatingCapabilities(capabilities) => {
+                Self::NegotiatingCapabilities(Capabilities { supported_features, ..capabilities })
             }
             active @ Self::Active { .. } => active,
         }
@@ -389,9 +443,7 @@ impl Active {
     fn with_done(self) -> Self {
         match self {
             Self::Inactive => Self::Inactive,
-            Self::NegotiatingCapabilities { surrounding_text, content_type } => {
-                Self::Active { content_type, surrounding_text }
-            }
+            Self::NegotiatingCapabilities(capabilities) => Self::Active(capabilities),
             active @ Self::Active { .. } => active,
         }
     }
@@ -602,7 +654,7 @@ where
         match event {
             Event::Activate => {
                 imdata.pending_state = InputMethodEventState {
-                    active: imdata.pending_state.active.with_active(),
+                    active: imdata.pending_state.active.clone().with_active(),
                     ..Default::default()
                 };
             }
@@ -611,7 +663,7 @@ where
             }
             Event::SurroundingText { text, cursor, anchor } => {
                 imdata.pending_state = InputMethodEventState {
-                    active: imdata.pending_state.active.with_surrounding_text(),
+                    active: imdata.pending_state.active.clone().with_surrounding_text(),
                     surrounding: SurroundingText { text, cursor, anchor },
                     ..imdata.pending_state.clone()
                 }
@@ -633,7 +685,7 @@ where
             }
             Event::ContentType { hint, purpose } => {
                 imdata.pending_state = InputMethodEventState {
-                    active: imdata.pending_state.active.with_content_type(),
+                    active: imdata.pending_state.active.clone().with_content_type(),
                     content_hint: match hint {
                         WEnum::Value(hint) => hint,
                         WEnum::Unknown(value) => {
@@ -655,9 +707,35 @@ where
                     ..imdata.pending_state.clone()
                 }
             }
+            Event::SetAvailableActions { available_actions } => {
+                imdata.pending_state = InputMethodEventState {
+                    active: imdata.pending_state.active.clone().with_actions(
+                        HashSet::from_iter(available_actions.iter().filter_map(|num| {
+                            Action::try_from(*num as u32)
+                                .map_err(|()| warn!("Unknown available action {num}, ignoring"))
+                                .ok()
+                        }))
+                    ),
+                    ..imdata.pending_state.clone()
+                }
+            }
+            Event::AnnounceSupportedFeatures { features } => {
+                imdata.pending_state = InputMethodEventState {
+                    active: imdata.pending_state.active.clone().with_extra_features(
+                        match features {
+                            WEnum::Value(v) => v,
+                            WEnum::Unknown(value) => {
+                                warn!("Unknown `features`: {value}. Assuming no extra features supported.");
+                                SupportedFeatures::empty()
+                            }
+                        }
+                    ),
+                    ..imdata.pending_state.clone()
+                }
+            }
             Event::Done => {
                 imdata.pending_state = InputMethodEventState {
-                    active: imdata.pending_state.active.with_done(),
+                    active: imdata.pending_state.active.clone().with_done(),
                     ..imdata.pending_state.clone()
                 };
                 for (popup, state) in imdata.pending_state.popups.iter_mut() {
