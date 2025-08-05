@@ -13,6 +13,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 use wayland_client::globals::{BindError, GlobalList};
+use wayland_client::protocol::wl_keyboard::WlKeyboard;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_surface;
 use wayland_client::WEnum;
@@ -59,7 +60,7 @@ impl InputMethodManager {
     where
         D: Dispatch<XxInputMethodManagerV2, GlobalData> + 'static,
     {
-        let manager = globals.bind(qh, 2..=2, GlobalData)?;
+        let manager = globals.bind(qh, 3..=3, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -237,6 +238,25 @@ impl InputMethod {
             ),
             surface,
         }
+    }
+
+    /// May cause a protocol error if there's a bound keyboard already.
+    pub fn keyboard_bind(&self, keyboard: &WlKeyboard) {
+        self.input_method.keyboard_bind(&keyboard);
+    }
+    
+    /// May cause a protocol error if there's no bound keyboard.
+    pub fn keyboard_unbind(&self) {
+        self.input_method.keyboard_unbind();
+    }
+
+    /// May cause a protocol error on invalid serial.
+    pub fn keyboard_consume(
+        &self,
+        serial: u32,
+        action: xx_input_method_v1::KeyboardConsumeAction,
+    ) {
+        self.input_method.keyboard_consume(serial, action);
     }
 }
 
