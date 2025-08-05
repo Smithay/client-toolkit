@@ -21,7 +21,7 @@ use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
     ChangeCause, ContentHint, ContentPurpose,
 };
 
-use wayland_protocols_experimental::input_method::v1::client as protocol;
+use wl_input_method::input_method::v1::client as protocol;
 
 pub use protocol::xx_input_method_v1::XxInputMethodV1;
 pub use protocol::xx_input_popup_positioner_v1::XxInputPopupPositionerV1;
