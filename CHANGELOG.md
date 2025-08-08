@@ -1,5 +1,30 @@
 # Change Log
 
+## 0.20.0 - 2025-07-29
+
+#### Breaking Changes
+- Update `calloop` to `0.14.0`, `calloop-wayland-source` to `0.4.0`.
+- Update `rustix` to `1.0.7`.
+- Update `thiserror` to `2.0.12`.
+- Add a `raw_modifiers` argument to `update_modifiers`.
+
+#### Fixed
+- Fix keyboard sending press events when repeat is disabled.
+
+#### Additions
+- Add support for `wl_keyboard` v10.
+- Add support for `wl_pointer` v9.
+- Add support for `wl_pointer` v8.
+- Add support for `wp_cursor_shape_manager_v1` v2.
+- Add partial support for `zwp-input-method-v2`.
+- Add `xx-input-method-v2` protocol.
+- Add `wp_presentation` protocol.
+- Add `ext-foreign-toplevel-list-v1` protocol.
+- Add `SimpleGlobal::from_bound` method to construct from proxy object.
+- Add `Clone` for dmabuf feedback structs.
+- Implement `AsFd` for `RawPool`.
+- Implement `From<RawPool>` for `OwnedFd`.
+
 ## 0.19.2 - 2024-07-15
 
 #### Fixed
