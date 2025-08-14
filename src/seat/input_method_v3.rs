@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::protocol::wl_keyboard::WlKeyboard;
 use wayland_client::protocol::wl_seat::WlSeat;
-use wayland_client::protocol::wl_surface;
+use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::WEnum;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
@@ -25,12 +25,15 @@ use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
 use wl_input_method::input_method::v1::client as protocol;
 
 pub use protocol::xx_input_method_v1::XxInputMethodV1;
+pub use protocol::xx_input_method_keyboard_v1::XxInputMethodKeyboardV1;
 pub use protocol::xx_input_popup_positioner_v1::XxInputPopupPositionerV1;
 pub use protocol::xx_input_popup_surface_v2::XxInputPopupSurfaceV2;
 
 use protocol::{
+    xx_input_method_v1, 
+    xx_input_method_keyboard_v1,
     xx_input_method_manager_v2::{self, XxInputMethodManagerV2},
-    xx_input_method_v1, xx_input_popup_positioner_v1, xx_input_popup_surface_v2,
+    xx_input_popup_positioner_v1, xx_input_popup_surface_v2,
 };
 
 pub use xx_input_popup_positioner_v1::{Anchor, Gravity};
@@ -241,22 +244,22 @@ impl InputMethod {
     }
 
     /// May cause a protocol error if there's a bound keyboard already.
-    pub fn keyboard_bind(&self, keyboard: &WlKeyboard) {
-        self.input_method.keyboard_bind(&keyboard);
-    }
-    
-    /// May cause a protocol error if there's no bound keyboard.
-    pub fn keyboard_unbind(&self) {
-        self.input_method.keyboard_unbind();
-    }
-
-    /// May cause a protocol error on invalid serial.
-    pub fn keyboard_consume(
+    pub fn keyboard_bind<D>(
         &self,
-        serial: u32,
-        action: xx_input_method_v1::KeyboardConsumeAction,
-    ) {
-        self.input_method.keyboard_consume(serial, action);
+        qh: &QueueHandle<D>,
+        keyboard: &WlKeyboard,
+        surface: &WlSurface,
+    ) -> Keyboard
+    where
+        D: Dispatch<XxInputMethodKeyboardV1, KeyboardData> + 'static,
+    {
+        let data = self.input_method.data::<InputMethodData>().unwrap();
+        Keyboard(self.input_method.keyboard_bind(
+            keyboard, 
+            surface, 
+            qh,
+            KeyboardData { im: Arc::downgrade(&data.inner) },
+        ))
     }
 }
 
@@ -301,6 +304,9 @@ pub struct InputMethodEventState {
     pub content_hint: ContentHint,
     pub text_change_cause: ChangeCause,
     pub active: Active,
+    /// A hash map of keyboards which reported a version.
+    /// A missing entry is equal to version 0, meaning inactive.
+    pub keyboards: HashMap<XxInputMethodKeyboardV1, KeyboardVersion>,
     pub popups: HashMap<XxInputPopupSurfaceV2, PopupState>,
 }
 
@@ -312,6 +318,7 @@ impl Default for InputMethodEventState {
             content_purpose: ContentPurpose::Normal,
             text_change_cause: ChangeCause::InputMethod,
             active: Active::default(),
+            keyboards: Default::default(),
             popups: Default::default(),
         }
     }
@@ -425,7 +432,7 @@ pub struct Popup {
 }
 
 impl Popup {
-    pub fn wl_surface(&self) -> &wl_surface::WlSurface {
+    pub fn wl_surface(&self) -> &WlSurface {
         self.surface.wl_surface()
     }
 
@@ -555,6 +562,62 @@ impl PopupDataInner {
     }
 }
 
+#[derive(Debug)]
+pub struct Keyboard(XxInputMethodKeyboardV1);
+
+impl Keyboard {
+    /// May cause a protocol error if there's no bound keyboard.
+    pub fn unbind(&self) {
+        self.0.unbind();
+    }
+
+    /// May cause a protocol error on invalid serial.
+    pub fn filter(
+        &self,
+        serial: u32,
+        action: xx_input_method_keyboard_v1::FilterAction,
+    ) {
+        self.0.filter(serial, action);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct KeyboardVersion(pub u32);
+
+impl<D> Dispatch<XxInputMethodKeyboardV1, KeyboardData, D> for Keyboard
+where
+    D: Dispatch<XxInputMethodKeyboardV1, KeyboardData> + InputMethodHandler,
+{
+    fn event(
+        _data: &mut D,
+        keyboard: &XxInputMethodKeyboardV1,
+        event: xx_input_method_keyboard_v1::Event,
+        data: &KeyboardData,
+        _conn: &Connection,
+        _qh: &QueueHandle<D>,
+    ) {
+        if let Some(im) = data.im.upgrade() {
+            use xx_input_method_keyboard_v1::Event;
+            match event {
+                Event::NotifyVersion { version } => {
+                    let mut im = im.lock().unwrap();
+                    im.pending_state.keyboards
+                        .entry(keyboard.clone())
+                        .or_insert(KeyboardVersion(version));
+                },
+                _ => unreachable!(),
+            }
+        } else {
+            warn!("received event for a keyboard whose input method already disappeared");
+        };
+    }
+}
+
+#[derive(Debug)]
+pub struct KeyboardData {
+    im: Weak<Mutex<InputMethodDataInner>>,
+}
+
 #[macro_export]
 macro_rules! delegate_input_method_v3 {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
@@ -570,6 +633,9 @@ macro_rules! delegate_input_method_v3 {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
             $crate::reexports::protocols_experimental::input_method::v1::client::xx_input_popup_positioner_v1::XxInputPopupPositionerV1: $crate::seat::input_method_v3::PositionerData
         ] => $crate::seat::input_method_v3::PopupPositioner);
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
+            $crate::reexports::protocols_experimental::input_method::v1::client::xx_input_method_keyboard_v1::XxInputMethodKeyboardV1: $crate::seat::input_method_v3::KeyboardData
+        ] => $crate::seat::input_method_v3::Keyboard);
     };
 }
 
@@ -753,6 +819,15 @@ mod test {
         >,
     {
     }
+    
+    fn assert_is_keyboard_delegate<T>()
+    where
+        T: wayland_client::Dispatch<
+            protocol::xx_input_method_keyboard_v1::XxInputMethodKeyboardV1,
+            KeyboardData,
+        >,
+    {
+    }
 
     #[test]
     fn test_valid_assignment() {
@@ -760,5 +835,6 @@ mod test {
         assert_is_delegate::<Handler>();
         assert_is_popup_delegate::<Handler>();
         assert_is_positioner_delegate::<Handler>();
+        assert_is_keyboard_delegate::<Handler>();
     }
 }
