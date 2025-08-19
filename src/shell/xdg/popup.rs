@@ -33,12 +33,24 @@ pub struct PopupData {
 
 #[derive(Debug)]
 struct PopupInner {
-    surface: XdgShellSurface,
+    // Will always be Some, only needed to extract surface in destroy before
+    // drop.
+    surface: Option<XdgShellSurface>,
     xdg_popup: xdg_popup::XdgPopup,
     pending_position: (AtomicI32, AtomicI32),
     pending_dimensions: (AtomicI32, AtomicI32),
     pending_token: AtomicU32,
     configure_state: AtomicU32,
+}
+
+impl PopupInner {
+    pub fn surface(&self) -> &XdgShellSurface {
+        &self.surface.as_ref().unwrap()
+    }
+
+    pub fn destroy(mut self) -> XdgShellSurface {
+        self.surface.take().unwrap()
+    }
 }
 
 impl Popup {
@@ -96,7 +108,7 @@ impl Popup {
                 qh,
                 PopupData { inner: weak.clone() },
             );
-            let surface = XdgShellSurface { surface, xdg_surface };
+            let surface = XdgShellSurface { surface: Some(surface), xdg_surface };
             let xdg_popup = surface.xdg_surface().get_popup(
                 parent,
                 position,
@@ -105,7 +117,7 @@ impl Popup {
             );
 
             PopupInner {
-                surface,
+                surface: Some(surface),
                 xdg_popup,
                 pending_position: (AtomicI32::new(0), AtomicI32::new(0)),
                 pending_dimensions: (AtomicI32::new(-1), AtomicI32::new(-1)),
@@ -122,19 +134,29 @@ impl Popup {
     }
 
     pub fn xdg_shell_surface(&self) -> &XdgShellSurface {
-        &self.inner.surface
+        &self.inner.surface()
     }
 
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.inner.surface.xdg_surface()
+        self.inner.surface().xdg_surface()
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.inner.surface.wl_surface()
+        self.inner.surface().wl_surface()
     }
 
     pub fn reposition(&self, position: &xdg_positioner::XdgPositioner, token: u32) {
         self.xdg_popup().reposition(position, token);
+    }
+
+    /// Destroy the popup and extract the underlying surface. Note that reusing
+    /// the surface for anything other than another xdg popup is a protocol
+    /// violation, and that the buffer attached to the surface must be cleared
+    /// before reuse as an xdg surface cannot have a buffer attached to it.
+    pub fn destroy(self) -> Surface {
+        // Should never panic because the only other Arc reference is a weak
+        // reference.
+        Arc::into_inner(self.inner).unwrap().destroy().destroy()
     }
 }
 
