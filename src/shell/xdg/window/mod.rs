@@ -15,6 +15,7 @@ use crate::reexports::protocols::{
     xdg::shell::client::{xdg_surface, xdg_toplevel},
 };
 
+use crate::compositor::Surface;
 use crate::shell::WaylandSurface;
 
 use self::inner::WindowInner;
@@ -285,17 +286,27 @@ impl Window {
     pub fn xdg_toplevel(&self) -> &xdg_toplevel::XdgToplevel {
         &self.0.xdg_toplevel
     }
+
+    /// Destroy the window and extract the underlying surface. Note that reusing
+    /// the surface for anything other than another xdg toplevel is a protocol
+    /// violation, and that the buffer attached to the surface must be cleared
+    /// before reuse as an xdg surface cannot have a buffer attached to it.
+    pub fn destroy(self) -> Surface {
+        // Should never panic because the only other Arc reference is a weak
+        // reference.
+        Arc::into_inner(self.0).unwrap().destroy().destroy()
+    }
 }
 
 impl WaylandSurface for Window {
     fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.0.xdg_surface.wl_surface()
+        self.0.xdg_surface().wl_surface()
     }
 }
 
 impl XdgSurface for Window {
     fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
-        self.0.xdg_surface.xdg_surface()
+        self.0.xdg_surface().xdg_surface()
     }
 }
 
