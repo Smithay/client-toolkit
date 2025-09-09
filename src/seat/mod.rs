@@ -1,5 +1,6 @@
 use std::{
     fmt::{self, Display, Formatter},
+    slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -250,14 +251,18 @@ impl SeatState {
         if let CursorShapeManagerState::Pending { registry, global } =
             &self.cursor_shape_manager_state
         {
-            self.cursor_shape_manager_state =
-                match crate::registry::bind_one(registry, &[global.clone()], qh, 1..=2, GlobalData)
-                {
-                    Ok(bound) => {
-                        CursorShapeManagerState::Bound(CursorShapeManager::from_existing(bound))
-                    }
-                    Err(_) => CursorShapeManagerState::NotPresent,
+            self.cursor_shape_manager_state = match crate::registry::bind_one(
+                registry,
+                slice::from_ref(global),
+                qh,
+                1..=2,
+                GlobalData,
+            ) {
+                Ok(bound) => {
+                    CursorShapeManagerState::Bound(CursorShapeManager::from_existing(bound))
                 }
+                Err(_) => CursorShapeManagerState::NotPresent,
+            }
         }
 
         let shape_device =

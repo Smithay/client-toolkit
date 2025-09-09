@@ -153,7 +153,7 @@ impl RawPool {
 }
 
 impl AsFd for RawPool {
-    fn as_fd(&self) -> BorrowedFd {
+    fn as_fd(&self) -> BorrowedFd<'_> {
         self.mem_file.as_fd()
     }
 }
@@ -283,7 +283,7 @@ impl ObjectData for ShmPoolData {
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
         _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
-    ) -> Option<Arc<(dyn ObjectData + 'static)>> {
+    ) -> Option<Arc<dyn ObjectData + 'static>> {
         unreachable!("wl_shm_pool has no events")
     }
 

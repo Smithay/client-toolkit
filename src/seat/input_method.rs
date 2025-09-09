@@ -185,17 +185,18 @@ pub struct SurroundingText {
 }
 
 /// State machine for determining the capabilities of a text input
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, Default, Copy, PartialEq)]
 pub enum Active {
+    #[default]
     Inactive,
-    NegotiatingCapabilities { surrounding_text: bool, content_type: bool },
-    Active { surrounding_text: bool, content_type: bool },
-}
-
-impl Default for Active {
-    fn default() -> Self {
-        Self::Inactive
-    }
+    NegotiatingCapabilities {
+        surrounding_text: bool,
+        content_type: bool,
+    },
+    Active {
+        surrounding_text: bool,
+        content_type: bool,
+    },
 }
 
 impl Active {

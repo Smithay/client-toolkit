@@ -621,7 +621,7 @@ impl<U, S> Drop for ThemedPointer<U, S> {
 }
 
 /// Specifies which cursor theme should be used by the theme manager.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum ThemeSpec<'a> {
     /// Use this specific theme with the given base size.
     Named {
@@ -640,13 +640,8 @@ pub enum ThemeSpec<'a> {
     /// In this case SCTK will read the `XCURSOR_THEME` and
     /// `XCURSOR_SIZE` environment variables to figure out the
     /// theme to use.
+    #[default]
     System,
-}
-
-impl Default for ThemeSpec<'_> {
-    fn default() -> Self {
-        Self::System
-    }
 }
 
 /// An error indicating that the cursor was not found.

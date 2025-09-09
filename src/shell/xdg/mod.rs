@@ -211,7 +211,7 @@ impl wayland_client::backend::ObjectData for PositionerData {
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
         _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
-    ) -> Option<Arc<(dyn wayland_client::backend::ObjectData + 'static)>> {
+    ) -> Option<Arc<dyn wayland_client::backend::ObjectData + 'static>> {
         unreachable!("xdg_positioner has no events");
     }
     fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
