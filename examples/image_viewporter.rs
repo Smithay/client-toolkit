@@ -79,7 +79,7 @@ fn main() {
         window.set_app_id("io.github.smithay.client-toolkit.ImageViewer");
         window.set_min_size(Some((256, 256)));
         let path: &Path = path.as_os_str().as_ref();
-        window.set_title(path.components().last().unwrap().as_os_str().to_string_lossy());
+        window.set_title(path.components().next_back().unwrap().as_os_str().to_string_lossy());
 
         // In order for the window to be mapped, we need to perform an initial commit with no attached buffer.
         // For more info, see WaylandSurface::commit

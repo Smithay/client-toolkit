@@ -85,7 +85,7 @@ impl AsRawFd for WritePipe {
 
 #[cfg(feature = "calloop")]
 impl AsFd for WritePipe {
-    fn as_fd(&self) -> BorrowedFd {
+    fn as_fd(&self) -> BorrowedFd<'_> {
         self.file.get_ref().as_fd()
     }
 }

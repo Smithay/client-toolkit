@@ -179,11 +179,12 @@ pub enum SurfaceKind {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum KeyboardInteractivity {
     /// No keyboard focus is possible.
     ///
     /// This is the default value for all newly created layer shells.
+    #[default]
     None,
 
     /// Request exclusive keyboard focus if the layer is above shell surfaces.
@@ -202,12 +203,6 @@ pub enum KeyboardInteractivity {
     ///
     /// This setting is intended for applications which allow keyboard interaction.  
     OnDemand,
-}
-
-impl Default for KeyboardInteractivity {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 /// The z-depth of a layer.
