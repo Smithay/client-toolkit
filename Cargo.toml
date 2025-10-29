@@ -34,6 +34,7 @@ wayland-protocols-misc = { version = "0.3.6", features = ["client"] }
 wayland-protocols-wlr = { version = "0.3.1", features = ["client"] }
 wayland-scanner = "0.31.0"
 wayland-csd-frame = "0.3.0"
+wl-input-method = { version = "3.0.0", git = "https://gitlab.freedesktop.org/dcz/wl-input-method", branch = "keyboard" }
 
 xkbcommon = { version = "0.8.0", optional = true, features = ["wayland"] }
 xkeysym = "0.2.0"
