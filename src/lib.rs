@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
 //    missing_docs, // Commented out for now so the project isn't all yellow.
     missing_debug_implementations
