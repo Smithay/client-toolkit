@@ -25,20 +25,21 @@ pub trait CompositorHandler: Sized {
     /// The surface has either been moved into or out of an output and the output has a different scale factor.
     fn scale_factor_changed(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
-        new_factor: i32,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _new_factor: i32,
+    ) { /* No-op default impl */ }
 
     /// The surface has either been moved into or out of an output and the output has different transform.
     fn transform_changed(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
-        new_transform: wl_output::Transform,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _new_transform: wl_output::Transform,
+    ) { /* No-op default impl */ }
+
 
     /// A frame callback has been completed.
     ///
@@ -52,29 +53,30 @@ pub trait CompositorHandler: Sized {
     /// for other values to more easily dispatch rendering for specific surface types.
     fn frame(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
-        time: u32,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _time: u32,
+    ) { /* No-op default impl */ }
+
 
     /// The surface has entered an output.
     fn surface_enter(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
-        output: &wl_output::WlOutput,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _output: &wl_output::WlOutput,
+    ) { /* No-op default impl */ }
 
     /// The surface has left an output.
     fn surface_leave(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
-        output: &wl_output::WlOutput,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _output: &wl_output::WlOutput,
+    ) { /* No-op default impl */ }
 }
 
 pub trait SurfaceDataExt: Send + Sync {
