@@ -27,6 +27,40 @@ use super::{
     WindowState,
 };
 
+#[derive(Debug)]
+pub struct WindowInner {
+    // Will always be Some, only needed to extract xdg_surface in destroy before
+    // drop.
+    xdg_surface: Option<XdgShellSurface>,
+    pub xdg_toplevel: xdg_toplevel::XdgToplevel,
+    pub toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
+    pub pending_configure: Mutex<WindowConfigure>,
+}
+
+impl WindowInner {
+    pub fn new(
+        xdg_surface: XdgShellSurface,
+        xdg_toplevel: xdg_toplevel::XdgToplevel,
+        toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
+        pending_configure: Mutex<WindowConfigure>,
+    ) -> Self {
+        Self {
+            xdg_surface: Some(xdg_surface),
+            xdg_toplevel,
+            toplevel_decoration,
+            pending_configure,
+        }
+    }
+
+    pub fn xdg_surface(&self) -> &XdgShellSurface {
+        &self.xdg_surface.as_ref().unwrap()
+    }
+
+    pub fn destroy(mut self) -> XdgShellSurface {
+        self.xdg_surface.take().unwrap()
+    }
+}
+
 impl Drop for WindowInner {
     fn drop(&mut self) {
         // XDG decoration says we must destroy the decoration object before the toplevel
@@ -39,14 +73,6 @@ impl Drop for WindowInner {
         // XdgShellSurface will do it's own drop
         // self.xdg_surface.destroy();
     }
-}
-
-#[derive(Debug)]
-pub struct WindowInner {
-    pub xdg_surface: XdgShellSurface,
-    pub xdg_toplevel: xdg_toplevel::XdgToplevel,
-    pub toplevel_decoration: Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>,
-    pub pending_configure: Mutex<WindowConfigure>,
 }
 
 impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1> for XdgShell {
