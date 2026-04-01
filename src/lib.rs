@@ -23,6 +23,7 @@ pub mod reexports {
 }
 
 pub mod activation;
+pub mod background_effect;
 pub mod compositor;
 pub mod data_device_manager;
 pub mod dmabuf;
