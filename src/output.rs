@@ -16,6 +16,7 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
 };
 
 use crate::{
+    dispatch2::Dispatch2,
     globals::GlobalData,
     registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
 };
@@ -68,7 +69,7 @@ type ScaleWatcherFn =
 /// use smithay_client_toolkit::output::{OutputHandler,OutputState};
 /// use smithay_client_toolkit::registry::{ProvidesRegistryState,RegistryHandler};
 /// # use smithay_client_toolkit::registry::RegistryState;
-/// use smithay_client_toolkit::{registry_handlers,delegate_output, delegate_registry};
+/// use smithay_client_toolkit::{registry_handlers, delegate_registry};
 /// use wayland_client::{Connection,QueueHandle,protocol::wl_output};
 ///
 /// struct ExampleState {
@@ -96,7 +97,7 @@ type ScaleWatcherFn =
 ///
 /// // Delegating to the registry is required to use `OutputState`.
 /// delegate_registry!(ExampleState);
-/// delegate_output!(ExampleState);
+/// smithay_client_toolkit::delegate_dispatch2!(ExampleState);
 ///
 /// impl ProvidesRegistryState for ExampleState {
 /// #    fn registry(&mut self) -> &mut RegistryState {
@@ -391,30 +392,15 @@ pub struct OutputInfo {
     pub description: Option<String>,
 }
 
-#[macro_export]
-macro_rules! delegate_output {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::client::protocol::wl_output::WlOutput: $crate::output::OutputData
-        ] => $crate::output::OutputState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1: $crate::globals::GlobalData
-        ] => $crate::output::OutputState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1: $crate::output::OutputData
-        ] => $crate::output::OutputState);
-    };
-}
-
-impl<D> Dispatch<wl_output::WlOutput, OutputData, D> for OutputState
+impl<D> Dispatch2<wl_output::WlOutput, D> for OutputData
 where
-    D: Dispatch<wl_output::WlOutput, OutputData> + OutputHandler + 'static,
+    D: OutputHandler + 'static,
 {
     fn event(
+        &self,
         state: &mut D,
         output: &wl_output::WlOutput,
         event: wl_output::Event,
-        data: &OutputData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -519,7 +505,7 @@ where
                 inner.pending_wl = false;
 
                 // Set the user data, see if we need to run scale callbacks
-                let run_callbacks = data.set(info);
+                let run_callbacks = self.set(info);
 
                 // Don't call `new_output` until we have xdg output info
                 if !inner.pending_xdg {
@@ -545,15 +531,15 @@ where
     }
 }
 
-impl<D> Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData, D> for OutputState
+impl<D> Dispatch2<zxdg_output_manager_v1::ZxdgOutputManagerV1, D> for GlobalData
 where
-    D: Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData> + OutputHandler,
+    D: OutputHandler,
 {
     fn event(
+        &self,
         _: &mut D,
         _: &zxdg_output_manager_v1::ZxdgOutputManagerV1,
         _: zxdg_output_manager_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -561,15 +547,15 @@ where
     }
 }
 
-impl<D> Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData, D> for OutputState
+impl<D> Dispatch2<zxdg_output_v1::ZxdgOutputV1, D> for OutputData
 where
-    D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + OutputHandler,
+    D: OutputHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         output: &zxdg_output_v1::ZxdgOutputV1,
         event: zxdg_output_v1::Event,
-        data: &OutputData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -631,7 +617,7 @@ where
                     inner.pending_xdg = false;
 
                     // Set the user data
-                    data.set(info);
+                    self.set(info);
 
                     let pending_wl = inner.pending_wl;
                     let just_created = inner.just_created;

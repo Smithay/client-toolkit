@@ -1,8 +1,9 @@
-use crate::reexports::client::{Connection, Dispatch, QueueHandle};
+use crate::dispatch2::Dispatch2;
+use crate::reexports::client::{Connection, QueueHandle};
 use crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_source_v1::ZwpPrimarySelectionSourceV1;
 use crate::{data_device_manager::WritePipe, globals::GlobalData};
 
-use super::{device::PrimarySelectionDevice, PrimarySelectionManagerState};
+use super::device::PrimarySelectionDevice;
 
 /// Handler trait for `PrimarySelectionSource` events.
 ///
@@ -57,16 +58,15 @@ impl Drop for PrimarySelectionSource {
     }
 }
 
-impl<State> Dispatch<ZwpPrimarySelectionSourceV1, GlobalData, State>
-    for PrimarySelectionManagerState
+impl<State> Dispatch2<ZwpPrimarySelectionSourceV1, State> for GlobalData
 where
-    State: Dispatch<ZwpPrimarySelectionSourceV1, GlobalData> + PrimarySelectionSourceHandler,
+    State: PrimarySelectionSourceHandler,
 {
     fn event(
+        &self,
         state: &mut State,
         proxy: &ZwpPrimarySelectionSourceV1,
         event: <ZwpPrimarySelectionSourceV1 as wayland_client::Proxy>::Event,
-        _: &GlobalData,
         conn: &wayland_client::Connection,
         qhandle: &QueueHandle<State>,
     ) {

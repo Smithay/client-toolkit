@@ -7,6 +7,7 @@ use wayland_client::protocol::wl_surface::WlSurface;
 
 use crate::{
     data_device_manager::data_offer::DataDeviceOffer,
+    dispatch2::Dispatch2,
     reexports::client::{
         event_created_child,
         protocol::{
@@ -18,10 +19,7 @@ use crate::{
     },
 };
 
-use super::{
-    data_offer::{DataOfferData, DataOfferHandler, DragOffer, SelectionOffer},
-    DataDeviceManagerState,
-};
+use super::data_offer::{DataOfferData, DataOfferHandler, DragOffer, SelectionOffer};
 
 /// Handler trait for DataDevice events.
 ///
@@ -105,10 +103,9 @@ impl Drop for DataDevice {
     }
 }
 
-impl<D> Dispatch<wl_data_device::WlDataDevice, DataDeviceData, D> for DataDeviceManagerState
+impl<D> Dispatch2<wl_data_device::WlDataDevice, D> for DataDeviceData
 where
-    D: Dispatch<wl_data_device::WlDataDevice, DataDeviceData>
-        + Dispatch<wl_data_offer::WlDataOffer, DataOfferData>
+    D: Dispatch<wl_data_offer::WlDataOffer, DataOfferData>
         + DataDeviceHandler
         + DataOfferHandler
         + 'static,
@@ -118,15 +115,15 @@ where
     ]);
 
     fn event(
+        &self,
         state: &mut D,
         data_device: &wl_data_device::WlDataDevice,
         event: wl_data_device::Event,
-        data: &DataDeviceData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         use wayland_client::protocol::wl_data_device::Event;
-        let mut inner = data.inner.lock().unwrap();
+        let mut inner = self.inner.lock().unwrap();
 
         match event {
             Event::DataOffer { id } => {

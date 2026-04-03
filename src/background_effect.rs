@@ -5,7 +5,7 @@ use wayland_protocols::ext::background_effect::v1::client::{
     ext_background_effect_manager_v1, ext_background_effect_surface_v1,
 };
 
-use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct BackgroundEffectState {
@@ -62,17 +62,15 @@ pub trait BackgroundEffectHandler {
     fn update_capabilities(&mut self);
 }
 
-impl<D> Dispatch<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, GlobalData, D>
-    for BackgroundEffectState
+impl<D> Dispatch2<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, D> for GlobalData
 where
-    D: Dispatch<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, GlobalData>
-        + BackgroundEffectHandler,
+    D: BackgroundEffectHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         _manager: &ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1,
         event: ext_background_effect_manager_v1::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -92,31 +90,17 @@ where
     }
 }
 
-impl<D> Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, GlobalData, D>
-    for BackgroundEffectState
-where
-    D: Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, GlobalData>,
+impl<D> Dispatch2<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, D>
+    for GlobalData
 {
     fn event(
+        &self,
         _data: &mut D,
         _surface: &ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1,
         _event: ext_background_effect_surface_v1::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
         unreachable!()
     }
-}
-
-#[macro_export]
-macro_rules! delegate_background_effect {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::ext::background_effect::v1::client::ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1: $crate::globals::GlobalData
-        ] => $crate::background_effect::BackgroundEffectState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::ext::background_effect::v1::client::ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1: $crate::globals::GlobalData
-        ] => $crate::background_effect::BackgroundEffectState);
-    };
 }

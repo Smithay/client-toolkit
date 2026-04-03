@@ -17,6 +17,7 @@ use crate::reexports::protocols::xdg::shell::client::{
 };
 
 use crate::compositor::Surface;
+use crate::dispatch2::Dispatch2;
 use crate::error::GlobalError;
 use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::registry::GlobalProxy;
@@ -291,21 +292,6 @@ impl XdgSurface for XdgShellSurface {
     }
 }
 
-#[macro_export]
-macro_rules! delegate_xdg_shell {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::shell::client::xdg_wm_base::XdgWmBase: $crate::globals::GlobalData
-        ] => $crate::shell::xdg::XdgShell);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-        $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1: $crate::globals::GlobalData
-        ] => $crate::shell::xdg::XdgShell);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1: $crate::shell::xdg::window::WindowData
-        ] => $crate::shell::xdg::XdgShell);
-    };
-}
-
 impl Drop for XdgShellSurface {
     fn drop(&mut self) {
         // Surface role must be destroyed before the wl_surface
@@ -326,15 +312,12 @@ impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }> 
     }
 }
 
-impl<D> Dispatch<xdg_wm_base::XdgWmBase, GlobalData, D> for XdgShell
-where
-    D: Dispatch<xdg_wm_base::XdgWmBase, GlobalData>,
-{
+impl<D> Dispatch2<xdg_wm_base::XdgWmBase, D> for GlobalData {
     fn event(
+        &self,
         _state: &mut D,
         xdg_wm_base: &xdg_wm_base::XdgWmBase,
         event: xdg_wm_base::Event,
-        _data: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
