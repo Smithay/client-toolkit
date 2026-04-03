@@ -3,8 +3,7 @@ use raw_window_handle::{
 };
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_registry, delegate_seat, delegate_xdg_shell,
-    delegate_xdg_window,
+    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -300,14 +299,6 @@ impl SeatHandler for Wgpu {
     fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
-delegate_compositor!(Wgpu);
-delegate_output!(Wgpu);
-
-delegate_seat!(Wgpu);
-
-delegate_xdg_shell!(Wgpu);
-delegate_xdg_window!(Wgpu);
-
 delegate_registry!(Wgpu);
 
 impl ProvidesRegistryState for Wgpu {
@@ -316,3 +307,5 @@ impl ProvidesRegistryState for Wgpu {
     }
     registry_handlers![OutputState];
 }
+
+smithay_client_toolkit::delegate_dispatch2!(Wgpu);

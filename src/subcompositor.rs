@@ -6,6 +6,7 @@ use crate::reexports::client::protocol::wl_surface::WlSurface;
 use crate::reexports::client::{Connection, Dispatch, Proxy, QueueHandle};
 
 use crate::compositor::SurfaceData;
+use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 
 #[derive(Debug)]
@@ -61,15 +62,12 @@ impl SubcompositorState {
     }
 }
 
-impl<D> Dispatch<WlSubsurface, SubsurfaceData, D> for SubcompositorState
-where
-    D: Dispatch<WlSubsurface, SubsurfaceData>,
-{
+impl<D> Dispatch2<WlSubsurface, D> for SubsurfaceData {
     fn event(
+        &self,
         _: &mut D,
         _: &WlSubsurface,
         _: <WlSubsurface as Proxy>::Event,
-        _: &SubsurfaceData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -77,15 +75,12 @@ where
     }
 }
 
-impl<D> Dispatch<WlSubcompositor, GlobalData, D> for SubcompositorState
-where
-    D: Dispatch<WlSubcompositor, GlobalData>,
-{
+impl<D> Dispatch2<WlSubcompositor, D> for GlobalData {
     fn event(
+        &self,
         _: &mut D,
         _: &WlSubcompositor,
         _: <WlSubcompositor as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -109,33 +104,4 @@ impl SubsurfaceData {
     pub fn surface(&self) -> &WlSurface {
         &self.surface
     }
-}
-
-#[macro_export]
-macro_rules! delegate_subcompositor {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::delegate_subcompositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; subsurface: []);
-        $crate::delegate_subcompositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; subsurface-only: $crate::subcompositor::SubsurfaceData);
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, subsurface: [$($subsurface: ty),*$(,)?]) => {
-        $crate::delegate_subcompositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; subsurface: [ $($subsurface),* ]);
-    };
-    (@{$($ty:tt)*}; subsurface: []) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
-            [
-                $crate::reexports::client::protocol::wl_subcompositor::WlSubcompositor: $crate::globals::GlobalData
-            ] => $crate::subcompositor::SubcompositorState
-        );
-    };
-    (@{$($ty:tt)*}; subsurface-only: $subsurface:ty) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
-            [
-                    $crate::reexports::client::protocol::wl_subsurface::WlSubsurface: $subsurface
-            ] => $crate::subcompositor::SubcompositorState
-        );
-    };
-    (@$ty:tt; subsurface: [ $($subsurface:ty),+ ]) => {
-        $crate::delegate_subcompositor!(@$ty; subsurface: []);
-        $( $crate::delegate_subcompositor!(@$ty; subsurface-only: $subsurface); )*
-    };
 }

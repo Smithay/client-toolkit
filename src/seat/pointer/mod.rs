@@ -12,14 +12,12 @@ use wayland_client::{
         wl_shm::WlShm,
         wl_surface::WlSurface,
     },
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Proxy, QueueHandle, WEnum,
 };
 use wayland_cursor::{Cursor, CursorTheme};
 use wayland_protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 
-use crate::{compositor::SurfaceData, error::GlobalError};
-
-use super::SeatState;
+use crate::{compositor::SurfaceData, dispatch2::Dispatch2, error::GlobalError};
 
 #[doc(inline)]
 pub use cursor_icon::{CursorIcon, ParseError as CursorIconParseError};
@@ -191,27 +189,6 @@ impl<U> PointerData<U> {
     }
 }
 
-#[macro_export]
-macro_rules! delegate_pointer {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1: $crate::globals::GlobalData
-            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1: $crate::globals::GlobalData
-            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
-        );
-        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U: Send + Sync + 'static > $ty:
-            [
-                $crate::reexports::client::protocol::wl_pointer::WlPointer: $crate::seat::pointer::PointerData<U>
-            ] => $crate::seat::SeatState
-        );
-    };
-}
-
 #[derive(Debug, Default)]
 pub(crate) struct PointerDataInner {
     /// Surface the pointer most recently entered
@@ -229,20 +206,20 @@ pub(crate) struct PointerDataInner {
     pub(crate) latest_btn: Option<u32>,
 }
 
-impl<D, U> Dispatch<WlPointer, PointerData<U>, D> for SeatState
+impl<D, U> Dispatch2<WlPointer, D> for PointerData<U>
 where
-    D: Dispatch<WlPointer, PointerData<U>> + PointerHandler,
+    D: PointerHandler,
     U: Send + Sync + 'static,
 {
     fn event(
+        &self,
         data: &mut D,
         pointer: &WlPointer,
         event: wl_pointer::Event,
-        udata: &PointerData<U>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let mut guard = udata.inner.lock().unwrap();
+        let mut guard = self.inner.lock().unwrap();
         let mut leave_surface = None;
         let kind = match event {
             wl_pointer::Event::Enter { surface, surface_x, surface_y, serial } => {

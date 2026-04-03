@@ -16,6 +16,7 @@ use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_d
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 use crate::{
     compositor::SurfaceData,
+    dispatch2::Dispatch2,
     globals::GlobalData,
     registry::{ProvidesRegistryState, RegistryHandler},
 };
@@ -419,32 +420,21 @@ pub struct SeatData {
     id: u32,
 }
 
-#[macro_export]
-macro_rules! delegate_seat {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData
-            ] => $crate::seat::SeatState
-        );
-    };
-}
-
 #[derive(Debug)]
 struct SeatInner {
     seat: wl_seat::WlSeat,
     data: SeatData,
 }
 
-impl<D> Dispatch<wl_seat::WlSeat, SeatData, D> for SeatState
+impl<D> Dispatch2<wl_seat::WlSeat, D> for SeatData
 where
-    D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler,
+    D: SeatHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         seat: &wl_seat::WlSeat,
         event: wl_seat::Event,
-        data: &SeatData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -453,15 +443,15 @@ where
                 let capabilities = wl_seat::Capability::from_bits_truncate(capabilities.into());
 
                 let keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
-                let has_keyboard = data.has_keyboard.load(Ordering::SeqCst);
+                let has_keyboard = self.has_keyboard.load(Ordering::SeqCst);
                 let pointer = capabilities.contains(wl_seat::Capability::Pointer);
-                let has_pointer = data.has_pointer.load(Ordering::SeqCst);
+                let has_pointer = self.has_pointer.load(Ordering::SeqCst);
                 let touch = capabilities.contains(wl_seat::Capability::Touch);
-                let has_touch = data.has_touch.load(Ordering::SeqCst);
+                let has_touch = self.has_touch.load(Ordering::SeqCst);
 
                 // Update capabilities as necessary
                 if keyboard != has_keyboard {
-                    data.has_keyboard.store(keyboard, Ordering::SeqCst);
+                    self.has_keyboard.store(keyboard, Ordering::SeqCst);
 
                     match keyboard {
                         true => state.new_capability(conn, qh, seat.clone(), Capability::Keyboard),
@@ -472,7 +462,7 @@ where
                 }
 
                 if pointer != has_pointer {
-                    data.has_pointer.store(pointer, Ordering::SeqCst);
+                    self.has_pointer.store(pointer, Ordering::SeqCst);
 
                     match pointer {
                         true => state.new_capability(conn, qh, seat.clone(), Capability::Pointer),
@@ -483,7 +473,7 @@ where
                 }
 
                 if touch != has_touch {
-                    data.has_touch.store(touch, Ordering::SeqCst);
+                    self.has_touch.store(touch, Ordering::SeqCst);
 
                     match touch {
                         true => state.new_capability(conn, qh, seat.clone(), Capability::Touch),
@@ -493,7 +483,7 @@ where
             }
 
             wl_seat::Event::Name { name } => {
-                *data.name.lock().unwrap() = Some(name);
+                *self.name.lock().unwrap() = Some(name);
             }
 
             _ => unreachable!(),

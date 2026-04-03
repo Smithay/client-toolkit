@@ -2,8 +2,7 @@ use std::{env, path::Path};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_registry, delegate_shm, delegate_simple,
-    delegate_xdg_shell, delegate_xdg_window,
+    delegate_registry, delegate_simple,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState, SimpleGlobal},
     registry_handlers,
@@ -318,13 +317,6 @@ impl State {
     }
 }
 
-delegate_compositor!(State);
-delegate_output!(State);
-delegate_shm!(State);
-
-delegate_xdg_shell!(State);
-delegate_xdg_window!(State);
-
 delegate_simple!(State, WpViewporter, 1);
 
 delegate_registry!(State);
@@ -361,3 +353,5 @@ impl Drop for ImageViewer {
         self.viewport.destroy()
     }
 }
+
+smithay_client_toolkit::delegate_dispatch2!(State);

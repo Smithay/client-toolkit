@@ -5,7 +5,7 @@ use wayland_protocols::wp::relative_pointer::zv1::client::{
     zwp_relative_pointer_manager_v1, zwp_relative_pointer_v1,
 };
 
-use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct RelativePointerState {
@@ -64,17 +64,15 @@ pub struct RelativePointerData {
     wl_pointer: wl_pointer::WlPointer,
 }
 
-impl<D> Dispatch<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, GlobalData, D>
-    for RelativePointerState
+impl<D> Dispatch2<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, D> for GlobalData
 where
-    D: Dispatch<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, GlobalData>
-        + RelativePointerHandler,
+    D: RelativePointerHandler,
 {
     fn event(
+        &self,
         _data: &mut D,
         _manager: &zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1,
         _event: zwp_relative_pointer_manager_v1::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -82,17 +80,15 @@ where
     }
 }
 
-impl<D> Dispatch<zwp_relative_pointer_v1::ZwpRelativePointerV1, RelativePointerData, D>
-    for RelativePointerState
+impl<D> Dispatch2<zwp_relative_pointer_v1::ZwpRelativePointerV1, D> for RelativePointerData
 where
-    D: Dispatch<zwp_relative_pointer_v1::ZwpRelativePointerV1, RelativePointerData>
-        + RelativePointerHandler,
+    D: RelativePointerHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         relative_pointer: &zwp_relative_pointer_v1::ZwpRelativePointerV1,
         event: zwp_relative_pointer_v1::Event,
-        udata: &RelativePointerData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -109,7 +105,7 @@ where
                     conn,
                     qh,
                     relative_pointer,
-                    &udata.wl_pointer,
+                    &self.wl_pointer,
                     RelativeMotionEvent {
                         utime: ((utime_hi as u64) << 32) | (utime_lo as u64),
                         delta: (dx, dy),
@@ -120,16 +116,4 @@ where
             _ => unreachable!(),
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_relative_pointer {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::relative_pointer::zv1::client::zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1: $crate::globals::GlobalData
-        ] => $crate::seat::relative_pointer::RelativePointerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::relative_pointer::zv1::client::zwp_relative_pointer_v1::ZwpRelativePointerV1: $crate::seat::relative_pointer::RelativePointerData
-        ] => $crate::seat::relative_pointer::RelativePointerState);
-    };
 }

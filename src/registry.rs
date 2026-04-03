@@ -278,7 +278,7 @@ impl RegistryState {
 ///
 /// ```
 /// use smithay_client_toolkit::{
-///     delegate_registry, delegate_shm, registry_handlers,
+///     delegate_registry, registry_handlers,
 ///     shm::{ShmHandler, Shm},
 /// };
 ///
@@ -286,14 +286,13 @@ impl RegistryState {
 ///     shm_state: Shm,
 /// }
 ///
-/// // Here is the implementation of wl_shm to compile:
-/// delegate_shm!(ExampleApp);
-///
 /// impl ShmHandler for ExampleApp {
 ///     fn shm_state(&mut self) -> &mut Shm {
 ///         &mut self.shm_state
 ///     }
 /// }
+///
+/// smithay_client_toolkit::delegate_dispatch2!(ExampleApp);
 /// ```
 #[macro_export]
 macro_rules! delegate_registry {

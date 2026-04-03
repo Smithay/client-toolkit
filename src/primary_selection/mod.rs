@@ -1,3 +1,4 @@
+use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 use crate::reexports::client::{
     globals::{BindError, GlobalList},
@@ -81,40 +82,15 @@ impl Drop for PrimarySelectionManagerState {
     }
 }
 
-impl<D> Dispatch<ZwpPrimarySelectionDeviceManagerV1, GlobalData, D> for PrimarySelectionManagerState
-where
-    D: Dispatch<ZwpPrimarySelectionDeviceManagerV1, GlobalData>,
-{
+impl<D> Dispatch2<ZwpPrimarySelectionDeviceManagerV1, D> for GlobalData {
     fn event(
+        &self,
         _: &mut D,
         _: &ZwpPrimarySelectionDeviceManagerV1,
         _: <ZwpPrimarySelectionDeviceManagerV1 as wayland_client::Proxy>::Event,
-        _: &GlobalData,
         _: &wayland_client::Connection,
         _: &QueueHandle<D>,
     ) {
         unreachable!("zwp_primary_selection_device_manager_v1 has no events")
     }
-}
-
-#[macro_export]
-macro_rules! delegate_primary_selection {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1: $crate::globals::GlobalData
-            ] => $crate::primary_selection::PrimarySelectionManagerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_device_v1::ZwpPrimarySelectionDeviceV1: $crate::primary_selection::device::PrimarySelectionDeviceData
-            ] => $crate::primary_selection::PrimarySelectionManagerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_offer_v1::ZwpPrimarySelectionOfferV1: $crate::primary_selection::offer::PrimarySelectionOfferData
-            ] => $crate::primary_selection::PrimarySelectionManagerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_source_v1::ZwpPrimarySelectionSourceV1: $crate::globals::GlobalData
-            ] => $crate::primary_selection::PrimarySelectionManagerState);
-    };
 }

@@ -8,10 +8,9 @@ use crate::reexports::protocols::wp::primary_selection::zv1::client::{
     zwp_primary_selection_offer_v1::ZwpPrimarySelectionOfferV1,
 };
 
-use super::{
-    offer::{PrimarySelectionOffer, PrimarySelectionOfferData},
-    PrimarySelectionManagerState,
-};
+use crate::dispatch2::Dispatch2;
+
+use super::offer::{PrimarySelectionOffer, PrimarySelectionOfferData};
 
 pub trait PrimarySelectionDeviceHandler: Sized {
     /// The new selection is received.
@@ -54,11 +53,9 @@ impl Drop for PrimarySelectionDevice {
     }
 }
 
-impl<State> Dispatch<ZwpPrimarySelectionDeviceV1, PrimarySelectionDeviceData, State>
-    for PrimarySelectionManagerState
+impl<State> Dispatch2<ZwpPrimarySelectionDeviceV1, State> for PrimarySelectionDeviceData
 where
-    State: Dispatch<ZwpPrimarySelectionDeviceV1, PrimarySelectionDeviceData>
-        + Dispatch<ZwpPrimarySelectionOfferV1, PrimarySelectionOfferData>
+    State: Dispatch<ZwpPrimarySelectionOfferV1, PrimarySelectionOfferData>
         + PrimarySelectionDeviceHandler
         + 'static,
 {
@@ -67,15 +64,15 @@ where
     ]);
 
     fn event(
+        &self,
         state: &mut State,
         proxy: &ZwpPrimarySelectionDeviceV1,
         event: <ZwpPrimarySelectionDeviceV1 as wayland_client::Proxy>::Event,
-        data: &PrimarySelectionDeviceData,
         conn: &Connection,
         qhandle: &QueueHandle<State>,
     ) {
         use wayland_protocols::wp::primary_selection::zv1::client::zwp_primary_selection_device_v1::Event;
-        let mut data = data.inner.lock().unwrap();
+        let mut data = self.inner.lock().unwrap();
         match event {
             Event::DataOffer { offer } => {
                 // Try to resist faulty compositors.

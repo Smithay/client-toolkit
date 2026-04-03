@@ -1,5 +1,5 @@
 use smithay_client_toolkit::{
-    delegate_registry, delegate_seat,
+    delegate_registry,
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
@@ -69,8 +69,6 @@ impl SeatHandler for ListSeats {
     }
 }
 
-delegate_seat!(ListSeats);
-
 delegate_registry!(ListSeats);
 
 impl ProvidesRegistryState for ListSeats {
@@ -80,3 +78,5 @@ impl ProvidesRegistryState for ListSeats {
 
     registry_handlers!(SeatState);
 }
+
+smithay_client_toolkit::delegate_dispatch2!(ListSeats);

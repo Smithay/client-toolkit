@@ -1,9 +1,8 @@
 use std::convert::TryInto;
 
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
-    delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    compositor::{CompositorHandler, CompositorState, FrameCallbackData},
+    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -468,24 +467,13 @@ impl<T: Test + 'static> SimpleWindow<T> {
         self.window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
 
         // Request our next frame
-        self.window.wl_surface().frame(qh, self.window.wl_surface().clone());
+        self.window.wl_surface().frame(qh, FrameCallbackData(self.window.wl_surface().clone()));
 
         // Attach and commit to present.
         buffer.attach_to(self.window.wl_surface()).expect("buffer attach");
         self.window.commit();
     }
 }
-
-delegate_compositor!(@<T: Test + 'static> SimpleWindow<T>);
-delegate_output!(@<T: Test + 'static> SimpleWindow<T>);
-delegate_shm!(@<T: Test + 'static> SimpleWindow<T>);
-
-delegate_seat!(@<T: Test + 'static> SimpleWindow<T>);
-delegate_keyboard!(@<T: Test + 'static> SimpleWindow<T>);
-delegate_pointer!(@<T: Test + 'static> SimpleWindow<T>);
-
-delegate_xdg_shell!(@<T: Test + 'static> SimpleWindow<T>);
-delegate_xdg_window!(@<T: Test + 'static> SimpleWindow<T>);
 
 delegate_registry!(@<T: Test + 'static> SimpleWindow<T>);
 
@@ -495,3 +483,5 @@ impl<T: Test + 'static> ProvidesRegistryState for SimpleWindow<T> {
     }
     registry_handlers![OutputState, SeatState,];
 }
+
+smithay_client_toolkit::delegate_dispatch2!(@<T: Test + 'static> SimpleWindow<T>);

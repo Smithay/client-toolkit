@@ -3,12 +3,11 @@ use std::{
     sync::Mutex,
 };
 
-use crate::reexports::client::{Connection, Dispatch, QueueHandle, Proxy};
+use crate::reexports::client::{Connection, QueueHandle, Proxy};
 use crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_offer_v1::ZwpPrimarySelectionOfferV1;
 
 use crate::data_device_manager::ReadPipe;
-
-use super::PrimarySelectionManagerState;
+use crate::dispatch2::Dispatch2;
 
 /// Wrapper around the [`ZwpPrimarySelectionOfferV1`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,23 +53,19 @@ impl PrimarySelectionOffer {
     }
 }
 
-impl<State> Dispatch<ZwpPrimarySelectionOfferV1, PrimarySelectionOfferData, State>
-    for PrimarySelectionManagerState
-where
-    State: Dispatch<ZwpPrimarySelectionOfferV1, PrimarySelectionOfferData>,
-{
+impl<State> Dispatch2<ZwpPrimarySelectionOfferV1, State> for PrimarySelectionOfferData {
     fn event(
+        &self,
         _: &mut State,
         _: &ZwpPrimarySelectionOfferV1,
         event: <ZwpPrimarySelectionOfferV1 as wayland_client::Proxy>::Event,
-        data: &PrimarySelectionOfferData,
         _: &Connection,
         _: &QueueHandle<State>,
     ) {
         use wayland_protocols::wp::primary_selection::zv1::client::zwp_primary_selection_offer_v1::Event;
         match event {
             Event::Offer { mime_type } => {
-                data.mimes.lock().unwrap().push(mime_type);
+                self.mimes.lock().unwrap().push(mime_type);
             }
             _ => unreachable!(),
         }

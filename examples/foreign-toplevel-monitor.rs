@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use smithay_client_toolkit::{
-    delegate_foreign_toplevel_list, delegate_registry,
+    delegate_registry,
     foreign_toplevel_list::{ForeignToplevelList, ForeignToplevelListHandler},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -77,5 +77,5 @@ impl ForeignToplevelListHandler for State {
     }
 }
 
-delegate_foreign_toplevel_list!(State);
 delegate_registry!(State);
+smithay_client_toolkit::delegate_dispatch2!(State);

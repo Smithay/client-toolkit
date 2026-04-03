@@ -1,4 +1,4 @@
-use crate::{globals::GlobalData, registry::GlobalProxy};
+use crate::{dispatch2::Dispatch2, globals::GlobalData, registry::GlobalProxy};
 use std::sync::{Arc, Mutex};
 use wayland_client::{globals::GlobalList, Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::ext::foreign_toplevel_list::v1::client::{
@@ -96,19 +96,17 @@ pub trait ForeignToplevelListHandler: Sized {
     fn finished(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>) {}
 }
 
-impl<D> Dispatch<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, GlobalData, D>
-    for ForeignToplevelList
+impl<D> Dispatch2<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, D> for GlobalData
 where
-    D: Dispatch<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, GlobalData>
-        + Dispatch<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, ForeignToplevelData>
+    D: Dispatch<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, ForeignToplevelData>
         + ForeignToplevelListHandler
         + 'static,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1,
         event: ext_foreign_toplevel_list_v1::Event,
-        _: &GlobalData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -127,17 +125,16 @@ where
     ]);
 }
 
-impl<D> Dispatch<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, ForeignToplevelData, D>
-    for ForeignToplevelList
+impl<D> Dispatch2<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, D>
+    for ForeignToplevelData
 where
-    D: Dispatch<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, ForeignToplevelData>
-        + ForeignToplevelListHandler,
+    D: ForeignToplevelListHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         handle: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
         event: ext_foreign_toplevel_handle_v1::Event,
-        data: &ForeignToplevelData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -151,7 +148,7 @@ where
                 handle.destroy();
             }
             ext_foreign_toplevel_handle_v1::Event::Done => {
-                let mut inner = data.0.lock().unwrap();
+                let mut inner = self.0.lock().unwrap();
                 let just_created = inner.current_info.is_none();
                 inner.current_info = Some(inner.pending_info.clone());
                 drop(inner);
@@ -163,31 +160,15 @@ where
                 }
             }
             ext_foreign_toplevel_handle_v1::Event::Title { title } => {
-                data.0.lock().unwrap().pending_info.title = title;
+                self.0.lock().unwrap().pending_info.title = title;
             }
             ext_foreign_toplevel_handle_v1::Event::AppId { app_id } => {
-                data.0.lock().unwrap().pending_info.app_id = app_id;
+                self.0.lock().unwrap().pending_info.app_id = app_id;
             }
             ext_foreign_toplevel_handle_v1::Event::Identifier { identifier } => {
-                data.0.lock().unwrap().pending_info.identifier = identifier;
+                self.0.lock().unwrap().pending_info.identifier = identifier;
             }
             _ => unreachable!(),
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_foreign_toplevel_list {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1: $crate::globals::GlobalData
-            ] => $crate::foreign_toplevel_list::ForeignToplevelList
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1: $crate::foreign_toplevel_list::ForeignToplevelData
-            ] => $crate::foreign_toplevel_list::ForeignToplevelList
-        );
-    };
 }

@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use wayland_client::{Connection, Dispatch, QueueHandle};
+use wayland_client::{Connection, QueueHandle};
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
         zxdg_decoration_manager_v1,
@@ -17,6 +17,7 @@ use wayland_protocols::{
 };
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     shell::xdg::{XdgShell, XdgShellSurface},
@@ -57,15 +58,15 @@ impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
     }
 }
 
-impl<D> Dispatch<xdg_surface::XdgSurface, WindowData, D> for XdgShell
+impl<D> Dispatch2<xdg_surface::XdgSurface, D> for WindowData
 where
-    D: Dispatch<xdg_surface::XdgSurface, WindowData> + WindowHandler,
+    D: WindowHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         xdg_surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
-        _: &WindowData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -85,15 +86,15 @@ where
     }
 }
 
-impl<D> Dispatch<xdg_toplevel::XdgToplevel, WindowData, D> for XdgShell
+impl<D> Dispatch2<xdg_toplevel::XdgToplevel, D> for WindowData
 where
-    D: Dispatch<xdg_toplevel::XdgToplevel, WindowData> + WindowHandler,
+    D: WindowHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         toplevel: &xdg_toplevel::XdgToplevel,
         event: xdg_toplevel::Event,
-        _: &WindowData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -179,15 +180,15 @@ where
 
 // XDG decoration
 
-impl<D> Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, D> for XdgShell
+impl<D> Dispatch2<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, D> for GlobalData
 where
-    D: Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData> + WindowHandler,
+    D: WindowHandler,
 {
     fn event(
+        &self,
         _: &mut D,
         _: &zxdg_decoration_manager_v1::ZxdgDecorationManagerV1,
         _: zxdg_decoration_manager_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -195,15 +196,15 @@ where
     }
 }
 
-impl<D> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData, D> for XdgShell
+impl<D> Dispatch2<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for WindowData
 where
-    D: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData> + WindowHandler,
+    D: WindowHandler,
 {
     fn event(
+        &self,
         _: &mut D,
         decoration: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
         event: zxdg_toplevel_decoration_v1::Event,
-        _: &WindowData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

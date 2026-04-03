@@ -275,18 +275,6 @@ impl LayerSurfaceData {
     }
 }
 
-#[macro_export]
-macro_rules! delegate_layer {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::ZwlrLayerShellV1: $crate::globals::GlobalData
-        ] => $crate::shell::wlr_layer::LayerShell);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1: $crate::shell::wlr_layer::LayerSurfaceData
-        ] => $crate::shell::wlr_layer::LayerShell);
-    };
-}
-
 #[derive(Debug)]
 struct LayerSurfaceInner {
     wl_surface: Surface,

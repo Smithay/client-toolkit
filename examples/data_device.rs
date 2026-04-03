@@ -11,16 +11,14 @@ use smithay_client_toolkit::reexports::calloop::{
 };
 use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
+    compositor::{CompositorHandler, CompositorState, FrameCallbackData},
     data_device_manager::{
         data_device::{DataDevice, DataDeviceHandler},
         data_offer::{DataOfferHandler, DragOffer, SelectionOffer},
         data_source::{CopyPasteSource, DataSourceHandler, DragSource},
         DataDeviceManagerState, WritePipe,
     },
-    delegate_compositor, delegate_data_device, delegate_keyboard, delegate_output,
-    delegate_pointer, delegate_primary_selection, delegate_registry, delegate_seat, delegate_shm,
-    delegate_xdg_shell, delegate_xdg_window,
+    delegate_registry,
     output::{OutputHandler, OutputState},
     primary_selection::{
         device::{PrimarySelectionDevice, PrimarySelectionDeviceHandler},
@@ -614,7 +612,7 @@ impl DataDeviceWindow {
         self.window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
 
         // Request our next frame
-        self.window.wl_surface().frame(qh, self.window.wl_surface().clone());
+        self.window.wl_surface().frame(qh, FrameCallbackData(self.window.wl_surface().clone()));
 
         // Attach and commit to present.
         buffer.attach_to(self.window.wl_surface()).expect("buffer attach");
@@ -1081,21 +1079,6 @@ struct SeatObject {
     primary_device: Option<PrimarySelectionDevice>,
 }
 
-delegate_compositor!(DataDeviceWindow);
-delegate_output!(DataDeviceWindow);
-delegate_shm!(DataDeviceWindow);
-
-delegate_seat!(DataDeviceWindow);
-delegate_keyboard!(DataDeviceWindow);
-delegate_pointer!(DataDeviceWindow);
-
-delegate_xdg_shell!(DataDeviceWindow);
-delegate_xdg_window!(DataDeviceWindow);
-
-delegate_data_device!(DataDeviceWindow);
-
-delegate_primary_selection!(DataDeviceWindow);
-
 delegate_registry!(DataDeviceWindow);
 
 const SUPPORTED_MIME_TYPES: &[&str; 6] = &[
@@ -1115,3 +1098,5 @@ fn pick_mime(mime_types: &[String]) -> Option<String> {
 
     None
 }
+
+smithay_client_toolkit::delegate_dispatch2!(DataDeviceWindow);
