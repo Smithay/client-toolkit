@@ -16,6 +16,7 @@ use wayland_client::{
 };
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
@@ -271,11 +272,6 @@ macro_rules! delegate_compositor {
     (@{$($ty:tt)*}; surface: []) => {
         $crate::reexports::client::delegate_dispatch!($($ty)*:
             [
-                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
-            ] => $crate::compositor::CompositorState
-        );
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
-            [
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
             ] => $crate::compositor::CompositorState
         );
@@ -481,15 +477,15 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
-impl<D> Dispatch<wl_compositor::WlCompositor, GlobalData, D> for CompositorState
+impl<D> Dispatch2<wl_compositor::WlCompositor, D> for GlobalData
 where
-    D: Dispatch<wl_compositor::WlCompositor, GlobalData> + CompositorHandler,
+    D: CompositorHandler,
 {
     fn event(
+        &self,
         _: &mut D,
         _: &wl_compositor::WlCompositor,
         _: wl_compositor::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

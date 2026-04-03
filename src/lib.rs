@@ -25,6 +25,7 @@ pub mod reexports {
 pub mod activation;
 pub mod compositor;
 pub mod data_device_manager;
+pub mod dispatch2;
 pub mod dmabuf;
 pub mod error;
 pub mod foreign_toplevel_list;
