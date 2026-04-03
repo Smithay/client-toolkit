@@ -193,24 +193,3 @@ impl SessionLockState {
         Ok(SessionLock(inner))
     }
 }
-
-#[macro_export]
-macro_rules! delegate_session_lock {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::ext::session_lock::v1::client::ext_session_lock_manager_v1::ExtSessionLockManagerV1: $crate::globals::GlobalData
-            ] => $crate::session_lock::SessionLockState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::ext::session_lock::v1::client::ext_session_lock_v1::ExtSessionLockV1: $crate::session_lock::SessionLockData
-            ] => $crate::session_lock::SessionLockState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::ext::session_lock::v1::client::ext_session_lock_surface_v1::ExtSessionLockSurfaceV1: $crate::session_lock::SessionLockSurfaceData
-            ] => $crate::session_lock::SessionLockState
-        );
-    };
-}

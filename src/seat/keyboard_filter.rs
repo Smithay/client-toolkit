@@ -11,6 +11,7 @@ use wayland_protocols_experimental::keyboard_filter::v3::client::{
     self as protocol, xx_keyboard_filter_manager_v1, xx_keyboard_filter_v1,
 };
 
+use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 
 #[derive(Debug)]
@@ -42,21 +43,24 @@ impl KeyboardFilterManager {
         surface: &WlSurface,
     ) -> KeyboardFilter
     where
-        D: Dispatch<XxKeyboardFilterV1, ()> + 'static,
+        D: Dispatch<XxKeyboardFilterV1, GlobalData> + 'static,
     {
-        KeyboardFilter(self.manager.bind_to_input_method(keyboard, input_method, surface, qh, ()))
+        KeyboardFilter(self.manager.bind_to_input_method(
+            keyboard,
+            input_method,
+            surface,
+            qh,
+            GlobalData,
+        ))
     }
 }
 
-impl<D> Dispatch<XxKeyboardFilterManagerV1, GlobalData, D> for KeyboardFilterManager
-where
-    D: Dispatch<XxKeyboardFilterManagerV1, GlobalData>,
-{
+impl<D> Dispatch2<XxKeyboardFilterManagerV1, D> for GlobalData {
     fn event(
+        &self,
         _data: &mut D,
         _manager: &XxKeyboardFilterManagerV1,
         _event: xx_keyboard_filter_manager_v1::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -82,32 +86,17 @@ impl KeyboardFilter {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyboardVersion(pub u32);
 
-impl<D> Dispatch<XxKeyboardFilterV1, (), D> for KeyboardFilter
-where
-    D: Dispatch<XxKeyboardFilterV1, ()>,
-{
+impl<D> Dispatch2<XxKeyboardFilterV1, D> for GlobalData {
     fn event(
+        &self,
         _data: &mut D,
         _keyboard: &XxKeyboardFilterV1,
         _event: xx_keyboard_filter_v1::Event,
-        _: &(),
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
         unreachable!("Filter receives no events")
     }
-}
-
-#[macro_export]
-macro_rules! delegate_keyboard_filter_v1 {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_experimental::keyboard_filter::v3::client::xx_keyboard_filter_manager_v1::XxKeyboardFilterManagerV1: $crate::globals::GlobalData
-        ] => $crate::seat::keyboard_filter::KeyboardFilterManager);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_experimental::keyboard_filter::v3::client::xx_keyboard_filter_v1::XxKeyboardFilterV1: ()
-        ] => $crate::seat::keyboard_filter::KeyboardFilter);
-    };
 }
 
 #[cfg(test)]
@@ -116,7 +105,7 @@ mod test {
 
     struct Handler {}
 
-    delegate_keyboard_filter_v1!(Handler);
+    crate::delegate_dispatch2!(Handler);
 
     fn assert_is_manager_delegate<T>()
     where
@@ -129,7 +118,10 @@ mod test {
 
     fn assert_is_delegate<T>()
     where
-        T: wayland_client::Dispatch<protocol::xx_keyboard_filter_v1::XxKeyboardFilterV1, ()>,
+        T: wayland_client::Dispatch<
+            protocol::xx_keyboard_filter_v1::XxKeyboardFilterV1,
+            crate::globals::GlobalData,
+        >,
     {
     }
 

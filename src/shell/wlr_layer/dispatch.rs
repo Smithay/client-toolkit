@@ -1,7 +1,8 @@
-use wayland_client::{Connection, Dispatch, QueueHandle};
+use wayland_client::{Connection, QueueHandle};
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
 };
@@ -34,15 +35,15 @@ impl ProvidesBoundGlobal<zwlr_layer_shell_v1::ZwlrLayerShellV1, 4> for LayerShel
     }
 }
 
-impl<D> Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, D> for LayerShell
+impl<D> Dispatch2<zwlr_layer_shell_v1::ZwlrLayerShellV1, D> for GlobalData
 where
-    D: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData> + LayerShellHandler + 'static,
+    D: LayerShellHandler + 'static,
 {
     fn event(
+        &self,
         _: &mut D,
         _: &zwlr_layer_shell_v1::ZwlrLayerShellV1,
         _: zwlr_layer_shell_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -50,17 +51,15 @@ where
     }
 }
 
-impl<D> Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData, D> for LayerShell
+impl<D> Dispatch2<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, D> for LayerSurfaceData
 where
-    D: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData>
-        + LayerShellHandler
-        + 'static,
+    D: LayerShellHandler + 'static,
 {
     fn event(
+        &self,
         data: &mut D,
         surface: &zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         event: zwlr_layer_surface_v1::Event,
-        _udata: &LayerSurfaceData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {

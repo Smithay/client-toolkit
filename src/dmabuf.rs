@@ -1,4 +1,4 @@
-use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 use memmap2::{Mmap, MmapOptions};
 use std::{fmt, mem, os::unix::io::BorrowedFd, slice, sync::Mutex};
 use wayland_client::{
@@ -275,15 +275,15 @@ impl DmabufParams {
     }
 }
 
-impl<D> Dispatch<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, GlobalData, D> for DmabufState
+impl<D> Dispatch2<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, D> for GlobalData
 where
-    D: Dispatch<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, GlobalData> + DmabufHandler,
+    D: DmabufHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1,
         event: zwp_linux_dmabuf_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -307,23 +307,21 @@ where
     }
 }
 
-impl<D> Dispatch<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, DmabufFeedbackData, D>
-    for DmabufState
+impl<D> Dispatch2<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, D> for DmabufFeedbackData
 where
-    D: Dispatch<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, DmabufFeedbackData>
-        + DmabufHandler,
+    D: DmabufHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1,
         event: zwp_linux_dmabuf_feedback_v1::Event,
-        data: &DmabufFeedbackData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
             zwp_linux_dmabuf_feedback_v1::Event::Done => {
-                let feedback = mem::take(&mut *data.pending.lock().unwrap());
+                let feedback = mem::take(&mut *self.pending.lock().unwrap());
                 state.dmabuf_feedback(conn, qh, proxy, feedback);
             }
             zwp_linux_dmabuf_feedback_v1::Event::FormatTable { fd, size } => {
@@ -335,46 +333,43 @@ where
                 let entry_size = mem::size_of::<DmabufFormat>();
                 assert!((size % entry_size) == 0);
                 let len = size / entry_size;
-                data.pending.lock().unwrap().format_table = Some((mmap, len));
+                self.pending.lock().unwrap().format_table = Some((mmap, len));
             }
             zwp_linux_dmabuf_feedback_v1::Event::MainDevice { device } => {
                 let device = dev_t::from_ne_bytes(device.try_into().unwrap());
-                data.pending.lock().unwrap().main_device = device;
+                self.pending.lock().unwrap().main_device = device;
             }
             zwp_linux_dmabuf_feedback_v1::Event::TrancheDone => {
-                let tranche = mem::take(&mut *data.pending_tranche.lock().unwrap());
-                data.pending.lock().unwrap().tranches.push(tranche);
+                let tranche = mem::take(&mut *self.pending_tranche.lock().unwrap());
+                self.pending.lock().unwrap().tranches.push(tranche);
             }
             zwp_linux_dmabuf_feedback_v1::Event::TrancheTargetDevice { device } => {
                 let device = dev_t::from_ne_bytes(device.try_into().unwrap());
-                data.pending_tranche.lock().unwrap().device = device;
+                self.pending_tranche.lock().unwrap().device = device;
             }
             zwp_linux_dmabuf_feedback_v1::Event::TrancheFormats { indices } => {
                 assert!((indices.len() % 2) == 0);
                 let indices =
                     indices.chunks(2).map(|i| u16::from_ne_bytes([i[0], i[1]])).collect::<Vec<_>>();
-                data.pending_tranche.lock().unwrap().formats = indices;
+                self.pending_tranche.lock().unwrap().formats = indices;
             }
             zwp_linux_dmabuf_feedback_v1::Event::TrancheFlags { flags } => {
-                data.pending_tranche.lock().unwrap().flags = flags;
+                self.pending_tranche.lock().unwrap().flags = flags;
             }
             _ => unreachable!(),
         }
     }
 }
 
-impl<D> Dispatch<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, GlobalData, D> for DmabufState
+impl<D> Dispatch2<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, D> for GlobalData
 where
-    D: Dispatch<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, GlobalData>
-        + Dispatch<wl_buffer::WlBuffer, DmaBufferData>
-        + DmabufHandler
-        + 'static,
+    D: Dispatch<wl_buffer::WlBuffer, DmaBufferData> + DmabufHandler + 'static,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1,
         event: zwp_linux_buffer_params_v1::Event,
-        _: &GlobalData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -394,15 +389,15 @@ where
     ]);
 }
 
-impl<D> Dispatch<wl_buffer::WlBuffer, DmaBufferData, D> for DmabufState
+impl<D> Dispatch2<wl_buffer::WlBuffer, D> for DmaBufferData
 where
-    D: Dispatch<wl_buffer::WlBuffer, DmaBufferData> + DmabufHandler,
+    D: DmabufHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &wl_buffer::WlBuffer,
         event: wl_buffer::Event,
-        _: &DmaBufferData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -411,30 +406,4 @@ where
             _ => unreachable!(),
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_dmabuf {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::linux_dmabuf::zv1::client::zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1: $crate::globals::GlobalData
-            ] => $crate::dmabuf::DmabufState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::linux_dmabuf::zv1::client::zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1: $crate::globals::GlobalData
-            ] => $crate::dmabuf::DmabufState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::wp::linux_dmabuf::zv1::client::zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1: $crate::dmabuf::DmabufFeedbackData
-            ] => $crate::dmabuf::DmabufState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_buffer::WlBuffer: $crate::dmabuf::DmaBufferData
-            ] => $crate::dmabuf::DmabufState
-        );
-    };
 }

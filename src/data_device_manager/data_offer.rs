@@ -6,16 +6,17 @@ use std::{
 
 use log::warn;
 
+use crate::dispatch2::Dispatch2;
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
         wl_data_offer::{self, WlDataOffer},
         wl_surface::WlSurface,
     },
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Proxy, QueueHandle,
 };
 
-use super::{DataDeviceManagerState, ReadPipe};
+use super::ReadPipe;
 
 /// Handler trait for DataOffer events.
 ///
@@ -359,27 +360,27 @@ impl Default for DataDeviceOffer {
     }
 }
 
-impl<D> Dispatch<wl_data_offer::WlDataOffer, DataOfferData, D> for DataDeviceManagerState
+impl<D> Dispatch2<wl_data_offer::WlDataOffer, D> for DataOfferData
 where
-    D: Dispatch<wl_data_offer::WlDataOffer, DataOfferData> + DataOfferHandler,
+    D: DataOfferHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         _offer: &wl_data_offer::WlDataOffer,
         event: <wl_data_offer::WlDataOffer as wayland_client::Proxy>::Event,
-        data: &DataOfferData,
         conn: &wayland_client::Connection,
         qh: &wayland_client::QueueHandle<D>,
     ) {
         match event {
             wl_data_offer::Event::Offer { mime_type } => {
-                data.push_mime_type(mime_type);
+                self.push_mime_type(mime_type);
             }
             wl_data_offer::Event::SourceActions { source_actions } => {
                 match source_actions {
                     wayland_client::WEnum::Value(a) => {
-                        data.set_source_action(a);
-                        match &mut data.inner.lock().unwrap().offer {
+                        self.set_source_action(a);
+                        match &mut self.inner.lock().unwrap().offer {
                             DataDeviceOffer::Drag(o) => {
                                 state.source_actions(conn, qh, o, a);
                             }
@@ -393,8 +394,8 @@ where
             wl_data_offer::Event::Action { dnd_action } => {
                 match dnd_action {
                     wayland_client::WEnum::Value(a) => {
-                        data.set_selected_action(a);
-                        match &mut data.inner.lock().unwrap().offer {
+                        self.set_selected_action(a);
+                        match &mut self.inner.lock().unwrap().offer {
                             DataDeviceOffer::Drag(o) => {
                                 state.selected_action(conn, qh, o, a);
                             }

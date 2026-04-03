@@ -6,7 +6,7 @@ use wayland_client::{
 };
 use wayland_protocols::wp::presentation_time::client::{wp_presentation, wp_presentation_feedback};
 
-use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct PresentTime {
@@ -84,15 +84,15 @@ pub struct PresentationTimeData {
     sync_outputs: Mutex<Vec<wl_output::WlOutput>>,
 }
 
-impl<D> Dispatch<wp_presentation::WpPresentation, GlobalData, D> for PresentationTimeState
+impl<D> Dispatch2<wp_presentation::WpPresentation, D> for GlobalData
 where
-    D: Dispatch<wp_presentation::WpPresentation, GlobalData> + PresentationTimeHandler,
+    D: PresentationTimeHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         _presentation: &wp_presentation::WpPresentation,
         event: wp_presentation::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -105,23 +105,21 @@ where
     }
 }
 
-impl<D> Dispatch<wp_presentation_feedback::WpPresentationFeedback, PresentationTimeData, D>
-    for PresentationTimeState
+impl<D> Dispatch2<wp_presentation_feedback::WpPresentationFeedback, D> for PresentationTimeData
 where
-    D: Dispatch<wp_presentation_feedback::WpPresentationFeedback, PresentationTimeData>
-        + PresentationTimeHandler,
+    D: PresentationTimeHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         feedback: &wp_presentation_feedback::WpPresentationFeedback,
         event: wp_presentation_feedback::Event,
-        udata: &PresentationTimeData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
             wp_presentation_feedback::Event::SyncOutput { output } => {
-                udata.sync_outputs.lock().unwrap().push(output);
+                self.sync_outputs.lock().unwrap().push(output);
             }
             wp_presentation_feedback::Event::Presented {
                 tv_sec_hi,
@@ -132,7 +130,7 @@ where
                 seq_lo,
                 flags,
             } => {
-                let sync_outputs = mem::take(&mut *udata.sync_outputs.lock().unwrap());
+                let sync_outputs = mem::take(&mut *self.sync_outputs.lock().unwrap());
                 let clk_id = data.presentation_time_state().clk_id.unwrap(); // XXX unwrap
                 let time = PresentTime {
                     clk_id,
@@ -144,7 +142,7 @@ where
                     conn,
                     qh,
                     feedback,
-                    &udata.wl_surface,
+                    &self.wl_surface,
                     sync_outputs,
                     time,
                     refresh,
@@ -153,21 +151,9 @@ where
                 );
             }
             wp_presentation_feedback::Event::Discarded => {
-                data.discarded(conn, qh, feedback, &udata.wl_surface)
+                data.discarded(conn, qh, feedback, &self.wl_surface)
             }
             _ => {}
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_presentation_time {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::presentation_time::client::wp_presentation::WpPresentation: $crate::globals::GlobalData
-        ] => $crate::presentation_time::PresentationTimeState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::presentation_time::client::wp_presentation_feedback::WpPresentationFeedback: $crate::presentation_time::PresentationTimeData
-        ] => $crate::presentation_time::PresentationTimeState);
-    };
 }

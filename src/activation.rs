@@ -6,6 +6,7 @@ use wayland_client::{
 use wayland_protocols::xdg::activation::v1::client::{xdg_activation_token_v1, xdg_activation_v1};
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
 };
@@ -90,15 +91,15 @@ impl ActivationState {
     }
 }
 
-impl<D> Dispatch<xdg_activation_v1::XdgActivationV1, GlobalData, D> for ActivationState
+impl<D> Dispatch2<xdg_activation_v1::XdgActivationV1, D> for GlobalData
 where
-    D: Dispatch<xdg_activation_v1::XdgActivationV1, GlobalData> + ActivationHandler,
+    D: ActivationHandler,
 {
     fn event(
+        &self,
         _: &mut D,
         _: &xdg_activation_v1::XdgActivationV1,
         _: <xdg_activation_v1::XdgActivationV1 as Proxy>::Event,
-        _: &GlobalData,
         _: &wayland_client::Connection,
         _: &QueueHandle<D>,
     ) {
@@ -112,41 +113,20 @@ impl ProvidesBoundGlobal<xdg_activation_v1::XdgActivationV1, 1> for ActivationSt
     }
 }
 
-impl<D, U> Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>, D>
-    for ActivationState
+impl<D, U> Dispatch2<xdg_activation_token_v1::XdgActivationTokenV1, D> for RequestData<U>
 where
-    D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>>
-        + ActivationHandler<RequestUdata = U>,
+    D: ActivationHandler<RequestUdata = U>,
 {
     fn event(
+        &self,
         state: &mut D,
         _proxy: &xdg_activation_token_v1::XdgActivationTokenV1,
         event: <xdg_activation_token_v1::XdgActivationTokenV1 as Proxy>::Event,
-        data: &RequestData<U>,
         _conn: &wayland_client::Connection,
         _qhandle: &QueueHandle<D>,
     ) {
         if let xdg_activation_token_v1::Event::Done { token } = event {
-            state.new_token(token, data);
+            state.new_token(token, self);
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_activation {
-   ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-       $crate::delegate_activation!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty, ());
-   };
-   ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, $data: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::xdg::activation::v1::client::xdg_activation_v1::XdgActivationV1: $crate::globals::GlobalData
-            ] => $crate::activation::ActivationState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::xdg::activation::v1::client::xdg_activation_token_v1::XdgActivationTokenV1: $crate::activation::RequestData<$data>
-            ] => $crate::activation::ActivationState
-        );
-    };
 }

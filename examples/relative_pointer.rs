@@ -1,10 +1,8 @@
 //! An example demonstrating relative pointer and (if supported) pointer constraints
 
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_pointer, delegate_pointer_constraints,
-    delegate_registry, delegate_relative_pointer, delegate_seat, delegate_shm, delegate_xdg_shell,
-    delegate_xdg_window,
+    compositor::{CompositorHandler, CompositorState, FrameCallbackData},
+    delegate_registry,
     globals::ProvidesBoundGlobal,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
@@ -444,7 +442,7 @@ impl SimpleWindow {
             window.wl_surface().damage_buffer(0, 0, self.width as i32, self.height as i32);
 
             // Request our next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone());
+            window.wl_surface().frame(qh, FrameCallbackData(window.wl_surface().clone()));
 
             // Attach and commit to present.
             buffer.attach_to(window.wl_surface()).expect("buffer attach");
@@ -546,18 +544,6 @@ impl SimpleWindow {
     }
 }
 
-delegate_compositor!(SimpleWindow);
-delegate_output!(SimpleWindow);
-delegate_shm!(SimpleWindow);
-
-delegate_seat!(SimpleWindow);
-delegate_pointer!(SimpleWindow);
-delegate_pointer_constraints!(SimpleWindow);
-delegate_relative_pointer!(SimpleWindow);
-
-delegate_xdg_shell!(SimpleWindow);
-delegate_xdg_window!(SimpleWindow);
-
 delegate_registry!(SimpleWindow);
 
 impl ProvidesRegistryState for SimpleWindow {
@@ -578,3 +564,5 @@ impl Dispatch<wl_region::WlRegion, ()> for SimpleWindow {
     ) {
     }
 }
+
+smithay_client_toolkit::delegate_dispatch2!(SimpleWindow);

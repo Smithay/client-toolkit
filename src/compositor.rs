@@ -16,6 +16,7 @@ use wayland_client::{
 };
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
@@ -268,44 +269,20 @@ impl Drop for Surface {
     }
 }
 
-#[macro_export]
-macro_rules! delegate_compositor {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
-            ] => $crate::compositor::CompositorState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
-            ] => $crate::compositor::CompositorState
-        );
-        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U: Send + Sync + 'static > $ty:
-            [
-                $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData<U>
-            ] => $crate::compositor::CompositorState
-        );
-    };
-}
-
-impl<D, U> Dispatch<wl_surface::WlSurface, SurfaceData<U>, D> for CompositorState
+impl<D, U> Dispatch2<wl_surface::WlSurface, D> for SurfaceData<U>
 where
-    D: Dispatch<wl_surface::WlSurface, SurfaceData<U>>
-        + CompositorHandler
-        + OutputHandler
-        + 'static,
+    D: CompositorHandler + OutputHandler + 'static,
     U: Send + Sync + 'static,
 {
     fn event(
+        &self,
         state: &mut D,
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
-        data: &SurfaceData<U>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let mut inner = data.inner.lock().unwrap();
+        let mut inner = self.inner.lock().unwrap();
 
         let mut enter_or_leave_output: Option<(wl_output::WlOutput, bool)> = None;
 
@@ -319,9 +296,9 @@ where
                 enter_or_leave_output.replace((output, false));
             }
             wl_surface::Event::PreferredBufferScale { factor } => {
-                let current_scale = data.scale_factor.load(Ordering::Relaxed);
+                let current_scale = self.scale_factor.load(Ordering::Relaxed);
                 drop(inner);
-                data.scale_factor.store(factor, Ordering::Relaxed);
+                self.scale_factor.store(factor, Ordering::Relaxed);
                 if current_scale != factor {
                     state.scale_factor_changed(conn, qh, surface, factor);
                 }
@@ -369,7 +346,7 @@ where
             })
         });
 
-        dispatch_surface_state_updates(state, conn, qh, surface, data, inner);
+        dispatch_surface_state_updates(state, conn, qh, surface, self, inner);
 
         match enter_or_leave_output {
             Some((output, true)) => state.surface_enter(conn, qh, surface, &output),
@@ -387,10 +364,7 @@ fn dispatch_surface_state_updates<D, U>(
     data: &SurfaceData<U>,
     mut inner: MutexGuard<SurfaceDataInner>,
 ) where
-    D: Dispatch<wl_surface::WlSurface, SurfaceData<U>>
-        + CompositorHandler
-        + OutputHandler
-        + 'static,
+    D: CompositorHandler + OutputHandler + 'static,
 {
     let current_scale = data.scale_factor.load(Ordering::Relaxed);
     let (factor, transform) = match inner
@@ -478,15 +452,15 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
-impl<D> Dispatch<wl_compositor::WlCompositor, GlobalData, D> for CompositorState
+impl<D> Dispatch2<wl_compositor::WlCompositor, D> for GlobalData
 where
-    D: Dispatch<wl_compositor::WlCompositor, GlobalData> + CompositorHandler,
+    D: CompositorHandler,
 {
     fn event(
+        &self,
         _: &mut D,
         _: &wl_compositor::WlCompositor,
         _: wl_compositor::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -502,21 +476,24 @@ impl ProvidesBoundGlobal<wl_compositor::WlCompositor, { CompositorState::API_VER
     }
 }
 
-impl<D> Dispatch<wl_callback::WlCallback, wl_surface::WlSurface, D> for CompositorState
+#[derive(Debug)]
+pub struct FrameCallbackData(pub wl_surface::WlSurface);
+
+impl<D> Dispatch2<wl_callback::WlCallback, D> for FrameCallbackData
 where
-    D: Dispatch<wl_callback::WlCallback, wl_surface::WlSurface> + CompositorHandler,
+    D: CompositorHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         _: &wl_callback::WlCallback,
         event: wl_callback::Event,
-        surface: &wl_surface::WlSurface,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
             wl_callback::Event::Done { callback_data } => {
-                state.frame(conn, qh, surface, callback_data);
+                state.frame(conn, qh, &self.0, callback_data);
             }
 
             _ => unreachable!(),

@@ -1,5 +1,6 @@
 use cursor_icon::CursorIcon;
 
+use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 use crate::reexports::client::globals::{BindError, GlobalList};
 use crate::reexports::client::protocol::wl_pointer::WlPointer;
@@ -45,15 +46,12 @@ impl CursorShapeManager {
     }
 }
 
-impl<State> Dispatch<WpCursorShapeManagerV1, GlobalData, State> for CursorShapeManager
-where
-    State: Dispatch<WpCursorShapeManagerV1, GlobalData>,
-{
+impl<State> Dispatch2<WpCursorShapeManagerV1, State> for GlobalData {
     fn event(
+        &self,
         _: &mut State,
         _: &WpCursorShapeManagerV1,
         _: <WpCursorShapeManagerV1 as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<State>,
     ) {
@@ -61,15 +59,12 @@ where
     }
 }
 
-impl<State> Dispatch<WpCursorShapeDeviceV1, GlobalData, State> for CursorShapeManager
-where
-    State: Dispatch<WpCursorShapeDeviceV1, GlobalData>,
-{
+impl<State> Dispatch2<WpCursorShapeDeviceV1, State> for GlobalData {
     fn event(
+        &self,
         _: &mut State,
         _: &WpCursorShapeDeviceV1,
         _: <WpCursorShapeDeviceV1 as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<State>,
     ) {

@@ -127,5 +127,5 @@ fn print_format(format: &DmabufFormat) {
     println!(", Modifier: {:?}", DrmModifier::from(format.modifier));
 }
 
-smithay_client_toolkit::delegate_dmabuf!(AppData);
 smithay_client_toolkit::delegate_registry!(AppData);
+smithay_client_toolkit::delegate_dispatch2!(AppData);

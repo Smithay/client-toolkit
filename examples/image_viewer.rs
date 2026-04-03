@@ -1,9 +1,8 @@
 use std::env;
 
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_registry, delegate_shm, delegate_xdg_shell,
-    delegate_xdg_window,
+    compositor::{CompositorHandler, CompositorState, FrameCallbackData},
+    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -309,7 +308,7 @@ impl State {
             viewer.damaged = false;
 
             // Request our next frame
-            window.wl_surface().frame(qh, window.wl_surface().clone());
+            window.wl_surface().frame(qh, FrameCallbackData(window.wl_surface().clone()));
 
             // Attach and commit to present.
             buffer.attach_to(window.wl_surface()).expect("buffer attach");
@@ -317,13 +316,6 @@ impl State {
         }
     }
 }
-
-delegate_compositor!(State);
-delegate_output!(State);
-delegate_shm!(State);
-
-delegate_xdg_shell!(State);
-delegate_xdg_window!(State);
 
 delegate_registry!(State);
 
@@ -334,3 +326,5 @@ impl ProvidesRegistryState for State {
 
     registry_handlers!(OutputState);
 }
+
+smithay_client_toolkit::delegate_dispatch2!(State);

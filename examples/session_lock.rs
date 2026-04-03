@@ -249,9 +249,6 @@ impl ShmHandler for AppData {
     }
 }
 
-smithay_client_toolkit::delegate_compositor!(AppData);
-smithay_client_toolkit::delegate_output!(AppData);
-smithay_client_toolkit::delegate_session_lock!(AppData);
-smithay_client_toolkit::delegate_shm!(AppData);
 smithay_client_toolkit::delegate_registry!(AppData);
 wayland_client::delegate_noop!(AppData: ignore wl_buffer::WlBuffer);
+smithay_client_toolkit::delegate_dispatch2!(AppData);

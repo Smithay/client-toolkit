@@ -3,9 +3,8 @@
 use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_keyboard, delegate_layer, delegate_output, delegate_pointer,
-    delegate_registry, delegate_seat, delegate_shm,
+    compositor::{CompositorHandler, CompositorState, FrameCallbackData},
+    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -437,7 +436,7 @@ impl SimpleLayer {
         self.layer.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
 
         // Request our next frame
-        self.layer.wl_surface().frame(qh, self.layer.wl_surface().clone());
+        self.layer.wl_surface().frame(qh, FrameCallbackData(self.layer.wl_surface().clone()));
 
         // Attach and commit to present.
         buffer.attach_to(self.layer.wl_surface()).expect("buffer attach");
@@ -449,16 +448,6 @@ impl SimpleLayer {
     }
 }
 
-delegate_compositor!(SimpleLayer);
-delegate_output!(SimpleLayer);
-delegate_shm!(SimpleLayer);
-
-delegate_seat!(SimpleLayer);
-delegate_keyboard!(SimpleLayer);
-delegate_pointer!(SimpleLayer);
-
-delegate_layer!(SimpleLayer);
-
 delegate_registry!(SimpleLayer);
 
 impl ProvidesRegistryState for SimpleLayer {
@@ -467,3 +456,5 @@ impl ProvidesRegistryState for SimpleLayer {
     }
     registry_handlers![OutputState, SeatState];
 }
+
+smithay_client_toolkit::delegate_dispatch2!(SimpleLayer);

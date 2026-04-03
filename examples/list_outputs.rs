@@ -3,7 +3,7 @@
 use std::error::Error;
 
 use smithay_client_toolkit::{
-    delegate_output, delegate_registry,
+    delegate_registry,
     output::{OutputHandler, OutputInfo, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -103,10 +103,6 @@ impl OutputHandler for ListOutputs {
     }
 }
 
-// Now we need to say we are delegating the responsibility of output related events for our application data
-// type to the requisite delegate.
-delegate_output!(ListOutputs);
-
 // In order for our delegate to know of the existence of globals, we need to implement registry
 // handling for the program. This trait will forward events to the RegistryHandler trait
 // implementations.
@@ -125,7 +121,7 @@ impl ProvidesRegistryState for ListOutputs {
     registry_handlers! {
         // Here we specify that OutputState needs to receive events regarding the creation and destruction of
         // globals.
-        OutputState,
+        OutputState
     }
 }
 
@@ -157,3 +153,5 @@ fn print_output(info: &OutputInfo) {
         println!("\t\t{mode}");
     }
 }
+
+smithay_client_toolkit::delegate_dispatch2!(ListOutputs);

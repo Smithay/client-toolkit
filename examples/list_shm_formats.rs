@@ -1,8 +1,5 @@
 /// Example app showing how to use delegate types from Smithay's client toolkit and initializing state.
-use smithay_client_toolkit::{
-    delegate_shm,
-    shm::{Shm, ShmHandler},
-};
+use smithay_client_toolkit::shm::{Shm, ShmHandler};
 use wayland_client::{
     globals::{registry_queue_init, GlobalListContents},
     protocol::wl_registry,
@@ -45,9 +42,6 @@ impl ShmHandler for ListShmFormats {
     }
 }
 
-// Delegate handling of the wl_shm protocol to our state object.
-delegate_shm!(ListShmFormats);
-
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for ListShmFormats {
     fn event(
         _state: &mut Self,
@@ -60,3 +54,5 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for ListShmFormats {
         // We don't need any other globals.
     }
 }
+
+smithay_client_toolkit::delegate_dispatch2!(ListShmFormats);

@@ -307,15 +307,3 @@ impl PartialEq for Window {
 
 #[derive(Debug, Clone)]
 pub struct WindowData(pub(crate) Weak<WindowInner>);
-
-#[macro_export]
-macro_rules! delegate_xdg_window {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::window::WindowData
-        ] => $crate::shell::xdg::XdgShell);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::shell::client::xdg_toplevel::XdgToplevel: $crate::shell::xdg::window::WindowData
-        ] => $crate::shell::xdg::XdgShell);
-    };
-}

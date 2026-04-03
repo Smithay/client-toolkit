@@ -6,7 +6,7 @@ use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
 use wayland_client::{Connection, Dispatch, QueueHandle};
 
-use crate::seat::SeatState;
+use crate::dispatch2::Dispatch2;
 
 #[derive(Debug)]
 pub struct TouchData<U> {
@@ -47,17 +47,6 @@ pub(crate) struct TouchDataInner {
 
     /// The serial of the latest touch down event
     latest_down: Option<u32>,
-}
-
-#[macro_export]
-macro_rules! delegate_touch {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U: Send + Sync + 'static > $ty:
-            [
-                $crate::reexports::client::protocol::wl_touch::WlTouch: $crate::seat::touch::TouchData<U>
-            ] => $crate::seat::SeatState
-        );
-    };
 }
 
 pub trait TouchHandler: Sized {
@@ -145,19 +134,19 @@ pub trait TouchHandler: Sized {
     fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
-impl<D, U> Dispatch<WlTouch, TouchData<U>, D> for SeatState
+impl<D, U> Dispatch2<WlTouch, D> for TouchData<U>
 where
     D: Dispatch<WlTouch, TouchData<U>> + TouchHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         touch: &WlTouch,
         event: TouchEvent,
-        udata: &TouchData<U>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let mut guard: std::sync::MutexGuard<'_, TouchDataInner> = udata.inner.lock().unwrap();
+        let mut guard: std::sync::MutexGuard<'_, TouchDataInner> = self.inner.lock().unwrap();
 
         let mut save_event = false;
         let mut process_events = false;

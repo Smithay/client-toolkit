@@ -11,6 +11,7 @@ use wayland_client::{
 };
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
 };
@@ -69,49 +70,15 @@ pub enum CreatePoolError {
     Create(#[from] io::Error),
 }
 
-/// Delegates the handling of [`wl_shm`] to some [`Shm`].
-///
-/// This macro requires two things, the type that will delegate to [`Shm`] and a closure specifying how
-/// to obtain the state object.
-///
-/// ```
-/// use smithay_client_toolkit::shm::{ShmHandler, Shm};
-/// use smithay_client_toolkit::delegate_shm;
-///
-/// struct ExampleApp {
-///     /// The state object that will be our delegate.
-///     shm: Shm,
-/// }
-///
-/// // Use the macro to delegate wl_shm to Shm.
-/// delegate_shm!(ExampleApp);
-///
-/// // You must implement the ShmHandler trait to provide a way to access the Shm from your data type.
-/// impl ShmHandler for ExampleApp {
-///     fn shm_state(&mut self) -> &mut Shm {
-///         &mut self.shm
-///     }
-/// }
-#[macro_export]
-macro_rules! delegate_shm {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_shm::WlShm: $crate::globals::GlobalData
-            ] => $crate::shm::Shm
-        );
-    };
-}
-
-impl<D> Dispatch<wl_shm::WlShm, GlobalData, D> for Shm
+impl<D> Dispatch2<wl_shm::WlShm, D> for GlobalData
 where
-    D: Dispatch<wl_shm::WlShm, GlobalData> + ShmHandler,
+    D: ShmHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         _proxy: &wl_shm::WlShm,
         event: wl_shm::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {

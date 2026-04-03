@@ -1,25 +1,21 @@
-use crate::globals::GlobalData;
+use crate::{dispatch2::Dispatch2, globals::GlobalData};
 use std::sync::atomic::Ordering;
-use wayland_client::{Connection, Dispatch, QueueHandle};
+use wayland_client::{Connection, QueueHandle};
 use wayland_protocols::ext::session_lock::v1::client::{
     ext_session_lock_manager_v1, ext_session_lock_surface_v1, ext_session_lock_v1,
 };
 
 use super::{
-    SessionLock, SessionLockData, SessionLockHandler, SessionLockState, SessionLockSurface,
+    SessionLock, SessionLockData, SessionLockHandler, SessionLockSurface,
     SessionLockSurfaceConfigure, SessionLockSurfaceData,
 };
 
-impl<D> Dispatch<ext_session_lock_manager_v1::ExtSessionLockManagerV1, GlobalData, D>
-    for SessionLockState
-where
-    D: Dispatch<ext_session_lock_manager_v1::ExtSessionLockManagerV1, GlobalData>,
-{
+impl<D> Dispatch2<ext_session_lock_manager_v1::ExtSessionLockManagerV1, D> for GlobalData {
     fn event(
+        &self,
         _state: &mut D,
         _proxy: &ext_session_lock_manager_v1::ExtSessionLockManagerV1,
         _event: ext_session_lock_manager_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<D>,
     ) {
@@ -27,15 +23,15 @@ where
     }
 }
 
-impl<D> Dispatch<ext_session_lock_v1::ExtSessionLockV1, SessionLockData, D> for SessionLockState
+impl<D> Dispatch2<ext_session_lock_v1::ExtSessionLockV1, D> for SessionLockData
 where
-    D: Dispatch<ext_session_lock_v1::ExtSessionLockV1, SessionLockData> + SessionLockHandler,
+    D: SessionLockHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &ext_session_lock_v1::ExtSessionLockV1,
         event: ext_session_lock_v1::Event,
-        _: &SessionLockData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -54,17 +50,16 @@ where
     }
 }
 
-impl<D> Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, SessionLockSurfaceData, D>
-    for SessionLockState
+impl<D> Dispatch2<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, D>
+    for SessionLockSurfaceData
 where
-    D: Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, SessionLockSurfaceData>
-        + SessionLockHandler,
+    D: SessionLockHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         proxy: &ext_session_lock_surface_v1::ExtSessionLockSurfaceV1,
         event: ext_session_lock_surface_v1::Event,
-        _: &SessionLockSurfaceData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
