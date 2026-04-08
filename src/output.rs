@@ -28,28 +28,28 @@ pub trait OutputHandler: Sized {
     /// A new output has been advertised.
     fn new_output(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        output: wl_output::WlOutput,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _output: wl_output::WlOutput,
+    ) { /* No-op default impl */ }
 
     /// An existing output has changed.
     fn update_output(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        output: wl_output::WlOutput,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _output: wl_output::WlOutput,
+    ) { /* No-op default impl */ }
 
     /// An output is no longer advertised.
     ///
     /// The info passed to this function was the state of the output before destruction.
     fn output_destroyed(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        output: wl_output::WlOutput,
-    );
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _output: wl_output::WlOutput,
+    ) { /* No-op default impl */ }
 }
 
 type ScaleWatcherFn =
