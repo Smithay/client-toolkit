@@ -52,7 +52,7 @@ pkg-config = { version = "0.3", optional = true }
 bytemuck = "1.13.0"
 drm-fourcc = "2.2.0"
 font-kit = "0.11.0"
-image = "0.24"
+image = "0.25"
 env_logger = "0.10"
 wgpu = "0.19.0"
 raqote = "0.8.2"
