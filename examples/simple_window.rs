@@ -6,8 +6,8 @@ use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::{
     activation::{ActivationHandler, ActivationState},
     compositor::{CompositorHandler, CompositorState},
-    delegate_activation, delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer,
-    delegate_registry, delegate_seat, delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    delegate_activation, delegate_compositor, delegate_keyboard, delegate_pointer,
+    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -517,15 +517,10 @@ impl SimpleWindow {
 }
 
 delegate_compositor!(SimpleWindow);
-delegate_output!(SimpleWindow);
-delegate_shm!(SimpleWindow);
 
-delegate_seat!(SimpleWindow);
 delegate_keyboard!(SimpleWindow);
 delegate_pointer!(SimpleWindow);
 
-delegate_xdg_shell!(SimpleWindow);
-delegate_xdg_window!(SimpleWindow);
 delegate_activation!(SimpleWindow);
 
 delegate_registry!(SimpleWindow);
@@ -536,3 +531,5 @@ impl ProvidesRegistryState for SimpleWindow {
     }
     registry_handlers![OutputState, SeatState,];
 }
+
+smithay_client_toolkit::delegate_dispatch2!(SimpleWindow);
