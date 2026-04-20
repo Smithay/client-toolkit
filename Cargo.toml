@@ -44,6 +44,7 @@ calloop-wayland-source = { version = "0.4.0", optional = true }
 default = ["calloop", "xkbcommon"]
 calloop = ["dep:calloop", "calloop-wayland-source"]
 xkbcommon = ["dep:xkbcommon", "bytemuck", "pkg-config", "xkeysym/bytemuck"]
+client_system = ["wayland-backend/client_system"]
 
 [build-dependencies]
 pkg-config = { version = "0.3", optional = true }
