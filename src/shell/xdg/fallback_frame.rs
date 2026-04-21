@@ -21,7 +21,7 @@ use crate::{
     subcompositor::{SubcompositorState, SubsurfaceData},
 };
 
-use wayland_backend::client::ObjectId;
+use wayland_client::backend::ObjectId;
 
 /// The size of the header bar.
 const HEADER_SIZE: u32 = 24;
