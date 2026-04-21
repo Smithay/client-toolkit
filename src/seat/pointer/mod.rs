@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use wayland_backend::{client::InvalidId, smallvec::SmallVec};
+use wayland_client::backend::{InvalidId, smallvec::SmallVec};
 use wayland_client::{
     protocol::{
         wl_pointer::{self, WlPointer},

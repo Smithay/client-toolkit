@@ -25,7 +25,6 @@ log = "0.4"
 memmap2 = "0.9.0"
 rustix = { version = "1.0.7", features = ["fs", "pipe", "shm"] }
 thiserror = "2.0.12"
-wayland-backend = "0.3.0"
 wayland-client = "0.31.1"
 wayland-cursor = "0.31.0"
 wayland-protocols = { version = "0.32.9", features = ["client", "staging", "unstable"] }
@@ -44,7 +43,7 @@ calloop-wayland-source = { version = "0.4.0", optional = true }
 default = ["calloop", "xkbcommon"]
 calloop = ["dep:calloop", "calloop-wayland-source"]
 xkbcommon = ["dep:xkbcommon", "bytemuck", "pkg-config", "xkeysym/bytemuck"]
-client_system = ["wayland-backend/client_system"]
+system = ["wayland-client/system"]
 
 [build-dependencies]
 pkg-config = { version = "0.3", optional = true }

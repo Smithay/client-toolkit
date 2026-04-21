@@ -505,8 +505,8 @@ impl wayland_client::backend::ObjectData for BufferData {
     fn event(
         self: Arc<Self>,
         handle: &wayland_client::backend::Backend,
-        msg: wayland_backend::protocol::Message<wayland_backend::client::ObjectId, OwnedFd>,
-    ) -> Option<Arc<dyn wayland_backend::client::ObjectData>> {
+        msg: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
+    ) -> Option<Arc<dyn wayland_client::backend::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),
             wl_buffer::WlBuffer::interface()
@@ -539,7 +539,7 @@ impl wayland_client::backend::ObjectData for BufferData {
         None
     }
 
-    fn destroyed(&self, _: wayland_backend::client::ObjectId) {}
+    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
 impl Drop for BufferData {
