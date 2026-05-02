@@ -55,17 +55,16 @@ impl SeatState {
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
     ///
     /// [`EventSource`]: calloop::EventSource
-    pub fn get_keyboard_with_repeat<D, T>(
+    pub fn get_keyboard_with_repeat<D>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
-        loop_handle: LoopHandle<'static, T>,
-        callback: RepeatCallback<T>,
+        loop_handle: LoopHandle<'static, D>,
+        callback: RepeatCallback<D>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<T>> + KeyboardHandler + 'static,
-        T: 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D>> + KeyboardHandler + 'static,
     {
         let udata = match rmlvo {
             Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo)?,
@@ -99,7 +98,7 @@ impl SeatState {
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
         D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
-        U: KeyboardDataExt + 'static,
+        U: KeyboardDataExt<State = D> + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
