@@ -58,14 +58,14 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    pub fn get_keyboard<D, T: 'static>(
+    pub fn get_keyboard<D>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<T>>
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D>>
             + SeatHandler
             + KeyboardHandler
             + 'static,
@@ -96,7 +96,7 @@ impl SeatState {
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
         D: Dispatch<wl_keyboard::WlKeyboard, U> + SeatHandler + KeyboardHandler + 'static,
-        U: KeyboardDataExt + 'static,
+        U: KeyboardDataExt<State = D> + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -504,8 +504,8 @@ impl<T: 'static> KeyboardDataExt for KeyboardData<T> {
 
 impl<D, U> Dispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
 where
-    D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler,
-    U: KeyboardDataExt,
+    D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
+    U: KeyboardDataExt<State = D>,
 {
     fn event(
         data: &mut D,
