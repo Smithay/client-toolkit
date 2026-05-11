@@ -85,6 +85,7 @@ fn main() {
                 seat_and_serial: None,
                 surface: Some(window.wl_surface().clone()),
                 app_id: Some(String::from("io.github.smithay.client-toolkit.SimpleWindow")),
+                udata: (),
             },
         )
     }
@@ -258,9 +259,9 @@ impl WindowHandler for SimpleWindow {
 }
 
 impl ActivationHandler for SimpleWindow {
-    type RequestData = RequestData;
+    type RequestUdata = ();
 
-    fn new_token(&mut self, token: String, _data: &Self::RequestData) {
+    fn new_token(&mut self, token: String, _data: &RequestData<()>) {
         self.xdg_activation
             .as_ref()
             .unwrap()
