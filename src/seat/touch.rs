@@ -9,16 +9,24 @@ use wayland_client::{Connection, Dispatch, QueueHandle};
 use crate::seat::SeatState;
 
 #[derive(Debug)]
-pub struct TouchData {
+pub struct TouchData<U> {
     seat: WlSeat,
-
     inner: Mutex<TouchDataInner>,
+    udata: U,
 }
 
-impl TouchData {
+impl<U> TouchData<U> {
     /// Create the new touch data associated with the given seat.
-    pub fn new(seat: WlSeat) -> Self {
-        Self { seat, inner: Default::default() }
+    pub fn new(seat: WlSeat, udata: U) -> Self {
+        Self { seat, inner: Default::default(), udata }
+    }
+
+    pub fn data(&self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &mut U {
+        &mut self.udata
     }
 
     /// Get the associated seat from the data.
@@ -44,33 +52,12 @@ pub(crate) struct TouchDataInner {
 #[macro_export]
 macro_rules! delegate_touch {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::delegate_touch!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; touch: $crate::seat::touch::TouchData);
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, touch: [$($td:ty),* $(,)?]) => {
-        $crate::delegate_touch!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; [ $($td),* ]);
-    };
-    (@{$($ty:tt)*}; touch: $td:ty) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
+        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U: Send + Sync + 'static > $ty:
             [
-                $crate::reexports::client::protocol::wl_touch::WlTouch: $td
+                $crate::reexports::client::protocol::wl_touch::WlTouch: $crate::seat::touch::TouchData<U>
             ] => $crate::seat::SeatState
         );
     };
-    (@$ty:tt; [$($td:ty),*] ) => {
-        $(
-            $crate::delegate_touch!(@$ty, touch: $td);
-        )*
-    };
-}
-
-pub trait TouchDataExt: Send + Sync {
-    fn touch_data(&self) -> &TouchData;
-}
-
-impl TouchDataExt for TouchData {
-    fn touch_data(&self) -> &TouchData {
-        self
-    }
 }
 
 pub trait TouchHandler: Sized {
@@ -158,20 +145,18 @@ pub trait TouchHandler: Sized {
     fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
-impl<D, U> Dispatch<WlTouch, U, D> for SeatState
+impl<D, U> Dispatch<WlTouch, TouchData<U>, D> for SeatState
 where
-    D: Dispatch<WlTouch, U> + TouchHandler,
-    U: TouchDataExt,
+    D: Dispatch<WlTouch, TouchData<U>> + TouchHandler,
 {
     fn event(
         data: &mut D,
         touch: &WlTouch,
         event: TouchEvent,
-        udata: &U,
+        udata: &TouchData<U>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let udata = udata.touch_data();
         let mut guard: std::sync::MutexGuard<'_, TouchDataInner> = udata.inner.lock().unwrap();
 
         let mut save_event = false;

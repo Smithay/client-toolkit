@@ -48,7 +48,7 @@ impl DataDeviceManagerState {
         mime_types: impl IntoIterator<Item = T>,
     ) -> CopyPasteSource
     where
-        D: Dispatch<WlDataSource, DataSourceData> + 'static,
+        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
     {
         CopyPasteSource { inner: self.create_data_source(qh, mime_types, None) }
     }
@@ -61,7 +61,7 @@ impl DataDeviceManagerState {
         dnd_actions: DndAction,
     ) -> DragSource
     where
-        D: Dispatch<WlDataSource, DataSourceData> + 'static,
+        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
     {
         DragSource { inner: self.create_data_source(qh, mime_types, Some(dnd_actions)) }
     }
@@ -74,7 +74,7 @@ impl DataDeviceManagerState {
         dnd_actions: Option<DndAction>,
     ) -> WlDataSource
     where
-        D: Dispatch<WlDataSource, DataSourceData> + 'static,
+        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
     {
         let source = self.manager.create_data_source(qh, Default::default());
 
@@ -135,9 +135,9 @@ macro_rules! delegate_data_device {
             [
                 $crate::reexports::client::protocol::wl_data_offer::WlDataOffer: $crate::data_device_manager::data_offer::DataOfferData
             ] => $crate::data_device_manager::DataDeviceManagerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U > $ty:
             [
-                $crate::reexports::client::protocol::wl_data_source::WlDataSource: $crate::data_device_manager::data_source::DataSourceData
+                $crate::reexports::client::protocol::wl_data_source::WlDataSource: $crate::data_device_manager::data_source::DataSourceData<U>
             ] => $crate::data_device_manager::DataDeviceManagerState
         );
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:

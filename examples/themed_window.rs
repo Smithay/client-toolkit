@@ -387,7 +387,7 @@ impl SeatHandler for SimpleWindow {
             let surface = self.compositor_state.create_surface(qh);
             let themed_pointer = self
                 .seat_state
-                .get_pointer_with_theme(
+                .get_pointer_with_theme::<_, ()>(
                     qh,
                     &seat,
                     self.shm_state.wl_shm(),
@@ -563,7 +563,7 @@ impl PointerHandler for SimpleWindow {
 
 impl SimpleWindow {
     fn frame_action(&mut self, pointer: &wl_pointer::WlPointer, serial: u32, action: FrameAction) {
-        let pointer_data = pointer.data::<PointerData>().unwrap();
+        let pointer_data = pointer.data::<PointerData<()>>().unwrap();
         let seat = pointer_data.seat();
         match action {
             FrameAction::Close => self.exit = true,
