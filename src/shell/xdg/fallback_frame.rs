@@ -91,7 +91,7 @@ pub struct FallbackFrame<State> {
 
 impl<State> FallbackFrame<State>
 where
-    State: Dispatch<WlSurface, SurfaceData> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    State: Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
 {
     pub fn new(
         parent: &impl WaylandSurface,
@@ -327,7 +327,7 @@ where
 
 impl<State> DecorationsFrame for FallbackFrame<State>
 where
-    State: Dispatch<WlSurface, SurfaceData> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    State: Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
 {
     fn set_scaling_factor(&mut self, scale_factor: f64) {
         self.scale_factor = scale_factor;
@@ -621,7 +621,8 @@ impl FrameRenderData {
         queue_handle: &QueueHandle<State>,
     ) -> Self
     where
-        State: Dispatch<WlSurface, SurfaceData> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+        State:
+            Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
     {
         let parts = [
             // Header.

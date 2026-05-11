@@ -77,16 +77,6 @@ pub trait CompositorHandler: Sized {
     );
 }
 
-pub trait SurfaceDataExt: Send + Sync {
-    fn surface_data(&self) -> &SurfaceData;
-}
-
-impl SurfaceDataExt for SurfaceData {
-    fn surface_data(&self) -> &SurfaceData {
-        self
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct CompositorState {
     wl_compositor: wl_compositor::WlCompositor,
@@ -116,27 +106,30 @@ impl CompositorState {
 
     pub fn create_surface<D>(&self, qh: &QueueHandle<D>) -> wl_surface::WlSurface
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
+        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>> + 'static,
     {
-        self.create_surface_with_data(qh, Default::default())
+        self.create_surface_with_data(qh, None, 1, ())
     }
 
     pub fn create_surface_with_data<D, U>(
         &self,
         qh: &QueueHandle<D>,
+        parent_surface: Option<WlSurface>,
+        scale_factor: i32,
         data: U,
     ) -> wl_surface::WlSurface
     where
-        D: Dispatch<wl_surface::WlSurface, U> + 'static,
-        U: SurfaceDataExt + 'static,
+        D: Dispatch<wl_surface::WlSurface, SurfaceData<U>> + 'static,
+        U: Send + Sync + 'static,
     {
+        let data = SurfaceData::new(parent_surface, scale_factor, data);
         self.wl_compositor.create_surface(qh, data)
     }
 }
 
 /// Data associated with a [`WlSurface`].
 #[derive(Debug)]
-pub struct SurfaceData {
+pub struct SurfaceData<U> {
     /// The scale factor of the output with the highest scale factor.
     pub(crate) scale_factor: AtomicI32,
 
@@ -147,16 +140,27 @@ pub struct SurfaceData {
 
     /// The inner mutable storage.
     inner: Mutex<SurfaceDataInner>,
+
+    udata: U,
 }
 
-impl SurfaceData {
+impl<U> SurfaceData<U> {
     /// Create a new surface that initially reports the given scale factor and parent.
-    pub fn new(parent_surface: Option<WlSurface>, scale_factor: i32) -> Self {
+    pub fn new(parent_surface: Option<WlSurface>, scale_factor: i32, udata: U) -> Self {
         Self {
             scale_factor: AtomicI32::new(scale_factor),
             parent_surface,
             inner: Default::default(),
+            udata,
         }
+    }
+
+    pub fn data(&self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &mut U {
+        &mut self.udata
     }
 
     /// The scale factor of the output with the highest scale factor.
@@ -183,11 +187,13 @@ impl SurfaceData {
     }
 }
 
+/* XXX
 impl Default for SurfaceData {
     fn default() -> Self {
         Self::new(None, 1)
     }
 }
+*/
 
 #[derive(Debug)]
 struct SurfaceDataInner {
@@ -222,9 +228,9 @@ impl Surface {
         qh: &QueueHandle<D>,
     ) -> Result<Self, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData> + 'static,
+        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>> + 'static,
     {
-        Self::with_data(compositor, qh, Default::default())
+        Self::with_data(compositor, qh, None, 1, ())
     }
 
     pub fn with_data<D, U>(
@@ -233,12 +239,15 @@ impl Surface {
             { CompositorState::API_VERSION_MAX },
         >,
         qh: &QueueHandle<D>,
+        parent_surface: Option<WlSurface>,
+        scale_factor: i32,
         data: U,
     ) -> Result<Self, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, U> + 'static,
+        D: Dispatch<wl_surface::WlSurface, SurfaceData<U>> + 'static,
         U: Send + Sync + 'static,
     {
+        let data = SurfaceData::new(parent_surface, scale_factor, data);
         Ok(Surface(compositor.bound_global()?.create_surface(qh, data)))
     }
 
@@ -262,53 +271,40 @@ impl Drop for Surface {
 #[macro_export]
 macro_rules! delegate_compositor {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::delegate_compositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; surface: []);
-        $crate::delegate_compositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; surface-only: $crate::compositor::SurfaceData);
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, surface: [$($surface: ty),*$(,)?]) => {
-        $crate::delegate_compositor!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; surface: [ $($surface),* ]);
-    };
-    (@{$($ty:tt)*}; surface: []) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_compositor::WlCompositor: $crate::globals::GlobalData
             ] => $crate::compositor::CompositorState
         );
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
+        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
                 $crate::reexports::client::protocol::wl_callback::WlCallback: $crate::reexports::client::protocol::wl_surface::WlSurface
             ] => $crate::compositor::CompositorState
         );
-    };
-    (@{$($ty:tt)*}; surface-only: $surface:ty) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
+        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U: Send + Sync + 'static > $ty:
             [
-                    $crate::reexports::client::protocol::wl_surface::WlSurface: $surface
+                $crate::reexports::client::protocol::wl_surface::WlSurface: $crate::compositor::SurfaceData<U>
             ] => $crate::compositor::CompositorState
         );
     };
-    (@$ty:tt; surface: [ $($surface:ty),+ ]) => {
-        $crate::delegate_compositor!(@$ty; surface: []);
-        $(
-            $crate::delegate_compositor!(@$ty; surface-only: $surface);
-        )*
-    };
 }
 
-impl<D, U> Dispatch<wl_surface::WlSurface, U, D> for CompositorState
+impl<D, U> Dispatch<wl_surface::WlSurface, SurfaceData<U>, D> for CompositorState
 where
-    D: Dispatch<wl_surface::WlSurface, U> + CompositorHandler + OutputHandler + 'static,
-    U: SurfaceDataExt + 'static,
+    D: Dispatch<wl_surface::WlSurface, SurfaceData<U>>
+        + CompositorHandler
+        + OutputHandler
+        + 'static,
+    U: Send + Sync + 'static,
 {
     fn event(
         state: &mut D,
         surface: &wl_surface::WlSurface,
         event: wl_surface::Event,
-        data: &U,
+        data: &SurfaceData<U>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let data = data.surface_data();
         let mut inner = data.inner.lock().unwrap();
 
         let mut enter_or_leave_output: Option<(wl_output::WlOutput, bool)> = None;
@@ -365,8 +361,7 @@ where
             OutputState::add_scale_watcher(state, move |state, conn, qh, _| {
                 let id = id.clone();
                 if let Ok(surface) = wl_surface::WlSurface::from_id(conn, id) {
-                    if let Some(data) = surface.data::<U>() {
-                        let data = data.surface_data();
+                    if let Some(data) = surface.data::<SurfaceData<U>>() {
                         let inner = data.inner.lock().unwrap();
                         dispatch_surface_state_updates(state, conn, qh, &surface, data, inner);
                     }
@@ -389,11 +384,13 @@ fn dispatch_surface_state_updates<D, U>(
     conn: &Connection,
     qh: &QueueHandle<D>,
     surface: &WlSurface,
-    data: &SurfaceData,
+    data: &SurfaceData<U>,
     mut inner: MutexGuard<SurfaceDataInner>,
 ) where
-    D: Dispatch<wl_surface::WlSurface, U> + CompositorHandler + OutputHandler + 'static,
-    U: SurfaceDataExt + 'static,
+    D: Dispatch<wl_surface::WlSurface, SurfaceData<U>>
+        + CompositorHandler
+        + OutputHandler
+        + 'static,
 {
     let current_scale = data.scale_factor.load(Ordering::Relaxed);
     let (factor, transform) = match inner

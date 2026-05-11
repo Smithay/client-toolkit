@@ -54,7 +54,7 @@ impl Popup {
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Popup, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData>
+        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>>
             + Dispatch<xdg_surface::XdgSurface, PopupData>
             + Dispatch<xdg_popup::XdgPopup, PopupData>
             + PopupHandler
