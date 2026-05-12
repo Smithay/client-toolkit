@@ -1,5 +1,6 @@
 use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 use memmap2::{Mmap, MmapOptions};
+use rustix::fs::Dev as dev_t;
 use std::{fmt, mem, os::unix::io::BorrowedFd, slice, sync::Mutex};
 use wayland_client::{
     globals::GlobalList,
@@ -11,12 +12,6 @@ use wayland_protocols::wp::linux_dmabuf::zv1::client::{
     zwp_linux_dmabuf_feedback_v1::{self, TrancheFlags},
     zwp_linux_dmabuf_v1,
 };
-
-// Workaround until `libc` updates to FreeBSD 12 ABI
-#[cfg(target_os = "freebsd")]
-type dev_t = u64;
-#[cfg(not(target_os = "freebsd"))]
-use libc::dev_t;
 
 /// A preference tranche of dmabuf formats
 #[derive(Clone, Debug)]
