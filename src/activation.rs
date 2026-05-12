@@ -15,7 +15,7 @@ use crate::{
 /// Use a custom type implementing [`RequestDataExt`] to store more data with a token request
 /// e.g. to identify which request produced which token.
 #[derive(Debug, Clone)]
-pub struct RequestData {
+pub struct RequestData<U> {
     /// App_id of the application requesting the token, if applicable
     pub app_id: Option<String>,
     /// Seat and serial of the window requesting the token, if applicable.
@@ -28,44 +28,17 @@ pub struct RequestData {
     /// *Warning*: Many compositors will issue invalid tokens for requests from
     /// unfocused surfaces. There is no way to detect this from the client-side.
     pub surface: Option<wl_surface::WlSurface>,
-}
 
-/// Data attached to a token request
-pub trait RequestDataExt: Send + Sync {
-    /// App_id of the application requesting the token, if applicable
-    fn app_id(&self) -> Option<&str>;
-    /// Seat and serial of the window requesting the token, if applicable.
-    ///
-    /// *Warning*: Many compositors will issue invalid tokens for requests without
-    /// recent serials. There is no way to detect this from the client-side.
-    fn seat_and_serial(&self) -> Option<(&wl_seat::WlSeat, u32)>;
-    /// Surface of the window requesting the token, if applicable.
-    ///
-    /// *Warning*: Many compositors will issue invalid tokens for requests from
-    /// unfocused surfaces. There is no way to detect this from the client-side.
-    fn surface(&self) -> Option<&wl_surface::WlSurface>;
-}
-
-impl RequestDataExt for RequestData {
-    fn app_id(&self) -> Option<&str> {
-        self.app_id.as_deref()
-    }
-
-    fn seat_and_serial(&self) -> Option<(&wl_seat::WlSeat, u32)> {
-        self.seat_and_serial.as_ref().map(|(seat, serial)| (seat, *serial))
-    }
-
-    fn surface(&self) -> Option<&wl_surface::WlSurface> {
-        self.surface.as_ref()
-    }
+    pub udata: U,
 }
 
 /// Handler for xdg-activation
 pub trait ActivationHandler: Sized {
     /// Data type used for requesting activation tokens
-    type RequestData: RequestDataExt;
+    // TODO: Default to `()` if default associated types are ever supported
+    type RequestUdata;
     /// A token was issued for a previous request with `data`.
-    fn new_token(&mut self, token: String, data: &Self::RequestData);
+    fn new_token(&mut self, token: String, data: &RequestData<Self::RequestUdata>);
 }
 
 /// State for xdg-activation
@@ -96,33 +69,21 @@ impl ActivationState {
     ///
     /// To attach custom data to the request implement [`RequestDataExt`] on a custom type
     /// and use [`Self::request_token_with_data`] instead.
-    pub fn request_token<D>(&self, qh: &QueueHandle<D>, request_data: RequestData)
+    pub fn request_token<D, U>(&self, qh: &QueueHandle<D>, request_data: RequestData<U>)
     where
-        D: ActivationHandler<RequestData = RequestData>,
-        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData> + 'static,
-    {
-        Self::request_token_with_data::<D, RequestData>(self, qh, request_data)
-    }
-
-    /// Request a token for surface activation with user data.
-    ///
-    /// To use this method you need to provide [`delegate_activation`][crate::delegate_activation] with your custom type.
-    /// E.g. `delegate_activation!(SimpleWindow, MyRequestData);`
-    pub fn request_token_with_data<D, R>(&self, qh: &QueueHandle<D>, request_data: R)
-    where
-        D: ActivationHandler<RequestData = R>,
-        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, R> + 'static,
-        R: RequestDataExt + 'static,
+        D: ActivationHandler<RequestUdata = U>,
+        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>> + 'static,
+        U: Send + Sync + 'static,
     {
         let token = self.xdg_activation.get_activation_token(qh, request_data);
-        let data = token.data::<R>().unwrap();
-        if let Some(app_id) = data.app_id() {
+        let data = token.data::<RequestData<U>>().unwrap();
+        if let Some(app_id) = &data.app_id {
             token.set_app_id(String::from(app_id));
         }
-        if let Some((seat, serial)) = data.seat_and_serial() {
-            token.set_serial(serial, seat);
+        if let Some((seat, serial)) = &data.seat_and_serial {
+            token.set_serial(*serial, seat);
         }
-        if let Some(surface) = data.surface() {
+        if let Some(surface) = &data.surface {
             token.set_surface(surface);
         }
         token.commit();
@@ -151,17 +112,17 @@ impl ProvidesBoundGlobal<xdg_activation_v1::XdgActivationV1, 1> for ActivationSt
     }
 }
 
-impl<D, R> Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, R, D> for ActivationState
+impl<D, U> Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>, D>
+    for ActivationState
 where
-    D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, R>
-        + ActivationHandler<RequestData = R>,
-    R: RequestDataExt,
+    D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>>
+        + ActivationHandler<RequestUdata = U>,
 {
     fn event(
         state: &mut D,
         _proxy: &xdg_activation_token_v1::XdgActivationTokenV1,
         event: <xdg_activation_token_v1::XdgActivationTokenV1 as Proxy>::Event,
-        data: &R,
+        data: &RequestData<U>,
         _conn: &wayland_client::Connection,
         _qhandle: &QueueHandle<D>,
     ) {
@@ -174,17 +135,8 @@ where
 #[macro_export]
 macro_rules! delegate_activation {
    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::xdg::activation::v1::client::xdg_activation_v1::XdgActivationV1: $crate::globals::GlobalData
-            ] => $crate::activation::ActivationState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::protocols::xdg::activation::v1::client::xdg_activation_token_v1::XdgActivationTokenV1: $crate::activation::RequestData
-            ] => $crate::activation::ActivationState
-        );
-    };
+       $crate::delegate_activation!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty, ());
+   };
    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, $data: ty) => {
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
@@ -193,7 +145,7 @@ macro_rules! delegate_activation {
         );
         $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
             [
-                $crate::reexports::protocols::xdg::activation::v1::client::xdg_activation_token_v1::XdgActivationTokenV1: $data
+                $crate::reexports::protocols::xdg::activation::v1::client::xdg_activation_token_v1::XdgActivationTokenV1: $crate::activation::RequestData<$data>
             ] => $crate::activation::ActivationState
         );
     };

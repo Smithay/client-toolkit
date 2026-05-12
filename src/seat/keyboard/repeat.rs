@@ -10,8 +10,8 @@ use wayland_client::{
 };
 
 use super::{
-    Capability, KeyEvent, KeyboardData, KeyboardDataExt, KeyboardError, KeyboardHandler,
-    RepeatInfo, SeatError, RMLVO,
+    Capability, KeyEvent, KeyboardData, KeyboardError, KeyboardHandler, RepeatInfo, SeatError,
+    RMLVO,
 };
 use crate::seat::SeatState;
 
@@ -55,24 +55,39 @@ impl SeatState {
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
     ///
     /// [`EventSource`]: calloop::EventSource
-    pub fn get_keyboard_with_repeat<D, T>(
+    pub fn get_keyboard_with_repeat<D>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
-        loop_handle: LoopHandle<'static, T>,
-        callback: RepeatCallback<T>,
+        loop_handle: LoopHandle<'static, D>,
+        callback: RepeatCallback<D>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<T>> + KeyboardHandler + 'static,
-        T: 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, ()>> + KeyboardHandler + 'static,
     {
         let udata = match rmlvo {
-            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo)?,
-            None => KeyboardData::new(seat.clone()),
+            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo, ())?,
+            None => KeyboardData::new(seat.clone(), ()),
         };
 
-        self.get_keyboard_with_repeat_with_data(qh, seat, udata, loop_handle, callback)
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_keyboard.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
+        }
+
+        udata.repeat_data.lock().unwrap().replace(RepeatData {
+            current_repeat: None,
+            repeat_info: RepeatInfo::Disable,
+            loop_handle: loop_handle.clone(),
+            callback,
+            repeat_token: None,
+        });
+        udata.init_compose();
+
+        Ok(seat.get_keyboard(qh, udata))
     }
 
     /// Creates a keyboard from a seat.
@@ -93,13 +108,13 @@ impl SeatState {
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
-        mut udata: U,
-        loop_handle: LoopHandle<'static, <U as KeyboardDataExt>::State>,
-        callback: RepeatCallback<<U as KeyboardDataExt>::State>,
+        udata: U,
+        loop_handle: LoopHandle<'static, D>,
+        callback: RepeatCallback<D>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler + 'static,
-        U: KeyboardDataExt + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, U>> + KeyboardHandler + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -108,15 +123,16 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
 
-        let kbd_data = udata.keyboard_data_mut();
-        kbd_data.repeat_data.lock().unwrap().replace(RepeatData {
+        let udata = KeyboardData::new(seat.clone(), udata);
+
+        udata.repeat_data.lock().unwrap().replace(RepeatData {
             current_repeat: None,
             repeat_info: RepeatInfo::Disable,
             loop_handle: loop_handle.clone(),
             callback,
             repeat_token: None,
         });
-        kbd_data.init_compose();
+        udata.init_compose();
 
         Ok(seat.get_keyboard(qh, udata))
     }

@@ -58,24 +58,31 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    pub fn get_keyboard<D, T: 'static>(
+    pub fn get_keyboard<D>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<T>>
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, ()>>
             + SeatHandler
             + KeyboardHandler
             + 'static,
     {
         let udata = match rmlvo {
-            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo)?,
-            None => KeyboardData::new(seat.clone()),
+            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo, ())?,
+            None => KeyboardData::new(seat.clone(), ()),
         };
 
-        self.get_keyboard_with_data(qh, seat, udata)
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_keyboard.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
+        }
+
+        Ok(seat.get_keyboard(qh, udata))
     }
 
     /// Creates a keyboard from a seat.
@@ -95,8 +102,11 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, U> + SeatHandler + KeyboardHandler + 'static,
-        U: KeyboardDataExt + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, U>>
+            + SeatHandler
+            + KeyboardHandler
+            + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -104,6 +114,8 @@ impl SeatState {
         if !inner.data.has_keyboard.load(Ordering::SeqCst) {
             return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
+
+        let udata = KeyboardData::new(seat.clone(), udata);
 
         Ok(seat.get_keyboard(qh, udata))
     }
@@ -338,7 +350,7 @@ pub struct RMLVO {
     pub options: Option<String>,
 }
 
-pub struct KeyboardData<T> {
+pub struct KeyboardData<D, U> {
     seat: wl_seat::WlSeat,
     first_event: AtomicBool,
     xkb_context: Mutex<xkb::Context>,
@@ -347,12 +359,13 @@ pub struct KeyboardData<T> {
     xkb_state: Mutex<Option<xkb::State>>,
     xkb_compose: Mutex<Option<xkb::compose::State>>,
     #[cfg(feature = "calloop")]
-    repeat_data: Arc<Mutex<Option<RepeatData<T>>>>,
+    repeat_data: Arc<Mutex<Option<RepeatData<D>>>>,
     focus: Mutex<Option<wl_surface::WlSurface>>,
-    _phantom_data: PhantomData<T>,
+    _phantom_data: PhantomData<D>,
+    udata: U,
 }
 
-impl<T> Debug for KeyboardData<T> {
+impl<T, U> Debug for KeyboardData<T, U> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyboardData").finish_non_exhaustive()
     }
@@ -361,32 +374,23 @@ impl<T> Debug for KeyboardData<T> {
 #[macro_export]
 macro_rules! delegate_keyboard {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
+        $crate::reexports::client::delegate_dispatch!(@< $( $( $lt $( : $clt $(+ $dlt )* )? ,)+ )? U > $ty:
             [
-                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData<$ty>
-            ] => $crate::seat::SeatState
-        );
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, keyboard: [$($udata:ty),* $(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $(
-                    $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $udata,
-                )*
+                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData<$ty, U>
             ] => $crate::seat::SeatState
         );
     };
 }
 
 // SAFETY: The state does not share state with any other rust types.
-unsafe impl<T> Send for KeyboardData<T> {}
+unsafe impl<T, U: Send> Send for KeyboardData<T, U> {}
 // SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
-unsafe impl<T> Sync for KeyboardData<T> {}
+unsafe impl<T, U: Sync> Sync for KeyboardData<T, U> {}
 
-impl<T> KeyboardData<T> {
-    pub fn new(seat: wl_seat::WlSeat) -> Self {
+impl<T, U> KeyboardData<T, U> {
+    pub fn new(seat: wl_seat::WlSeat, udata: U) -> Self {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-        let udata = KeyboardData {
+        let keyboard_data = KeyboardData {
             seat,
             first_event: AtomicBool::new(false),
             xkb_context: Mutex::new(xkb_context),
@@ -397,18 +401,31 @@ impl<T> KeyboardData<T> {
             repeat_data: Arc::new(Mutex::new(None)),
             focus: Mutex::new(None),
             _phantom_data: PhantomData,
+            udata,
         };
 
-        udata.init_compose();
+        keyboard_data.init_compose();
 
-        udata
+        keyboard_data
+    }
+
+    pub fn data(&mut self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &U {
+        &self.udata
     }
 
     pub fn seat(&self) -> &wl_seat::WlSeat {
         &self.seat
     }
 
-    pub fn from_rmlvo(seat: wl_seat::WlSeat, rmlvo: RMLVO) -> Result<Self, KeyboardError> {
+    pub fn from_rmlvo(
+        seat: wl_seat::WlSeat,
+        rmlvo: RMLVO,
+        udata: U,
+    ) -> Result<Self, KeyboardError> {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let keymap = xkb::Keymap::new_from_names(
             &xkb_context,
@@ -426,7 +443,7 @@ impl<T> KeyboardData<T> {
 
         let xkb_state = Some(xkb::State::new(&keymap.unwrap()));
 
-        let udata = KeyboardData {
+        let keyboard_data = KeyboardData {
             seat,
             first_event: AtomicBool::new(false),
             xkb_context: Mutex::new(xkb_context),
@@ -437,11 +454,12 @@ impl<T> KeyboardData<T> {
             repeat_data: Arc::new(Mutex::new(None)),
             focus: Mutex::new(None),
             _phantom_data: PhantomData,
+            udata,
         };
 
-        udata.init_compose();
+        keyboard_data.init_compose();
 
-        Ok(udata)
+        Ok(keyboard_data)
     }
 
     fn init_compose(&self) {
@@ -484,39 +502,18 @@ impl<T> KeyboardData<T> {
     }
 }
 
-pub trait KeyboardDataExt: Send + Sync {
-    type State: 'static;
-    fn keyboard_data(&self) -> &KeyboardData<Self::State>;
-    fn keyboard_data_mut(&mut self) -> &mut KeyboardData<Self::State>;
-}
-
-impl<T: 'static> KeyboardDataExt for KeyboardData<T> {
-    /// The type of the user defined state
-    type State = T;
-    fn keyboard_data(&self) -> &KeyboardData<T> {
-        self
-    }
-
-    fn keyboard_data_mut(&mut self) -> &mut KeyboardData<T> {
-        self
-    }
-}
-
-impl<D, U> Dispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
+impl<D, U> Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, U>, D> for SeatState
 where
-    D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler,
-    U: KeyboardDataExt,
+    D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, U>> + KeyboardHandler + 'static,
 {
     fn event(
         data: &mut D,
         keyboard: &wl_keyboard::WlKeyboard,
         event: wl_keyboard::Event,
-        udata: &U,
+        udata: &KeyboardData<D, U>,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let udata = udata.keyboard_data();
-
         // The compositor has no way to tell clients if the seat is not version 4 or above.
         // In this case, send a synthetic repeat info event using the default repeat values used by the X
         // server.

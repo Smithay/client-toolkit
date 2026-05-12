@@ -15,7 +15,7 @@ use crate::reexports::client::{
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 use crate::{
-    compositor::SurfaceDataExt,
+    compositor::SurfaceData,
     globals::GlobalData,
     registry::{ProvidesRegistryState, RegistryHandler},
 };
@@ -31,8 +31,8 @@ pub mod relative_pointer;
 pub mod touch;
 
 use pointer::cursor_shape::CursorShapeManager;
-use pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes};
-use touch::{TouchData, TouchDataExt, TouchHandler};
+use pointer::{PointerData, PointerHandler, ThemeSpec, ThemedPointer, Themes};
+use touch::{TouchData, TouchHandler};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,9 +152,9 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
+        D: Dispatch<wl_pointer::WlPointer, PointerData<()>> + PointerHandler + 'static,
     {
-        self.get_pointer_with_data(qh, seat, PointerData::new(seat.clone()))
+        self.get_pointer_with_data(qh, seat, ())
     }
 
     /// Creates a pointer from a seat with the provided theme.
@@ -171,24 +171,16 @@ impl SeatState {
         shm: &wl_shm::WlShm,
         surface: wl_surface::WlSurface,
         theme: ThemeSpec,
-    ) -> Result<ThemedPointer<PointerData>, SeatError>
+    ) -> Result<ThemedPointer<()>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData>
-            + Dispatch<wl_surface::WlSurface, S>
+        D: Dispatch<wl_pointer::WlPointer, PointerData<()>>
+            + Dispatch<wl_surface::WlSurface, SurfaceData<S>>
             + Dispatch<WpCursorShapeManagerV1, GlobalData>
             + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
             + 'static,
-        S: SurfaceDataExt + 'static,
     {
-        self.get_pointer_with_theme_and_data(
-            qh,
-            seat,
-            shm,
-            surface,
-            theme,
-            PointerData::new(seat.clone()),
-        )
+        self.get_pointer_with_theme_and_data(qh, seat, shm, surface, theme, ())
     }
 
     /// Creates a pointer from a seat.
@@ -203,8 +195,8 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
-        U: PointerDataExt + 'static,
+        D: Dispatch<wl_pointer::WlPointer, PointerData<U>> + PointerHandler + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -213,6 +205,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
+        let pointer_data = PointerData::new(seat.clone(), pointer_data);
         Ok(seat.get_pointer(qh, pointer_data))
     }
 
@@ -231,14 +224,13 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<ThemedPointer<U>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, U>
-            + Dispatch<wl_surface::WlSurface, S>
+        D: Dispatch<wl_pointer::WlPointer, PointerData<U>>
+            + Dispatch<wl_surface::WlSurface, SurfaceData<S>>
             + Dispatch<WpCursorShapeManagerV1, GlobalData>
             + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
             + 'static,
-        S: SurfaceDataExt + 'static,
-        U: PointerDataExt + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -247,6 +239,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
+        let pointer_data = PointerData::new(seat.clone(), pointer_data);
         let wl_ptr = seat.get_pointer(qh, pointer_data);
 
         if let CursorShapeManagerState::Pending { registry, global } =
@@ -295,9 +288,9 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, TouchData> + TouchHandler + 'static,
+        D: Dispatch<wl_touch::WlTouch, TouchData<()>> + TouchHandler + 'static,
     {
-        self.get_touch_with_data(qh, seat, TouchData::new(seat.clone()))
+        self.get_touch_with_data(qh, seat, ())
     }
 
     /// Creates a touch handle from a seat.
@@ -312,8 +305,8 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, U> + TouchHandler + 'static,
-        U: TouchDataExt + 'static,
+        D: Dispatch<wl_touch::WlTouch, TouchData<U>> + TouchHandler + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -322,7 +315,8 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        Ok(seat.get_touch(qh, udata))
+        let data = TouchData::new(seat.clone(), udata);
+        Ok(seat.get_touch(qh, data))
     }
 }
 
