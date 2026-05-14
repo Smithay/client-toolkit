@@ -105,7 +105,7 @@ impl XdgShell {
                 qh,
                 WindowData(weak.clone()),
             );
-            let xdg_surface = XdgShellSurface { surface, xdg_surface };
+            let xdg_surface = XdgShellSurface { surface: Some(surface), xdg_surface };
             let xdg_toplevel = xdg_surface.xdg_surface().get_toplevel(qh, WindowData(weak.clone()));
 
             // If server side decorations are available, create the toplevel decoration.
@@ -138,11 +138,11 @@ impl XdgShell {
                 }
             });
 
-            WindowInner {
+            WindowInner::new(
                 xdg_surface,
                 xdg_toplevel,
                 toplevel_decoration,
-                pending_configure: Mutex::new(WindowConfigure {
+                Mutex::new(WindowConfigure {
                     new_size: (None, None),
                     suggested_bounds: None,
                     // Initial configure will indicate whether there are server side decorations.
@@ -151,7 +151,7 @@ impl XdgShell {
                     // XXX by default we assume that everything is supported.
                     capabilities: WindowManagerCapabilities::all(),
                 }),
-            }
+            )
         });
 
         // Explicitly drop the queue freeze to allow the queue to resume work.
@@ -221,7 +221,9 @@ impl wayland_client::backend::ObjectData for PositionerData {
 #[derive(Debug)]
 pub struct XdgShellSurface {
     xdg_surface: xdg_surface::XdgSurface,
-    surface: Surface,
+    // Will always be Some, only needed to extract surface in destroy before
+    // drop.
+    surface: Option<Surface>,
 }
 
 impl XdgShellSurface {
@@ -258,7 +260,7 @@ impl XdgShellSurface {
         let surface = surface.into();
         let xdg_surface = wm_base.bound_global()?.get_xdg_surface(surface.wl_surface(), qh, udata);
 
-        Ok(XdgShellSurface { xdg_surface, surface })
+        Ok(XdgShellSurface { xdg_surface, surface: Some(surface) })
     }
 
     pub fn xdg_surface(&self) -> &xdg_surface::XdgSurface {
@@ -266,7 +268,11 @@ impl XdgShellSurface {
     }
 
     pub fn wl_surface(&self) -> &wl_surface::WlSurface {
-        self.surface.wl_surface()
+        self.surface.as_ref().unwrap().wl_surface()
+    }
+
+    pub fn destroy(mut self) -> Surface {
+        self.surface.take().unwrap()
     }
 }
 
