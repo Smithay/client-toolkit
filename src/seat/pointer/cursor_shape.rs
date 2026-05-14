@@ -3,6 +3,7 @@ use cursor_icon::CursorIcon;
 use crate::globals::GlobalData;
 use crate::reexports::client::globals::{BindError, GlobalList};
 use crate::reexports::client::protocol::wl_pointer::WlPointer;
+use crate::reexports::protocols::wp::tablet::zv2::client::zwp_tablet_tool_v2::ZwpTabletToolV2;
 use crate::reexports::client::{Connection, Dispatch, Proxy, QueueHandle};
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::Shape;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
@@ -38,6 +39,17 @@ impl CursorShapeManager {
         State: Dispatch<WpCursorShapeDeviceV1, GlobalData> + 'static,
     {
         self.cursor_shape_manager.get_pointer(pointer, queue_handle, GlobalData)
+    }
+
+    pub fn get_shape_device_for_tablet_tool<State>(
+        &self,
+        tablet_tool: &ZwpTabletToolV2,
+        queue_handle: &QueueHandle<State>,
+    ) -> WpCursorShapeDeviceV1
+    where
+        State: Dispatch<WpCursorShapeDeviceV1, GlobalData> + 'static,
+    {
+        self.cursor_shape_manager.get_tablet_tool_v2(tablet_tool, queue_handle, GlobalData)
     }
 
     pub fn inner(&self) -> &WpCursorShapeManagerV1 {
