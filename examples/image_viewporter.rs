@@ -2,7 +2,7 @@ use std::{env, path::Path};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_registry, delegate_simple,
+    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState, SimpleGlobal},
     registry_handlers,
@@ -317,7 +317,7 @@ impl State {
     }
 }
 
-delegate_simple!(State, WpViewporter, 1);
+wayland_client::delegate_noop!(State: WpViewporter);
 
 delegate_registry!(State);
 
