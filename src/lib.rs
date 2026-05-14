@@ -30,6 +30,7 @@ pub mod dmabuf;
 pub mod error;
 pub mod foreign_toplevel_list;
 pub mod globals;
+pub mod idle;
 pub mod output;
 pub mod presentation_time;
 pub mod primary_selection;
