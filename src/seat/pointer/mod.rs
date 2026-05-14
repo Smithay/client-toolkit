@@ -12,17 +12,12 @@ use wayland_client::{
         wl_shm::WlShm,
         wl_surface::WlSurface,
     },
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Proxy, QueueHandle, WEnum,
 };
 use wayland_cursor::{Cursor, CursorTheme};
 use wayland_protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 
-use crate::{
-    compositor::{SurfaceData, SurfaceDataExt},
-    error::GlobalError,
-};
-
-use super::SeatState;
+use crate::{compositor::SurfaceData, dispatch2::Dispatch2, error::GlobalError};
 
 #[doc(inline)]
 pub use cursor_icon::{CursorIcon, ParseError as CursorIconParseError};
@@ -158,14 +153,23 @@ pub trait PointerHandler: Sized {
 }
 
 #[derive(Debug)]
-pub struct PointerData {
+pub struct PointerData<U> {
     seat: WlSeat,
     pub(crate) inner: Mutex<PointerDataInner>,
+    udata: U,
 }
 
-impl PointerData {
-    pub fn new(seat: WlSeat) -> Self {
-        Self { seat, inner: Default::default() }
+impl<U> PointerData<U> {
+    pub fn new(seat: WlSeat, udata: U) -> Self {
+        Self { seat, inner: Default::default(), udata }
+    }
+
+    pub fn data(&self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &mut U {
+        &mut self.udata
     }
 
     /// The seat associated with this pointer.
@@ -182,50 +186,6 @@ impl PointerData {
     /// [`PointerEventKind::Release`] events.
     pub fn latest_button_serial(&self) -> Option<u32> {
         self.inner.lock().unwrap().latest_btn
-    }
-}
-
-pub trait PointerDataExt: Send + Sync {
-    fn pointer_data(&self) -> &PointerData;
-}
-
-impl PointerDataExt for PointerData {
-    fn pointer_data(&self) -> &PointerData {
-        self
-    }
-}
-
-#[macro_export]
-macro_rules! delegate_pointer {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::delegate_pointer!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; pointer: []);
-        $crate::delegate_pointer!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; pointer-only: $crate::seat::pointer::PointerData);
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, pointer: [$($pointer_data:ty),* $(,)?]) => {
-        $crate::delegate_pointer!(@{ $(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty }; pointer: [ $($pointer_data),* ]);
-    };
-    (@{$($ty:tt)*}; pointer: []) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
-            [
-                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1: $crate::globals::GlobalData
-            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
-        );
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
-            [
-                $crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1: $crate::globals::GlobalData
-            ] => $crate::seat::pointer::cursor_shape::CursorShapeManager
-        );
-    };
-    (@{$($ty:tt)*}; pointer-only: $pointer_data:ty) => {
-        $crate::reexports::client::delegate_dispatch!($($ty)*:
-            [
-                $crate::reexports::client::protocol::wl_pointer::WlPointer: $pointer_data
-            ] => $crate::seat::SeatState
-        );
-    };
-    (@$ty:tt; pointer: [$($pointer:ty),*]) => {
-        $crate::delegate_pointer!(@$ty; pointer: []);
-        $( $crate::delegate_pointer!(@$ty; pointer-only: $pointer); )*
     }
 }
 
@@ -246,21 +206,20 @@ pub(crate) struct PointerDataInner {
     pub(crate) latest_btn: Option<u32>,
 }
 
-impl<D, U> Dispatch<WlPointer, U, D> for SeatState
+impl<D, U> Dispatch2<WlPointer, D> for PointerData<U>
 where
-    D: Dispatch<WlPointer, U> + PointerHandler,
-    U: PointerDataExt,
+    D: PointerHandler,
+    U: Send + Sync + 'static,
 {
     fn event(
+        &self,
         data: &mut D,
         pointer: &WlPointer,
         event: wl_pointer::Event,
-        udata: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let udata = udata.pointer_data();
-        let mut guard = udata.inner.lock().unwrap();
+        let mut guard = self.inner.lock().unwrap();
         let mut leave_surface = None;
         let kind = match event {
             wl_pointer::Event::Enter { surface, surface_x, surface_y, serial } => {
@@ -501,7 +460,7 @@ where
 
 /// Pointer themeing
 #[derive(Debug)]
-pub struct ThemedPointer<U = PointerData, S = SurfaceData> {
+pub struct ThemedPointer<U = (), S = ()> {
     pub(super) themes: Arc<Mutex<Themes>>,
     /// The underlying wl_pointer.
     pub(super) pointer: WlPointer,
@@ -513,19 +472,17 @@ pub struct ThemedPointer<U = PointerData, S = SurfaceData> {
     pub(super) _surface_data: std::marker::PhantomData<S>,
 }
 
-impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, S> {
+impl<U: Send + Sync + 'static, S: Send + Sync + 'static> ThemedPointer<U, S> {
     /// Set the cursor to the given [`CursorIcon`].
     ///
     /// The cursor icon should be reloaded on every [`PointerEventKind::Enter`] event.
     pub fn set_cursor(&self, conn: &Connection, icon: CursorIcon) -> Result<(), PointerThemeError> {
-        let serial = match self
-            .pointer
-            .data::<U>()
-            .and_then(|data| data.pointer_data().latest_enter_serial())
-        {
-            Some(serial) => serial,
-            None => return Err(PointerThemeError::MissingEnterSerial),
-        };
+        let serial =
+            match self.pointer.data::<PointerData<U>>().and_then(|data| data.latest_enter_serial())
+            {
+                Some(serial) => serial,
+                None => return Err(PointerThemeError::MissingEnterSerial),
+            };
 
         if let Some(shape_device) = self.shape_device.as_ref() {
             shape_device.set_shape(serial, cursor_icon_to_shape(icon, shape_device.version()));
@@ -545,7 +502,7 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
     ) -> Result<(), PointerThemeError> {
         let mut themes = self.themes.lock().unwrap();
 
-        let scale = self.surface.data::<S>().unwrap().surface_data().scale_factor();
+        let scale = self.surface.data::<SurfaceData<S>>().unwrap().scale_factor();
         for cursor_icon_name in iter::once(&icon.name()).chain(icon.alt_names().iter()) {
             if let Some(cursor) = themes
                 .get_cursor(conn, cursor_icon_name, scale as u32, &self.shm)
@@ -587,8 +544,8 @@ impl<U: PointerDataExt + 'static, S: SurfaceDataExt + 'static> ThemedPointer<U, 
     ///
     /// The cursor should be hidden on every [`PointerEventKind::Enter`] event.
     pub fn hide_cursor(&self) -> Result<(), PointerThemeError> {
-        let data = self.pointer.data::<U>();
-        if let Some(serial) = data.and_then(|data| data.pointer_data().latest_enter_serial()) {
+        let data = self.pointer.data::<PointerData<U>>();
+        if let Some(serial) = data.and_then(|data| data.latest_enter_serial()) {
             self.pointer.set_cursor(serial, None, 0, 0);
             Ok(())
         } else {

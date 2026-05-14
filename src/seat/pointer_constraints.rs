@@ -8,6 +8,7 @@ use wayland_protocols::wp::pointer_constraints::zv1::client::{
 };
 
 use crate::{
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     registry::GlobalProxy,
@@ -134,17 +135,15 @@ pub struct PointerConstraintData {
     pointer: wl_pointer::WlPointer,
 }
 
-impl<D> Dispatch<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, GlobalData, D>
-    for PointerConstraintsState
+impl<D> Dispatch2<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, D> for GlobalData
 where
-    D: Dispatch<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, GlobalData>
-        + PointerConstraintsHandler,
+    D: PointerConstraintsHandler,
 {
     fn event(
+        &self,
         _data: &mut D,
         _constraints: &zwp_pointer_constraints_v1::ZwpPointerConstraintsV1,
         _event: zwp_pointer_constraints_v1::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -152,69 +151,50 @@ where
     }
 }
 
-impl<D> Dispatch<zwp_confined_pointer_v1::ZwpConfinedPointerV1, PointerConstraintData, D>
-    for PointerConstraintsState
+impl<D> Dispatch2<zwp_confined_pointer_v1::ZwpConfinedPointerV1, D> for PointerConstraintData
 where
-    D: Dispatch<zwp_confined_pointer_v1::ZwpConfinedPointerV1, PointerConstraintData>
-        + PointerConstraintsHandler,
+    D: PointerConstraintsHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         confined_pointer: &zwp_confined_pointer_v1::ZwpConfinedPointerV1,
         event: zwp_confined_pointer_v1::Event,
-        udata: &PointerConstraintData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
             zwp_confined_pointer_v1::Event::Confined => {
-                data.confined(conn, qh, confined_pointer, &udata.surface, &udata.pointer)
+                data.confined(conn, qh, confined_pointer, &self.surface, &self.pointer)
             }
             zwp_confined_pointer_v1::Event::Unconfined => {
-                data.unconfined(conn, qh, confined_pointer, &udata.surface, &udata.pointer)
+                data.unconfined(conn, qh, confined_pointer, &self.surface, &self.pointer)
             }
             _ => unreachable!(),
         }
     }
 }
 
-impl<D> Dispatch<zwp_locked_pointer_v1::ZwpLockedPointerV1, PointerConstraintData, D>
-    for PointerConstraintsState
+impl<D> Dispatch2<zwp_locked_pointer_v1::ZwpLockedPointerV1, D> for PointerConstraintData
 where
-    D: Dispatch<zwp_locked_pointer_v1::ZwpLockedPointerV1, PointerConstraintData>
-        + PointerConstraintsHandler,
+    D: PointerConstraintsHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         locked_pointer: &zwp_locked_pointer_v1::ZwpLockedPointerV1,
         event: zwp_locked_pointer_v1::Event,
-        udata: &PointerConstraintData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         match event {
             zwp_locked_pointer_v1::Event::Locked => {
-                data.locked(conn, qh, locked_pointer, &udata.surface, &udata.pointer)
+                data.locked(conn, qh, locked_pointer, &self.surface, &self.pointer)
             }
             zwp_locked_pointer_v1::Event::Unlocked => {
-                data.unlocked(conn, qh, locked_pointer, &udata.surface, &udata.pointer)
+                data.unlocked(conn, qh, locked_pointer, &self.surface, &self.pointer)
             }
             _ => unreachable!(),
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_pointer_constraints {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::pointer_constraints::zv1::client::zwp_pointer_constraints_v1::ZwpPointerConstraintsV1: $crate::globals::GlobalData
-        ] => $crate::seat::pointer_constraints::PointerConstraintsState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::pointer_constraints::zv1::client::zwp_confined_pointer_v1::ZwpConfinedPointerV1: $crate::seat::pointer_constraints::PointerConstraintData
-        ] => $crate::seat::pointer_constraints::PointerConstraintsState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::wp::pointer_constraints::zv1::client::zwp_locked_pointer_v1::ZwpLockedPointerV1: $crate::seat::pointer_constraints::PointerConstraintData
-        ] => $crate::seat::pointer_constraints::PointerConstraintsState);
-    };
 }

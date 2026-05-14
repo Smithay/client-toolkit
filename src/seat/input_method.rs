@@ -26,6 +26,8 @@ use wayland_protocols_misc::zwp_input_method_v2::client::{
     zwp_input_method_v2,
 };
 
+use crate::dispatch2::Dispatch2;
+
 #[derive(Debug)]
 pub struct InputMethodManager {
     manager: ZwpInputMethodManagerV2,
@@ -45,29 +47,40 @@ impl InputMethodManager {
     /// seat.
     pub fn get_input_method<State>(&self, qh: &QueueHandle<State>, seat: &WlSeat) -> InputMethod
     where
-        State: Dispatch<ZwpInputMethodV2, InputMethodData, State> + 'static,
+        State: Dispatch<ZwpInputMethodV2, InputMethodData<()>, State> + 'static,
+    {
+        self.get_input_method_with_data(qh, seat, ())
+    }
+
+    pub fn get_input_method_with_data<State, U>(
+        &self,
+        qh: &QueueHandle<State>,
+        seat: &WlSeat,
+        udata: U,
+    ) -> InputMethod
+    where
+        State: Dispatch<ZwpInputMethodV2, InputMethodData<U>, State> + 'static,
+        U: Send + Sync + 'static,
     {
         InputMethod {
             input_method: self.manager.get_input_method(
                 seat,
                 qh,
-                InputMethodData::new(seat.clone()),
+                InputMethodData::new(seat.clone(), udata),
             ),
         }
     }
 }
 
-impl<D> Dispatch<zwp_input_method_manager_v2::ZwpInputMethodManagerV2, GlobalData, D>
-    for InputMethodManager
+impl<D> Dispatch2<zwp_input_method_manager_v2::ZwpInputMethodManagerV2, D> for GlobalData
 where
-    D: Dispatch<zwp_input_method_manager_v2::ZwpInputMethodManagerV2, GlobalData>
-        + InputMethodHandler,
+    D: InputMethodHandler,
 {
     fn event(
+        &self,
         _data: &mut D,
         _manager: &zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
         _event: zwp_input_method_manager_v2::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -109,23 +122,23 @@ impl InputMethod {
         self.input_method.delete_surrounding_text(before_length, after_length)
     }
 
-    pub fn commit(&self) {
-        let data = self.input_method.data::<InputMethodData>().unwrap();
+    pub fn commit<U: Send + Sync + 'static>(&self) {
+        let data = self.input_method.data::<InputMethodData<U>>().unwrap();
         let inner = data.inner.lock().unwrap();
         self.input_method.commit(inner.serial.0)
     }
 }
 
 #[derive(Debug)]
-pub struct InputMethodData {
+pub struct InputMethodData<U> {
     seat: WlSeat,
-
     inner: Mutex<InputMethodDataInner>,
+    udata: U,
 }
 
-impl InputMethodData {
+impl<U> InputMethodData<U> {
     /// Create the new input method data associated with the given seat.
-    pub fn new(seat: WlSeat) -> Self {
+    pub fn new(seat: WlSeat, udata: U) -> Self {
         Self {
             seat,
             inner: Mutex::new(InputMethodDataInner {
@@ -133,7 +146,16 @@ impl InputMethodData {
                 current_state: Default::default(),
                 serial: Wrapping(0),
             }),
+            udata,
         }
+    }
+
+    pub fn data(&self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &mut U {
+        &mut self.udata
     }
 
     /// Get the associated seat from the data.
@@ -240,28 +262,6 @@ impl Active {
     }
 }
 
-#[macro_export]
-macro_rules! delegate_input_method {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_misc::zwp_input_method_v2::client::zwp_input_method_manager_v2::ZwpInputMethodManagerV2: $crate::globals::GlobalData
-        ] => $crate::seat::input_method::InputMethodManager);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_misc::zwp_input_method_v2::client::zwp_input_method_v2::ZwpInputMethodV2: $crate::seat::input_method::InputMethodData
-        ] => $crate::seat::input_method::InputMethod);
-    };
-}
-
-pub trait InputMethodDataExt: Send + Sync {
-    fn input_method_data(&self) -> &InputMethodData;
-}
-
-impl InputMethodDataExt for InputMethodData {
-    fn input_method_data(&self) -> &InputMethodData {
-        self
-    }
-}
-
 pub trait InputMethodHandler: Sized {
     fn handle_done(
         &self,
@@ -278,21 +278,20 @@ pub trait InputMethodHandler: Sized {
     );
 }
 
-impl<D, U> Dispatch<ZwpInputMethodV2, U, D> for InputMethod
+impl<D, U> Dispatch2<ZwpInputMethodV2, D> for InputMethodData<U>
 where
-    D: Dispatch<ZwpInputMethodV2, U> + InputMethodHandler,
-    U: InputMethodDataExt,
+    D: InputMethodHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         input_method: &ZwpInputMethodV2,
         event: zwp_input_method_v2::Event,
-        udata: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
         let mut imdata: std::sync::MutexGuard<'_, InputMethodDataInner> =
-            udata.input_method_data().inner.lock().unwrap();
+            self.inner.lock().unwrap();
 
         use zwp_input_method_v2::Event;
 
@@ -392,7 +391,7 @@ mod test {
         }
     }
 
-    delegate_input_method!(Handler);
+    crate::delegate_dispatch2!(Handler);
 
     fn assert_is_manager_delegate<T>()
     where
@@ -402,7 +401,7 @@ mod test {
 
     fn assert_is_delegate<T>()
     where
-        T: wayland_client::Dispatch<ZwpInputMethodV2, InputMethodData>,
+        T: wayland_client::Dispatch<ZwpInputMethodV2, InputMethodData<()>>,
     {
     }
 

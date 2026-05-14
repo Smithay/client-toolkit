@@ -15,7 +15,8 @@ use crate::reexports::client::{
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 use crate::{
-    compositor::SurfaceDataExt,
+    compositor::SurfaceData,
+    dispatch2::Dispatch2,
     globals::GlobalData,
     registry::{ProvidesRegistryState, RegistryHandler},
 };
@@ -31,8 +32,8 @@ pub mod relative_pointer;
 pub mod touch;
 
 use pointer::cursor_shape::CursorShapeManager;
-use pointer::{PointerData, PointerDataExt, PointerHandler, ThemeSpec, ThemedPointer, Themes};
-use touch::{TouchData, TouchDataExt, TouchHandler};
+use pointer::{PointerData, PointerHandler, ThemeSpec, ThemedPointer, Themes};
+use touch::{TouchData, TouchHandler};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,9 +153,9 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData> + PointerHandler + 'static,
+        D: Dispatch<wl_pointer::WlPointer, PointerData<()>> + PointerHandler + 'static,
     {
-        self.get_pointer_with_data(qh, seat, PointerData::new(seat.clone()))
+        self.get_pointer_with_data(qh, seat, ())
     }
 
     /// Creates a pointer from a seat with the provided theme.
@@ -171,24 +172,16 @@ impl SeatState {
         shm: &wl_shm::WlShm,
         surface: wl_surface::WlSurface,
         theme: ThemeSpec,
-    ) -> Result<ThemedPointer<PointerData>, SeatError>
+    ) -> Result<ThemedPointer<()>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData>
-            + Dispatch<wl_surface::WlSurface, S>
+        D: Dispatch<wl_pointer::WlPointer, PointerData<()>>
+            + Dispatch<wl_surface::WlSurface, SurfaceData<S>>
             + Dispatch<WpCursorShapeManagerV1, GlobalData>
             + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
             + 'static,
-        S: SurfaceDataExt + 'static,
     {
-        self.get_pointer_with_theme_and_data(
-            qh,
-            seat,
-            shm,
-            surface,
-            theme,
-            PointerData::new(seat.clone()),
-        )
+        self.get_pointer_with_theme_and_data(qh, seat, shm, surface, theme, ())
     }
 
     /// Creates a pointer from a seat.
@@ -203,8 +196,8 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, U> + PointerHandler + 'static,
-        U: PointerDataExt + 'static,
+        D: Dispatch<wl_pointer::WlPointer, PointerData<U>> + PointerHandler + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -213,6 +206,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
+        let pointer_data = PointerData::new(seat.clone(), pointer_data);
         Ok(seat.get_pointer(qh, pointer_data))
     }
 
@@ -221,7 +215,7 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
-    pub fn get_pointer_with_theme_and_data<D, S, U>(
+    pub fn get_pointer_with_theme_and_data<D, U>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
@@ -231,14 +225,12 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<ThemedPointer<U>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, U>
-            + Dispatch<wl_surface::WlSurface, S>
+        D: Dispatch<wl_pointer::WlPointer, PointerData<U>>
             + Dispatch<WpCursorShapeManagerV1, GlobalData>
             + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
             + 'static,
-        S: SurfaceDataExt + 'static,
-        U: PointerDataExt + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -247,6 +239,7 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Pointer));
         }
 
+        let pointer_data = PointerData::new(seat.clone(), pointer_data);
         let wl_ptr = seat.get_pointer(qh, pointer_data);
 
         if let CursorShapeManagerState::Pending { registry, global } =
@@ -295,9 +288,9 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, TouchData> + TouchHandler + 'static,
+        D: Dispatch<wl_touch::WlTouch, TouchData<()>> + TouchHandler + 'static,
     {
-        self.get_touch_with_data(qh, seat, TouchData::new(seat.clone()))
+        self.get_touch_with_data(qh, seat, ())
     }
 
     /// Creates a touch handle from a seat.
@@ -312,8 +305,8 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, U> + TouchHandler + 'static,
-        U: TouchDataExt + 'static,
+        D: Dispatch<wl_touch::WlTouch, TouchData<U>> + TouchHandler + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -322,7 +315,8 @@ impl SeatState {
             return Err(SeatError::UnsupportedCapability(Capability::Touch));
         }
 
-        Ok(seat.get_touch(qh, udata))
+        let data = TouchData::new(seat.clone(), udata);
+        Ok(seat.get_touch(qh, data))
     }
 }
 
@@ -425,32 +419,21 @@ pub struct SeatData {
     id: u32,
 }
 
-#[macro_export]
-macro_rules! delegate_seat {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_seat::WlSeat: $crate::seat::SeatData
-            ] => $crate::seat::SeatState
-        );
-    };
-}
-
 #[derive(Debug)]
 struct SeatInner {
     seat: wl_seat::WlSeat,
     data: SeatData,
 }
 
-impl<D> Dispatch<wl_seat::WlSeat, SeatData, D> for SeatState
+impl<D> Dispatch2<wl_seat::WlSeat, D> for SeatData
 where
-    D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler,
+    D: SeatHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         seat: &wl_seat::WlSeat,
         event: wl_seat::Event,
-        data: &SeatData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
@@ -459,15 +442,15 @@ where
                 let capabilities = wl_seat::Capability::from_bits_truncate(capabilities.into());
 
                 let keyboard = capabilities.contains(wl_seat::Capability::Keyboard);
-                let has_keyboard = data.has_keyboard.load(Ordering::SeqCst);
+                let has_keyboard = self.has_keyboard.load(Ordering::SeqCst);
                 let pointer = capabilities.contains(wl_seat::Capability::Pointer);
-                let has_pointer = data.has_pointer.load(Ordering::SeqCst);
+                let has_pointer = self.has_pointer.load(Ordering::SeqCst);
                 let touch = capabilities.contains(wl_seat::Capability::Touch);
-                let has_touch = data.has_touch.load(Ordering::SeqCst);
+                let has_touch = self.has_touch.load(Ordering::SeqCst);
 
                 // Update capabilities as necessary
                 if keyboard != has_keyboard {
-                    data.has_keyboard.store(keyboard, Ordering::SeqCst);
+                    self.has_keyboard.store(keyboard, Ordering::SeqCst);
 
                     match keyboard {
                         true => state.new_capability(conn, qh, seat.clone(), Capability::Keyboard),
@@ -478,7 +461,7 @@ where
                 }
 
                 if pointer != has_pointer {
-                    data.has_pointer.store(pointer, Ordering::SeqCst);
+                    self.has_pointer.store(pointer, Ordering::SeqCst);
 
                     match pointer {
                         true => state.new_capability(conn, qh, seat.clone(), Capability::Pointer),
@@ -489,7 +472,7 @@ where
                 }
 
                 if touch != has_touch {
-                    data.has_touch.store(touch, Ordering::SeqCst);
+                    self.has_touch.store(touch, Ordering::SeqCst);
 
                     match touch {
                         true => state.new_capability(conn, qh, seat.clone(), Capability::Touch),
@@ -499,7 +482,7 @@ where
             }
 
             wl_seat::Event::Name { name } => {
-                *data.name.lock().unwrap() = Some(name);
+                *self.name.lock().unwrap() = Some(name);
             }
 
             _ => unreachable!(),

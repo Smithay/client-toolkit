@@ -1,3 +1,4 @@
+use crate::dispatch2::Dispatch2;
 use crate::error::GlobalError;
 use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::reexports::client::{
@@ -48,7 +49,7 @@ impl DataDeviceManagerState {
         mime_types: impl IntoIterator<Item = T>,
     ) -> CopyPasteSource
     where
-        D: Dispatch<WlDataSource, DataSourceData> + 'static,
+        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
     {
         CopyPasteSource { inner: self.create_data_source(qh, mime_types, None) }
     }
@@ -61,7 +62,7 @@ impl DataDeviceManagerState {
         dnd_actions: DndAction,
     ) -> DragSource
     where
-        D: Dispatch<WlDataSource, DataSourceData> + 'static,
+        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
     {
         DragSource { inner: self.create_data_source(qh, mime_types, Some(dnd_actions)) }
     }
@@ -74,7 +75,7 @@ impl DataDeviceManagerState {
         dnd_actions: Option<DndAction>,
     ) -> WlDataSource
     where
-        D: Dispatch<WlDataSource, DataSourceData> + 'static,
+        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
     {
         let source = self.manager.create_data_source(qh, Default::default());
 
@@ -107,43 +108,15 @@ impl ProvidesBoundGlobal<WlDataDeviceManager, 3> for DataDeviceManagerState {
     }
 }
 
-impl<D> Dispatch<wl_data_device_manager::WlDataDeviceManager, GlobalData, D>
-    for DataDeviceManagerState
-where
-    D: Dispatch<wl_data_device_manager::WlDataDeviceManager, GlobalData>,
-{
+impl<D> Dispatch2<wl_data_device_manager::WlDataDeviceManager, D> for GlobalData {
     fn event(
+        &self,
         _state: &mut D,
         _proxy: &wl_data_device_manager::WlDataDeviceManager,
         _event: <wl_data_device_manager::WlDataDeviceManager as wayland_client::Proxy>::Event,
-        _data: &GlobalData,
         _conn: &Connection,
         _qhandle: &QueueHandle<D>,
     ) {
         unreachable!("wl_data_device_manager has no events")
     }
-}
-
-#[macro_export]
-macro_rules! delegate_data_device {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_device_manager::WlDataDeviceManager: $crate::globals::GlobalData
-            ] => $crate::data_device_manager::DataDeviceManagerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_offer::WlDataOffer: $crate::data_device_manager::data_offer::DataOfferData
-            ] => $crate::data_device_manager::DataDeviceManagerState);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_source::WlDataSource: $crate::data_device_manager::data_source::DataSourceData
-            ] => $crate::data_device_manager::DataDeviceManagerState
-        );
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_data_device::WlDataDevice: $crate::data_device_manager::data_device::DataDeviceData
-            ] => $crate::data_device_manager::DataDeviceManagerState
-        );
-    };
 }

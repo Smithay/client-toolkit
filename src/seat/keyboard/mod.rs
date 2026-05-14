@@ -26,6 +26,8 @@ use xkbcommon::xkb;
 #[cfg(feature = "calloop")]
 use repeat::{RepeatData, RepeatedKey};
 
+use crate::dispatch2::Dispatch2;
+
 use super::{Capability, SeatError, SeatHandler, SeatState};
 
 #[cfg(feature = "calloop")]
@@ -58,24 +60,31 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a keyboard.
-    pub fn get_keyboard<D, T: 'static>(
+    pub fn get_keyboard<D>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<T>>
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, ()>>
             + SeatHandler
             + KeyboardHandler
             + 'static,
     {
         let udata = match rmlvo {
-            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo)?,
-            None => KeyboardData::new(seat.clone()),
+            Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo, ())?,
+            None => KeyboardData::new(seat.clone(), ()),
         };
 
-        self.get_keyboard_with_data(qh, seat, udata)
+        let inner =
+            self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
+
+        if !inner.data.has_keyboard.load(Ordering::SeqCst) {
+            return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
+        }
+
+        Ok(seat.get_keyboard(qh, udata))
     }
 
     /// Creates a keyboard from a seat.
@@ -95,8 +104,11 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, U> + SeatHandler + KeyboardHandler + 'static,
-        U: KeyboardDataExt + 'static,
+        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, U>>
+            + SeatHandler
+            + KeyboardHandler
+            + 'static,
+        U: Send + Sync + 'static,
     {
         let inner =
             self.seats.iter().find(|inner| &inner.seat == seat).ok_or(SeatError::DeadObject)?;
@@ -104,6 +116,8 @@ impl SeatState {
         if !inner.data.has_keyboard.load(Ordering::SeqCst) {
             return Err(SeatError::UnsupportedCapability(Capability::Keyboard).into());
         }
+
+        let udata = KeyboardData::new(seat.clone(), udata);
 
         Ok(seat.get_keyboard(qh, udata))
     }
@@ -338,7 +352,7 @@ pub struct RMLVO {
     pub options: Option<String>,
 }
 
-pub struct KeyboardData<T> {
+pub struct KeyboardData<D, U> {
     seat: wl_seat::WlSeat,
     first_event: AtomicBool,
     xkb_context: Mutex<xkb::Context>,
@@ -347,46 +361,27 @@ pub struct KeyboardData<T> {
     xkb_state: Mutex<Option<xkb::State>>,
     xkb_compose: Mutex<Option<xkb::compose::State>>,
     #[cfg(feature = "calloop")]
-    repeat_data: Arc<Mutex<Option<RepeatData<T>>>>,
+    repeat_data: Arc<Mutex<Option<RepeatData<D>>>>,
     focus: Mutex<Option<wl_surface::WlSurface>>,
-    _phantom_data: PhantomData<T>,
+    _phantom_data: PhantomData<D>,
+    udata: U,
 }
 
-impl<T> Debug for KeyboardData<T> {
+impl<T, U> Debug for KeyboardData<T, U> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyboardData").finish_non_exhaustive()
     }
 }
 
-#[macro_export]
-macro_rules! delegate_keyboard {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $crate::seat::keyboard::KeyboardData<$ty>
-            ] => $crate::seat::SeatState
-        );
-    };
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty, keyboard: [$($udata:ty),* $(,)?]) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $(
-                    $crate::reexports::client::protocol::wl_keyboard::WlKeyboard: $udata,
-                )*
-            ] => $crate::seat::SeatState
-        );
-    };
-}
-
 // SAFETY: The state does not share state with any other rust types.
-unsafe impl<T> Send for KeyboardData<T> {}
+unsafe impl<T, U: Send> Send for KeyboardData<T, U> {}
 // SAFETY: The state is guarded by a mutex since libxkbcommon has no internal synchronization.
-unsafe impl<T> Sync for KeyboardData<T> {}
+unsafe impl<T, U: Sync> Sync for KeyboardData<T, U> {}
 
-impl<T> KeyboardData<T> {
-    pub fn new(seat: wl_seat::WlSeat) -> Self {
+impl<T, U> KeyboardData<T, U> {
+    pub fn new(seat: wl_seat::WlSeat, udata: U) -> Self {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-        let udata = KeyboardData {
+        let keyboard_data = KeyboardData {
             seat,
             first_event: AtomicBool::new(false),
             xkb_context: Mutex::new(xkb_context),
@@ -397,18 +392,31 @@ impl<T> KeyboardData<T> {
             repeat_data: Arc::new(Mutex::new(None)),
             focus: Mutex::new(None),
             _phantom_data: PhantomData,
+            udata,
         };
 
-        udata.init_compose();
+        keyboard_data.init_compose();
 
-        udata
+        keyboard_data
+    }
+
+    pub fn data(&mut self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &U {
+        &self.udata
     }
 
     pub fn seat(&self) -> &wl_seat::WlSeat {
         &self.seat
     }
 
-    pub fn from_rmlvo(seat: wl_seat::WlSeat, rmlvo: RMLVO) -> Result<Self, KeyboardError> {
+    pub fn from_rmlvo(
+        seat: wl_seat::WlSeat,
+        rmlvo: RMLVO,
+        udata: U,
+    ) -> Result<Self, KeyboardError> {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let keymap = xkb::Keymap::new_from_names(
             &xkb_context,
@@ -426,7 +434,7 @@ impl<T> KeyboardData<T> {
 
         let xkb_state = Some(xkb::State::new(&keymap.unwrap()));
 
-        let udata = KeyboardData {
+        let keyboard_data = KeyboardData {
             seat,
             first_event: AtomicBool::new(false),
             xkb_context: Mutex::new(xkb_context),
@@ -437,11 +445,12 @@ impl<T> KeyboardData<T> {
             repeat_data: Arc::new(Mutex::new(None)),
             focus: Mutex::new(None),
             _phantom_data: PhantomData,
+            udata,
         };
 
-        udata.init_compose();
+        keyboard_data.init_compose();
 
-        Ok(udata)
+        Ok(keyboard_data)
     }
 
     fn init_compose(&self) {
@@ -484,44 +493,23 @@ impl<T> KeyboardData<T> {
     }
 }
 
-pub trait KeyboardDataExt: Send + Sync {
-    type State: 'static;
-    fn keyboard_data(&self) -> &KeyboardData<Self::State>;
-    fn keyboard_data_mut(&mut self) -> &mut KeyboardData<Self::State>;
-}
-
-impl<T: 'static> KeyboardDataExt for KeyboardData<T> {
-    /// The type of the user defined state
-    type State = T;
-    fn keyboard_data(&self) -> &KeyboardData<T> {
-        self
-    }
-
-    fn keyboard_data_mut(&mut self) -> &mut KeyboardData<T> {
-        self
-    }
-}
-
-impl<D, U> Dispatch<wl_keyboard::WlKeyboard, U, D> for SeatState
+impl<D, U> Dispatch2<wl_keyboard::WlKeyboard, D> for KeyboardData<D, U>
 where
-    D: Dispatch<wl_keyboard::WlKeyboard, U> + KeyboardHandler,
-    U: KeyboardDataExt,
+    D: KeyboardHandler + 'static,
 {
     fn event(
+        &self,
         data: &mut D,
         keyboard: &wl_keyboard::WlKeyboard,
         event: wl_keyboard::Event,
-        udata: &U,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let udata = udata.keyboard_data();
-
         // The compositor has no way to tell clients if the seat is not version 4 or above.
         // In this case, send a synthetic repeat info event using the default repeat values used by the X
         // server.
-        if keyboard.version() < 4 && udata.first_event.load(Ordering::SeqCst) {
-            udata.first_event.store(true, Ordering::SeqCst);
+        if keyboard.version() < 4 && self.first_event.load(Ordering::SeqCst) {
+            self.first_event.store(true, Ordering::SeqCst);
 
             data.update_repeat_info(
                 conn,
@@ -540,12 +528,12 @@ where
                         }
 
                         wl_keyboard::KeymapFormat::XkbV1 => {
-                            if udata.user_specified_rmlvo {
+                            if self.user_specified_rmlvo {
                                 // state is locked, ignore keymap updates
                                 return;
                             }
 
-                            let context = udata.xkb_context.lock().unwrap();
+                            let context = self.xkb_context.lock().unwrap();
 
                             // 0.5.0-beta.0 does not mark this function as unsafe but upstream rightly makes
                             // this function unsafe.
@@ -568,7 +556,7 @@ where
                                 Ok(Some(keymap)) => {
                                     let state = xkb::State::new(&keymap);
                                     {
-                                        let mut state_guard = udata.xkb_state.lock().unwrap();
+                                        let mut state_guard = self.xkb_state.lock().unwrap();
                                         *state_guard = Some(state);
                                     }
                                     data.update_keymap(conn, qh, keyboard, Keymap(&keymap));
@@ -594,7 +582,7 @@ where
             }
 
             wl_keyboard::Event::Enter { serial, surface, keys } => {
-                let state_guard = udata.xkb_state.lock().unwrap();
+                let state_guard = self.xkb_state.lock().unwrap();
 
                 if let Some(guard) = state_guard.as_ref() {
                     // Keysyms are encoded as an array of u32
@@ -626,7 +614,7 @@ where
                     );
                 }
 
-                *udata.focus.lock().unwrap() = Some(surface);
+                *self.focus.lock().unwrap() = Some(surface);
             }
 
             wl_keyboard::Event::Leave { serial, surface } => {
@@ -634,19 +622,19 @@ where
                 // sent before entering a new surface.
                 #[cfg(feature = "calloop")]
                 {
-                    if let Some(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                    if let Some(repeat_data) = self.repeat_data.lock().unwrap().as_mut() {
                         repeat_data.current_repeat.take();
                     }
                 }
 
                 data.leave(conn, qh, keyboard, &surface, serial);
 
-                *udata.focus.lock().unwrap() = None;
+                *self.focus.lock().unwrap() = None;
             }
 
             wl_keyboard::Event::Key { serial, time, key, state } => match state {
                 WEnum::Value(state) => {
-                    let state_guard = udata.xkb_state.lock().unwrap();
+                    let state_guard = self.xkb_state.lock().unwrap();
 
                     if let Some(guard) = state_guard.as_ref() {
                         // We must add 8 to the keycode for any functions we pass the raw keycode into per
@@ -654,7 +642,7 @@ where
                         let keycode = KeyCode::new(key + 8);
                         let keysym = guard.key_get_one_sym(keycode);
                         let utf8 = if state == wl_keyboard::KeyState::Pressed {
-                            let mut compose = udata.xkb_compose.lock().unwrap();
+                            let mut compose = self.xkb_compose.lock().unwrap();
 
                             match compose.as_mut() {
                                 Some(compose) => match compose.feed(keysym) {
@@ -683,7 +671,7 @@ where
                                 #[cfg(feature = "calloop")]
                                 {
                                     if let Some(repeat_data) =
-                                        udata.repeat_data.lock().unwrap().as_mut()
+                                        self.repeat_data.lock().unwrap().as_mut()
                                     {
                                         if Some(event.raw_code)
                                             == repeat_data
@@ -707,10 +695,10 @@ where
                                 #[cfg(feature = "calloop")]
                                 {
                                     if let Some(repeat_data) =
-                                        udata.repeat_data.lock().unwrap().as_mut()
+                                        self.repeat_data.lock().unwrap().as_mut()
                                     {
                                         let loop_handle = &mut repeat_data.loop_handle;
-                                        let state_guard = udata.xkb_state.lock().unwrap();
+                                        let state_guard = self.xkb_state.lock().unwrap();
                                         let key_repeats = state_guard
                                             .as_ref()
                                             .map(|guard| {
@@ -725,17 +713,22 @@ where
                                                 loop_handle.remove(token);
                                             }
 
-                                            let surface =
-                                                match udata.focus.lock().unwrap().as_ref().cloned()
-                                                {
-                                                    Some(surface) => surface,
+                                            let surface = match self
+                                                .focus
+                                                .lock()
+                                                .unwrap()
+                                                .as_ref()
+                                                .cloned()
+                                            {
+                                                Some(surface) => surface,
 
-                                                    None => {
-                                                        log::warn!(
-                                                "wl_keyboard::key with no focused surface");
-                                                        return;
-                                                    }
-                                                };
+                                                None => {
+                                                    log::warn!(
+                                                        "wl_keyboard::key with no focused surface"
+                                                    );
+                                                    return;
+                                                }
+                                            };
 
                                             // Update the current repeat key.
                                             repeat_data.current_repeat.replace(RepeatedKey {
@@ -754,7 +747,7 @@ where
                                             let timer = Timer::from_duration(
                                                 Duration::from_millis(delay as u64),
                                             );
-                                            let repeat_data2 = udata.repeat_data.clone();
+                                            let repeat_data2 = self.repeat_data.clone();
 
                                             // Start the timer.
                                             let kbd = keyboard.clone();
@@ -813,7 +806,7 @@ where
                 mods_locked,
                 group,
             } => {
-                let mut guard = udata.xkb_state.lock().unwrap();
+                let mut guard = self.xkb_state.lock().unwrap();
 
                 let state = match guard.as_mut() {
                     Some(state) => state,
@@ -825,11 +818,11 @@ where
 
                 // Update the currently repeating key if any.
                 #[cfg(feature = "calloop")]
-                if let Some(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                if let Some(repeat_data) = self.repeat_data.lock().unwrap().as_mut() {
                     if let Some(mut event) = repeat_data.current_repeat.take() {
                         // Apply new modifiers to get new utf8.
                         event.key.utf8 = {
-                            let mut compose = udata.xkb_compose.lock().unwrap();
+                            let mut compose = self.xkb_compose.lock().unwrap();
 
                             match compose.as_mut() {
                                 Some(compose) => match compose.feed(event.key.keysym) {
@@ -866,7 +859,7 @@ where
                 };
 
                 // Always issue the modifiers update for the user.
-                let modifiers = udata.update_modifiers();
+                let modifiers = self.update_modifiers();
                 data.update_modifiers(conn, qh, keyboard, serial, modifiers, raw_modifiers, group);
             }
 
@@ -882,7 +875,7 @@ where
 
                 #[cfg(feature = "calloop")]
                 {
-                    if let Some(repeat_data) = udata.repeat_data.lock().unwrap().as_mut() {
+                    if let Some(repeat_data) = self.repeat_data.lock().unwrap().as_mut() {
                         repeat_data.repeat_info = info;
                     }
                 }

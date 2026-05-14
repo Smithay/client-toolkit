@@ -1,24 +1,31 @@
+use crate::dispatch2::Dispatch2;
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
         wl_data_source::{self, WlDataSource},
         wl_surface::WlSurface,
     },
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Proxy, QueueHandle, WEnum,
 };
 
-use super::{data_device::DataDevice, DataDeviceManagerState, WritePipe};
+use super::{data_device::DataDevice, WritePipe};
 
 #[derive(Debug, Default)]
-pub struct DataSourceData {}
-
-pub trait DataSourceDataExt: Send + Sync {
-    fn data_source_data(&self) -> &DataSourceData;
+pub struct DataSourceData<U> {
+    udata: U,
 }
 
-impl DataSourceDataExt for DataSourceData {
-    fn data_source_data(&self) -> &DataSourceData {
-        self
+impl<U> DataSourceData<U> {
+    pub fn new(udata: U) -> Self {
+        Self { udata }
+    }
+
+    pub fn data(&self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &mut U {
+        &mut self.udata
     }
 }
 
@@ -68,16 +75,15 @@ pub trait DataSourceHandler: Sized {
     );
 }
 
-impl<D, U> Dispatch<wl_data_source::WlDataSource, U, D> for DataDeviceManagerState
+impl<D, U> Dispatch2<wl_data_source::WlDataSource, D> for DataSourceData<U>
 where
-    D: Dispatch<wl_data_source::WlDataSource, U> + DataSourceHandler,
-    U: DataSourceDataExt,
+    D: DataSourceHandler,
 {
     fn event(
+        &self,
         state: &mut D,
         source: &wl_data_source::WlDataSource,
         event: <wl_data_source::WlDataSource as wayland_client::Proxy>::Event,
-        _data: &U,
         conn: &wayland_client::Connection,
         qh: &wayland_client::QueueHandle<D>,
     ) {

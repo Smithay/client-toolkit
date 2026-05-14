@@ -30,6 +30,8 @@ use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 
 use crate::reexports::protocols_experimental::input_method::v1::client as protocol;
 
+use crate::dispatch2::Dispatch2;
+
 pub use protocol::xx_input_method_v1::XxInputMethodV1;
 pub use protocol::xx_input_popup_positioner_v1::XxInputPopupPositionerV1;
 pub use protocol::xx_input_popup_surface_v2::XxInputPopupSurfaceV2;
@@ -74,13 +76,26 @@ impl InputMethodManager {
     /// seat.
     pub fn get_input_method<State>(&self, qh: &QueueHandle<State>, seat: &WlSeat) -> InputMethod
     where
-        State: Dispatch<XxInputMethodV1, InputMethodData, State> + 'static,
+        State: Dispatch<XxInputMethodV1, InputMethodData<()>, State> + 'static,
+    {
+        self.get_input_method_with_data(qh, seat, ())
+    }
+
+    pub fn get_input_method_with_data<State, U>(
+        &self,
+        qh: &QueueHandle<State>,
+        seat: &WlSeat,
+        udata: U,
+    ) -> InputMethod
+    where
+        State: Dispatch<XxInputMethodV1, InputMethodData<U>, State> + 'static,
+        U: Send + Sync + 'static,
     {
         InputMethod {
             input_method: self.manager.get_input_method(
                 seat,
                 qh,
-                InputMethodData::new(seat.clone()),
+                InputMethodData::new(seat.clone(), udata),
             ),
         }
     }
@@ -93,17 +108,15 @@ impl InputMethodManager {
     }
 }
 
-impl<D> Dispatch<xx_input_method_manager_v2::XxInputMethodManagerV2, GlobalData, D>
-    for InputMethodManager
+impl<D> Dispatch2<xx_input_method_manager_v2::XxInputMethodManagerV2, D> for GlobalData
 where
-    D: Dispatch<xx_input_method_manager_v2::XxInputMethodManagerV2, GlobalData>
-        + InputMethodHandler,
+    D: InputMethodHandler,
 {
     fn event(
+        &self,
         _data: &mut D,
         _manager: &xx_input_method_manager_v2::XxInputMethodManagerV2,
         _event: xx_input_method_manager_v2::Event,
-        _: &GlobalData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -132,15 +145,15 @@ impl Drop for PopupPositioner {
     }
 }
 
-impl<D> Dispatch<XxInputPopupPositionerV1, PositionerData, D> for PopupPositioner
+impl<D> Dispatch2<XxInputPopupPositionerV1, D> for PositionerData
 where
-    D: Dispatch<XxInputPopupPositionerV1, PositionerData> + InputMethodHandler,
+    D: InputMethodHandler,
 {
     fn event(
+        &self,
         _data: &mut D,
         _manager: &XxInputPopupPositionerV1,
         _event: xx_input_popup_positioner_v1::Event,
-        _: &PositionerData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
@@ -226,13 +239,16 @@ impl InputMethod {
         self.input_method.move_cursor(cursor, anchor)
     }
 
-    pub fn commit(&self) {
-        let data = self.input_method.data::<InputMethodData>().unwrap();
+    pub fn commit<U>(&self)
+    where
+        U: Send + Sync + 'static,
+    {
+        let data = self.input_method.data::<InputMethodData<U>>().unwrap();
         let inner = &data.inner.lock().unwrap();
         self.input_method.commit(inner.serial.0)
     }
 
-    pub fn get_input_popup_surface<D>(
+    pub fn get_input_popup_surface<D, U>(
         &self,
         qh: &QueueHandle<D>,
         surface: impl Into<Surface>,
@@ -240,8 +256,9 @@ impl InputMethod {
     ) -> Popup
     where
         D: Dispatch<XxInputPopupSurfaceV2, PopupData> + 'static,
+        U: Send + Sync + 'static,
     {
-        let data = self.input_method.data::<InputMethodData>().unwrap();
+        let data = self.input_method.data::<InputMethodData<U>>().unwrap();
         let surface = surface.into();
         Popup {
             input_method: self.input_method.clone(),
@@ -257,15 +274,15 @@ impl InputMethod {
 }
 
 #[derive(Debug)]
-pub struct InputMethodData {
+pub struct InputMethodData<U> {
     seat: WlSeat,
-
     inner: Arc<Mutex<InputMethodDataInner>>,
+    udata: U,
 }
 
-impl InputMethodData {
+impl<U> InputMethodData<U> {
     /// Create the new touch data associated with the given seat.
-    pub fn new(seat: WlSeat) -> Self {
+    pub fn new(seat: WlSeat, udata: U) -> Self {
         Self {
             seat,
             inner: Arc::new(Mutex::new(InputMethodDataInner {
@@ -273,7 +290,16 @@ impl InputMethodData {
                 current_state: Default::default(),
                 serial: Wrapping(0),
             })),
+            udata,
         }
+    }
+
+    pub fn data(&self) -> &U {
+        &self.udata
+    }
+
+    pub fn data_mut(&mut self) -> &mut U {
+        &mut self.udata
     }
 
     /// Get the associated seat from the data.
@@ -480,19 +506,19 @@ impl Popup {
     }
 }
 
-impl<D> Dispatch<XxInputPopupSurfaceV2, PopupData, D> for Popup
+impl<D> Dispatch2<XxInputPopupSurfaceV2, D> for PopupData
 where
-    D: Dispatch<XxInputPopupSurfaceV2, PopupData> + InputMethodHandler,
+    D: InputMethodHandler,
 {
     fn event(
+        &self,
         _data: &mut D,
         popup: &XxInputPopupSurfaceV2,
         event: xx_input_popup_surface_v2::Event,
-        udata: &PopupData,
         _conn: &Connection,
         _qh: &QueueHandle<D>,
     ) {
-        let inner: MutexGuard<'_, PopupDataInner> = udata.inner.lock().unwrap();
+        let inner: MutexGuard<'_, PopupDataInner> = self.inner.lock().unwrap();
         if let Some(im) = inner.im.upgrade() {
             let mut im = im.lock().unwrap();
 
@@ -588,34 +614,6 @@ impl PopupDataInner {
     }
 }
 
-#[macro_export]
-macro_rules! delegate_input_method_v3 {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_experimental::input_method::v1::client::xx_input_method_manager_v2::XxInputMethodManagerV2: $crate::globals::GlobalData
-        ] => $crate::seat::input_method_v3::InputMethodManager);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_experimental::input_method::v1::client::xx_input_method_v1::XxInputMethodV1: $crate::seat::input_method_v3::InputMethodData
-        ] => $crate::seat::input_method_v3::InputMethod);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_experimental::input_method::v1::client::xx_input_popup_surface_v2::XxInputPopupSurfaceV2: $crate::seat::input_method_v3::PopupData
-        ] => $crate::seat::input_method_v3::Popup);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols_experimental::input_method::v1::client::xx_input_popup_positioner_v1::XxInputPopupPositionerV1: $crate::seat::input_method_v3::PositionerData
-        ] => $crate::seat::input_method_v3::PopupPositioner);
-    };
-}
-
-pub trait InputMethodDataExt: Send + Sync {
-    fn input_method_data(&self) -> &InputMethodData;
-}
-
-impl InputMethodDataExt for InputMethodData {
-    fn input_method_data(&self) -> &InputMethodData {
-        self
-    }
-}
-
 pub trait InputMethodHandler: Sized {
     fn handle_done(
         &mut self,
@@ -633,21 +631,19 @@ pub trait InputMethodHandler: Sized {
     fn handle_unavailable(&mut self, qh: &QueueHandle<Self>, input_method: &XxInputMethodV1);
 }
 
-impl<D, U> Dispatch<XxInputMethodV1, U, D> for InputMethod
+impl<D, U> Dispatch2<XxInputMethodV1, D> for InputMethodData<U>
 where
-    D: Dispatch<XxInputMethodV1, U> + InputMethodHandler,
-    U: InputMethodDataExt,
+    D: InputMethodHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         input_method: &XxInputMethodV1,
         event: xx_input_method_v1::Event,
-        udata: &U,
         _conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let mut imdata: MutexGuard<'_, InputMethodDataInner> =
-            udata.input_method_data().inner.lock().unwrap();
+        let mut imdata: MutexGuard<'_, InputMethodDataInner> = self.inner.lock().unwrap();
 
         use xx_input_method_v1::Event;
 
@@ -778,7 +774,7 @@ mod test {
         }
     }
 
-    delegate_input_method_v3!(Handler);
+    crate::delegate_dispatch2!(Handler);
 
     fn assert_is_manager_delegate<T>()
     where
@@ -791,7 +787,10 @@ mod test {
 
     fn assert_is_delegate<T>()
     where
-        T: wayland_client::Dispatch<protocol::xx_input_method_v1::XxInputMethodV1, InputMethodData>,
+        T: wayland_client::Dispatch<
+            protocol::xx_input_method_v1::XxInputMethodV1,
+            InputMethodData<()>,
+        >,
     {
     }
 

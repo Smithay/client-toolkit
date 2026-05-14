@@ -278,7 +278,7 @@ impl RegistryState {
 ///
 /// ```
 /// use smithay_client_toolkit::{
-///     delegate_registry, delegate_shm, registry_handlers,
+///     delegate_registry, registry_handlers,
 ///     shm::{ShmHandler, Shm},
 /// };
 ///
@@ -286,14 +286,13 @@ impl RegistryState {
 ///     shm_state: Shm,
 /// }
 ///
-/// // Here is the implementation of wl_shm to compile:
-/// delegate_shm!(ExampleApp);
-///
 /// impl ShmHandler for ExampleApp {
 ///     fn shm_state(&mut self) -> &mut Shm {
 ///         &mut self.shm_state
 ///     }
 /// }
+///
+/// smithay_client_toolkit::delegate_dispatch2!(ExampleApp);
 /// ```
 #[macro_export]
 macro_rules! delegate_registry {
@@ -419,16 +418,6 @@ impl<I: Proxy + Clone, const MAX_VERSION: u32> ProvidesBoundGlobal<I, MAX_VERSIO
     }
 }
 
-impl<D, I, const MAX_VERSION: u32> Dispatch<I, (), D> for SimpleGlobal<I, MAX_VERSION>
-where
-    D: Dispatch<I, ()>,
-    I: Proxy,
-{
-    fn event(_: &mut D, _: &I, _: <I as Proxy>::Event, _: &(), _: &Connection, _: &QueueHandle<D>) {
-        unreachable!("SimpleGlobal is not suitable for {} which has events", I::interface().name);
-    }
-}
-
 /// Binds all globals with a given interface.
 pub(crate) fn bind_all<I, D, U, F>(
     registry: &wl_registry::WlRegistry,
@@ -505,15 +494,6 @@ where
         return Ok(proxy);
     }
     Err(BindError::NotPresent)
-}
-
-#[macro_export]
-macro_rules! delegate_simple {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty:ty, $iface:ty, $max:expr) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [ $iface: () ]
-            => $crate::registry::SimpleGlobal<$iface, $max>
-        );
-    };
 }
 
 /// A helper macro for implementing [`ProvidesRegistryState`].

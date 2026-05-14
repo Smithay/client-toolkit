@@ -1,5 +1,6 @@
 use crate::{
     compositor::{Surface, SurfaceData},
+    dispatch2::Dispatch2,
     error::GlobalError,
     globals::ProvidesBoundGlobal,
     shell::xdg::XdgShellSurface,
@@ -54,7 +55,7 @@ impl Popup {
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Popup, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData>
+        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>>
             + Dispatch<xdg_surface::XdgSurface, PopupData>
             + Dispatch<xdg_popup::XdgPopup, PopupData>
             + PopupHandler
@@ -196,19 +197,19 @@ pub trait PopupHandler: Sized {
     fn done(&mut self, conn: &Connection, qh: &QueueHandle<Self>, popup: &Popup);
 }
 
-impl<D> Dispatch<xdg_surface::XdgSurface, PopupData, D> for PopupData
+impl<D> Dispatch2<xdg_surface::XdgSurface, D> for PopupData
 where
-    D: Dispatch<xdg_surface::XdgSurface, PopupData> + PopupHandler,
+    D: PopupHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         xdg_surface: &xdg_surface::XdgSurface,
         event: xdg_surface::Event,
-        pdata: &PopupData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let popup = match pdata.popup() {
+        let popup = match self.popup() {
             Some(popup) => popup,
             None => return,
         };
@@ -239,19 +240,19 @@ where
     }
 }
 
-impl<D> Dispatch<xdg_popup::XdgPopup, PopupData, D> for PopupData
+impl<D> Dispatch2<xdg_popup::XdgPopup, D> for PopupData
 where
-    D: Dispatch<xdg_popup::XdgPopup, PopupData> + PopupHandler,
+    D: PopupHandler,
 {
     fn event(
+        &self,
         data: &mut D,
         _: &xdg_popup::XdgPopup,
         event: xdg_popup::Event,
-        pdata: &PopupData,
         conn: &Connection,
         qh: &QueueHandle<D>,
     ) {
-        let popup = match pdata.popup() {
+        let popup = match self.popup() {
             Some(popup) => popup,
             None => return,
         };
@@ -273,16 +274,4 @@ where
             _ => unreachable!(),
         }
     }
-}
-
-#[macro_export]
-macro_rules! delegate_xdg_popup {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::shell::client::xdg_popup::XdgPopup: $crate::shell::xdg::popup::PopupData
-        ] => $crate::shell::xdg::popup::PopupData);
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty: [
-            $crate::reexports::protocols::xdg::shell::client::xdg_surface::XdgSurface: $crate::shell::xdg::popup::PopupData
-        ] => $crate::shell::xdg::popup::PopupData);
-    };
 }
