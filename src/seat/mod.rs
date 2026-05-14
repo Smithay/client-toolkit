@@ -215,7 +215,7 @@ impl SeatState {
     /// ## Errors
     ///
     /// This will return [`SeatError::UnsupportedCapability`] if the seat does not support a pointer.
-    pub fn get_pointer_with_theme_and_data<D, S, U>(
+    pub fn get_pointer_with_theme_and_data<D, U>(
         &mut self,
         qh: &QueueHandle<D>,
         seat: &wl_seat::WlSeat,
@@ -226,7 +226,6 @@ impl SeatState {
     ) -> Result<ThemedPointer<U>, SeatError>
     where
         D: Dispatch<wl_pointer::WlPointer, PointerData<U>>
-            + Dispatch<wl_surface::WlSurface, SurfaceData<S>>
             + Dispatch<WpCursorShapeManagerV1, GlobalData>
             + Dispatch<WpCursorShapeDeviceV1, GlobalData>
             + PointerHandler
