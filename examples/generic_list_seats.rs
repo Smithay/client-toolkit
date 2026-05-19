@@ -1,10 +1,12 @@
 use smithay_client_toolkit::{
-    delegate_registry,
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
 };
-use wayland_client::{globals::registry_queue_init, protocol::wl_seat, Connection, QueueHandle};
+use wayland_client::{
+    globals::{registry_queue_init, GlobalListHandler},
+    protocol::wl_seat,
+    Connection, QueueHandle,
+};
 
 fn main() {
     env_logger::init();
@@ -14,11 +16,7 @@ fn main() {
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    let mut list_seats = ListSeats {
-        registry_state: RegistryState::new(&globals),
-        seat_state: SeatState::new(&globals, &qh),
-        _dummy: MyTest {},
-    };
+    let mut list_seats = ListSeats { seat_state: SeatState::new(&globals, &qh), _dummy: MyTest {} };
 
     event_queue.roundtrip(&mut list_seats).unwrap();
 
@@ -43,7 +41,6 @@ impl Test for MyTest {}
 
 struct ListSeats<T: Test + 'static> {
     seat_state: SeatState,
-    registry_state: RegistryState,
     _dummy: T,
 }
 
@@ -81,14 +78,6 @@ impl<T: Test + 'static> SeatHandler for ListSeats<T> {
     }
 }
 
-delegate_registry!(@<T: Test + 'static> ListSeats<T>);
-
-impl<T: Test + 'static> ProvidesRegistryState for ListSeats<T> {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
+impl<T: Test + 'static> GlobalListHandler for ListSeats<T> {
     registry_handlers!(SeatState);
 }
-
-smithay_client_toolkit::delegate_dispatch2!(@<T: Test + 'static> ListSeats<T>);

@@ -4,9 +4,7 @@ use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
@@ -23,7 +21,7 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -73,7 +71,6 @@ fn main() {
     let mut simple_layer = SimpleLayer {
         // Seats and outputs may be hotplugged at runtime, therefore we need to setup a registry state to
         // listen for seats and outputs.
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         shm,
@@ -102,7 +99,6 @@ fn main() {
 }
 
 struct SimpleLayer {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     shm: Shm,
@@ -448,13 +444,6 @@ impl SimpleLayer {
     }
 }
 
-delegate_registry!(SimpleLayer);
-
-impl ProvidesRegistryState for SimpleLayer {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for SimpleLayer {
     registry_handlers![OutputState, SeatState];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(SimpleLayer);

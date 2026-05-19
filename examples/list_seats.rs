@@ -1,10 +1,12 @@
 use smithay_client_toolkit::{
-    delegate_registry,
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
 };
-use wayland_client::{globals::registry_queue_init, protocol::wl_seat, Connection, QueueHandle};
+use wayland_client::{
+    globals::{registry_queue_init, GlobalListHandler},
+    protocol::wl_seat,
+    Connection, QueueHandle,
+};
 
 fn main() {
     env_logger::init();
@@ -14,10 +16,7 @@ fn main() {
     let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    let mut list_seats = ListSeats {
-        registry_state: RegistryState::new(&globals),
-        seat_state: SeatState::new(&globals, &qh),
-    };
+    let mut list_seats = ListSeats { seat_state: SeatState::new(&globals, &qh) };
 
     event_queue.blocking_dispatch(&mut list_seats).unwrap();
 
@@ -32,7 +31,6 @@ fn main() {
 
 struct ListSeats {
     seat_state: SeatState,
-    registry_state: RegistryState,
 }
 
 impl SeatHandler for ListSeats {
@@ -69,14 +67,6 @@ impl SeatHandler for ListSeats {
     }
 }
 
-delegate_registry!(ListSeats);
-
-impl ProvidesRegistryState for ListSeats {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
+impl GlobalListHandler for ListSeats {
     registry_handlers!(SeatState);
 }
-
-smithay_client_toolkit::delegate_dispatch2!(ListSeats);

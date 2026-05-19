@@ -9,7 +9,7 @@ use bitflags::bitflags;
 use wayland_client::{
     globals::{BindError, GlobalList},
     protocol::{wl_output, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup;
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};
@@ -34,11 +34,9 @@ impl LayerShell {
         qh: &QueueHandle<State>,
     ) -> Result<LayerShell, BindError>
     where
-        State: Dispatch<zwlr_layer_shell_v1::ZwlrLayerShellV1, GlobalData, State>
-            + LayerShellHandler
-            + 'static,
+        State: LayerShellHandler + 'static,
     {
-        let wlr_layer_shell = globals.bind(qh, 1..=4, GlobalData)?;
+        let wlr_layer_shell = globals.bind_singleton(qh, 1..=4, GlobalData)?;
         Ok(LayerShell { wlr_layer_shell })
     }
 
@@ -52,7 +50,7 @@ impl LayerShell {
         output: Option<&wl_output::WlOutput>,
     ) -> LayerSurface
     where
-        State: Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, LayerSurfaceData> + 'static,
+        State: LayerShellHandler + 'static,
     {
         // Freeze the queue during the creation of the Arc to avoid a race between events on the
         // new objects being processed and the Weak in the LayerSurfaceData becoming usable.
