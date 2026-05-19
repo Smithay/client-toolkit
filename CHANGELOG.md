@@ -1,5 +1,13 @@
 # Change Log
 
+## Unreleased
+
+#### Breaking Changes
+- `*DataExt` traits removed; now `*Data` types wrap custom data
+  * Any calls to `Proxy::data` will need to be updated for new type
+- All `delegate_*!` macros except `delegate_registry!` replaced with single
+  `delegate_dispatch2!` in preparation for future wayland-rs release.
+
 ## 0.20.0 - 2025-07-29
 
 #### Breaking Changes
