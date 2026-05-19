@@ -1,8 +1,9 @@
 use crate::{
-    compositor::{Surface, SurfaceData},
+    compositor::{CompositorHandler, Surface, SurfaceData},
     dispatch2::Dispatch2,
     error::GlobalError,
     globals::ProvidesBoundGlobal,
+    output::OutputHandler,
     shell::xdg::XdgShellSurface,
 };
 use std::sync::{
@@ -55,11 +56,7 @@ impl Popup {
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Popup, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>>
-            + Dispatch<xdg_surface::XdgSurface, PopupData>
-            + Dispatch<xdg_popup::XdgPopup, PopupData>
-            + PopupHandler
-            + 'static,
+        D: CompositorHandler + OutputHandler + PopupHandler + 'static,
     {
         let surface = Surface::new(compositor, qh)?;
         let popup = Self::from_surface(Some(parent), position, qh, surface, wm_base)?;
@@ -82,9 +79,7 @@ impl Popup {
         wm_base: &impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     ) -> Result<Popup, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, PopupData>
-            + Dispatch<xdg_popup::XdgPopup, PopupData>
-            + 'static,
+        D: PopupHandler + 'static,
     {
         let surface = surface.into();
         let wm_base = wm_base.bound_global()?;

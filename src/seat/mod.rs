@@ -81,7 +81,7 @@ enum CursorShapeManagerState {
 }
 
 impl SeatState {
-    pub fn new<D: Dispatch<wl_seat::WlSeat, SeatData> + 'static>(
+    pub fn new<D: SeatHandler + 'static>(
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> SeatState {

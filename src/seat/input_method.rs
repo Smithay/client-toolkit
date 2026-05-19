@@ -37,7 +37,7 @@ impl InputMethodManager {
     /// Bind `zwp_input_method_v2` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Result<Self, BindError>
     where
-        D: Dispatch<ZwpInputMethodManagerV2, GlobalData> + 'static,
+        D: InputMethodHandler + 'static,
     {
         let manager = globals.bind(qh, 1..=1, GlobalData)?;
         Ok(Self { manager })
@@ -47,7 +47,7 @@ impl InputMethodManager {
     /// seat.
     pub fn get_input_method<State>(&self, qh: &QueueHandle<State>, seat: &WlSeat) -> InputMethod
     where
-        State: Dispatch<ZwpInputMethodV2, InputMethodData<()>, State> + 'static,
+        State: InputMethodHandler + 'static,
     {
         self.get_input_method_with_data(qh, seat, ())
     }
@@ -59,7 +59,7 @@ impl InputMethodManager {
         udata: U,
     ) -> InputMethod
     where
-        State: Dispatch<ZwpInputMethodV2, InputMethodData<U>, State> + 'static,
+        State: InputMethodHandler + 'static,
         U: Send + Sync + 'static,
     {
         InputMethod {

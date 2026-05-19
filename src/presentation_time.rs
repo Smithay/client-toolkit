@@ -25,7 +25,7 @@ impl PresentationTimeState {
     /// Bind `wp_presentation` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<wp_presentation::WpPresentation, GlobalData> + 'static,
+        D: PresentationTimeHandler + 'static,
     {
         let presentation = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Self { presentation, clk_id: None }
@@ -38,8 +38,7 @@ impl PresentationTimeState {
         qh: &QueueHandle<D>,
     ) -> Result<wp_presentation_feedback::WpPresentationFeedback, GlobalError>
     where
-        D: Dispatch<wp_presentation_feedback::WpPresentationFeedback, PresentationTimeData>
-            + 'static,
+        D: PresentationTimeHandler + 'static,
     {
         let udata = PresentationTimeData {
             wl_surface: surface.clone(),

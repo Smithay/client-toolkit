@@ -57,9 +57,7 @@ impl XdgShell {
     /// This function will return [`Err`] if the `xdg_wm_base` global is not available.
     pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
     where
-        State: Dispatch<xdg_wm_base::XdgWmBase, GlobalData, State>
-            + Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, GlobalData, State>
-            + 'static,
+        State: WindowHandler + 'static,
     {
         let xdg_wm_base = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
         let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
@@ -87,11 +85,7 @@ impl XdgShell {
         qh: &QueueHandle<State>,
     ) -> Window
     where
-        State: Dispatch<xdg_surface::XdgSurface, WindowData>
-            + Dispatch<xdg_toplevel::XdgToplevel, WindowData>
-            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, WindowData>
-            + WindowHandler
-            + 'static,
+        State: WindowHandler + 'static,
     {
         let decoration_manager = self.xdg_decoration_manager.get().ok();
         let surface = surface.into();
@@ -253,8 +247,8 @@ impl XdgShellSurface {
         udata: U,
     ) -> Result<XdgShellSurface, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, U> + 'static,
-        U: Send + Sync + 'static,
+        D: 'static,
+        U: Dispatch<xdg_surface::XdgSurface, D> + Send + Sync + 'static,
     {
         let surface = surface.into();
         let xdg_surface = wm_base.bound_global()?.get_xdg_surface(surface.wl_surface(), qh, udata);

@@ -105,13 +105,10 @@ impl Drop for DataDevice {
 
 impl<D> Dispatch2<wl_data_device::WlDataDevice, D> for DataDeviceData
 where
-    D: Dispatch<wl_data_offer::WlDataOffer, DataOfferData>
-        + DataDeviceHandler
-        + DataOfferHandler
-        + 'static,
+    D: DataDeviceHandler + DataOfferHandler + 'static,
 {
     event_created_child!(D, WlDataDevice, [
-        0 => (WlDataOffer, Default::default())
+        0 => (WlDataOffer, DataOfferData::default())
     ]);
 
     fn event(

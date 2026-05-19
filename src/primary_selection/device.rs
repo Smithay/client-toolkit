@@ -55,9 +55,7 @@ impl Drop for PrimarySelectionDevice {
 
 impl<State> Dispatch2<ZwpPrimarySelectionDeviceV1, State> for PrimarySelectionDeviceData
 where
-    State: Dispatch<ZwpPrimarySelectionOfferV1, PrimarySelectionOfferData>
-        + PrimarySelectionDeviceHandler
-        + 'static,
+    State: PrimarySelectionDeviceHandler + 'static,
 {
     event_created_child!(State, ZwpPrimarySelectionDeviceV1, [
         0 => (ZwpPrimarySelectionOfferV1, PrimarySelectionOfferData::default())

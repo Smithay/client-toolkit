@@ -66,7 +66,7 @@ impl InputMethodManager {
     /// Bind the input_method global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Result<Self, BindError>
     where
-        D: Dispatch<XxInputMethodManagerV2, GlobalData> + 'static,
+        D: InputMethodHandler + 'static,
     {
         let manager = globals.bind(qh, 2..=3, GlobalData)?;
         Ok(Self { manager })
@@ -76,7 +76,7 @@ impl InputMethodManager {
     /// seat.
     pub fn get_input_method<State>(&self, qh: &QueueHandle<State>, seat: &WlSeat) -> InputMethod
     where
-        State: Dispatch<XxInputMethodV1, InputMethodData<()>, State> + 'static,
+        State: InputMethodHandler + 'static,
     {
         self.get_input_method_with_data(qh, seat, ())
     }
@@ -88,7 +88,7 @@ impl InputMethodManager {
         udata: U,
     ) -> InputMethod
     where
-        State: Dispatch<XxInputMethodV1, InputMethodData<U>, State> + 'static,
+        State: InputMethodHandler + 'static,
         U: Send + Sync + 'static,
     {
         InputMethod {
@@ -102,7 +102,7 @@ impl InputMethodManager {
 
     pub fn get_positioner<State>(&self, qh: &QueueHandle<State>) -> PopupPositioner
     where
-        State: Dispatch<XxInputPopupPositionerV1, PositionerData, State> + 'static,
+        State: InputMethodHandler + 'static,
     {
         PopupPositioner(self.manager.get_positioner(qh, PositionerData))
     }
@@ -255,7 +255,7 @@ impl InputMethod {
         positioner: &PopupPositioner,
     ) -> Popup
     where
-        D: Dispatch<XxInputPopupSurfaceV2, PopupData> + 'static,
+        D: InputMethodHandler + 'static,
         U: Send + Sync + 'static,
     {
         let data = self.input_method.data::<InputMethodData<U>>().unwrap();

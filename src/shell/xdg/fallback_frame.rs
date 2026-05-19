@@ -14,7 +14,8 @@ use crate::reexports::csd_frame::{
 };
 
 use crate::{
-    compositor::SurfaceData,
+    compositor::{CompositorHandler, SurfaceData},
+    output::OutputHandler,
     seat::pointer::CursorIcon,
     shell::WaylandSurface,
     shm::{slot::SlotPool, Shm},
@@ -91,7 +92,7 @@ pub struct FallbackFrame<State> {
 
 impl<State> FallbackFrame<State>
 where
-    State: Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    State: CompositorHandler + OutputHandler + 'static,
 {
     pub fn new(
         parent: &impl WaylandSurface,
@@ -327,7 +328,7 @@ where
 
 impl<State> DecorationsFrame for FallbackFrame<State>
 where
-    State: Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    State: CompositorHandler + OutputHandler + 'static,
 {
     fn set_scaling_factor(&mut self, scale_factor: f64) {
         self.scale_factor = scale_factor;
@@ -621,8 +622,7 @@ impl FrameRenderData {
         queue_handle: &QueueHandle<State>,
     ) -> Self
     where
-        State:
-            Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+        State: CompositorHandler + OutputHandler + 'static,
     {
         let parts = [
             // Header.
