@@ -3,12 +3,14 @@
 use std::error::Error;
 
 use smithay_client_toolkit::{
-    delegate_registry,
     output::{OutputHandler, OutputInfo, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
-use wayland_client::{globals::registry_queue_init, protocol::wl_output, Connection, QueueHandle};
+use wayland_client::{
+    globals::{registry_queue_init, GlobalListHandler},
+    protocol::wl_output,
+    Connection, QueueHandle,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // We initialize the logger for the purpose of debugging.
@@ -19,12 +21,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let conn = Connection::connect_to_env()?;
 
     // Now create an event queue and a handle to the queue so we can create objects.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
-    let qh = event_queue.handle();
-
     // Initialize the registry handling so other parts of Smithay's client toolkit may bind
     // globals.
-    let registry_state = RegistryState::new(&globals);
+    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let qh = event_queue.handle();
 
     // Initialize the delegate we will use for outputs.
     let output_delegate = OutputState::new(&globals, &qh);
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     //
     // This is where you will store your delegates and any data you wish to access/mutate while the
     // application is running.
-    let mut list_outputs = ListOutputs { registry_state, output_state: output_delegate };
+    let mut list_outputs = ListOutputs { output_state: output_delegate };
 
     // `OutputState::new()` binds the output globals found in `registry_queue_init()`.
     //
@@ -60,7 +60,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 /// This type is where the delegates for some parts of the protocol and any application specific data will
 /// live.
 struct ListOutputs {
-    registry_state: RegistryState,
     output_state: OutputState,
 }
 
@@ -103,21 +102,12 @@ impl OutputHandler for ListOutputs {
     }
 }
 
-// In order for our delegate to know of the existence of globals, we need to implement registry
-// handling for the program. This trait will forward events to the RegistryHandler trait
-// implementations.
-delegate_registry!(ListOutputs);
-
 // In order for delegate_registry to work, our application data type needs to provide a way for the
 // implementation to access the registry state.
 //
 // We also need to indicate which delegates will get told about globals being created. We specify
 // the types of the delegates inside the array.
-impl ProvidesRegistryState for ListOutputs {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
+impl GlobalListHandler for ListOutputs {
     registry_handlers! {
         // Here we specify that OutputState needs to receive events regarding the creation and destruction of
         // globals.
@@ -153,5 +143,3 @@ fn print_output(info: &OutputInfo) {
         println!("\t\t{mode}");
     }
 }
-
-smithay_client_toolkit::delegate_dispatch2!(ListOutputs);

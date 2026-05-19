@@ -8,7 +8,6 @@ use wayland_protocols::wp::pointer_constraints::zv1::client::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     registry::GlobalProxy,
@@ -23,9 +22,9 @@ impl PointerConstraintsState {
     /// Bind `zwp_pointer_constraints_v1` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, GlobalData> + 'static,
+        D: PointerConstraintsHandler + 'static,
     {
-        let pointer_constraints = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let pointer_constraints = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { pointer_constraints }
     }
 
@@ -41,7 +40,7 @@ impl PointerConstraintsState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_confined_pointer_v1::ZwpConfinedPointerV1, GlobalError>
     where
-        D: Dispatch<zwp_confined_pointer_v1::ZwpConfinedPointerV1, PointerConstraintData> + 'static,
+        D: PointerConstraintsHandler + 'static,
     {
         let udata = PointerConstraintData { surface: surface.clone(), pointer: pointer.clone() };
         Ok(self
@@ -62,7 +61,7 @@ impl PointerConstraintsState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_locked_pointer_v1::ZwpLockedPointerV1, GlobalError>
     where
-        D: Dispatch<zwp_locked_pointer_v1::ZwpLockedPointerV1, PointerConstraintData> + 'static,
+        D: PointerConstraintsHandler + 'static,
     {
         let udata = PointerConstraintData { surface: surface.clone(), pointer: pointer.clone() };
         Ok(self
@@ -135,7 +134,7 @@ pub struct PointerConstraintData {
     pointer: wl_pointer::WlPointer,
 }
 
-impl<D> Dispatch2<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, D> for GlobalData
+impl<D> Dispatch<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, D> for GlobalData
 where
     D: PointerConstraintsHandler,
 {
@@ -151,7 +150,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_confined_pointer_v1::ZwpConfinedPointerV1, D> for PointerConstraintData
+impl<D> Dispatch<zwp_confined_pointer_v1::ZwpConfinedPointerV1, D> for PointerConstraintData
 where
     D: PointerConstraintsHandler,
 {
@@ -175,7 +174,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_locked_pointer_v1::ZwpLockedPointerV1, D> for PointerConstraintData
+impl<D> Dispatch<zwp_locked_pointer_v1::ZwpLockedPointerV1, D> for PointerConstraintData
 where
     D: PointerConstraintsHandler,
 {

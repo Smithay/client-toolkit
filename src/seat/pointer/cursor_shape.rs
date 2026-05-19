@@ -1,6 +1,5 @@
 use cursor_icon::CursorIcon;
 
-use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 use crate::reexports::client::globals::{BindError, GlobalList};
 use crate::reexports::client::protocol::wl_pointer::WlPointer;
@@ -20,9 +19,9 @@ impl CursorShapeManager {
         queue_handle: &QueueHandle<State>,
     ) -> Result<Self, BindError>
     where
-        State: Dispatch<WpCursorShapeManagerV1, GlobalData> + 'static,
+        State: 'static,
     {
-        let cursor_shape_manager = globals.bind(queue_handle, 1..=2, GlobalData)?;
+        let cursor_shape_manager = globals.bind_singleton(queue_handle, 1..=2, GlobalData)?;
         Ok(Self { cursor_shape_manager })
     }
 
@@ -36,7 +35,7 @@ impl CursorShapeManager {
         queue_handle: &QueueHandle<State>,
     ) -> WpCursorShapeDeviceV1
     where
-        State: Dispatch<WpCursorShapeDeviceV1, GlobalData> + 'static,
+        State: 'static,
     {
         self.cursor_shape_manager.get_pointer(pointer, queue_handle, GlobalData)
     }
@@ -46,7 +45,7 @@ impl CursorShapeManager {
     }
 }
 
-impl<State> Dispatch2<WpCursorShapeManagerV1, State> for GlobalData {
+impl<State> Dispatch<WpCursorShapeManagerV1, State> for GlobalData {
     fn event(
         &self,
         _: &mut State,
@@ -59,7 +58,7 @@ impl<State> Dispatch2<WpCursorShapeManagerV1, State> for GlobalData {
     }
 }
 
-impl<State> Dispatch2<WpCursorShapeDeviceV1, State> for GlobalData {
+impl<State> Dispatch<WpCursorShapeDeviceV1, State> for GlobalData {
     fn event(
         &self,
         _: &mut State,

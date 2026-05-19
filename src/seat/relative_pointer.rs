@@ -5,7 +5,7 @@ use wayland_protocols::wp::relative_pointer::zv1::client::{
     zwp_relative_pointer_manager_v1, zwp_relative_pointer_v1,
 };
 
-use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct RelativePointerState {
@@ -17,10 +17,10 @@ impl RelativePointerState {
     /// Bind `zwp_relative_pointer_manager_v1` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, GlobalData>
-            + 'static,
+        D: RelativePointerHandler + 'static,
     {
-        let relative_pointer_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let relative_pointer_manager =
+            GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { relative_pointer_manager }
     }
 
@@ -30,7 +30,7 @@ impl RelativePointerState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_relative_pointer_v1::ZwpRelativePointerV1, GlobalError>
     where
-        D: Dispatch<zwp_relative_pointer_v1::ZwpRelativePointerV1, RelativePointerData> + 'static,
+        D: RelativePointerHandler + 'static,
     {
         let udata = RelativePointerData { wl_pointer: pointer.clone() };
         Ok(self.relative_pointer_manager.get()?.get_relative_pointer(pointer, qh, udata))
@@ -64,7 +64,7 @@ pub struct RelativePointerData {
     wl_pointer: wl_pointer::WlPointer,
 }
 
-impl<D> Dispatch2<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, D> for GlobalData
+impl<D> Dispatch<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, D> for GlobalData
 where
     D: RelativePointerHandler,
 {
@@ -80,7 +80,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_relative_pointer_v1::ZwpRelativePointerV1, D> for RelativePointerData
+impl<D> Dispatch<zwp_relative_pointer_v1::ZwpRelativePointerV1, D> for RelativePointerData
 where
     D: RelativePointerHandler,
 {

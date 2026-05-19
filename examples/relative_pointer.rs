@@ -2,10 +2,8 @@
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     globals::ProvidesBoundGlobal,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         pointer::{PointerEvent, PointerEventKind, PointerHandler},
@@ -23,9 +21,9 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::registry_queue_init,
-    protocol::{wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    globals::{registry_queue_init, GlobalListHandler},
+    protocol::{wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
+    Connection, Noop, QueueHandle,
 };
 use wayland_protocols::wp::{
     pointer_constraints::zv1::client::{
@@ -65,7 +63,6 @@ fn main() {
         .unwrap();
 
     let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
@@ -106,7 +103,6 @@ fn main() {
 }
 
 struct SimpleWindow {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     compositor_state: CompositorState,
@@ -226,7 +222,7 @@ impl WindowHandler for SimpleWindow {
         self.height = configure.new_size.1.map(|v| v.get()).unwrap_or(256);
 
         if let Some(Constraint::ConfineRegion(confine)) = &self.constraint {
-            let region = self.compositor_state.wl_compositor().create_region(qh, ());
+            let region = self.compositor_state.wl_compositor().create_region(qh, Noop);
             region.add(
                 self.width as i32 / 4,
                 self.height as i32 / 4,
@@ -510,7 +506,7 @@ impl SimpleWindow {
                     .unwrap(),
             )),
             Some(Constraint::Confine(confine)) => {
-                let region = self.compositor_state.wl_compositor().create_region(qh, ());
+                let region = self.compositor_state.wl_compositor().create_region(qh, Noop);
                 region.add(
                     self.width as i32 / 4,
                     self.height as i32 / 4,
@@ -544,25 +540,6 @@ impl SimpleWindow {
     }
 }
 
-delegate_registry!(SimpleWindow);
-
-impl ProvidesRegistryState for SimpleWindow {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for SimpleWindow {
     registry_handlers![OutputState, SeatState,];
 }
-
-impl Dispatch<wl_region::WlRegion, ()> for SimpleWindow {
-    fn event(
-        _: &mut Self,
-        _: &wl_region::WlRegion,
-        _: wl_region::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<SimpleWindow>,
-    ) {
-    }
-}
-
-smithay_client_toolkit::delegate_dispatch2!(SimpleWindow);

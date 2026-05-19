@@ -6,7 +6,6 @@ use wayland_client::{
 use wayland_protocols::xdg::activation::v1::client::{xdg_activation_token_v1, xdg_activation_v1};
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
 };
@@ -55,9 +54,9 @@ impl ActivationState {
         qh: &QueueHandle<State>,
     ) -> Result<ActivationState, BindError>
     where
-        State: Dispatch<xdg_activation_v1::XdgActivationV1, GlobalData, State> + 'static,
+        State: ActivationHandler + 'static,
     {
-        let xdg_activation = globals.bind(qh, 1..=1, GlobalData)?;
+        let xdg_activation = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         Ok(ActivationState { xdg_activation })
     }
 
@@ -73,7 +72,7 @@ impl ActivationState {
     pub fn request_token<D, U>(&self, qh: &QueueHandle<D>, request_data: RequestData<U>)
     where
         D: ActivationHandler<RequestUdata = U>,
-        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>> + 'static,
+        D: 'static,
         U: Send + Sync + 'static,
     {
         let token = self.xdg_activation.get_activation_token(qh, request_data);
@@ -91,7 +90,7 @@ impl ActivationState {
     }
 }
 
-impl<D> Dispatch2<xdg_activation_v1::XdgActivationV1, D> for GlobalData
+impl<D> Dispatch<xdg_activation_v1::XdgActivationV1, D> for GlobalData
 where
     D: ActivationHandler,
 {
@@ -113,7 +112,7 @@ impl ProvidesBoundGlobal<xdg_activation_v1::XdgActivationV1, 1> for ActivationSt
     }
 }
 
-impl<D, U> Dispatch2<xdg_activation_token_v1::XdgActivationTokenV1, D> for RequestData<U>
+impl<D, U> Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, D> for RequestData<U>
 where
     D: ActivationHandler<RequestUdata = U>,
 {

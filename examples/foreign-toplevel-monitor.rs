@@ -1,16 +1,15 @@
 use std::error::Error;
 
-use smithay_client_toolkit::{
-    delegate_registry,
-    foreign_toplevel_list::{ForeignToplevelList, ForeignToplevelListHandler},
-    registry::{ProvidesRegistryState, RegistryState},
-    registry_handlers,
+use smithay_client_toolkit::foreign_toplevel_list::{
+    ForeignToplevelList, ForeignToplevelListHandler,
 };
-use wayland_client::{globals::registry_queue_init, Connection, QueueHandle};
+use wayland_client::{
+    globals::{registry_queue_init, GlobalListHandler},
+    Connection, QueueHandle,
+};
 use wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1;
 
 struct State {
-    registry_state: RegistryState,
     foreign_toplevel_list: ForeignToplevelList,
 }
 
@@ -18,22 +17,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let conn = Connection::connect_to_env()?;
     let (globals, mut event_queue) = registry_queue_init(&conn)?;
     let qh = event_queue.handle();
-    let registry_state = RegistryState::new(&globals);
     let foreign_toplevel_list = ForeignToplevelList::new(&globals, &qh);
 
-    let mut state = State { registry_state, foreign_toplevel_list };
+    let mut state = State { foreign_toplevel_list };
     loop {
         event_queue.blocking_dispatch(&mut state)?;
     }
 }
 
-impl ProvidesRegistryState for State {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
-    registry_handlers! {}
-}
+impl GlobalListHandler for State {}
 
 impl ForeignToplevelListHandler for State {
     fn foreign_toplevel_list_state(&mut self) -> &mut ForeignToplevelList {
@@ -76,6 +68,3 @@ impl ForeignToplevelListHandler for State {
         println!("Close toplevel: {:?}", info);
     }
 }
-
-delegate_registry!(State);
-smithay_client_toolkit::delegate_dispatch2!(State);
