@@ -117,7 +117,7 @@ impl DmabufState {
     /// This does not fail if the global does not exist.
     pub fn new<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, GlobalData> + 'static,
+        D: DmabufHandler + 'static,
     {
         // Mesa (at least the latest version) also requires version 3 or 4
         let zwp_linux_dmabuf = GlobalProxy::from(globals.bind(qh, 3..=5, GlobalData));
@@ -142,7 +142,7 @@ impl DmabufState {
     /// version. An application can then fallback to using `shm` buffers.
     pub fn create_params<D>(&self, qh: &QueueHandle<D>) -> Result<DmabufParams, GlobalError>
     where
-        D: Dispatch<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, GlobalData> + 'static,
+        D: DmabufHandler + 'static,
     {
         let zwp_linux_dmabuf = self.zwp_linux_dmabuf.get()?;
         let params = zwp_linux_dmabuf.create_params(qh, GlobalData);
@@ -157,8 +157,7 @@ impl DmabufState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, GlobalError>
     where
-        D: Dispatch<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, DmabufFeedbackData>
-            + 'static,
+        D: DmabufHandler + 'static,
     {
         let zwp_linux_dmabuf = self.zwp_linux_dmabuf.with_min_version(4)?;
         Ok(zwp_linux_dmabuf.get_default_feedback(qh, DmabufFeedbackData::default()))
@@ -173,8 +172,7 @@ impl DmabufState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, GlobalError>
     where
-        D: Dispatch<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, DmabufFeedbackData>
-            + 'static,
+        D: DmabufHandler + 'static,
     {
         let zwp_linux_dmabuf = self.zwp_linux_dmabuf.with_min_version(4)?;
         Ok(zwp_linux_dmabuf.get_surface_feedback(surface, qh, DmabufFeedbackData::default()))
@@ -263,7 +261,7 @@ impl DmabufParams {
         qh: &QueueHandle<D>,
     ) -> (wl_buffer::WlBuffer, zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1)
     where
-        D: Dispatch<wl_buffer::WlBuffer, DmaBufferData> + 'static,
+        D: DmabufHandler + 'static,
     {
         let buffer = self.params.create_immed(width, height, format, flags, qh, DmaBufferData);
         (buffer, self.params)
@@ -358,7 +356,7 @@ where
 
 impl<D> Dispatch2<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, D> for GlobalData
 where
-    D: Dispatch<wl_buffer::WlBuffer, DmaBufferData> + DmabufHandler + 'static,
+    D: DmabufHandler + 'static,
 {
     fn event(
         &self,

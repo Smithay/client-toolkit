@@ -35,7 +35,7 @@ impl From<wl_shm::WlShm> for Shm {
 impl Shm {
     pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Shm, BindError>
     where
-        State: Dispatch<wl_shm::WlShm, GlobalData, State> + ShmHandler + 'static,
+        State: ShmHandler + 'static,
     {
         let wl_shm = globals.bind(qh, 1..=1, GlobalData)?;
         // Compositors must advertise Argb8888 and Xrgb8888, so let's reserve space for those formats.

@@ -25,7 +25,7 @@ use wayland_client::{
 
 use crate::globals::ProvidesBoundGlobal;
 
-use super::CreatePoolError;
+use super::{CreatePoolError, ShmHandler};
 
 /// A raw handler for file backed shared memory pools.
 ///
@@ -112,8 +112,8 @@ impl RawPool {
         qh: &QueueHandle<D>,
     ) -> wl_buffer::WlBuffer
     where
-        D: Dispatch<wl_buffer::WlBuffer, U> + 'static,
-        U: Send + Sync + 'static,
+        D: 'static,
+        U: Dispatch<wl_buffer::WlBuffer, D> + Send + Sync + 'static,
     {
         self.pool.create_buffer(offset, width, height, stride, format, qh, udata)
     }

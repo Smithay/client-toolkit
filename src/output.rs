@@ -133,12 +133,7 @@ impl fmt::Debug for ScaleWatcherHandle {
 }
 
 impl OutputState {
-    pub fn new<
-        D: Dispatch<wl_output::WlOutput, OutputData>
-            + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-            + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
-            + 'static,
-    >(
+    pub fn new<D: OutputHandler + 'static>(
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> OutputState {
@@ -198,7 +193,7 @@ impl OutputState {
 
     fn setup<D>(&mut self, wl_output: wl_output::WlOutput, qh: &QueueHandle<D>)
     where
-        D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + 'static,
+        D: OutputHandler + 'static,
     {
         let data = wl_output.data::<OutputData>().unwrap().clone();
 

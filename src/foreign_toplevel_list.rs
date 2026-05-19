@@ -36,7 +36,7 @@ pub struct ForeignToplevelList {
 impl ForeignToplevelList {
     pub fn new<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, GlobalData> + 'static,
+        D: ForeignToplevelListHandler + 'static,
     {
         let foreign_toplevel_list = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Self { foreign_toplevel_list, toplevels: Vec::new() }
@@ -98,9 +98,7 @@ pub trait ForeignToplevelListHandler: Sized {
 
 impl<D> Dispatch2<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, D> for GlobalData
 where
-    D: Dispatch<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, ForeignToplevelData>
-        + ForeignToplevelListHandler
-        + 'static,
+    D: ForeignToplevelListHandler + 'static,
 {
     fn event(
         &self,
@@ -121,7 +119,7 @@ where
     }
 
     wayland_client::event_created_child!(D, ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, [
-        ext_foreign_toplevel_list_v1::EVT_TOPLEVEL_OPCODE => (ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, Default::default())
+        ext_foreign_toplevel_list_v1::EVT_TOPLEVEL_OPCODE => (ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, ForeignToplevelData::default())
     ]);
 }
 

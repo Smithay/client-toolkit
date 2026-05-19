@@ -55,7 +55,7 @@ impl ActivationState {
         qh: &QueueHandle<State>,
     ) -> Result<ActivationState, BindError>
     where
-        State: Dispatch<xdg_activation_v1::XdgActivationV1, GlobalData, State> + 'static,
+        State: ActivationHandler + 'static,
     {
         let xdg_activation = globals.bind(qh, 1..=1, GlobalData)?;
         Ok(ActivationState { xdg_activation })

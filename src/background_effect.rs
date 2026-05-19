@@ -16,8 +16,7 @@ pub struct BackgroundEffectState {
 impl BackgroundEffectState {
     pub fn new<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, GlobalData>
-            + 'static,
+        D: BackgroundEffectHandler + 'static,
     {
         let manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Self { manager, capabilities: None }
@@ -39,8 +38,7 @@ impl BackgroundEffectState {
         qh: &QueueHandle<D>,
     ) -> Result<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, GlobalError>
     where
-        D: Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, GlobalData>
-            + 'static,
+        D: BackgroundEffectHandler + 'static,
     {
         Ok(self.manager.get()?.get_background_effect(surface, qh, GlobalData))
     }

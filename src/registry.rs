@@ -207,9 +207,9 @@ impl RegistryState {
         udata: U,
     ) -> Result<I, BindError>
     where
-        D: Dispatch<I, U> + 'static,
+        D: 'static,
         I: Proxy + 'static,
-        U: Send + Sync + 'static,
+        U: Dispatch<I, D> + Send + Sync + 'static,
     {
         bind_one(&self.registry, &self.globals, qh, version, udata)
     }
@@ -226,9 +226,9 @@ impl RegistryState {
         udata: U,
     ) -> Result<I, BindError>
     where
-        D: Dispatch<I, U> + 'static,
+        D: 'static,
         I: Proxy + 'static,
-        U: Send + Sync + 'static,
+        U: Dispatch<I, D> + Send + Sync + 'static,
     {
         let iface = I::interface();
         if *version.end() > iface.version {
@@ -261,10 +261,10 @@ impl RegistryState {
         make_udata: F,
     ) -> Result<Vec<I>, BindError>
     where
-        D: Dispatch<I, U> + 'static,
+        D: 'static,
         I: Proxy + 'static,
         F: FnMut(u32) -> U,
-        U: Send + Sync + 'static,
+        U: Dispatch<I, D> + Send + Sync + 'static,
     {
         bind_all(&self.registry, &self.globals, qh, version, make_udata)
     }
@@ -305,34 +305,28 @@ macro_rules! delegate_registry {
     };
 }
 
-impl<D> Dispatch<wl_registry::WlRegistry, GlobalListContents, D> for RegistryState
-where
-    D: Dispatch<wl_registry::WlRegistry, GlobalListContents> + ProvidesRegistryState,
-{
-    fn event(
-        state: &mut D,
-        _: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &GlobalListContents,
-        conn: &Connection,
-        qh: &QueueHandle<D>,
-    ) {
-        match event {
-            wl_registry::Event::Global { name, interface, version } => {
-                let iface = interface.clone();
-                state.registry().globals.push(Global { name, interface, version });
-                state.runtime_add_global(conn, qh, name, &iface, version);
-            }
-
-            wl_registry::Event::GlobalRemove { name } => {
-                if let Some(i) = state.registry().globals.iter().position(|g| g.name == name) {
-                    let global = state.registry().globals.swap_remove(i);
-                    state.runtime_remove_global(conn, qh, name, &global.interface);
-                }
-            }
-
-            _ => unreachable!("wl_registry is frozen"),
+#[doc(hidden)]
+pub fn dispatch_registry<D: ProvidesRegistryState>(
+    state: &mut D,
+    event: wl_registry::Event,
+    conn: &Connection,
+    qh: &QueueHandle<D>,
+) {
+    match event {
+        wl_registry::Event::Global { name, interface, version } => {
+            let iface = interface.clone();
+            state.registry().globals.push(Global { name, interface, version });
+            state.runtime_add_global(conn, qh, name, &iface, version);
         }
+
+        wl_registry::Event::GlobalRemove { name } => {
+            if let Some(i) = state.registry().globals.iter().position(|g| g.name == name) {
+                let global = state.registry().globals.swap_remove(i);
+                state.runtime_remove_global(conn, qh, name, &global.interface);
+            }
+        }
+
+        _ => unreachable!("wl_registry is frozen"),
     }
 }
 
@@ -388,7 +382,8 @@ pub struct SimpleGlobal<I, const MAX_VERSION: u32> {
 impl<I: Proxy + 'static, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
     pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
     where
-        State: Dispatch<I, (), State> + 'static,
+        State: 'static,
+        (): Dispatch<I, State> + 'static,
     {
         let proxy = globals.bind(qh, 0..=MAX_VERSION, ())?;
         Ok(Self { proxy: GlobalProxy::Bound(proxy) })
@@ -427,10 +422,10 @@ pub(crate) fn bind_all<I, D, U, F>(
     mut make_udata: F,
 ) -> Result<Vec<I>, BindError>
 where
-    D: Dispatch<I, U> + 'static,
+    D: 'static,
     I: Proxy + 'static,
     F: FnMut(u32) -> U,
-    U: Send + Sync + 'static,
+    U: Dispatch<I, D> + Send + Sync + 'static,
 {
     let iface = I::interface();
     if *version.end() > iface.version {
@@ -465,9 +460,9 @@ pub(crate) fn bind_one<I, D, U>(
     udata: U,
 ) -> Result<I, BindError>
 where
-    D: Dispatch<I, U> + 'static,
+    D: 'static,
     I: Proxy + 'static,
-    U: Send + Sync + 'static,
+    U: Dispatch<I, D> + Send + Sync + 'static,
 {
     let iface = I::interface();
     if *version.end() > iface.version {
