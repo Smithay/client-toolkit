@@ -45,7 +45,7 @@ fn main() {
     window.commit();
 
     // Initialize wgpu
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
     });
@@ -74,7 +74,7 @@ fn main() {
     }))
     .expect("Failed to find suitable adapter");
 
-    let (device, queue) = pollster::block_on(adapter.request_device(&Default::default(), None))
+    let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))
         .expect("Failed to request device");
 
     let mut wgpu = Wgpu {
@@ -252,6 +252,7 @@ impl WindowHandler for Wgpu {
             let _renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    depth_slice: None,
                     view: &texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -262,6 +263,7 @@ impl WindowHandler for Wgpu {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
         }
 
