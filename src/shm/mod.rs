@@ -7,7 +7,7 @@ use std::io;
 use wayland_client::{
     globals::{BindError, GlobalList},
     protocol::wl_shm,
-    Connection, Dispatch, QueueHandle, WEnum,
+    Connection, Dispatch, QueueHandle,
 };
 
 use crate::{
@@ -84,17 +84,8 @@ where
     ) {
         match event {
             wl_shm::Event::Format { format } => {
-                match format {
-                    WEnum::Value(format) => {
-                        state.shm_state().formats.push(format);
-                        log::debug!(target: "sctk", "supported wl_shm format {:?}", format);
-                    }
-
-                    // Ignore formats we don't know about.
-                    WEnum::Unknown(raw) => {
-                        log::debug!(target: "sctk", "Unknown supported wl_shm format {:x}", raw);
-                    }
-                };
+                state.shm_state().formats.push(format);
+                log::debug!(target: "sctk", "supported wl_shm format {:?}", format);
             }
 
             _ => unreachable!(),

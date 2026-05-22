@@ -14,7 +14,6 @@ use std::sync::Mutex;
 
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::protocol::wl_seat::WlSeat;
-use wayland_client::WEnum;
 
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{

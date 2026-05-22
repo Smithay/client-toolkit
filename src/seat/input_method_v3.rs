@@ -25,7 +25,6 @@ use crate::reexports::protocols_experimental::text_input::v3::client::xx_text_in
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_surface;
-use wayland_client::WEnum;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 
 use crate::reexports::protocols_experimental::input_method::v1::client as protocol;

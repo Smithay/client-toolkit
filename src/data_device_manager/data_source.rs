@@ -5,7 +5,7 @@ use crate::reexports::client::{
         wl_data_source::{self, WlDataSource},
         wl_surface::WlSurface,
     },
-    Connection, Proxy, QueueHandle, WEnum,
+    Connection, Proxy, QueueHandle,
 };
 
 use super::{data_device::DataDevice, WritePipe};

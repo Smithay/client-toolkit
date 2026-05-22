@@ -63,10 +63,10 @@ name = "wgpu"
 required-features = ["system"]
 
 [patch.crates-io]
-wayland-client = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
-wayland-protocols = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
-wayland-protocols-wlr = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
-wayland-protocols-misc = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
-wayland-protocols-experimental = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
-wayland-cursor = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
-wayland-backend = { git = "https://github.com/smithay/wayland-rs", branch = "dispatch" }
+wayland-client = { git = "https://github.com/smithay/wayland-rs" }
+wayland-protocols = { git = "https://github.com/smithay/wayland-rs" }
+wayland-protocols-wlr = { git = "https://github.com/smithay/wayland-rs" }
+wayland-protocols-misc = { git = "https://github.com/smithay/wayland-rs" }
+wayland-protocols-experimental = { git = "https://github.com/smithay/wayland-rs" }
+wayland-cursor = { git = "https://github.com/smithay/wayland-rs" }
+wayland-backend = { git = "https://github.com/smithay/wayland-rs" }

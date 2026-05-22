@@ -12,7 +12,7 @@ use wayland_client::{
         wl_shm::WlShm,
         wl_surface::WlSurface,
     },
-    Connection, Proxy, QueueHandle, WEnum,
+    Connection, Proxy, QueueHandle,
 };
 use wayland_cursor::{Cursor, CursorTheme};
 use wayland_protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
@@ -248,40 +248,37 @@ where
             wl_pointer::Event::Button { time, button, state, serial } => {
                 guard.latest_btn.replace(serial);
                 match state {
-                    WEnum::Value(wl_pointer::ButtonState::Pressed) => {
+                    wl_pointer::ButtonState::Pressed => {
                         PointerEventKind::Press { time, button, serial }
                     }
-                    WEnum::Value(wl_pointer::ButtonState::Released) => {
+                    wl_pointer::ButtonState::Released => {
                         PointerEventKind::Release { time, button, serial }
                     }
-                    WEnum::Unknown(unknown) => {
-                        log::warn!(target: "sctk", "{}: invalid pointer button state: {:x}", pointer.id(), unknown);
+                    _ => {
+                        log::warn!(target: "sctk", "{}: invalid pointer button state: {:?}", pointer.id(), state);
                         return;
                     }
                     _ => unreachable!(),
                 }
             }
             // Axis logical events.
-            wl_pointer::Event::Axis { time, axis, value } => match axis {
-                WEnum::Value(axis) => {
-                    let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
-                    match axis {
-                        wl_pointer::Axis::VerticalScroll => {
-                            vertical.absolute = value;
-                        }
-                        wl_pointer::Axis::HorizontalScroll => {
-                            horizontal.absolute = value;
-                        }
-                        _ => unreachable!(),
-                    };
+            wl_pointer::Event::Axis { time, axis, value } => {
+                let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
+                match axis {
+                    wl_pointer::Axis::VerticalScroll => {
+                        vertical.absolute = value;
+                    }
+                    wl_pointer::Axis::HorizontalScroll => {
+                        horizontal.absolute = value;
+                    }
+                    _ => {
+                        log::warn!(target: "sctk", "{}: invalid pointer axis: {:?}", pointer.id(), axis);
+                        return;
+                    }
+                }
 
-                    PointerEventKind::Axis { time, horizontal, vertical, source: None }
-                }
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
-                    return;
-                }
-            },
+                PointerEventKind::Axis { time, horizontal, vertical, source: None }
+            }
 
             wl_pointer::Event::AxisSource { axis_source } => match axis_source {
                 WEnum::Value(source) => PointerEventKind::Axis {

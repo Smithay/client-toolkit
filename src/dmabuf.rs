@@ -5,7 +5,7 @@ use std::{fmt, mem, os::unix::io::BorrowedFd, slice, sync::Mutex};
 use wayland_client::{
     globals::GlobalList,
     protocol::{wl_buffer, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::wp::linux_dmabuf::zv1::client::{
     zwp_linux_buffer_params_v1,
@@ -20,18 +20,14 @@ pub struct DmabufFeedbackTranche {
     /// renderer device.
     pub device: dev_t,
     /// Flags for tranche
-    pub flags: WEnum<TrancheFlags>,
+    pub flags: TrancheFlags,
     /// Indices of formats in the format table
     pub formats: Vec<u16>,
 }
 
 impl Default for DmabufFeedbackTranche {
     fn default() -> DmabufFeedbackTranche {
-        DmabufFeedbackTranche {
-            device: 0,
-            flags: WEnum::Value(TrancheFlags::empty()),
-            formats: Vec::new(),
-        }
+        DmabufFeedbackTranche { device: 0, flags: TrancheFlags::empty(), formats: Vec::new() }
     }
 }
 

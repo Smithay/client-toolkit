@@ -20,7 +20,7 @@ use memmap2::MmapMut;
 use wayland_client::{
     backend::ObjectData,
     protocol::{wl_buffer, wl_shm, wl_shm_pool},
-    Dispatch, Proxy, QueueHandle, WEnum,
+    Dispatch, Proxy, QueueHandle,
 };
 
 use crate::globals::ProvidesBoundGlobal;
@@ -134,13 +134,7 @@ impl RawPool {
     ) -> wl_buffer::WlBuffer {
         self.pool
             .send_constructor(
-                wl_shm_pool::Request::CreateBuffer {
-                    offset,
-                    width,
-                    height,
-                    stride,
-                    format: WEnum::Value(format),
-                },
+                wl_shm_pool::Request::CreateBuffer { offset, width, height, stride, format },
                 data,
             )
             .unwrap_or_else(|_| Proxy::inert(self.pool.backend().clone()))

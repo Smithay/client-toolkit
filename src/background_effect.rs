@@ -1,5 +1,5 @@
 use wayland_client::{
-    globals::GlobalList, protocol::wl_surface, Connection, Dispatch, QueueHandle, WEnum,
+    globals::GlobalList, protocol::wl_surface, Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::ext::background_effect::v1::client::{
     ext_background_effect_manager_v1, ext_background_effect_surface_v1,
@@ -74,12 +74,6 @@ where
     ) {
         match event {
             ext_background_effect_manager_v1::Event::Capabilities { flags } => {
-                let flags = match flags {
-                    WEnum::Value(value) => value,
-                    WEnum::Unknown(value) => {
-                        ext_background_effect_manager_v1::Capability::from_bits_retain(value)
-                    }
-                };
                 data.background_effect_state().capabilities = Some(flags);
                 data.update_capabilities();
             }
