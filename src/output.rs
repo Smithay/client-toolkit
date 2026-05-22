@@ -8,7 +8,7 @@ use log::warn;
 use wayland_client::{
     globals::GlobalList,
     protocol::wl_output::{self, Subpixel, Transform},
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},

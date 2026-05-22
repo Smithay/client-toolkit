@@ -2,7 +2,7 @@ use std::{mem, sync::Mutex};
 use wayland_client::{
     globals::GlobalList,
     protocol::{wl_output, wl_surface},
-    Connection, Dispatch, QueueHandle, WEnum,
+    Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::wp::presentation_time::client::{wp_presentation, wp_presentation_feedback};
 
@@ -63,7 +63,7 @@ pub trait PresentationTimeHandler: Sized {
         time: PresentTime,
         refresh: u32,
         seq: u64,
-        flags: WEnum<wp_presentation_feedback::Kind>,
+        flags: wp_presentation_feedback::Kind,
     );
 
     /// Content update not displayed

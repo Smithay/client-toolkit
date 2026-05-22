@@ -242,7 +242,11 @@ impl RegistryState {
                 continue;
             }
             if global.version < *version.start() {
-                return Err(BindError::UnsupportedVersion);
+                return Err(BindError::UnsupportedVersion {
+                    interface: iface.name,
+                    requested: *version.start(),
+                    available: global.version,
+                });
             }
             let version = global.version.min(*version.end());
             let proxy = self.registry.bind(global.name, version, qh, udata);
@@ -250,7 +254,7 @@ impl RegistryState {
 
             return Ok(proxy);
         }
-        Err(BindError::NotPresent)
+        Err(BindError::NotPresent(iface.name))
     }
 
     /// Binds all globals with a given interface.
@@ -439,7 +443,11 @@ where
             continue;
         }
         if global.version < *version.start() {
-            return Err(BindError::UnsupportedVersion);
+            return Err(BindError::UnsupportedVersion {
+                interface: iface.name,
+                requested: *version.start(),
+                available: global.version,
+            });
         }
         let version = global.version.min(*version.end());
         let udata = make_udata(global.name);
@@ -480,7 +488,11 @@ where
             continue;
         }
         if global.version < *version.start() {
-            return Err(BindError::UnsupportedVersion);
+            return Err(BindError::UnsupportedVersion {
+                interface: iface.name,
+                requested: *version.start(),
+                available: global.version,
+            });
         }
         let version = global.version.min(*version.end());
         let proxy = registry.bind(global.name, version, qh, udata);
@@ -488,7 +500,7 @@ where
 
         return Ok(proxy);
     }
-    Err(BindError::NotPresent)
+    Err(BindError::NotPresent(iface.name))
 }
 
 /// A helper macro for implementing [`ProvidesRegistryState`].

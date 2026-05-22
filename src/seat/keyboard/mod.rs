@@ -18,7 +18,7 @@ pub use xkeysym::{KeyCode, Keysym};
 use calloop::timer::{TimeoutAction, Timer};
 use wayland_client::{
     protocol::{wl_keyboard, wl_seat, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use xkbcommon::xkb;
@@ -522,62 +522,56 @@ where
         match event {
             wl_keyboard::Event::Keymap { format, fd, size } => {
                 match format {
-                    WEnum::Value(format) => match format {
-                        wl_keyboard::KeymapFormat::NoKeymap => {
-                            log::warn!(target: "sctk", "non-xkb compatible keymap");
-                        }
-
-                        wl_keyboard::KeymapFormat::XkbV1 => {
-                            if self.user_specified_rmlvo {
-                                // state is locked, ignore keymap updates
-                                return;
-                            }
-
-                            let context = self.xkb_context.lock().unwrap();
-
-                            // 0.5.0-beta.0 does not mark this function as unsafe but upstream rightly makes
-                            // this function unsafe.
-                            //
-                            // Version 7 of wl_keyboard requires the file descriptor to be mapped using
-                            // MAP_PRIVATE. xkbcommon-rs does mmap the file descriptor properly.
-                            //
-                            // SAFETY:
-                            // - wayland-client guarantees we have received a valid file descriptor.
-                            #[allow(unused_unsafe)] // Upstream release will change this
-                            match unsafe {
-                                xkb::Keymap::new_from_fd(
-                                    &context,
-                                    fd,
-                                    size as usize,
-                                    xkb::KEYMAP_FORMAT_TEXT_V1,
-                                    xkb::COMPILE_NO_FLAGS,
-                                )
-                            } {
-                                Ok(Some(keymap)) => {
-                                    let state = xkb::State::new(&keymap);
-                                    {
-                                        let mut state_guard = self.xkb_state.lock().unwrap();
-                                        *state_guard = Some(state);
-                                    }
-                                    data.update_keymap(conn, qh, keyboard, Keymap(&keymap));
-                                }
-
-                                Ok(None) => {
-                                    log::error!(target: "sctk", "invalid keymap");
-                                }
-
-                                Err(err) => {
-                                    log::error!(target: "sctk", "{}", err);
-                                }
-                            }
-                        }
-
-                        _ => unreachable!(),
-                    },
-
-                    WEnum::Unknown(value) => {
-                        log::warn!(target: "sctk", "unknown keymap format 0x{:x}", value)
+                    wl_keyboard::KeymapFormat::NoKeymap => {
+                        log::warn!(target: "sctk", "non-xkb compatible keymap");
                     }
+
+                    wl_keyboard::KeymapFormat::XkbV1 => {
+                        if self.user_specified_rmlvo {
+                            // state is locked, ignore keymap updates
+                            return;
+                        }
+
+                        let context = self.xkb_context.lock().unwrap();
+
+                        // 0.5.0-beta.0 does not mark this function as unsafe but upstream rightly makes
+                        // this function unsafe.
+                        //
+                        // Version 7 of wl_keyboard requires the file descriptor to be mapped using
+                        // MAP_PRIVATE. xkbcommon-rs does mmap the file descriptor properly.
+                        //
+                        // SAFETY:
+                        // - wayland-client guarantees we have received a valid file descriptor.
+                        #[allow(unused_unsafe)] // Upstream release will change this
+                        match unsafe {
+                            xkb::Keymap::new_from_fd(
+                                &context,
+                                fd,
+                                size as usize,
+                                xkb::KEYMAP_FORMAT_TEXT_V1,
+                                xkb::COMPILE_NO_FLAGS,
+                            )
+                        } {
+                            Ok(Some(keymap)) => {
+                                let state = xkb::State::new(&keymap);
+                                {
+                                    let mut state_guard = self.xkb_state.lock().unwrap();
+                                    *state_guard = Some(state);
+                                }
+                                data.update_keymap(conn, qh, keyboard, Keymap(&keymap));
+                            }
+
+                            Ok(None) => {
+                                log::error!(target: "sctk", "invalid keymap");
+                            }
+
+                            Err(err) => {
+                                log::error!(target: "sctk", "{}", err);
+                            }
+                        }
+                    }
+
+                    _ => log::warn!(target: "sctk", "unknown keymap format {:?}", format),
                 }
             }
 
@@ -633,7 +627,9 @@ where
             }
 
             wl_keyboard::Event::Key { serial, time, key, state } => match state {
-                WEnum::Value(state) => {
+                wl_keyboard::KeyState::Pressed
+                | wl_keyboard::KeyState::Released
+                | wl_keyboard::KeyState::Repeated => {
                     let state_guard = self.xkb_state.lock().unwrap();
 
                     if let Some(guard) = state_guard.as_ref() {
@@ -794,8 +790,8 @@ where
                     };
                 }
 
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: compositor sends invalid key state: {:x}", keyboard.id(), unknown);
+                _ => {
+                    log::warn!(target: "sctk", "{}: compositor sends invalid key state: {:?}", keyboard.id(), state);
                 }
             },
 

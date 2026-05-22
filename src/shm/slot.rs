@@ -2,7 +2,7 @@
 
 use std::io;
 use std::{
-    os::unix::io::{AsRawFd, OwnedFd},
+    os::unix::io::{AsFd, OwnedFd},
     sync::{
         atomic::{AtomicU8, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -10,6 +10,7 @@ use std::{
 };
 
 use wayland_client::{
+    backend::protocol::Message,
     protocol::{wl_buffer, wl_shm, wl_surface},
     Proxy,
 };
@@ -527,7 +528,11 @@ impl wayland_client::backend::ObjectData for BufferData {
 
                 // The Destroy message is identical to Release message (no args, same ID), so just reply
                 handle
-                    .send_request(msg.map_fd(|x| x.as_raw_fd()), None, None)
+                    .send_request(
+                        Message { sender_id: msg.sender_id, opcode: 0, args: Default::default() },
+                        None,
+                        None,
+                    )
                     .expect("Unexpected invalid ID");
             }
             BufferData::DEAD => {

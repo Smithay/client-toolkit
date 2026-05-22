@@ -12,7 +12,7 @@ use wayland_client::{
         wl_callback, wl_compositor, wl_output, wl_region,
         wl_surface::{self, WlSurface},
     },
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
