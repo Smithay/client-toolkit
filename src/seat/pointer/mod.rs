@@ -258,7 +258,6 @@ where
                         log::warn!(target: "sctk", "{}: invalid pointer button state: {:?}", pointer.id(), state);
                         return;
                     }
-                    _ => unreachable!(),
                 }
             }
             // Axis logical events.
@@ -285,7 +284,7 @@ where
                     PointerEventKind::Axis {
                         horizontal: AxisScroll::default(),
                         vertical: AxisScroll::default(),
-                        source: Some(source),
+                        source: Some(axis_source),
                         time: 0,
                     }
                 } else {
@@ -360,7 +359,7 @@ where
                     .available_since()
                     .is_some_and(|v| v <= pointer.version())
                 {
-                    Some(dir)
+                    Some(direction)
                 } else {
                     log::warn!(target: "sctk", "{}: invalid axis direction: {:?}", pointer.id(), direction);
                     return;
