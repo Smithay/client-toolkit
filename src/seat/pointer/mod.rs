@@ -280,21 +280,22 @@ where
                 PointerEventKind::Axis { time, horizontal, vertical, source: None }
             }
 
-            wl_pointer::Event::AxisSource { axis_source } => match axis_source {
-                WEnum::Value(source) => PointerEventKind::Axis {
-                    horizontal: AxisScroll::default(),
-                    vertical: AxisScroll::default(),
-                    source: Some(source),
-                    time: 0,
-                },
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "unknown pointer axis source: {:x}", unknown);
+            wl_pointer::Event::AxisSource { axis_source } => {
+                if axis_source.available_since().is_some_and(|v| v <= pointer.version()) {
+                    PointerEventKind::Axis {
+                        horizontal: AxisScroll::default(),
+                        vertical: AxisScroll::default(),
+                        source: Some(source),
+                        time: 0,
+                    }
+                } else {
+                    log::warn!(target: "sctk", "unknown pointer axis source: {:?}", axis_source);
                     return;
                 }
-            },
+            }
 
-            wl_pointer::Event::AxisStop { time, axis } => match axis {
-                WEnum::Value(axis) => {
+            wl_pointer::Event::AxisStop { time, axis } => {
+                if axis.available_since().is_some_and(|v| v <= pointer.version()) {
                     let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
                     match axis {
                         wl_pointer::Axis::VerticalScroll => vertical.stop = true,
@@ -304,16 +305,14 @@ where
                     }
 
                     PointerEventKind::Axis { time, horizontal, vertical, source: None }
-                }
-
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                } else {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:?}", pointer.id(), axis);
                     return;
                 }
-            },
+            }
 
-            wl_pointer::Event::AxisDiscrete { axis, discrete } => match axis {
-                WEnum::Value(axis) => {
+            wl_pointer::Event::AxisDiscrete { axis, discrete } => {
+                if axis.available_since().is_some_and(|v| v <= pointer.version()) {
                     let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
                     match axis {
                         wl_pointer::Axis::VerticalScroll => {
@@ -328,16 +327,14 @@ where
                     };
 
                     PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
-                }
-
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                } else {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:?}", pointer.id(), axis);
                     return;
                 }
-            },
+            }
 
-            wl_pointer::Event::AxisValue120 { axis, value120 } => match axis {
-                WEnum::Value(axis) => {
+            wl_pointer::Event::AxisValue120 { axis, value120 } => {
+                if axis.available_since().is_some_and(|v| v <= pointer.version()) {
                     let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
                     match axis {
                         wl_pointer::Axis::VerticalScroll => {
@@ -352,20 +349,21 @@ where
                     };
 
                     PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
-                }
-                WEnum::Unknown(unknown) => {
-                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
+                } else {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:?}", pointer.id(), axis);
                     return;
                 }
-            },
+            }
 
             wl_pointer::Event::AxisRelativeDirection { axis, direction } => {
-                let direction = match direction {
-                    WEnum::Value(dir) => Some(dir),
-                    WEnum::Unknown(unknown) => {
-                        log::warn!(target: "sctk", "{}: invalid axis direction: {:x}", pointer.id(), unknown);
-                        return;
-                    }
+                let direction = if direction
+                    .available_since()
+                    .is_some_and(|v| v <= pointer.version())
+                {
+                    Some(dir)
+                } else {
+                    log::warn!(target: "sctk", "{}: invalid axis direction: {:?}", pointer.id(), direction);
+                    return;
                 };
                 if axis.available_since().is_some_and(|v| v <= pointer.version()) {
                     let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
