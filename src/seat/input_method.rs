@@ -313,15 +313,17 @@ where
             }
             Event::TextChangeCause { cause } => {
                 imdata.pending_state = InputMethodEventState {
-                    text_change_cause: match cause {
-                        WEnum::Value(cause) => cause,
-                        WEnum::Unknown(value) => {
-                            warn!(
-                                "Unknown `text_change_cause`: {}. Assuming not input method.",
-                                value
-                            );
-                            ChangeCause::Other
-                        }
+                    text_change_cause: if cause
+                        .available_since()
+                        .is_some_and(|v| v <= input_method.version())
+                    {
+                        cause
+                    } else {
+                        warn!(
+                            "Unknown `text_change_cause`: {:?}. Assuming not input method.",
+                            cause
+                        );
+                        ChangeCause::Other
                     },
                     ..imdata.pending_state.clone()
                 }
@@ -329,16 +331,18 @@ where
             Event::ContentType { hint, purpose } => {
                 imdata.pending_state = InputMethodEventState {
                     active: imdata.pending_state.active.with_content_type(),
-                    content_hint: match hint {
-                        WEnum::Value(hint) => hint,
-                        WEnum::Unknown(value) => {
-                            warn!(
-                                "Unknown content hints: 0b{:b}, ignoring.",
-                                ContentHint::from_bits_retain(value)
-                                    - ContentHint::from_bits_truncate(value)
-                            );
-                            ContentHint::from_bits_truncate(value)
-                        }
+                    content_hint: if hint
+                        .available_since()
+                        .is_some_and(|v| v <= input_method.version())
+                    {
+                        hint
+                    } else {
+                        warn!(
+                            "Unknown content hints: 0b{:b}, ignoring.",
+                            ContentHint::from_bits_retain(value)
+                                - ContentHint::from_bits_truncate(value)
+                        );
+                        ContentHint::from_bits_truncate(value)
                     },
                     content_purpose: match purpose {
                         WEnum::Value(v) => v,
