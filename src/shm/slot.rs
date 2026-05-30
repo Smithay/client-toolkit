@@ -2,6 +2,7 @@
 
 use std::io;
 use std::{
+    any::Any,
     os::unix::io::{AsFd, OwnedFd},
     sync::{
         atomic::{AtomicU8, AtomicUsize, Ordering},
@@ -416,7 +417,7 @@ impl Buffer {
     }
 
     fn data(&self) -> Option<&BufferData> {
-        self.buffer.object_data()?.downcast_ref()
+        (self.buffer.object_data()? as &dyn Any).downcast_ref()
     }
 
     /// Get the bytes corresponding to this buffer if drawing is permitted.
