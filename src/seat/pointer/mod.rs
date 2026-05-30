@@ -367,28 +367,24 @@ where
                         return;
                     }
                 };
-                match axis {
-                    WEnum::Value(axis) => {
-                        let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
-                        match axis {
-                            wl_pointer::Axis::VerticalScroll => {
-                                vertical.relative_direction = direction;
-                            }
+                if axis.available_since().is_some_and(|v| v <= pointer.version()) {
+                    let (mut horizontal, mut vertical) = <(AxisScroll, AxisScroll)>::default();
+                    match axis {
+                        wl_pointer::Axis::VerticalScroll => {
+                            vertical.relative_direction = direction;
+                        }
 
-                            wl_pointer::Axis::HorizontalScroll => {
-                                horizontal.relative_direction = direction;
-                            }
+                        wl_pointer::Axis::HorizontalScroll => {
+                            horizontal.relative_direction = direction;
+                        }
 
-                            _ => unreachable!(),
-                        };
+                        _ => unreachable!(),
+                    };
 
-                        PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
-                    }
-
-                    WEnum::Unknown(unknown) => {
-                        log::warn!(target: "sctk", "{}: invalid pointer axis: {:x}", pointer.id(), unknown);
-                        return;
-                    }
+                    PointerEventKind::Axis { time: 0, horizontal, vertical, source: None }
+                } else {
+                    log::warn!(target: "sctk", "{}: invalid pointer axis: {:?}", pointer.id(), axis);
+                    return;
                 }
             }
 
