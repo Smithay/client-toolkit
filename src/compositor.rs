@@ -306,7 +306,7 @@ where
             }
             wl_surface::Event::PreferredBufferTransform { transform } => {
                 // Only handle known values.
-                if let WEnum::Value(transform) = transform {
+                if transform.available_since().is_some_and(|v| v <= surface.version()) {
                     let old_transform = std::mem::replace(&mut inner.transform, transform);
                     drop(inner);
                     if old_transform != transform {

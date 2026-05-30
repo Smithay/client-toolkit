@@ -425,15 +425,17 @@ where
             } => {
                 inner.pending_info.location = (x, y);
                 inner.pending_info.physical_size = (physical_width, physical_height);
-                inner.pending_info.subpixel = match subpixel {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid subpixel value"),
+                inner.pending_info.subpixel = if subpixel.available_since().is_some() {
+                    subpixel
+                } else {
+                    todo!("Warn about invalid subpixel value")
                 };
                 inner.pending_info.make = make;
                 inner.pending_info.model = model;
-                inner.pending_info.transform = match transform {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid transform value"),
+                inner.pending_info.transform = if transform.available_since().is_some() {
+                    transform
+                } else {
+                    todo!("Warn about invalid transform value")
                 };
                 inner.pending_wl = true;
             }
@@ -444,10 +446,8 @@ where
                     mode.dimensions != (width, height) || mode.refresh_rate != refresh
                 });
 
-                let flags = match flags {
-                    WEnum::Value(flags) => flags,
-                    WEnum::Unknown(_) => panic!("Invalid flags"),
-                };
+                let flags =
+                    if flags.available_since().is_some() { flags } else { panic!("Invalid flags") };
 
                 let current = flags.contains(wl_output::Mode::Current);
                 let preferred = flags.contains(wl_output::Mode::Preferred);
