@@ -174,12 +174,7 @@ impl SeatState {
         theme: ThemeSpec,
     ) -> Result<ThemedPointer<()>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<()>>
-            + Dispatch<wl_surface::WlSurface, SurfaceData<S>>
-            + Dispatch<WpCursorShapeManagerV1, GlobalData>
-            + Dispatch<WpCursorShapeDeviceV1, GlobalData>
-            + PointerHandler
-            + 'static,
+        D: PointerHandler + 'static,
     {
         self.get_pointer_with_theme_and_data(qh, seat, shm, surface, theme, ())
     }
@@ -225,11 +220,7 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<ThemedPointer<U>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<U>>
-            + Dispatch<WpCursorShapeManagerV1, GlobalData>
-            + Dispatch<WpCursorShapeDeviceV1, GlobalData>
-            + PointerHandler
-            + 'static,
+        D: PointerHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =
