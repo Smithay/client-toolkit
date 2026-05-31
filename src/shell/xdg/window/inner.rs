@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use wayland_client::{Connection, QueueHandle};
+use wayland_client::{Connection, Proxy, QueueHandle};
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
         zxdg_decoration_manager_v1,
@@ -210,8 +210,8 @@ where
     ) {
         if let Some(window) = Window::from_toplevel_decoration(decoration) {
             match event {
-                zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
-                    wayland_client::WEnum::Value(mode) => {
+                zxdg_toplevel_decoration_v1::Event::Configure { mode } => {
+                    if mode.available_since().is_some_and(|v| v <= decoration.version()) {
                         let mode = match mode {
                             Mode::ClientSide => DecorationMode::Client,
                             Mode::ServerSide => DecorationMode::Server,
@@ -220,12 +220,10 @@ where
                         };
 
                         window.0.pending_configure.lock().unwrap().decoration_mode = mode;
+                    } else {
+                        log::error!(target: "sctk", "unknown decoration mode {:?}", mode);
                     }
-
-                    wayland_client::WEnum::Unknown(unknown) => {
-                        log::error!(target: "sctk", "unknown decoration mode 0x{:x}", unknown);
-                    }
-                },
+                }
 
                 _ => unreachable!(),
             }
