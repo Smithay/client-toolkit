@@ -683,12 +683,12 @@ where
                     content_hint: if hint.available_since().is_some_and(|v| v <= input_method.version()) {
                         hint
                         } else {
+                            let unknown_bits = ContentHint::from_iter(hint.iter().filter(|h| h.available_since().is_none_or(|v|v  > input_method.version())));
                             warn!(
-                                "Unknown content hints: {:?}, ignoring.", hint
-                                ContentHint::from_bits_retain(hint)
-                                    - ContentHint::from_bits_truncate(hint)
+                                "Unknown content hints: {:?}, ignoring.",
+                                unknown_bits
                             );
-                            ContentHint::from_bits_truncate(hint)
+                            hint - unknown_bits
                     },
                     content_purpose: if purpose.available_since().is_some_and(|v| v <= input_method.version()) {
                         purpose

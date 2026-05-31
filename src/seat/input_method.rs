@@ -337,12 +337,11 @@ where
                     {
                         hint
                     } else {
-                        warn!(
-                            "Unknown content hints: 0b{:b}, ignoring.",
-                            ContentHint::from_bits_retain(value)
-                                - ContentHint::from_bits_truncate(value)
-                        );
-                        ContentHint::from_bits_truncate(value)
+                        let unknown_bits = ContentHint::from_iter(hint.iter().filter(|h| {
+                            h.available_since().is_none_or(|v| v > input_method.version())
+                        }));
+                        warn!("Unknown content hints: {:?}, ignoring.", unknown_bits);
+                        hint - unknown_bits
                     },
                     content_purpose: if purpose
                         .available_since()
