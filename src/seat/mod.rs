@@ -153,7 +153,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<()>> + PointerHandler + 'static,
+        D: PointerHandler + 'static,
     {
         self.get_pointer_with_data(qh, seat, ())
     }
@@ -196,7 +196,7 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<U>> + PointerHandler + 'static,
+        D: PointerHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =
@@ -288,7 +288,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, TouchData<()>> + TouchHandler + 'static,
+        D: TouchHandler + 'static,
     {
         self.get_touch_with_data(qh, seat, ())
     }
@@ -305,7 +305,7 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, TouchData<U>> + TouchHandler + 'static,
+        D: TouchHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =
