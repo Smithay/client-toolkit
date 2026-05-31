@@ -639,12 +639,7 @@ where
 
 impl<D> RegistryHandler<D> for OutputState
 where
-    D: Dispatch<wl_output::WlOutput, OutputData>
-        + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
-        + OutputHandler
-        + ProvidesRegistryState
-        + 'static,
+    D: OutputHandler + ProvidesRegistryState + 'static,
 {
     fn new_global(
         data: &mut D,
