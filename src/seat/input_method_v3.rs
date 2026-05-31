@@ -684,11 +684,11 @@ where
                         hint
                         } else {
                             warn!(
-                                "Unknown content hints: {:?}, ignoring.",
-                                ContentHint::from_bits_retain(value)
-                                    - ContentHint::from_bits_truncate(value)
+                                "Unknown content hints: {:?}, ignoring.", hint
+                                ContentHint::from_bits_retain(hint)
+                                    - ContentHint::from_bits_truncate(hint)
                             );
-                            ContentHint::from_bits_truncate(value)
+                            ContentHint::from_bits_truncate(hint)
                     },
                     content_purpose: if purpose.available_since().is_some_and(|v| v <= input_method.version()) {
                         purpose
