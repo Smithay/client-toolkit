@@ -344,12 +344,14 @@ where
                         );
                         ContentHint::from_bits_truncate(value)
                     },
-                    content_purpose: match purpose {
-                        WEnum::Value(v) => v,
-                        WEnum::Unknown(value) => {
-                            warn!("Unknown `content_purpose`: {}. Assuming `normal`.", value);
-                            ContentPurpose::Normal
-                        }
+                    content_purpose: if purpose
+                        .available_since()
+                        .is_some_and(|v| v <= input_method.version())
+                    {
+                        purpose
+                    } else {
+                        warn!("Unknown `content_purpose`: {:?}. Assuming `normal`.", purpose);
+                        ContentPurpose::Normal
                     },
                     ..imdata.pending_state.clone()
                 }

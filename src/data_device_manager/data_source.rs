@@ -103,12 +103,11 @@ where
             wl_data_source::Event::DndFinished => {
                 state.dnd_finished(conn, qh, source);
             }
-            wl_data_source::Event::Action { dnd_action } => match dnd_action {
-                WEnum::Value(dnd_action) => {
+            wl_data_source::Event::Action { dnd_action } => {
+                if dnd_action.available_since().is_some_and(|v| v <= source.version()) {
                     state.action(conn, qh, source, dnd_action);
                 }
-                WEnum::Unknown(_) => {}
-            },
+            }
             _ => unimplemented!(),
         };
     }
