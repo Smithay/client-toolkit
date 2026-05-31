@@ -665,15 +665,14 @@ where
             }
             Event::TextChangeCause { cause } => {
                 imdata.pending_state = InputMethodEventState {
-                    text_change_cause: match cause {
-                        WEnum::Value(cause) => cause,
-                        WEnum::Unknown(value) => {
+                    text_change_cause: if cause.available_since().is_some_and(|v| v <= input_method.version()) {
+                        cause
+                    } else {
                             warn!(
-                                "Unknown `text_change_cause`: {}. Assuming not input method.",
-                                value
+                                "Unknown `text_change_cause`: {:?}. Assuming not input method.",
+                                cause
                             );
                             ChangeCause::Other
-                        }
                     },
                     ..imdata.pending_state.clone()
                 }
@@ -681,23 +680,21 @@ where
             Event::ContentType { hint, purpose } => {
                 imdata.pending_state = InputMethodEventState {
                     active: imdata.pending_state.active.clone().with_content_type(),
-                    content_hint: match hint {
-                        WEnum::Value(hint) => hint,
-                        WEnum::Unknown(value) => {
+                    content_hint: if hint.available_since().is_some_and(|v| v <= input_method.version()) {
+                        hint
+                        } else {
                             warn!(
-                                "Unknown content hints: 0b{:b}, ignoring.",
+                                "Unknown content hints: {:?}, ignoring.",
                                 ContentHint::from_bits_retain(value)
                                     - ContentHint::from_bits_truncate(value)
                             );
                             ContentHint::from_bits_truncate(value)
-                        }
                     },
-                    content_purpose: match purpose {
-                        WEnum::Value(v) => v,
-                        WEnum::Unknown(value) => {
-                            warn!("Unknown `content_purpose`: {}. Assuming `normal`.", value);
-                            ContentPurpose::Normal
-                        }
+                    content_purpose: if purpose.available_since().is_some_and(|v| v <= input_method.version()) {
+                        purpose
+                    } else {
+                        warn!("Unknown `content_purpose`: {:?}. Assuming `normal`.", purpose);
+                        ContentPurpose::Normal
                     },
                     ..imdata.pending_state.clone()
                 }
@@ -717,12 +714,11 @@ where
             Event::AnnounceSupportedFeatures { features } => {
                 imdata.pending_state = InputMethodEventState {
                     active: imdata.pending_state.active.clone().with_extra_features(
-                        match features {
-                            WEnum::Value(v) => v,
-                            WEnum::Unknown(value) => {
-                                warn!("Unknown `features`: {value}. Assuming no extra features supported.");
-                                SupportedFeatures::empty()
-                            }
+                        if features.available_since().is_some_and(|v| v <= input_method.version()) {
+                            features
+                        } else {
+                            warn!("Unknown `features`: {value}. Assuming no extra features supported.");
+                            SupportedFeatures::empty()
                         }
                     ),
                     ..imdata.pending_state.clone()
