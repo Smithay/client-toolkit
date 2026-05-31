@@ -23,7 +23,7 @@ impl KeyboardFilterManager {
     /// Bind the input_method global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Result<Self, BindError>
     where
-        D: Dispatch<XxKeyboardFilterManagerV1, GlobalData> + 'static,
+        D: 'static,
     {
         let manager = globals.bind(qh, 1..=1, GlobalData)?;
         Ok(Self { manager })
@@ -43,7 +43,7 @@ impl KeyboardFilterManager {
         surface: &WlSurface,
     ) -> KeyboardFilter
     where
-        D: Dispatch<XxKeyboardFilterV1, GlobalData> + 'static,
+        D: 'static,
     {
         KeyboardFilter(self.manager.bind_to_input_method(
             keyboard,

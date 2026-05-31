@@ -73,7 +73,7 @@ impl ActivationState {
     pub fn request_token<D, U>(&self, qh: &QueueHandle<D>, request_data: RequestData<U>)
     where
         D: ActivationHandler<RequestUdata = U>,
-        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>> + 'static,
+        D: 'static,
         U: Send + Sync + 'static,
     {
         let token = self.xdg_activation.get_activation_token(qh, request_data);

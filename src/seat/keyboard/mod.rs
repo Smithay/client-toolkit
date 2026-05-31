@@ -67,10 +67,7 @@ impl SeatState {
         rmlvo: Option<RMLVO>,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, ()>>
-            + SeatHandler
-            + KeyboardHandler
-            + 'static,
+        D: SeatHandler + KeyboardHandler + 'static,
     {
         let udata = match rmlvo {
             Some(rmlvo) => KeyboardData::from_rmlvo(seat.clone(), rmlvo, ())?,
@@ -104,10 +101,7 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_keyboard::WlKeyboard, KeyboardError>
     where
-        D: Dispatch<wl_keyboard::WlKeyboard, KeyboardData<D, U>>
-            + SeatHandler
-            + KeyboardHandler
-            + 'static,
+        D: SeatHandler + KeyboardHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =

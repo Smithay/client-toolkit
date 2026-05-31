@@ -492,7 +492,7 @@ where
 
 impl<D> RegistryHandler<D> for SeatState
 where
-    D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler + ProvidesRegistryState + 'static,
+    D: SeatHandler + ProvidesRegistryState + 'static,
 {
     fn new_global(
         state: &mut D,
