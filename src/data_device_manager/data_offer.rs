@@ -367,7 +367,7 @@ where
     fn event(
         &self,
         state: &mut D,
-        _offer: &wl_data_offer::WlDataOffer,
+        offer: &wl_data_offer::WlDataOffer,
         event: <wl_data_offer::WlDataOffer as wayland_client::Proxy>::Event,
         conn: &wayland_client::Connection,
         qh: &wayland_client::QueueHandle<D>,
@@ -377,33 +377,27 @@ where
                 self.push_mime_type(mime_type);
             }
             wl_data_offer::Event::SourceActions { source_actions } => {
-                match source_actions {
-                    wayland_client::WEnum::Value(a) => {
-                        self.set_source_action(a);
-                        match &mut self.inner.lock().unwrap().offer {
-                            DataDeviceOffer::Drag(o) => {
-                                state.source_actions(conn, qh, o, a);
-                            }
-                            DataDeviceOffer::Selection(_) => {}
-                            DataDeviceOffer::Undetermined(_) => {}
+                if source_actions.available_since().is_some_and(|v| v <= offer.version()) {
+                    self.set_source_action(source_actions);
+                    match &mut self.inner.lock().unwrap().offer {
+                        DataDeviceOffer::Drag(o) => {
+                            state.source_actions(conn, qh, o, source_actions);
                         }
+                        DataDeviceOffer::Selection(_) => {}
+                        DataDeviceOffer::Undetermined(_) => {}
                     }
-                    wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
             }
             wl_data_offer::Event::Action { dnd_action } => {
-                match dnd_action {
-                    wayland_client::WEnum::Value(a) => {
-                        self.set_selected_action(a);
-                        match &mut self.inner.lock().unwrap().offer {
-                            DataDeviceOffer::Drag(o) => {
-                                state.selected_action(conn, qh, o, a);
-                            }
-                            DataDeviceOffer::Selection(_) => {}
-                            DataDeviceOffer::Undetermined(_) => {}
+                if dnd_action.available_since().is_some_and(|v| v <= offer.version()) {
+                    self.set_selected_action(dnd_action);
+                    match &mut self.inner.lock().unwrap().offer {
+                        DataDeviceOffer::Drag(o) => {
+                            state.selected_action(conn, qh, o, dnd_action);
                         }
+                        DataDeviceOffer::Selection(_) => {}
+                        DataDeviceOffer::Undetermined(_) => {}
                     }
-                    wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
             }
             _ => unimplemented!(),

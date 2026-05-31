@@ -717,7 +717,7 @@ where
                         if features.available_since().is_some_and(|v| v <= input_method.version()) {
                             features
                         } else {
-                            warn!("Unknown `features`: {value}. Assuming no extra features supported.");
+                            warn!("Unknown `features`: {features:?}. Assuming no extra features supported.");
                             SupportedFeatures::empty()
                         }
                     ),
