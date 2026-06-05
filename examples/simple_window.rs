@@ -7,7 +7,6 @@ use smithay_client_toolkit::{
     activation::{ActivationHandler, ActivationState},
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
@@ -95,7 +94,6 @@ fn main() {
     let mut simple_window = SimpleWindow {
         // Seats and outputs may be hotplugged at runtime, therefore we need to setup a registry state to
         // listen for seats and outputs.
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         shm,
@@ -127,7 +125,6 @@ fn main() {
 }
 
 struct SimpleWindow {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     shm: Shm,
@@ -518,5 +515,3 @@ impl SimpleWindow {
 impl GlobalListHandler for SimpleWindow {
     registry_handlers![OutputState, SeatState,];
 }
-
-impl ProvidesRegistryState for SimpleWindow {}
