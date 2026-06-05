@@ -8,17 +8,14 @@ use std::{
 };
 
 use crate::reexports::client::{
-    globals::{Global, GlobalList},
+    globals::{Global, GlobalList, GlobalListHandler},
     protocol::{wl_pointer, wl_registry::WlRegistry, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 use crate::{
-    compositor::SurfaceData,
-    dispatch2::Dispatch2,
-    globals::GlobalData,
-    registry::{ProvidesRegistryState, RegistryHandler},
+    compositor::SurfaceData, dispatch2::Dispatch2, globals::GlobalData, registry::RegistryHandler,
 };
 
 pub mod input_method;
@@ -236,6 +233,7 @@ impl SeatState {
         if let CursorShapeManagerState::Pending { registry, global } =
             &self.cursor_shape_manager_state
         {
+            /* XXX XXX TODO
             self.cursor_shape_manager_state = match crate::registry::bind_one(
                 registry,
                 slice::from_ref(global),
@@ -248,6 +246,7 @@ impl SeatState {
                 }
                 Err(_) => CursorShapeManagerState::NotPresent,
             }
+            */
         }
 
         let shape_device =
@@ -483,7 +482,7 @@ where
 
 impl<D> RegistryHandler<D> for SeatState
 where
-    D: SeatHandler + ProvidesRegistryState + 'static,
+    D: SeatHandler + GlobalListHandler + 'static,
 {
     fn new_global(
         state: &mut D,
