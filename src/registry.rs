@@ -71,7 +71,7 @@
 
 use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 use wayland_client::{
-    globals::{BindError, Global, GlobalList, GlobalListContents},
+    globals::{BindError, Global, GlobalList, GlobalListHandler},
     protocol::wl_registry,
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -126,30 +126,9 @@ where
 ///
 /// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
 /// to access the registry utilities provided by Smithay's client toolkit.
-pub trait ProvidesRegistryState: Sized {
+pub trait ProvidesRegistryState: GlobalListHandler + Sized {
     /// Returns a mutable reference to the registry state.
     fn registry(&mut self) -> &mut RegistryState;
-
-    /// Called when a new global has been advertised by the compositor.
-    ///
-    /// This is not called during initial global enumeration.
-    fn runtime_add_global(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        name: u32,
-        interface: &str,
-        version: u32,
-    );
-
-    /// Called when a global has been destroyed by the compositor.
-    fn runtime_remove_global(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        name: u32,
-        interface: &str,
-    );
 }
 
 /// State object associated with the registry handling for smithay's client toolkit.
@@ -274,43 +253,9 @@ impl RegistryState {
     }
 }
 
-/// Delegates the handling of [`wl_registry`].
-///
-/// Anything which implements [`RegistryHandler`] may be used in the delegate.
-///
-/// ## Usage
-///
-/// ```
-/// use smithay_client_toolkit::{
-///     delegate_registry, registry_handlers,
-///     shm::{ShmHandler, Shm},
-/// };
-///
-/// struct ExampleApp {
-///     shm_state: Shm,
-/// }
-///
-/// impl ShmHandler for ExampleApp {
-///     fn shm_state(&mut self) -> &mut Shm {
-///         &mut self.shm_state
-///     }
-/// }
-///
-/// smithay_client_toolkit::delegate_dispatch2!(ExampleApp);
-/// ```
-#[macro_export]
-macro_rules! delegate_registry {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::reexports::client::globals::GlobalListContents
-            ]  => $crate::registry::RegistryState
-        );
-    };
-}
-
+// XXX
 #[doc(hidden)]
-pub fn dispatch_registry<D: ProvidesRegistryState>(
+fn dispatch_registry<D: ProvidesRegistryState>(
     state: &mut D,
     event: wl_registry::Event,
     conn: &Connection,
@@ -320,13 +265,13 @@ pub fn dispatch_registry<D: ProvidesRegistryState>(
         wl_registry::Event::Global { name, interface, version } => {
             let iface = interface.clone();
             state.registry().globals.push(Global { name, interface, version });
-            state.runtime_add_global(conn, qh, name, &iface, version);
+            //state.runtime_add_global(conn, qh, name, &iface, version);
         }
 
         wl_registry::Event::GlobalRemove { name } => {
             if let Some(i) = state.registry().globals.iter().position(|g| g.name == name) {
                 let global = state.registry().globals.swap_remove(i);
-                state.runtime_remove_global(conn, qh, name, &global.interface);
+                //state.runtime_remove_global(conn, qh, name, &global.interface);
             }
         }
 
@@ -511,6 +456,7 @@ macro_rules! registry_handlers {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $($ty:ty),* $(,)?) => {
         fn runtime_add_global(
             &mut self,
+            global_list: &$crate::reexports::client::globals::GlobalList,
             conn: &$crate::reexports::client::Connection,
             qh: &$crate::reexports::client::QueueHandle<Self>,
             name: u32,
@@ -524,6 +470,7 @@ macro_rules! registry_handlers {
 
         fn runtime_remove_global(
             &mut self,
+            global_list: &$crate::reexports::client::globals::GlobalList,
             conn: &$crate::reexports::client::Connection,
             qh: &$crate::reexports::client::QueueHandle<Self>,
             name: u32,
