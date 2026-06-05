@@ -102,11 +102,9 @@ where
         global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        version: u32,
+        global: &Global,
     ) {
-        let _ = (data, conn, qh, name, interface, version);
+        let _ = (data, conn, qh, global);
     }
 
     /// Called when a global has been destroyed by the compositor.
@@ -117,10 +115,9 @@ where
         global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        let _ = (data, conn, qh, name, interface);
+        let _ = (data, conn, qh, global);
     }
 }
 
@@ -435,12 +432,10 @@ macro_rules! registry_handlers {
             global_list: &$crate::reexports::client::globals::GlobalList,
             conn: &$crate::reexports::client::Connection,
             qh: &$crate::reexports::client::QueueHandle<Self>,
-            name: u32,
-            interface: &str,
-            version: u32,
+            global: &$crate::reexports::client::globals::Global,
         ) {
             $(
-                <$ty as $crate::registry::RegistryHandler<Self>>::new_global(self, global_list, conn, qh, name, interface, version);
+                <$ty as $crate::registry::RegistryHandler<Self>>::new_global(self, global_list, conn, qh, global);
             )*
         }
 
@@ -449,11 +444,10 @@ macro_rules! registry_handlers {
             global_list: &$crate::reexports::client::globals::GlobalList,
             conn: &$crate::reexports::client::Connection,
             qh: &$crate::reexports::client::QueueHandle<Self>,
-            name: u32,
-            interface: &str,
+            global: &$crate::reexports::client::globals::Global,
         ) {
             $(
-                <$ty as $crate::registry::RegistryHandler<Self>>::remove_global(self, global_list, conn, qh, name, interface);
+                <$ty as $crate::registry::RegistryHandler<Self>>::remove_global(self, global_list, conn, qh, global);
             )*
         }
     }

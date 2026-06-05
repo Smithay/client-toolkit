@@ -6,7 +6,7 @@ use std::{
 
 use log::warn;
 use wayland_client::{
-    globals::GlobalList,
+    globals::{Global, GlobalList},
     protocol::wl_output::{self, Subpixel, Transform},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -646,13 +646,11 @@ where
         global_list: &GlobalList,
         _: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _version: u32,
+        global: &Global,
     ) {
-        if interface == "wl_output" {
+        if global.interface == "wl_output" {
             let output = global_list
-                .bind_specific(qh, name, 1..=4, OutputData::new(name))
+                .bind_specific(qh, global.name, 1..=4, OutputData::new(global.name))
                 .expect("Failed to bind global");
             data.output_state().setup(output, qh);
         }
@@ -663,15 +661,14 @@ where
         global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        if interface == "wl_output" {
+        if global.interface == "wl_output" {
             let output = data
                 .output_state()
                 .outputs
                 .iter()
-                .position(|o| o.name == name)
+                .position(|o| o.name == global.name)
                 .expect("Removed non-existing output");
 
             let wl_output = data.output_state().outputs[output].wl_output.clone();
