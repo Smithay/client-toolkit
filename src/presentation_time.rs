@@ -27,7 +27,7 @@ impl PresentationTimeState {
     where
         D: PresentationTimeHandler + 'static,
     {
-        let presentation = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let presentation = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { presentation, clk_id: None }
     }
 

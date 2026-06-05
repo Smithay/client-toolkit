@@ -97,7 +97,7 @@ impl CompositorState {
     where
         State: CompositorHandler + 'static,
     {
-        let wl_compositor = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
+        let wl_compositor = globals.bind_singleton(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
         Ok(CompositorState { wl_compositor })
     }
 

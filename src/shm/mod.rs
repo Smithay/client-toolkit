@@ -37,7 +37,7 @@ impl Shm {
     where
         State: ShmHandler + 'static,
     {
-        let wl_shm = globals.bind(qh, 1..=1, GlobalData)?;
+        let wl_shm = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         // Compositors must advertise Argb8888 and Xrgb8888, so let's reserve space for those formats.
         Ok(Shm { wl_shm, formats: Vec::with_capacity(2) })
     }

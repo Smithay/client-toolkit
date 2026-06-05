@@ -487,6 +487,7 @@ where
 {
     fn new_global(
         state: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
@@ -519,6 +520,7 @@ where
 
     fn remove_global(
         state: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,

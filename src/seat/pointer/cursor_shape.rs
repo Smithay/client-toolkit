@@ -22,7 +22,7 @@ impl CursorShapeManager {
     where
         State: 'static,
     {
-        let cursor_shape_manager = globals.bind(queue_handle, 1..=2, GlobalData)?;
+        let cursor_shape_manager = globals.bind_singleton(queue_handle, 1..=2, GlobalData)?;
         Ok(Self { cursor_shape_manager })
     }
 

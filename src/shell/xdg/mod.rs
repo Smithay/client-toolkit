@@ -59,8 +59,9 @@ impl XdgShell {
     where
         State: WindowHandler + 'static,
     {
-        let xdg_wm_base = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
-        let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let xdg_wm_base = globals.bind_singleton(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
+        let xdg_decoration_manager =
+            GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Ok(Self { xdg_wm_base, xdg_decoration_manager })
     }
 
