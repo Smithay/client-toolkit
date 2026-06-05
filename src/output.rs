@@ -137,18 +137,11 @@ impl OutputState {
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> OutputState {
-        let (outputs, xdg) = global_list.contents().with_list(|globals| {
-            let outputs: Vec<wl_output::WlOutput> = crate::registry::bind_all(
-                global_list.registry(),
-                globals,
-                qh,
-                1..=4,
-                OutputData::new,
-            )
-            .expect("Failed to bind global");
-            let xdg = global_list.bind_singleton(qh, 1..=3, GlobalData).into();
-            (outputs, xdg)
+        let outputs = global_list.contents().with_list(|globals| {
+            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=4, OutputData::new)
+                .expect("Failed to bind global")
         });
+        let xdg = global_list.bind_singleton(qh, 1..=3, GlobalData).into();
 
         let mut output_state = OutputState { xdg, outputs: vec![], callbacks: vec![] };
         for wl_output in outputs {
