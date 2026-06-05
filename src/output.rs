@@ -643,6 +643,7 @@ where
 {
     fn new_global(
         data: &mut D,
+        global_list: &GlobalList,
         _: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
@@ -650,8 +651,7 @@ where
         _version: u32,
     ) {
         if interface == "wl_output" {
-            let output = data
-                .registry()
+            let output = global_list
                 .bind_specific(qh, name, 1..=4, OutputData::new(name))
                 .expect("Failed to bind global");
             data.output_state().setup(output, qh);
@@ -660,6 +660,7 @@ where
 
     fn remove_global(
         data: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,

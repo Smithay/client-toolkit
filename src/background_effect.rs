@@ -18,7 +18,7 @@ impl BackgroundEffectState {
     where
         D: BackgroundEffectHandler + 'static,
     {
-        let manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let manager = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { manager, capabilities: None }
     }
 

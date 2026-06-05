@@ -99,6 +99,7 @@ where
     /// The default implementation does nothing.
     fn new_global(
         data: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
@@ -113,6 +114,7 @@ where
     /// The default implementation does nothing.
     fn remove_global(
         data: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
         name: u32,
@@ -126,10 +128,7 @@ where
 ///
 /// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
 /// to access the registry utilities provided by Smithay's client toolkit.
-pub trait ProvidesRegistryState: GlobalListHandler + Sized {
-    /// Returns a mutable reference to the registry state.
-    fn registry(&mut self) -> &mut RegistryState;
-}
+pub trait ProvidesRegistryState: GlobalListHandler + Sized {}
 
 /// State object associated with the registry handling for smithay's client toolkit.
 ///
@@ -253,32 +252,6 @@ impl RegistryState {
     }
 }
 
-// XXX
-#[doc(hidden)]
-fn dispatch_registry<D: ProvidesRegistryState>(
-    state: &mut D,
-    event: wl_registry::Event,
-    conn: &Connection,
-    qh: &QueueHandle<D>,
-) {
-    match event {
-        wl_registry::Event::Global { name, interface, version } => {
-            let iface = interface.clone();
-            state.registry().globals.push(Global { name, interface, version });
-            //state.runtime_add_global(conn, qh, name, &iface, version);
-        }
-
-        wl_registry::Event::GlobalRemove { name } => {
-            if let Some(i) = state.registry().globals.iter().position(|g| g.name == name) {
-                let global = state.registry().globals.swap_remove(i);
-                //state.runtime_remove_global(conn, qh, name, &global.interface);
-            }
-        }
-
-        _ => unreachable!("wl_registry is frozen"),
-    }
-}
-
 /// A helper for storing a bound global.
 ///
 /// This helper is intended to simplify the implementation of [RegistryHandler] for state objects
@@ -329,12 +302,15 @@ pub struct SimpleGlobal<I, const MAX_VERSION: u32> {
 }
 
 impl<I: Proxy + 'static, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
-    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
+    pub fn bind_singleton<State>(
+        globals: &GlobalList,
+        qh: &QueueHandle<State>,
+    ) -> Result<Self, BindError>
     where
         State: 'static,
         (): Dispatch<I, State> + 'static,
     {
-        let proxy = globals.bind(qh, 0..=MAX_VERSION, ())?;
+        let proxy = globals.bind_singleton(qh, 0..=MAX_VERSION, ())?;
         Ok(Self { proxy: GlobalProxy::Bound(proxy) })
     }
 
@@ -464,7 +440,7 @@ macro_rules! registry_handlers {
             version: u32,
         ) {
             $(
-                <$ty as $crate::registry::RegistryHandler<Self>>::new_global(self, conn, qh, name, interface, version);
+                <$ty as $crate::registry::RegistryHandler<Self>>::new_global(self, global_list, conn, qh, name, interface, version);
             )*
         }
 
@@ -477,7 +453,7 @@ macro_rules! registry_handlers {
             interface: &str,
         ) {
             $(
-                <$ty as $crate::registry::RegistryHandler<Self>>::remove_global(self, conn, qh, name, interface);
+                <$ty as $crate::registry::RegistryHandler<Self>>::remove_global(self, global_list, conn, qh, name, interface);
             )*
         }
     }

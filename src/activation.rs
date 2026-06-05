@@ -57,7 +57,7 @@ impl ActivationState {
     where
         State: ActivationHandler + 'static,
     {
-        let xdg_activation = globals.bind(qh, 1..=1, GlobalData)?;
+        let xdg_activation = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         Ok(ActivationState { xdg_activation })
     }
 

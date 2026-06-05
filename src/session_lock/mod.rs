@@ -167,7 +167,7 @@ impl SessionLockState {
     where
         D: SessionLockHandler + 'static,
     {
-        let session_lock_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let session_lock_manager = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { session_lock_manager }
     }
 
