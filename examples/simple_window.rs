@@ -519,8 +519,4 @@ impl GlobalListHandler for SimpleWindow {
     registry_handlers![OutputState, SeatState,];
 }
 
-impl ProvidesRegistryState for SimpleWindow {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-}
+impl ProvidesRegistryState for SimpleWindow {}

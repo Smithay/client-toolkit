@@ -490,23 +490,20 @@ where
         global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _: u32,
+        global: &Global,
     ) {
-        if interface == wl_seat::WlSeat::interface().name {
-            let seat = state
-                .registry()
+        if global.interface == wl_seat::WlSeat::interface().name {
+            let seat = global_list
                 .bind_specific(
                     qh,
-                    name,
+                    global.name,
                     1..=7,
                     SeatData {
                         has_keyboard: Arc::new(AtomicBool::new(false)),
                         has_pointer: Arc::new(AtomicBool::new(false)),
                         has_touch: Arc::new(AtomicBool::new(false)),
                         name: Arc::new(Mutex::new(None)),
-                        id: name,
+                        id: global.name,
                     },
                 )
                 .expect("failed to bind global");
@@ -523,16 +520,16 @@ where
         global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        if interface == wl_seat::WlSeat::interface().name {
-            if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.data.id == name)
+        if global.interface == wl_seat::WlSeat::interface().name {
+            if let Some(seat) =
+                state.seat_state().seats.iter().find(|inner| inner.data.id == global.name)
             {
                 let seat = seat.seat.clone();
 
                 state.remove_seat(conn, qh, seat);
-                state.seat_state().seats.retain(|inner| inner.data.id != name);
+                state.seat_state().seats.retain(|inner| inner.data.id != global.name);
             }
         }
     }
