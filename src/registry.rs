@@ -88,7 +88,7 @@ use wayland_client::{
 /// must implement [`ProvidesRegistryState`].
 pub trait RegistryHandler<D>
 where
-    D: ProvidesRegistryState,
+    D: GlobalListHandler,
 {
     /// Called when a new global has been advertised by the compositor.
     ///
@@ -118,134 +118,6 @@ where
         global: &Global,
     ) {
         let _ = (data, conn, qh, global);
-    }
-}
-
-/// Trait which asserts a data type may provide a mutable reference to the registry state.
-///
-/// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
-/// to access the registry utilities provided by Smithay's client toolkit.
-pub trait ProvidesRegistryState: GlobalListHandler + Sized {}
-
-/// State object associated with the registry handling for smithay's client toolkit.
-///
-/// This object provides utilities to cache bound globals that are needed by multiple modules.
-#[derive(Debug)]
-pub struct RegistryState {
-    registry: wl_registry::WlRegistry,
-    globals: Vec<Global>,
-}
-
-impl RegistryState {
-    /// Creates a new registry handle.
-    ///
-    /// This type may be used to bind globals as they are advertised.
-    pub fn new(global_list: &GlobalList) -> Self {
-        let registry = global_list.registry().clone();
-        let globals = global_list.contents().clone_list();
-
-        RegistryState { registry, globals }
-    }
-
-    pub fn registry(&self) -> &wl_registry::WlRegistry {
-        &self.registry
-    }
-
-    /// Returns an iterator over all globals.
-    ///
-    /// This list may change if the compositor adds or removes globals after initial
-    /// enumeration.
-    ///
-    /// No guarantees are provided about the ordering of the globals in this iterator.
-    pub fn globals(&self) -> impl Iterator<Item = &Global> + '_ {
-        self.globals.iter()
-    }
-
-    /// Returns an iterator over all globals implementing the given interface.
-    ///
-    /// This may be more efficient than searching [Self::globals].
-    pub fn globals_by_interface<'a>(
-        &'a self,
-        interface: &'a str,
-    ) -> impl Iterator<Item = &'a Global> + 'a {
-        self.globals.iter().filter(move |g| g.interface == interface)
-    }
-
-    /// Binds a global, returning a new object associated with the global.
-    ///
-    /// This should not be used to bind globals that have multiple instances such as `wl_output`;
-    /// use [Self::bind_all] instead.
-    pub fn bind_one<I, D, U>(
-        &self,
-        qh: &QueueHandle<D>,
-        version: std::ops::RangeInclusive<u32>,
-        udata: U,
-    ) -> Result<I, BindError>
-    where
-        D: 'static,
-        I: Proxy + 'static,
-        U: Dispatch<I, D> + Send + Sync + 'static,
-    {
-        bind_one(&self.registry, &self.globals, qh, version, udata)
-    }
-
-    /// Binds a global, returning a new object associated with the global.
-    ///
-    /// This binds a specific object by its name as provided by the [RegistryHandler::new_global]
-    /// callback.
-    pub fn bind_specific<I, D, U>(
-        &self,
-        qh: &QueueHandle<D>,
-        name: u32,
-        version: std::ops::RangeInclusive<u32>,
-        udata: U,
-    ) -> Result<I, BindError>
-    where
-        D: 'static,
-        I: Proxy + 'static,
-        U: Dispatch<I, D> + Send + Sync + 'static,
-    {
-        let iface = I::interface();
-        if *version.end() > iface.version {
-            // This is a panic because it's a compile-time programmer error, not a runtime error.
-            panic!("Maximum version ({}) was higher than the proxy's maximum version ({}); outdated wayland XML files?",
-                version.end(), iface.version);
-        }
-        // Optimize for runtime_add_global which will use the last entry
-        for global in self.globals.iter().rev() {
-            if global.name != name || global.interface != iface.name {
-                continue;
-            }
-            if global.version < *version.start() {
-                return Err(BindError::UnsupportedVersion {
-                    interface: iface.name,
-                    requested: *version.start(),
-                    available: global.version,
-                });
-            }
-            let version = global.version.min(*version.end());
-            let proxy = self.registry.bind(global.name, version, qh, udata);
-            log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
-
-            return Ok(proxy);
-        }
-        Err(BindError::NotPresent(iface.name))
-    }
-
-    /// Binds all globals with a given interface.
-    pub fn bind_all<I, D, U, F>(
-        &self,
-        qh: &QueueHandle<D>,
-        version: std::ops::RangeInclusive<u32>,
-        make_udata: F,
-    ) -> Result<Vec<I>, BindError>
-    where
-        D: 'static,
-        I: Proxy + 'static,
-        F: FnMut(u32) -> U,
-        U: Dispatch<I, D> + Send + Sync + 'static,
-    {
-        bind_all(&self.registry, &self.globals, qh, version, make_udata)
     }
 }
 
@@ -377,51 +249,7 @@ where
     Ok(rv)
 }
 
-/// Binds a global, returning a new object associated with the global.
-pub(crate) fn bind_one<I, D, U>(
-    registry: &wl_registry::WlRegistry,
-    globals: &[Global],
-    qh: &QueueHandle<D>,
-    version: std::ops::RangeInclusive<u32>,
-    udata: U,
-) -> Result<I, BindError>
-where
-    D: 'static,
-    I: Proxy + 'static,
-    U: Dispatch<I, D> + Send + Sync + 'static,
-{
-    let iface = I::interface();
-    if *version.end() > iface.version {
-        // This is a panic because it's a compile-time programmer error, not a runtime error.
-        panic!("Maximum version ({}) of {} was higher than the proxy's maximum version ({}); outdated wayland XML files?",
-            version.end(), iface.name, iface.version);
-    }
-    if *version.end() < iface.version {
-        // This is a reminder to evaluate the new API and bump the maximum in order to be able
-        // to use new APIs.  Actual use of new APIs still needs runtime version checks.
-        log::trace!(target: "sctk", "Version {} of {} is available; binding is currently limited to {}", iface.version, iface.name, version.end());
-    }
-    for global in globals {
-        if global.interface != iface.name {
-            continue;
-        }
-        if global.version < *version.start() {
-            return Err(BindError::UnsupportedVersion {
-                interface: iface.name,
-                requested: *version.start(),
-                available: global.version,
-            });
-        }
-        let version = global.version.min(*version.end());
-        let proxy = registry.bind(global.name, version, qh, udata);
-        log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
-
-        return Ok(proxy);
-    }
-    Err(BindError::NotPresent(iface.name))
-}
-
-/// A helper macro for implementing [`ProvidesRegistryState`].
+/// A helper macro for implementing [`GlobalListHandler`].
 ///
 /// See [`delegate_registry`][crate::delegate_registry] for an example.
 #[macro_export]

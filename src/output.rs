@@ -6,7 +6,7 @@ use std::{
 
 use log::warn;
 use wayland_client::{
-    globals::{Global, GlobalList},
+    globals::{Global, GlobalList, GlobalListHandler},
     protocol::wl_output::{self, Subpixel, Transform},
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -18,7 +18,7 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
 use crate::{
     dispatch2::Dispatch2,
     globals::GlobalData,
-    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
+    registry::{GlobalProxy, RegistryHandler},
 };
 
 /// Simplified event handler for [`wl_output::WlOutput`].
@@ -146,9 +146,7 @@ impl OutputState {
                 OutputData::new,
             )
             .expect("Failed to bind global");
-            let xdg =
-                crate::registry::bind_one(global_list.registry(), globals, qh, 1..=3, GlobalData)
-                    .into();
+            let xdg = global_list.bind_singleton(qh, 1..=3, GlobalData).into();
             (outputs, xdg)
         });
 
@@ -639,7 +637,7 @@ where
 
 impl<D> RegistryHandler<D> for OutputState
 where
-    D: OutputHandler + ProvidesRegistryState + 'static,
+    D: OutputHandler + GlobalListHandler + 'static,
 {
     fn new_global(
         data: &mut D,
