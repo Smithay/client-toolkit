@@ -417,7 +417,7 @@ impl Buffer {
     }
 
     fn data(&self) -> Option<&BufferData> {
-        (self.buffer.object_data()? as &dyn Any).downcast_ref()
+        self.buffer.object_data()?.data_as_any().downcast_ref()
     }
 
     /// Get the bytes corresponding to this buffer if drawing is permitted.
