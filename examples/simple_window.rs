@@ -6,7 +6,6 @@ use smithay_client_toolkit::reexports::calloop_wayland_source::WaylandSource;
 use smithay_client_toolkit::{
     activation::{ActivationHandler, ActivationState},
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -28,7 +27,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -516,13 +515,12 @@ impl SimpleWindow {
     }
 }
 
-delegate_registry!(SimpleWindow);
+impl GlobalListHandler for SimpleWindow {
+    registry_handlers![OutputState, SeatState,];
+}
 
 impl ProvidesRegistryState for SimpleWindow {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }
-    registry_handlers![OutputState, SeatState,];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(SimpleWindow);
