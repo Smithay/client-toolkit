@@ -21,7 +21,7 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::{GlobalListHandler, registry_queue_init},
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
