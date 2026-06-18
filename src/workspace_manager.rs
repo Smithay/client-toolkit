@@ -3,7 +3,9 @@ use std::{
     ops::DerefMut,
     sync::{Arc, Mutex},
 };
-use wayland_client::{globals::GlobalList, Connection, Dispatch, Proxy, QueueHandle, WEnum};
+use wayland_client::{
+    globals::GlobalList, protocol::wl_output, Connection, Dispatch, Proxy, QueueHandle, WEnum,
+};
 use wayland_protocols::ext::workspace::v1::client::{
     ext_workspace_group_handle_v1,
     ext_workspace_handle_v1::{self, State, WorkspaceCapabilities},
@@ -26,20 +28,41 @@ pub struct WorkspaceInfo {
     pub capabilities: Option<WEnum<WorkspaceCapabilities>>,
 }
 
+/// Information about a workspace group.
+#[derive(Clone, Debug, Default)]
+#[non_exhaustive]
+pub struct GroupInfo {
+    // Output
+    pub output: Option<wl_output::WlOutput>,
+    // Workspaces
+    pub workspaces: Vec<ext_workspace_handle_v1::ExtWorkspaceHandleV1>,
+}
+
 #[derive(Debug, Default)]
 struct WorkspaceInner {
     current_info: Option<WorkspaceInfo>,
     pending_info: WorkspaceInfo,
 }
 
+#[derive(Debug, Default)]
+struct GroupInner {
+    current_info: Option<GroupInfo>,
+    pending_info: GroupInfo,
+}
+
 #[doc(hidden)]
 #[derive(Debug, Default, Clone)]
 pub struct WorkspaceData(Arc<Mutex<WorkspaceInner>>);
+
+#[doc(hidden)]
+#[derive(Debug, Default, Clone)]
+pub struct GroupData(Arc<Mutex<GroupInner>>);
 
 #[derive(Debug)]
 pub struct WorkspaceManager {
     workspace_manager: GlobalProxy<ext_workspace_manager_v1::ExtWorkspaceManagerV1>,
     workspaces: Vec<ext_workspace_handle_v1::ExtWorkspaceHandleV1>,
+    groups: Vec<ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1>,
 }
 
 impl WorkspaceManager {
@@ -48,12 +71,17 @@ impl WorkspaceManager {
         D: Dispatch<ext_workspace_manager_v1::ExtWorkspaceManagerV1, GlobalData> + 'static,
     {
         let workspace_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
-        Self { workspace_manager, workspaces: Vec::new() }
+        Self { workspace_manager, workspaces: Vec::new(), groups: Vec::new() }
     }
 
-    /// Returns list of worksapces.
+    /// Returns list of workspaces.
     pub fn workspaces(&self) -> &[ext_workspace_handle_v1::ExtWorkspaceHandleV1] {
         &self.workspaces
+    }
+
+    /// Returns list of workspace groups.
+    pub fn groups(&self) -> &[ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1] {
+        &self.groups
     }
 
     /// Returns information about a workspace.
@@ -65,6 +93,14 @@ impl WorkspaceManager {
         workspace: &ext_workspace_handle_v1::ExtWorkspaceHandleV1,
     ) -> Option<WorkspaceInfo> {
         workspace.data::<WorkspaceData>()?.0.lock().unwrap().current_info.clone()
+    }
+
+    /// Returns information about a workspace group.
+    pub fn info_group(
+        &self,
+        group: &ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1,
+    ) -> Option<GroupInfo> {
+        group.data::<GroupData>()?.0.lock().unwrap().current_info.clone()
     }
 
     pub fn stop(&self) {
@@ -108,11 +144,10 @@ pub trait WorkspaceHandler: Sized {
     fn finished(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>) {}
 }
 
-// Workspace group
 impl<D> Dispatch2<ext_workspace_manager_v1::ExtWorkspaceManagerV1, D> for GlobalData
 where
     D: Dispatch<ext_workspace_handle_v1::ExtWorkspaceHandleV1, WorkspaceData>
-        + Dispatch<ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1, WorkspaceData>
+        + Dispatch<ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1, GroupData>
         + WorkspaceHandler
         + 'static,
 {
@@ -125,12 +160,15 @@ where
         qh: &QueueHandle<D>,
     ) {
         match event {
-            ext_workspace_manager_v1::Event::WorkspaceGroup { workspace_group: _ } => {}
+            ext_workspace_manager_v1::Event::WorkspaceGroup { workspace_group: group } => {
+                state.ext_workspace_state().groups.push(group.clone());
+            }
             ext_workspace_manager_v1::Event::Workspace { workspace } => {
                 state.ext_workspace_state().workspaces.push(workspace.clone());
             }
             ext_workspace_manager_v1::Event::Done => {
                 // TODO: is cloning really the best for performance?
+                // Workspaces
                 for ref workspace in state.ext_workspace_state().workspaces.clone() {
                     let handle = workspace.data::<WorkspaceData>().unwrap();
                     let mut inner = handle.0.lock().unwrap();
@@ -142,6 +180,20 @@ where
                     } else {
                         state.update_workspace(conn, qh, workspace.clone());
                     }
+                }
+                // Groups
+                for ref group in state.ext_workspace_state().groups.clone() {
+                    let handle = group.data::<GroupData>().unwrap();
+                    let mut inner = handle.0.lock().unwrap();
+                    // FIXME all the commented stuff
+                    // let just_created = inner.current_info.is_none();
+                    inner.current_info = Some(inner.pending_info.clone());
+                    drop(inner);
+                    // if just_created {
+                    //     state.new_workspace(conn, qh, workspace.clone());
+                    // } else {
+                    //     state.update_workspace(conn, qh, workspace.clone());
+                    // }
                 }
                 state.done(conn, qh);
             }
@@ -159,6 +211,7 @@ where
     ]);
 }
 
+// Workspace event handler
 impl<D> Dispatch2<ext_workspace_handle_v1::ExtWorkspaceHandleV1, D> for WorkspaceData
 where
     D: WorkspaceHandler,
@@ -200,7 +253,8 @@ where
     }
 }
 
-impl<D> Dispatch2<ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1, D> for WorkspaceData
+// Workspace group event handler
+impl<D> Dispatch2<ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1, D> for GroupData
 where
     D: WorkspaceHandler,
 {
@@ -213,9 +267,32 @@ where
         qh: &QueueHandle<D>,
     ) {
         match event {
-            _ => {
-                println!("workspace group happened")
+            ext_workspace_group_handle_v1::Event::Removed => {
+                let groups = &mut state.ext_workspace_state().groups;
+                if let Some(idx) = groups.iter().position(|x| x == handle) {
+                    groups.remove(idx);
+                }
+                handle.destroy();
             }
+            ext_workspace_group_handle_v1::Event::OutputEnter { output } => {
+                self.0.lock().unwrap().pending_info.output = Some(output)
+            }
+            // TODO: multiple outputs?
+            ext_workspace_group_handle_v1::Event::OutputLeave { output: _ } => {
+                self.0.lock().unwrap().pending_info.output = None
+            }
+            ext_workspace_group_handle_v1::Event::WorkspaceEnter { workspace } => {
+                self.0.lock().unwrap().pending_info.workspaces.push(workspace)
+            }
+            ext_workspace_group_handle_v1::Event::WorkspaceLeave { workspace } => {
+                let workspaces = &mut self.0.lock().unwrap().pending_info.workspaces;
+                if let Some(idx) = workspaces.iter().position(|x| x == &workspace) {
+                    workspaces.remove(idx);
+                }
+            }
+            // TODO I don't know what this is and I don't care (for now)
+            ext_workspace_group_handle_v1::Event::Capabilities { capabilities: _ } => {}
+            _ => {}
         }
     }
 }
