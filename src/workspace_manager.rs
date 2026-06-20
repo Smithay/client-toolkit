@@ -278,8 +278,11 @@ where
                 self.0.lock().unwrap().pending_info.output = Some(output)
             }
             // TODO: multiple outputs?
-            ext_workspace_group_handle_v1::Event::OutputLeave { output: _ } => {
-                self.0.lock().unwrap().pending_info.output = None
+            ext_workspace_group_handle_v1::Event::OutputLeave { output } => {
+                let pending_output = self.0.lock().unwrap().pending_info.output.clone();
+                if pending_output.is_some_and(|o| o == output) {
+                    self.0.lock().unwrap().pending_info.output = None;
+                }
             }
             ext_workspace_group_handle_v1::Event::WorkspaceEnter { workspace } => {
                 self.0.lock().unwrap().pending_info.workspaces.push(workspace)
