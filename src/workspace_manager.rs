@@ -184,7 +184,6 @@ where
     ) {
         match event {
             ext_workspace_manager_v1::Event::WorkspaceGroup { workspace_group } => {
-                println!("new workspace group");
                 state.ext_workspace_state().groups.push(workspace_group);
             }
             ext_workspace_manager_v1::Event::Workspace { workspace } => {
