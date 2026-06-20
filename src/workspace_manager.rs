@@ -1,8 +1,5 @@
 use crate::{dispatch2::Dispatch2, globals::GlobalData, registry::GlobalProxy};
-use std::{
-    ops::DerefMut,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use wayland_client::{
     globals::GlobalList, protocol::wl_output, Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
@@ -32,8 +29,8 @@ pub struct WorkspaceInfo {
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct GroupInfo {
-    // Output
-    pub output: Option<wl_output::WlOutput>,
+    // Outputs
+    pub outputs: Vec<wl_output::WlOutput>,
     // Workspaces
     pub workspaces: Vec<ext_workspace_handle_v1::ExtWorkspaceHandleV1>,
 }
@@ -275,13 +272,12 @@ where
                 handle.destroy();
             }
             ext_workspace_group_handle_v1::Event::OutputEnter { output } => {
-                self.0.lock().unwrap().pending_info.output = Some(output)
+                self.0.lock().unwrap().pending_info.outputs.push(output);
             }
-            // TODO: multiple outputs?
             ext_workspace_group_handle_v1::Event::OutputLeave { output } => {
-                let pending_output = self.0.lock().unwrap().pending_info.output.clone();
-                if pending_output.is_some_and(|o| o == output) {
-                    self.0.lock().unwrap().pending_info.output = None;
+                let outputs = &mut self.0.lock().unwrap().pending_info.outputs;
+                if let Some(idx) = outputs.iter().position(|x| x == &output) {
+                    outputs.remove(idx);
                 }
             }
             ext_workspace_group_handle_v1::Event::WorkspaceEnter { workspace } => {
