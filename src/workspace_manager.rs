@@ -4,13 +4,13 @@ use wayland_client::{
     globals::GlobalList, protocol::wl_output, Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_protocols::ext::workspace::v1::client::{
-    ext_workspace_group_handle_v1,
+    ext_workspace_group_handle_v1::{self, GroupCapabilities},
     ext_workspace_handle_v1::{self, State, WorkspaceCapabilities},
     ext_workspace_manager_v1,
 };
 
 /// Information about a workspace.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WorkspaceInfo {
     // ID
@@ -33,6 +33,8 @@ pub struct GroupInfo {
     pub outputs: Vec<wl_output::WlOutput>,
     // Workspaces
     pub workspaces: Vec<ext_workspace_handle_v1::ExtWorkspaceHandleV1>,
+    // Capabilities
+    pub capabilities: Option<WEnum<GroupCapabilities>>,
 }
 
 #[derive(Debug, Default)]
@@ -135,6 +137,30 @@ pub trait WorkspaceHandler: Sized {
         workspace_handle: ext_workspace_handle_v1::ExtWorkspaceHandleV1,
     );
 
+    /// A new workspace group has been created.
+    fn new_group(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        group_handle: ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1,
+    );
+
+    /// A workspace group has been updated.
+    fn update_group(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        group_handle: ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1,
+    );
+
+    /// A workspace group has been removed.
+    fn group_removed(
+        &mut self,
+        conn: &Connection,
+        qh: &QueueHandle<Self>,
+        group_handle: ext_workspace_group_handle_v1::ExtWorkspaceGroupHandleV1,
+    );
+
     /// All workspaces/groups have been updated.
     fn done(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>) {}
 
@@ -157,11 +183,12 @@ where
         qh: &QueueHandle<D>,
     ) {
         match event {
-            ext_workspace_manager_v1::Event::WorkspaceGroup { workspace_group: group } => {
-                state.ext_workspace_state().groups.push(group.clone());
+            ext_workspace_manager_v1::Event::WorkspaceGroup { workspace_group } => {
+                println!("new workspace group");
+                state.ext_workspace_state().groups.push(workspace_group);
             }
             ext_workspace_manager_v1::Event::Workspace { workspace } => {
-                state.ext_workspace_state().workspaces.push(workspace.clone());
+                state.ext_workspace_state().workspaces.push(workspace);
             }
             ext_workspace_manager_v1::Event::Done => {
                 // TODO: is cloning really the best for performance?
@@ -182,15 +209,14 @@ where
                 for ref group in state.ext_workspace_state().groups.clone() {
                     let handle = group.data::<GroupData>().unwrap();
                     let mut inner = handle.0.lock().unwrap();
-                    // FIXME all the commented stuff
-                    // let just_created = inner.current_info.is_none();
+                    let just_created = inner.current_info.is_none();
                     inner.current_info = Some(inner.pending_info.clone());
                     drop(inner);
-                    // if just_created {
-                    //     state.new_workspace(conn, qh, workspace.clone());
-                    // } else {
-                    //     state.update_workspace(conn, qh, workspace.clone());
-                    // }
+                    if just_created {
+                        state.new_group(conn, qh, group.clone());
+                    } else {
+                        state.update_group(conn, qh, group.clone());
+                    }
                 }
                 state.done(conn, qh);
             }
@@ -265,6 +291,7 @@ where
     ) {
         match event {
             ext_workspace_group_handle_v1::Event::Removed => {
+                state.group_removed(conn, qh, handle.clone());
                 let groups = &mut state.ext_workspace_state().groups;
                 if let Some(idx) = groups.iter().position(|x| x == handle) {
                     groups.remove(idx);
@@ -274,24 +301,25 @@ where
             ext_workspace_group_handle_v1::Event::OutputEnter { output } => {
                 self.0.lock().unwrap().pending_info.outputs.push(output);
             }
-            ext_workspace_group_handle_v1::Event::OutputLeave { output } => {
+            ext_workspace_group_handle_v1::Event::OutputLeave { ref output } => {
                 let outputs = &mut self.0.lock().unwrap().pending_info.outputs;
-                if let Some(idx) = outputs.iter().position(|x| x == &output) {
+                if let Some(idx) = outputs.iter().position(|x| x == output) {
                     outputs.remove(idx);
                 }
             }
             ext_workspace_group_handle_v1::Event::WorkspaceEnter { workspace } => {
                 self.0.lock().unwrap().pending_info.workspaces.push(workspace)
             }
-            ext_workspace_group_handle_v1::Event::WorkspaceLeave { workspace } => {
+            ext_workspace_group_handle_v1::Event::WorkspaceLeave { ref workspace } => {
                 let workspaces = &mut self.0.lock().unwrap().pending_info.workspaces;
-                if let Some(idx) = workspaces.iter().position(|x| x == &workspace) {
+                if let Some(idx) = workspaces.iter().position(|x| x == workspace) {
                     workspaces.remove(idx);
                 }
             }
-            // TODO I don't know what this is and I don't care (for now)
-            ext_workspace_group_handle_v1::Event::Capabilities { capabilities: _ } => {}
-            _ => {}
+            ext_workspace_group_handle_v1::Event::Capabilities { capabilities } => {
+                self.0.lock().unwrap().pending_info.capabilities = Some(capabilities);
+            }
+            _ => unreachable!(),
         }
     }
 }
