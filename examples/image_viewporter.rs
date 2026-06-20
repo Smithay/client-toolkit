@@ -15,7 +15,7 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalListHandler, registry_queue_init},
     protocol::{wl_output, wl_shm, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
@@ -36,7 +36,7 @@ fn main() {
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.
-    let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
+    let compositor = CompositorState::bind_singleton(&globals, &qh).expect("wl_compositor not available");
     // For desktop platforms, the XDG shell is the standard protocol for creating desktop windows.
     let xdg_shell = XdgShell::bind(&globals, &qh).expect("xdg shell is not available");
     // Since we are not using the GPU in this example, we use wl_shm to allow software rendering to a buffer
@@ -111,8 +111,13 @@ fn main() {
 
     let pool = SlotPool::new(pool_size as usize, &shm).expect("Failed to create pool");
 
-    let mut state =
-        State { output_state: OutputState::new(&globals, &qh), shm, wp_viewporter, pool, windows };
+    let mut state = State {
+        output_state: OutputState::new(&globals, &qh),
+        shm,
+        wp_viewporter,
+        pool,
+        windows,
+    };
 
     // We don't draw immediately, the configure will notify us when to first draw.
 
