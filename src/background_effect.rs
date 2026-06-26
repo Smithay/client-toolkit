@@ -1,5 +1,5 @@
 use wayland_client::{
-    globals::GlobalList, protocol::wl_surface, Connection, Dispatch, QueueHandle, WEnum,
+    globals::GlobalList, protocol::wl_surface, Connection, Dispatch, QueueHandle,
 };
 use wayland_protocols::ext::background_effect::v1::client::{
     ext_background_effect_manager_v1, ext_background_effect_surface_v1,
@@ -16,10 +16,9 @@ pub struct BackgroundEffectState {
 impl BackgroundEffectState {
     pub fn new<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, GlobalData>
-            + 'static,
+        D: BackgroundEffectHandler + 'static,
     {
-        let manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let manager = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { manager, capabilities: None }
     }
 
@@ -39,8 +38,7 @@ impl BackgroundEffectState {
         qh: &QueueHandle<D>,
     ) -> Result<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, GlobalError>
     where
-        D: Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, GlobalData>
-            + 'static,
+        D: BackgroundEffectHandler + 'static,
     {
         Ok(self.manager.get()?.get_background_effect(surface, qh, GlobalData))
     }
@@ -76,12 +74,6 @@ where
     ) {
         match event {
             ext_background_effect_manager_v1::Event::Capabilities { flags } => {
-                let flags = match flags {
-                    WEnum::Value(value) => value,
-                    WEnum::Unknown(value) => {
-                        ext_background_effect_manager_v1::Capability::from_bits_retain(value)
-                    }
-                };
                 data.background_effect_state().capabilities = Some(flags);
                 data.update_capabilities();
             }

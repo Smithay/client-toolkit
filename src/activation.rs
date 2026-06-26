@@ -55,9 +55,9 @@ impl ActivationState {
         qh: &QueueHandle<State>,
     ) -> Result<ActivationState, BindError>
     where
-        State: Dispatch<xdg_activation_v1::XdgActivationV1, GlobalData, State> + 'static,
+        State: ActivationHandler + 'static,
     {
-        let xdg_activation = globals.bind(qh, 1..=1, GlobalData)?;
+        let xdg_activation = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         Ok(ActivationState { xdg_activation })
     }
 
@@ -73,7 +73,7 @@ impl ActivationState {
     pub fn request_token<D, U>(&self, qh: &QueueHandle<D>, request_data: RequestData<U>)
     where
         D: ActivationHandler<RequestUdata = U>,
-        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>> + 'static,
+        D: 'static,
         U: Send + Sync + 'static,
     {
         let token = self.xdg_activation.get_activation_token(qh, request_data);

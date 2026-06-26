@@ -133,8 +133,7 @@ impl SessionLock {
         qh: &QueueHandle<D>,
     ) -> SessionLockSurface
     where
-        D: Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, SessionLockSurfaceData>
-            + 'static,
+        D: SessionLockHandler + 'static,
     {
         // Freeze the queue during the creation of the Arc to avoid a race between events on the
         // new objects being processed and the Weak in the SessionLockSurfaceData becoming usable.
@@ -166,15 +165,15 @@ pub struct SessionLockState {
 impl SessionLockState {
     pub fn new<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<ext_session_lock_manager_v1::ExtSessionLockManagerV1, GlobalData> + 'static,
+        D: SessionLockHandler + 'static,
     {
-        let session_lock_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let session_lock_manager = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { session_lock_manager }
     }
 
     pub fn lock<D>(&self, qh: &QueueHandle<D>) -> Result<SessionLock, GlobalError>
     where
-        D: Dispatch<ext_session_lock_v1::ExtSessionLockV1, SessionLockData> + 'static,
+        D: SessionLockHandler + 'static,
     {
         let session_lock_manager = self.session_lock_manager.get()?;
 

@@ -5,9 +5,10 @@ use crate::reexports::client::protocol::wl_subsurface::WlSubsurface;
 use crate::reexports::client::protocol::wl_surface::WlSurface;
 use crate::reexports::client::{Connection, Dispatch, Proxy, QueueHandle};
 
-use crate::compositor::SurfaceData;
+use crate::compositor::{CompositorHandler, SurfaceData};
 use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
+use crate::output::OutputHandler;
 
 #[derive(Debug)]
 pub struct SubcompositorState {
@@ -22,9 +23,9 @@ impl SubcompositorState {
         queue_handle: &QueueHandle<State>,
     ) -> Result<Self, BindError>
     where
-        State: Dispatch<WlSubcompositor, GlobalData, State> + 'static,
+        State: 'static,
     {
-        let subcompositor = globals.bind(queue_handle, 1..=1, GlobalData)?;
+        let subcompositor = globals.bind_singleton(queue_handle, 1..=1, GlobalData)?;
         Ok(SubcompositorState { compositor, subcompositor })
     }
 
@@ -34,8 +35,7 @@ impl SubcompositorState {
         queue_handle: &QueueHandle<State>,
     ) -> (WlSubsurface, WlSurface)
     where
-        State:
-            Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+        State: CompositorHandler + OutputHandler + 'static,
     {
         let surface_data = SurfaceData::new(Some(parent.clone()), 1, ());
         let surface = self.compositor.create_surface(queue_handle, surface_data);
@@ -51,8 +51,7 @@ impl SubcompositorState {
         queue_handle: &QueueHandle<State>,
     ) -> Option<WlSubsurface>
     where
-        State:
-            Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+        State: 'static,
     {
         let parent = surface.data::<SurfaceData<()>>().unwrap().parent_surface();
         let subsurface_data = SubsurfaceData::new(surface.clone());

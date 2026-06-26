@@ -21,8 +21,9 @@ mod write_pipe;
 pub use read_pipe::*;
 pub use write_pipe::*;
 
-use data_device::{DataDevice, DataDeviceData};
-use data_source::{CopyPasteSource, DataSourceData, DragSource};
+use data_device::{DataDevice, DataDeviceData, DataDeviceHandler};
+use data_offer::DataOfferHandler;
+use data_source::{CopyPasteSource, DataSourceData, DataSourceHandler, DragSource};
 
 #[derive(Debug)]
 pub struct DataDeviceManagerState {
@@ -32,9 +33,9 @@ pub struct DataDeviceManagerState {
 impl DataDeviceManagerState {
     pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
     where
-        State: Dispatch<WlDataDeviceManager, GlobalData, State> + 'static,
+        State: 'static,
     {
-        let manager = globals.bind(qh, 1..=3, GlobalData)?;
+        let manager = globals.bind_singleton(qh, 1..=3, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -49,7 +50,7 @@ impl DataDeviceManagerState {
         mime_types: impl IntoIterator<Item = T>,
     ) -> CopyPasteSource
     where
-        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
+        D: DataSourceHandler + 'static,
     {
         CopyPasteSource { inner: self.create_data_source(qh, mime_types, None) }
     }
@@ -62,7 +63,7 @@ impl DataDeviceManagerState {
         dnd_actions: DndAction,
     ) -> DragSource
     where
-        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
+        D: DataSourceHandler + 'static,
     {
         DragSource { inner: self.create_data_source(qh, mime_types, Some(dnd_actions)) }
     }
@@ -75,9 +76,9 @@ impl DataDeviceManagerState {
         dnd_actions: Option<DndAction>,
     ) -> WlDataSource
     where
-        D: Dispatch<WlDataSource, DataSourceData<()>> + 'static,
+        D: DataSourceHandler + 'static,
     {
-        let source = self.manager.create_data_source(qh, Default::default());
+        let source = self.manager.create_data_source(qh, DataSourceData::new(()));
 
         for mime in mime_types {
             source.offer(mime.to_string());
@@ -95,7 +96,7 @@ impl DataDeviceManagerState {
     /// create a new data device for a given seat
     pub fn get_data_device<D>(&self, qh: &QueueHandle<D>, seat: &WlSeat) -> DataDevice
     where
-        D: Dispatch<wl_data_device::WlDataDevice, DataDeviceData> + 'static,
+        D: DataDeviceHandler + DataOfferHandler + 'static,
     {
         let data = DataDeviceData::new(seat.clone());
         DataDevice { device: self.manager.get_data_device(seat, qh, data) }

@@ -12,11 +12,12 @@ use crate::reexports::protocols::wp::primary_selection::zv1::client::{
 };
 
 pub mod device;
+use device::PrimarySelectionDeviceHandler;
 pub mod offer;
 pub mod selection;
 
 use self::device::{PrimarySelectionDevice, PrimarySelectionDeviceData};
-use selection::PrimarySelectionSource;
+use selection::{PrimarySelectionSource, PrimarySelectionSourceHandler};
 
 #[derive(Debug)]
 pub struct PrimarySelectionManagerState {
@@ -26,9 +27,9 @@ pub struct PrimarySelectionManagerState {
 impl PrimarySelectionManagerState {
     pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
     where
-        State: Dispatch<ZwpPrimarySelectionDeviceManagerV1, GlobalData, State> + 'static,
+        State: 'static,
     {
-        let manager = globals.bind(qh, 1..=1, GlobalData)?;
+        let manager = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -44,7 +45,7 @@ impl PrimarySelectionManagerState {
         mime_types: I,
     ) -> PrimarySelectionSource
     where
-        State: Dispatch<ZwpPrimarySelectionSourceV1, GlobalData, State> + 'static,
+        State: PrimarySelectionSourceHandler + 'static,
         I: IntoIterator<Item = T>,
         T: ToString,
     {
@@ -64,7 +65,7 @@ impl PrimarySelectionManagerState {
         seat: &WlSeat,
     ) -> PrimarySelectionDevice
     where
-        State: Dispatch<ZwpPrimarySelectionDeviceV1, PrimarySelectionDeviceData, State> + 'static,
+        State: PrimarySelectionDeviceHandler + 'static,
     {
         PrimarySelectionDevice {
             device: self.manager.get_device(

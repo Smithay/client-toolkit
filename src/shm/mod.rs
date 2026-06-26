@@ -7,7 +7,7 @@ use std::io;
 use wayland_client::{
     globals::{BindError, GlobalList},
     protocol::wl_shm,
-    Connection, Dispatch, QueueHandle, WEnum,
+    Connection, Dispatch, QueueHandle,
 };
 
 use crate::{
@@ -35,9 +35,9 @@ impl From<wl_shm::WlShm> for Shm {
 impl Shm {
     pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Shm, BindError>
     where
-        State: Dispatch<wl_shm::WlShm, GlobalData, State> + ShmHandler + 'static,
+        State: ShmHandler + 'static,
     {
-        let wl_shm = globals.bind(qh, 1..=1, GlobalData)?;
+        let wl_shm = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         // Compositors must advertise Argb8888 and Xrgb8888, so let's reserve space for those formats.
         Ok(Shm { wl_shm, formats: Vec::with_capacity(2) })
     }
@@ -84,17 +84,8 @@ where
     ) {
         match event {
             wl_shm::Event::Format { format } => {
-                match format {
-                    WEnum::Value(format) => {
-                        state.shm_state().formats.push(format);
-                        log::debug!(target: "sctk", "supported wl_shm format {:?}", format);
-                    }
-
-                    // Ignore formats we don't know about.
-                    WEnum::Unknown(raw) => {
-                        log::debug!(target: "sctk", "Unknown supported wl_shm format {:x}", raw);
-                    }
-                };
+                state.shm_state().formats.push(format);
+                log::debug!(target: "sctk", "supported wl_shm format {:?}", format);
             }
 
             _ => unreachable!(),

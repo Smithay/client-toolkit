@@ -14,7 +14,6 @@ use std::sync::Mutex;
 
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::protocol::wl_seat::WlSeat;
-use wayland_client::WEnum;
 
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
@@ -37,9 +36,9 @@ impl InputMethodManager {
     /// Bind `zwp_input_method_v2` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Result<Self, BindError>
     where
-        D: Dispatch<ZwpInputMethodManagerV2, GlobalData> + 'static,
+        D: InputMethodHandler + 'static,
     {
-        let manager = globals.bind(qh, 1..=1, GlobalData)?;
+        let manager = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -47,7 +46,7 @@ impl InputMethodManager {
     /// seat.
     pub fn get_input_method<State>(&self, qh: &QueueHandle<State>, seat: &WlSeat) -> InputMethod
     where
-        State: Dispatch<ZwpInputMethodV2, InputMethodData<()>, State> + 'static,
+        State: InputMethodHandler + 'static,
     {
         self.get_input_method_with_data(qh, seat, ())
     }
@@ -59,7 +58,7 @@ impl InputMethodManager {
         udata: U,
     ) -> InputMethod
     where
-        State: Dispatch<ZwpInputMethodV2, InputMethodData<U>, State> + 'static,
+        State: InputMethodHandler + 'static,
         U: Send + Sync + 'static,
     {
         InputMethod {
@@ -314,15 +313,17 @@ where
             }
             Event::TextChangeCause { cause } => {
                 imdata.pending_state = InputMethodEventState {
-                    text_change_cause: match cause {
-                        WEnum::Value(cause) => cause,
-                        WEnum::Unknown(value) => {
-                            warn!(
-                                "Unknown `text_change_cause`: {}. Assuming not input method.",
-                                value
-                            );
-                            ChangeCause::Other
-                        }
+                    text_change_cause: if cause
+                        .available_since()
+                        .is_some_and(|v| v <= input_method.version())
+                    {
+                        cause
+                    } else {
+                        warn!(
+                            "Unknown `text_change_cause`: {:?}. Assuming not input method.",
+                            cause
+                        );
+                        ChangeCause::Other
                     },
                     ..imdata.pending_state.clone()
                 }
@@ -330,23 +331,26 @@ where
             Event::ContentType { hint, purpose } => {
                 imdata.pending_state = InputMethodEventState {
                     active: imdata.pending_state.active.with_content_type(),
-                    content_hint: match hint {
-                        WEnum::Value(hint) => hint,
-                        WEnum::Unknown(value) => {
-                            warn!(
-                                "Unknown content hints: 0b{:b}, ignoring.",
-                                ContentHint::from_bits_retain(value)
-                                    - ContentHint::from_bits_truncate(value)
-                            );
-                            ContentHint::from_bits_truncate(value)
-                        }
+                    content_hint: if hint
+                        .available_since()
+                        .is_some_and(|v| v <= input_method.version())
+                    {
+                        hint
+                    } else {
+                        let unknown_bits = ContentHint::from_iter(hint.iter().filter(|h| {
+                            h.available_since().is_none_or(|v| v > input_method.version())
+                        }));
+                        warn!("Unknown content hints: {:?}, ignoring.", unknown_bits);
+                        hint - unknown_bits
                     },
-                    content_purpose: match purpose {
-                        WEnum::Value(v) => v,
-                        WEnum::Unknown(value) => {
-                            warn!("Unknown `content_purpose`: {}. Assuming `normal`.", value);
-                            ContentPurpose::Normal
-                        }
+                    content_purpose: if purpose
+                        .available_since()
+                        .is_some_and(|v| v <= input_method.version())
+                    {
+                        purpose
+                    } else {
+                        warn!("Unknown `content_purpose`: {:?}. Assuming `normal`.", purpose);
+                        ContentPurpose::Normal
                     },
                     ..imdata.pending_state.clone()
                 }

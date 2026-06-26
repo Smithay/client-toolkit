@@ -136,7 +136,7 @@ pub trait TouchHandler: Sized {
 
 impl<D, U> Dispatch2<WlTouch, D> for TouchData<U>
 where
-    D: Dispatch<WlTouch, TouchData<U>> + TouchHandler,
+    D: TouchHandler,
 {
     fn event(
         &self,

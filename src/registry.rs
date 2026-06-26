@@ -71,7 +71,7 @@
 
 use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 use wayland_client::{
-    globals::{BindError, Global, GlobalList, GlobalListContents},
+    globals::{BindError, Global, GlobalList, GlobalListHandler},
     protocol::wl_registry,
     Connection, Dispatch, Proxy, QueueHandle,
 };
@@ -88,7 +88,7 @@ use wayland_client::{
 /// must implement [`ProvidesRegistryState`].
 pub trait RegistryHandler<D>
 where
-    D: ProvidesRegistryState,
+    D: GlobalListHandler,
 {
     /// Called when a new global has been advertised by the compositor.
     ///
@@ -99,13 +99,12 @@ where
     /// The default implementation does nothing.
     fn new_global(
         data: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        version: u32,
+        global: &Global,
     ) {
-        let _ = (data, conn, qh, name, interface, version);
+        let _ = (data, conn, qh, global);
     }
 
     /// Called when a global has been destroyed by the compositor.
@@ -113,226 +112,12 @@ where
     /// The default implementation does nothing.
     fn remove_global(
         data: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        let _ = (data, conn, qh, name, interface);
-    }
-}
-
-/// Trait which asserts a data type may provide a mutable reference to the registry state.
-///
-/// Typically this trait will be required by delegates or [`RegistryHandler`] implementations which need
-/// to access the registry utilities provided by Smithay's client toolkit.
-pub trait ProvidesRegistryState: Sized {
-    /// Returns a mutable reference to the registry state.
-    fn registry(&mut self) -> &mut RegistryState;
-
-    /// Called when a new global has been advertised by the compositor.
-    ///
-    /// This is not called during initial global enumeration.
-    fn runtime_add_global(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        name: u32,
-        interface: &str,
-        version: u32,
-    );
-
-    /// Called when a global has been destroyed by the compositor.
-    fn runtime_remove_global(
-        &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        name: u32,
-        interface: &str,
-    );
-}
-
-/// State object associated with the registry handling for smithay's client toolkit.
-///
-/// This object provides utilities to cache bound globals that are needed by multiple modules.
-#[derive(Debug)]
-pub struct RegistryState {
-    registry: wl_registry::WlRegistry,
-    globals: Vec<Global>,
-}
-
-impl RegistryState {
-    /// Creates a new registry handle.
-    ///
-    /// This type may be used to bind globals as they are advertised.
-    pub fn new(global_list: &GlobalList) -> Self {
-        let registry = global_list.registry().clone();
-        let globals = global_list.contents().clone_list();
-
-        RegistryState { registry, globals }
-    }
-
-    pub fn registry(&self) -> &wl_registry::WlRegistry {
-        &self.registry
-    }
-
-    /// Returns an iterator over all globals.
-    ///
-    /// This list may change if the compositor adds or removes globals after initial
-    /// enumeration.
-    ///
-    /// No guarantees are provided about the ordering of the globals in this iterator.
-    pub fn globals(&self) -> impl Iterator<Item = &Global> + '_ {
-        self.globals.iter()
-    }
-
-    /// Returns an iterator over all globals implementing the given interface.
-    ///
-    /// This may be more efficient than searching [Self::globals].
-    pub fn globals_by_interface<'a>(
-        &'a self,
-        interface: &'a str,
-    ) -> impl Iterator<Item = &'a Global> + 'a {
-        self.globals.iter().filter(move |g| g.interface == interface)
-    }
-
-    /// Binds a global, returning a new object associated with the global.
-    ///
-    /// This should not be used to bind globals that have multiple instances such as `wl_output`;
-    /// use [Self::bind_all] instead.
-    pub fn bind_one<I, D, U>(
-        &self,
-        qh: &QueueHandle<D>,
-        version: std::ops::RangeInclusive<u32>,
-        udata: U,
-    ) -> Result<I, BindError>
-    where
-        D: Dispatch<I, U> + 'static,
-        I: Proxy + 'static,
-        U: Send + Sync + 'static,
-    {
-        bind_one(&self.registry, &self.globals, qh, version, udata)
-    }
-
-    /// Binds a global, returning a new object associated with the global.
-    ///
-    /// This binds a specific object by its name as provided by the [RegistryHandler::new_global]
-    /// callback.
-    pub fn bind_specific<I, D, U>(
-        &self,
-        qh: &QueueHandle<D>,
-        name: u32,
-        version: std::ops::RangeInclusive<u32>,
-        udata: U,
-    ) -> Result<I, BindError>
-    where
-        D: Dispatch<I, U> + 'static,
-        I: Proxy + 'static,
-        U: Send + Sync + 'static,
-    {
-        let iface = I::interface();
-        if *version.end() > iface.version {
-            // This is a panic because it's a compile-time programmer error, not a runtime error.
-            panic!("Maximum version ({}) was higher than the proxy's maximum version ({}); outdated wayland XML files?",
-                version.end(), iface.version);
-        }
-        // Optimize for runtime_add_global which will use the last entry
-        for global in self.globals.iter().rev() {
-            if global.name != name || global.interface != iface.name {
-                continue;
-            }
-            if global.version < *version.start() {
-                return Err(BindError::UnsupportedVersion);
-            }
-            let version = global.version.min(*version.end());
-            let proxy = self.registry.bind(global.name, version, qh, udata);
-            log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
-
-            return Ok(proxy);
-        }
-        Err(BindError::NotPresent)
-    }
-
-    /// Binds all globals with a given interface.
-    pub fn bind_all<I, D, U, F>(
-        &self,
-        qh: &QueueHandle<D>,
-        version: std::ops::RangeInclusive<u32>,
-        make_udata: F,
-    ) -> Result<Vec<I>, BindError>
-    where
-        D: Dispatch<I, U> + 'static,
-        I: Proxy + 'static,
-        F: FnMut(u32) -> U,
-        U: Send + Sync + 'static,
-    {
-        bind_all(&self.registry, &self.globals, qh, version, make_udata)
-    }
-}
-
-/// Delegates the handling of [`wl_registry`].
-///
-/// Anything which implements [`RegistryHandler`] may be used in the delegate.
-///
-/// ## Usage
-///
-/// ```
-/// use smithay_client_toolkit::{
-///     delegate_registry, registry_handlers,
-///     shm::{ShmHandler, Shm},
-/// };
-///
-/// struct ExampleApp {
-///     shm_state: Shm,
-/// }
-///
-/// impl ShmHandler for ExampleApp {
-///     fn shm_state(&mut self) -> &mut Shm {
-///         &mut self.shm_state
-///     }
-/// }
-///
-/// smithay_client_toolkit::delegate_dispatch2!(ExampleApp);
-/// ```
-#[macro_export]
-macro_rules! delegate_registry {
-    ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $ty: ty) => {
-        $crate::reexports::client::delegate_dispatch!($(@< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $ty:
-            [
-                $crate::reexports::client::protocol::wl_registry::WlRegistry: $crate::reexports::client::globals::GlobalListContents
-            ]  => $crate::registry::RegistryState
-        );
-    };
-}
-
-impl<D> Dispatch<wl_registry::WlRegistry, GlobalListContents, D> for RegistryState
-where
-    D: Dispatch<wl_registry::WlRegistry, GlobalListContents> + ProvidesRegistryState,
-{
-    fn event(
-        state: &mut D,
-        _: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &GlobalListContents,
-        conn: &Connection,
-        qh: &QueueHandle<D>,
-    ) {
-        match event {
-            wl_registry::Event::Global { name, interface, version } => {
-                let iface = interface.clone();
-                state.registry().globals.push(Global { name, interface, version });
-                state.runtime_add_global(conn, qh, name, &iface, version);
-            }
-
-            wl_registry::Event::GlobalRemove { name } => {
-                if let Some(i) = state.registry().globals.iter().position(|g| g.name == name) {
-                    let global = state.registry().globals.swap_remove(i);
-                    state.runtime_remove_global(conn, qh, name, &global.interface);
-                }
-            }
-
-            _ => unreachable!("wl_registry is frozen"),
-        }
+        let _ = (data, conn, qh, global);
     }
 }
 
@@ -386,11 +171,15 @@ pub struct SimpleGlobal<I, const MAX_VERSION: u32> {
 }
 
 impl<I: Proxy + 'static, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
-    pub fn bind<State>(globals: &GlobalList, qh: &QueueHandle<State>) -> Result<Self, BindError>
+    pub fn bind_singleton<State>(
+        globals: &GlobalList,
+        qh: &QueueHandle<State>,
+    ) -> Result<Self, BindError>
     where
-        State: Dispatch<I, (), State> + 'static,
+        State: 'static,
+        (): Dispatch<I, State> + 'static,
     {
-        let proxy = globals.bind(qh, 0..=MAX_VERSION, ())?;
+        let proxy = globals.bind_singleton(qh, 0..=MAX_VERSION, ())?;
         Ok(Self { proxy: GlobalProxy::Bound(proxy) })
     }
 
@@ -427,10 +216,10 @@ pub(crate) fn bind_all<I, D, U, F>(
     mut make_udata: F,
 ) -> Result<Vec<I>, BindError>
 where
-    D: Dispatch<I, U> + 'static,
+    D: 'static,
     I: Proxy + 'static,
     F: FnMut(u32) -> U,
-    U: Send + Sync + 'static,
+    U: Dispatch<I, D> + Send + Sync + 'static,
 {
     let iface = I::interface();
     if *version.end() > iface.version {
@@ -444,7 +233,11 @@ where
             continue;
         }
         if global.version < *version.start() {
-            return Err(BindError::UnsupportedVersion);
+            return Err(BindError::UnsupportedVersion {
+                interface: iface.name,
+                requested: *version.start(),
+                available: global.version,
+            });
         }
         let version = global.version.min(*version.end());
         let udata = make_udata(global.name);
@@ -456,47 +249,7 @@ where
     Ok(rv)
 }
 
-/// Binds a global, returning a new object associated with the global.
-pub(crate) fn bind_one<I, D, U>(
-    registry: &wl_registry::WlRegistry,
-    globals: &[Global],
-    qh: &QueueHandle<D>,
-    version: std::ops::RangeInclusive<u32>,
-    udata: U,
-) -> Result<I, BindError>
-where
-    D: Dispatch<I, U> + 'static,
-    I: Proxy + 'static,
-    U: Send + Sync + 'static,
-{
-    let iface = I::interface();
-    if *version.end() > iface.version {
-        // This is a panic because it's a compile-time programmer error, not a runtime error.
-        panic!("Maximum version ({}) of {} was higher than the proxy's maximum version ({}); outdated wayland XML files?",
-            version.end(), iface.name, iface.version);
-    }
-    if *version.end() < iface.version {
-        // This is a reminder to evaluate the new API and bump the maximum in order to be able
-        // to use new APIs.  Actual use of new APIs still needs runtime version checks.
-        log::trace!(target: "sctk", "Version {} of {} is available; binding is currently limited to {}", iface.version, iface.name, version.end());
-    }
-    for global in globals {
-        if global.interface != iface.name {
-            continue;
-        }
-        if global.version < *version.start() {
-            return Err(BindError::UnsupportedVersion);
-        }
-        let version = global.version.min(*version.end());
-        let proxy = registry.bind(global.name, version, qh, udata);
-        log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
-
-        return Ok(proxy);
-    }
-    Err(BindError::NotPresent)
-}
-
-/// A helper macro for implementing [`ProvidesRegistryState`].
+/// A helper macro for implementing [`GlobalListHandler`].
 ///
 /// See [`delegate_registry`][crate::delegate_registry] for an example.
 #[macro_export]
@@ -504,26 +257,25 @@ macro_rules! registry_handlers {
     ($(@<$( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+>)? $($ty:ty),* $(,)?) => {
         fn runtime_add_global(
             &mut self,
+            global_list: &$crate::reexports::client::globals::GlobalList,
             conn: &$crate::reexports::client::Connection,
             qh: &$crate::reexports::client::QueueHandle<Self>,
-            name: u32,
-            interface: &str,
-            version: u32,
+            global: &$crate::reexports::client::globals::Global,
         ) {
             $(
-                <$ty as $crate::registry::RegistryHandler<Self>>::new_global(self, conn, qh, name, interface, version);
+                <$ty as $crate::registry::RegistryHandler<Self>>::new_global(self, global_list, conn, qh, global);
             )*
         }
 
         fn runtime_remove_global(
             &mut self,
+            global_list: &$crate::reexports::client::globals::GlobalList,
             conn: &$crate::reexports::client::Connection,
             qh: &$crate::reexports::client::QueueHandle<Self>,
-            name: u32,
-            interface: &str,
+            global: &$crate::reexports::client::globals::Global,
         ) {
             $(
-                <$ty as $crate::registry::RegistryHandler<Self>>::remove_global(self, conn, qh, name, interface);
+                <$ty as $crate::registry::RegistryHandler<Self>>::remove_global(self, global_list, conn, qh, global);
             )*
         }
     }

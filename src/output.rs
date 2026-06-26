@@ -6,9 +6,9 @@ use std::{
 
 use log::warn;
 use wayland_client::{
-    globals::GlobalList,
+    globals::{Global, GlobalList, GlobalListHandler},
     protocol::wl_output::{self, Subpixel, Transform},
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
@@ -18,7 +18,7 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
 use crate::{
     dispatch2::Dispatch2,
     globals::GlobalData,
-    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
+    registry::{GlobalProxy, RegistryHandler},
 };
 
 /// Simplified event handler for [`wl_output::WlOutput`].
@@ -133,29 +133,15 @@ impl fmt::Debug for ScaleWatcherHandle {
 }
 
 impl OutputState {
-    pub fn new<
-        D: Dispatch<wl_output::WlOutput, OutputData>
-            + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-            + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
-            + 'static,
-    >(
+    pub fn new<D: OutputHandler + 'static>(
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> OutputState {
-        let (outputs, xdg) = global_list.contents().with_list(|globals| {
-            let outputs: Vec<wl_output::WlOutput> = crate::registry::bind_all(
-                global_list.registry(),
-                globals,
-                qh,
-                1..=4,
-                OutputData::new,
-            )
-            .expect("Failed to bind global");
-            let xdg =
-                crate::registry::bind_one(global_list.registry(), globals, qh, 1..=3, GlobalData)
-                    .into();
-            (outputs, xdg)
+        let outputs = global_list.contents().with_list(|globals| {
+            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=4, OutputData::new)
+                .expect("Failed to bind global")
         });
+        let xdg = global_list.bind_singleton(qh, 1..=3, GlobalData).into();
 
         let mut output_state = OutputState { xdg, outputs: vec![], callbacks: vec![] };
         for wl_output in outputs {
@@ -198,7 +184,7 @@ impl OutputState {
 
     fn setup<D>(&mut self, wl_output: wl_output::WlOutput, qh: &QueueHandle<D>)
     where
-        D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + 'static,
+        D: OutputHandler + 'static,
     {
         let data = wl_output.data::<OutputData>().unwrap().clone();
 
@@ -430,15 +416,17 @@ where
             } => {
                 inner.pending_info.location = (x, y);
                 inner.pending_info.physical_size = (physical_width, physical_height);
-                inner.pending_info.subpixel = match subpixel {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid subpixel value"),
+                inner.pending_info.subpixel = if subpixel.available_since().is_some() {
+                    subpixel
+                } else {
+                    todo!("Warn about invalid subpixel value")
                 };
                 inner.pending_info.make = make;
                 inner.pending_info.model = model;
-                inner.pending_info.transform = match transform {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid transform value"),
+                inner.pending_info.transform = if transform.available_since().is_some() {
+                    transform
+                } else {
+                    todo!("Warn about invalid transform value")
                 };
                 inner.pending_wl = true;
             }
@@ -449,10 +437,8 @@ where
                     mode.dimensions != (width, height) || mode.refresh_rate != refresh
                 });
 
-                let flags = match flags {
-                    WEnum::Value(flags) => flags,
-                    WEnum::Unknown(_) => panic!("Invalid flags"),
-                };
+                let flags =
+                    if flags.available_since().is_some() { flags } else { panic!("Invalid flags") };
 
                 let current = flags.contains(wl_output::Mode::Current);
                 let preferred = flags.contains(wl_output::Mode::Preferred);
@@ -644,25 +630,18 @@ where
 
 impl<D> RegistryHandler<D> for OutputState
 where
-    D: Dispatch<wl_output::WlOutput, OutputData>
-        + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
-        + OutputHandler
-        + ProvidesRegistryState
-        + 'static,
+    D: OutputHandler + GlobalListHandler + 'static,
 {
     fn new_global(
         data: &mut D,
+        global_list: &GlobalList,
         _: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _version: u32,
+        global: &Global,
     ) {
-        if interface == "wl_output" {
-            let output = data
-                .registry()
-                .bind_specific(qh, name, 1..=4, OutputData::new(name))
+        if global.interface == "wl_output" {
+            let output = global_list
+                .bind_specific(qh, global.name, 1..=4, OutputData::new(global.name))
                 .expect("Failed to bind global");
             data.output_state().setup(output, qh);
         }
@@ -670,17 +649,17 @@ where
 
     fn remove_global(
         data: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        if interface == "wl_output" {
+        if global.interface == "wl_output" {
             let output = data
                 .output_state()
                 .outputs
                 .iter()
-                .position(|o| o.name == name)
+                .position(|o| o.name == global.name)
                 .expect("Removed non-existing output");
 
             let wl_output = data.output_state().outputs[output].wl_output.clone();

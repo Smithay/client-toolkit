@@ -23,9 +23,9 @@ impl PointerConstraintsState {
     /// Bind `zwp_pointer_constraints_v1` global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Self
     where
-        D: Dispatch<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, GlobalData> + 'static,
+        D: PointerConstraintsHandler + 'static,
     {
-        let pointer_constraints = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
+        let pointer_constraints = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Self { pointer_constraints }
     }
 
@@ -41,7 +41,7 @@ impl PointerConstraintsState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_confined_pointer_v1::ZwpConfinedPointerV1, GlobalError>
     where
-        D: Dispatch<zwp_confined_pointer_v1::ZwpConfinedPointerV1, PointerConstraintData> + 'static,
+        D: PointerConstraintsHandler + 'static,
     {
         let udata = PointerConstraintData { surface: surface.clone(), pointer: pointer.clone() };
         Ok(self
@@ -62,7 +62,7 @@ impl PointerConstraintsState {
         qh: &QueueHandle<D>,
     ) -> Result<zwp_locked_pointer_v1::ZwpLockedPointerV1, GlobalError>
     where
-        D: Dispatch<zwp_locked_pointer_v1::ZwpLockedPointerV1, PointerConstraintData> + 'static,
+        D: PointerConstraintsHandler + 'static,
     {
         let udata = PointerConstraintData { surface: surface.clone(), pointer: pointer.clone() };
         Ok(self
