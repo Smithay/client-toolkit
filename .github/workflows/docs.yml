@@ -3,7 +3,7 @@ name: Deploy Docs to GitHub Pages
 on:
   push:
     branches:
-    - master
+      - master
 
 jobs:
   doc:
@@ -12,34 +12,24 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Cargo cache
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo
-          key: cargo-stable
+        uses: actions/checkout@v6
 
       - name: Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          override: true
+          rustflags: ""
 
       - name: Install system dependencies
         run: sudo apt-get install libxkbcommon-dev libwayland-dev
 
       - name: Build Documentation
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps
+        run: cargo doc --no-deps
 
       - name: Setup index
         run: cp ./doc_index.html ./target/doc/index.html
 
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./target/doc

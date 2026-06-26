@@ -3,7 +3,7 @@ name: Continuous Integration
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
 
 jobs:
@@ -11,23 +11,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: ['1.71.1', 'stable', 'beta']
+        rust: ["1.71.1", "stable", "beta"]
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Cargo cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo
-          key: cargo-${{ matrix.rust }}
+        uses: actions/checkout@v6
 
       - name: Rust toolchain
-        uses: hecrj/setup-rust-action@v2
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          rust-version: ${{ matrix.rust }}
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
 
       - name: Install system dependencies
         run: sudo apt-get install libxkbcommon-dev libwayland-dev
@@ -42,23 +37,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: ['stable', 'beta']
+        rust: ["stable", "beta"]
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Cargo cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo
-          key: cargo-${{ matrix.rust }}
+        uses: actions/checkout@v6
 
       - name: Rust toolchain
-        uses: hecrj/setup-rust-action@v2
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          rust-version: ${{ matrix.rust }}
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
 
       - name: Update system repositories
         run: sudo apt-get update
@@ -80,14 +70,13 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Rust toolchain
-        uses: hecrj/setup-rust-action@v2
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
+          rustflags: ""
 
       - name: Cargo fmt
         run: cargo fmt --all -- --check
