@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["smithay_client_toolkit",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.84.1/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"smithay_client_toolkit/shell/xdg/struct.XdgPositioner.html\" title=\"struct smithay_client_toolkit::shell::xdg::XdgPositioner\">XdgPositioner</a>"]]]]);
+    const implementors = Object.fromEntries([["smithay_client_toolkit",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.96.0/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"smithay_client_toolkit/seat/input_method_v3/struct.PopupPositioner.html\" title=\"struct smithay_client_toolkit::seat::input_method_v3::PopupPositioner\">PopupPositioner</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.96.0/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"smithay_client_toolkit/shell/xdg/struct.XdgPositioner.html\" title=\"struct smithay_client_toolkit::shell::xdg::XdgPositioner\">XdgPositioner</a>",0]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[357]}
+//{"start":59,"fragment_lengths":[718]}

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ActivationState","RequestData"],"trait":["ActivationHandler","RequestDataExt"]};
+window.SIDEBAR_ITEMS = {"struct":["ActivationState","RequestData"],"trait":["ActivationHandler"]};

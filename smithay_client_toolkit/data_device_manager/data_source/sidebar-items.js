@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CopyPasteSource","DataSourceData","DragSource"],"trait":["DataSourceDataExt","DataSourceHandler"]};
+window.SIDEBAR_ITEMS = {"struct":["CopyPasteSource","DataSourceData","DragSource"],"trait":["DataSourceHandler"]};

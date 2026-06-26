@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CompositorState","Region","Surface","SurfaceData"],"trait":["CompositorHandler","SurfaceDataExt"]};
+window.SIDEBAR_ITEMS = {"struct":["CompositorState","FrameCallbackData","Region","Surface","SurfaceData"],"trait":["CompositorHandler"]};
