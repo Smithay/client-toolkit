@@ -117,7 +117,7 @@ impl DragOffer {
         if !self.left || self.dropped {
             receive(&self.data_offer, mime_type)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "offer has left"))
+            Err(std::io::Error::other("offer has left"))
         }
     }
 
