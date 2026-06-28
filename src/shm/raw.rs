@@ -235,12 +235,10 @@ impl RawPool {
 
     #[cfg(target_os = "linux")]
     fn create_memfd() -> rustix::io::Result<OwnedFd> {
-        use std::ffi::CStr;
-
         use rustix::fs::{MemfdFlags, SealFlags};
 
         loop {
-            let name = CStr::from_bytes_with_nul(b"smithay-client-toolkit\0").unwrap();
+            let name = c"smithay-client-toolkit";
             let flags = MemfdFlags::ALLOW_SEALING | MemfdFlags::CLOEXEC;
 
             match rustix::fs::memfd_create(name, flags) {
