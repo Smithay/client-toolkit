@@ -86,6 +86,58 @@ where
     }
 }
 
+pub(crate) fn determine_window_state(states: &[u8]) -> WindowState {
+    // The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
+    // bytes.
+    states
+        .chunks_exact(4)
+        .flat_map(TryInto::<[u8; 4]>::try_into)
+        .map(u32::from_ne_bytes)
+        .flat_map(State::try_from)
+        .fold(WindowState::empty(), |mut acc, state| {
+            match state {
+                State::Maximized => acc.set(WindowState::MAXIMIZED, true),
+                State::Fullscreen => acc.set(WindowState::FULLSCREEN, true),
+                State::Resizing => acc.set(WindowState::RESIZING, true),
+                State::Activated => acc.set(WindowState::ACTIVATED, true),
+                State::TiledLeft => acc.set(WindowState::TILED_LEFT, true),
+                State::TiledRight => acc.set(WindowState::TILED_RIGHT, true),
+                State::TiledTop => acc.set(WindowState::TILED_TOP, true),
+                State::TiledBottom => acc.set(WindowState::TILED_BOTTOM, true),
+                State::Suspended => acc.set(WindowState::SUSPENDED, true),
+                _ => (),
+            }
+            acc
+        })
+}
+
+pub(crate) fn determine_wm_capabilities(capabilities: &[u8]) -> WindowManagerCapabilities {
+    capabilities
+        .chunks_exact(4)
+        .flat_map(TryInto::<[u8; 4]>::try_into)
+        .map(u32::from_ne_bytes)
+        .flat_map(WmCapabilities::try_from)
+        .fold(WindowManagerCapabilities::empty(), |mut acc, capability| {
+            match capability {
+                WmCapabilities::WindowMenu => acc.set(WindowManagerCapabilities::WINDOW_MENU, true),
+                WmCapabilities::Maximize => acc.set(WindowManagerCapabilities::MAXIMIZE, true),
+                WmCapabilities::Fullscreen => acc.set(WindowManagerCapabilities::FULLSCREEN, true),
+                WmCapabilities::Minimize => acc.set(WindowManagerCapabilities::MINIMIZE, true),
+                _ => (),
+            }
+            acc
+        })
+}
+
+pub(crate) fn determine_decoration_mode(mode: Mode) -> DecorationMode {
+    match mode {
+        Mode::ClientSide => DecorationMode::Client,
+        Mode::ServerSide => DecorationMode::Server,
+
+        _ => unreachable!(),
+    }
+}
+
 impl<D> Dispatch2<xdg_toplevel::XdgToplevel, D> for WindowData
 where
     D: WindowHandler,
@@ -101,28 +153,7 @@ where
         if let Some(window) = Window::from_xdg_toplevel(toplevel) {
             match event {
                 xdg_toplevel::Event::Configure { width, height, states } => {
-                    // The states are encoded as a bunch of u32 of native endian, but are encoded in an array of
-                    // bytes.
-                    let new_state = states
-                        .chunks_exact(4)
-                        .flat_map(TryInto::<[u8; 4]>::try_into)
-                        .map(u32::from_ne_bytes)
-                        .flat_map(State::try_from)
-                        .fold(WindowState::empty(), |mut acc, state| {
-                            match state {
-                                State::Maximized => acc.set(WindowState::MAXIMIZED, true),
-                                State::Fullscreen => acc.set(WindowState::FULLSCREEN, true),
-                                State::Resizing => acc.set(WindowState::RESIZING, true),
-                                State::Activated => acc.set(WindowState::ACTIVATED, true),
-                                State::TiledLeft => acc.set(WindowState::TILED_LEFT, true),
-                                State::TiledRight => acc.set(WindowState::TILED_RIGHT, true),
-                                State::TiledTop => acc.set(WindowState::TILED_TOP, true),
-                                State::TiledBottom => acc.set(WindowState::TILED_BOTTOM, true),
-                                State::Suspended => acc.set(WindowState::SUSPENDED, true),
-                                _ => (),
-                            }
-                            acc
-                        });
+                    let new_state = determine_window_state(&states);
 
                     // XXX we do explicit convertion and sanity checking because compositor
                     // could pass negative values which we should ignore all together.
@@ -148,29 +179,7 @@ where
                 }
                 xdg_toplevel::Event::WmCapabilities { capabilities } => {
                     let pending_configure = &mut window.0.pending_configure.lock().unwrap();
-                    pending_configure.capabilities = capabilities
-                        .chunks_exact(4)
-                        .flat_map(TryInto::<[u8; 4]>::try_into)
-                        .map(u32::from_ne_bytes)
-                        .flat_map(WmCapabilities::try_from)
-                        .fold(WindowManagerCapabilities::empty(), |mut acc, capability| {
-                            match capability {
-                                WmCapabilities::WindowMenu => {
-                                    acc.set(WindowManagerCapabilities::WINDOW_MENU, true)
-                                }
-                                WmCapabilities::Maximize => {
-                                    acc.set(WindowManagerCapabilities::MAXIMIZE, true)
-                                }
-                                WmCapabilities::Fullscreen => {
-                                    acc.set(WindowManagerCapabilities::FULLSCREEN, true)
-                                }
-                                WmCapabilities::Minimize => {
-                                    acc.set(WindowManagerCapabilities::MINIMIZE, true)
-                                }
-                                _ => (),
-                            }
-                            acc
-                        });
+                    pending_configure.capabilities = determine_wm_capabilities(&capabilities)
                 }
                 _ => unreachable!(),
             }
@@ -212,13 +221,7 @@ where
             match event {
                 zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
                     wayland_client::WEnum::Value(mode) => {
-                        let mode = match mode {
-                            Mode::ClientSide => DecorationMode::Client,
-                            Mode::ServerSide => DecorationMode::Server,
-
-                            _ => unreachable!(),
-                        };
-
+                        let mode = determine_decoration_mode(mode);
                         window.0.pending_configure.lock().unwrap().decoration_mode = mode;
                     }
 

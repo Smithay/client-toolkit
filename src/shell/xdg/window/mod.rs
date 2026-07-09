@@ -98,6 +98,20 @@ pub struct WindowConfigure {
     pub capabilities: WindowManagerCapabilities,
 }
 
+impl Default for WindowConfigure {
+    fn default() -> Self {
+        Self {
+            new_size: (None, None),
+            suggested_bounds: None,
+            // Initial configure will indicate whether there are server side decorations.
+            decoration_mode: DecorationMode::Client,
+            state: WindowState::empty(),
+            // XXX by default we assume that everything is supported.
+            capabilities: WindowManagerCapabilities::all(),
+        }
+    }
+}
+
 impl WindowConfigure {
     /// Is [`WindowState::MAXIMIZED`] state is set.
     #[inline]
