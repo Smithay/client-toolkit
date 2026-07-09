@@ -197,6 +197,12 @@ impl WaylandSurface for Dialog {
     }
 }
 
+impl PartialEq for Dialog {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
 impl DialogData {
     /// Get a new handle to the Dialog
     ///
