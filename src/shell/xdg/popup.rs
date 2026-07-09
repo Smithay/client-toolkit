@@ -11,7 +11,7 @@ use std::sync::{
 };
 use wayland_client::{
     protocol::{wl_compositor::WlCompositor, wl_surface},
-    Connection, Dispatch, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::shell::client::{xdg_popup, xdg_positioner, xdg_surface, xdg_wm_base};
 
@@ -134,8 +134,12 @@ impl Popup {
         self.inner.surface.wl_surface()
     }
 
+    /// Reposition the popup
+    /// Important: This is only available in wayland version 3 and after
     pub fn reposition(&self, position: &xdg_positioner::XdgPositioner, token: u32) {
-        self.xdg_popup().reposition(position, token);
+        if self.xdg_popup().version() >= 3 {
+            self.xdg_popup().reposition(position, token);
+        }
     }
 }
 
