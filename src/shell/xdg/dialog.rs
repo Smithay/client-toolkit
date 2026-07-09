@@ -16,9 +16,8 @@ use crate::{error::GlobalError, shell::xdg::XdgShellSurface};
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex, Weak};
 use wayland_protocols::xdg::{
-    decoration::zv1::client::zxdg_toplevel_decoration_v1::{self, Mode},
-    dialog::v1::client::xdg_dialog_v1::XdgDialogV1,
-    shell::client::xdg_wm_base,
+    decoration::zv1::client::zxdg_toplevel_decoration_v1,
+    dialog::v1::client::xdg_dialog_v1::XdgDialogV1, shell::client::xdg_wm_base,
 };
 use wayland_protocols::xdg::{dialog::v1::client::xdg_dialog_v1, shell::client::xdg_surface};
 use wayland_protocols::xdg::{dialog::v1::client::xdg_wm_dialog_v1, shell::client::xdg_toplevel};

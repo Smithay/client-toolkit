@@ -42,7 +42,7 @@ pub mod window;
 /// The xdg shell globals.
 #[derive(Debug)]
 pub struct XdgShell {
-    xdg_wm_dialog_v1: xdg_wm_dialog_v1::XdgWmDialogV1,
+    xdg_wm_dialog_v1: Option<xdg_wm_dialog_v1::XdgWmDialogV1>,
     xdg_wm_base: xdg_wm_base::XdgWmBase,
     xdg_decoration_manager: GlobalProxy<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
 }
@@ -70,7 +70,7 @@ impl XdgShell {
             + 'static,
     {
         let xdg_wm_base = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
-        let xdg_wm_dialog_v1 = globals.bind(qh, 1..=1, GlobalData)?;
+        let xdg_wm_dialog_v1 = globals.bind(qh, 1..=1, GlobalData).ok();
         let xdg_decoration_manager = GlobalProxy::from(globals.bind(qh, 1..=1, GlobalData));
         Ok(Self { xdg_wm_base, xdg_wm_dialog_v1, xdg_decoration_manager })
     }
@@ -351,12 +351,17 @@ impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }> 
     }
 }
 
+/// Dialog
 impl ProvidesBoundGlobal<xdg_wm_dialog_v1::XdgWmDialogV1, 1> for XdgShell {
     fn bound_global(&self) -> Result<xdg_wm_dialog_v1::XdgWmDialogV1, GlobalError> {
-        Ok(self.xdg_wm_dialog_v1.clone())
+        Ok(self
+            .xdg_wm_dialog_v1
+            .clone()
+            .ok_or(GlobalError::MissingGlobal("Dialog v1 is not available"))?)
     }
 }
 
+/// Dialog
 impl<D> Dispatch2<xdg_wm_dialog_v1::XdgWmDialogV1, D> for GlobalData {
     fn event(
         &self,
@@ -370,6 +375,7 @@ impl<D> Dispatch2<xdg_wm_dialog_v1::XdgWmDialogV1, D> for GlobalData {
     }
 }
 
+/// Dialog
 impl<D> Dispatch2<xdg_wm_base::XdgWmBase, D> for GlobalData {
     fn event(
         &self,
