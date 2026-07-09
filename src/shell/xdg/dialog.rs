@@ -24,9 +24,9 @@ use wayland_protocols::xdg::{dialog::v1::client::xdg_wm_dialog_v1, shell::client
 
 /// Handler for toplevel operations on a [`Dialog`]
 pub trait DialogHandler: Sized {
-    /// Request to close a window.
+    /// Request to close a dialog.
     ///
-    /// This request does not destroy the window. You must drop all [`Window`] handles to destroy the window.
+    /// This request does not destroy the dialog. You must drop all [`Dialog`] handles to destroy the dialog.
     /// This request may be sent either by the compositor or by some other mechanism (such as client side decorations).
     fn request_close(&mut self, conn: &Connection, qh: &QueueHandle<Self>, window: &Dialog);
 
@@ -114,7 +114,7 @@ impl Dialog {
         let wm_base: xdg_wm_base::XdgWmBase = wm_base.bound_global()?;
 
         // Freeze the queue during the creation of the Arc to avoid a race between events on the
-        // new objects being processed and the Weak in the PopupData becoming usable.
+        // new objects being processed and the Weak in the DialogData becoming usable.
         let freeze = qh.freeze();
 
         let inner = Arc::new_cyclic(|weak| {
