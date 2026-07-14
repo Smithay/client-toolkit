@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Dialog","DialogData"],"trait":["DialogHandler"]};
