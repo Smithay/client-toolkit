@@ -9,7 +9,6 @@ use wayland_protocols::xdg::dialog::v1::client::xdg_wm_dialog_v1;
 use crate::reexports::client::globals::{BindError, GlobalList};
 use crate::reexports::client::Connection;
 use crate::reexports::client::{protocol::wl_surface, Dispatch, Proxy, QueueHandle};
-use crate::reexports::csd_frame::{WindowManagerCapabilities, WindowState};
 use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_manager_v1::ZxdgDecorationManagerV1;
 use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::Mode;
 use crate::reexports::protocols::xdg::decoration::zv1::client::{
@@ -28,9 +27,7 @@ use crate::registry::GlobalProxy;
 use crate::shell::xdg::dialog::{Dialog, DialogData, DialogHandler};
 
 use self::window::inner::WindowInner;
-use self::window::{
-    DecorationMode, Window, WindowConfigure, WindowData, WindowDecorations, WindowHandler,
-};
+use self::window::{Window, WindowData, WindowDecorations, WindowHandler};
 
 use super::WaylandSurface;
 
@@ -87,7 +84,7 @@ impl XdgShell {
         State: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> + 'static,
     {
         // If server side decorations are available, create the toplevel decoration.
-        let toplevel_decoration = decoration_manager.and_then(|decoration_manager| {
+        decoration_manager.and_then(|decoration_manager| {
             match decorations {
                 // Window does not want any server side decorations.
                 WindowDecorations::ClientOnly | WindowDecorations::None => None,
@@ -111,8 +108,7 @@ impl XdgShell {
                     Some(toplevel_decoration)
                 }
             }
-        });
-        toplevel_decoration
+        })
     }
 
     /// Creates a new, unmapped window.
@@ -354,10 +350,9 @@ impl ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, { XdgShell::API_VERSION_MAX }> 
 /// Dialog
 impl ProvidesBoundGlobal<xdg_wm_dialog_v1::XdgWmDialogV1, 1> for XdgShell {
     fn bound_global(&self) -> Result<xdg_wm_dialog_v1::XdgWmDialogV1, GlobalError> {
-        Ok(self
-            .xdg_wm_dialog_v1
+        self.xdg_wm_dialog_v1
             .clone()
-            .ok_or(GlobalError::MissingGlobal("Dialog v1 is not available"))?)
+            .ok_or(GlobalError::MissingGlobal("Dialog v1 is not available"))
     }
 }
 
