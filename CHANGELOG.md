@@ -2,11 +2,22 @@
 
 ## Unreleased
 
+## 0.21.0 - 2026-07-14
+
 #### Breaking Changes
-- `*DataExt` traits removed; now `*Data` types wrap custom data
-  * Any calls to `Proxy::data` will need to be updated for new type
+- `*DataExt` traits removed; now `*Data` types wrap custom data.
+  * Any calls to `Proxy::data` will need to be updated for new type.
 - All `delegate_*!` macros except `delegate_registry!` replaced with single
   `delegate_dispatch2!` in preparation for future wayland-rs release.
+
+#### Fixed
+- Prevent popup reposition request if `xdg_popup` version is below 3.
+
+#### Additions
+- Add support for `xdg_wm_dialog` v1.
+- Add support for `xx_input_method` v1.
+- Add support for `xx_keyboard_filter` v1.
+- Add support for `ext-background-effect` v1.
 
 ## 0.20.0 - 2025-07-29
 
