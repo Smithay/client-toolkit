@@ -1,4 +1,5 @@
-use crate::dispatch2::Dispatch2;
+use wayland_client::Dispatch;
+
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
@@ -75,7 +76,7 @@ pub trait DataSourceHandler: Sized {
     );
 }
 
-impl<D, U> Dispatch2<wl_data_source::WlDataSource, D> for DataSourceData<U>
+impl<D, U> Dispatch<wl_data_source::WlDataSource, D> for DataSourceData<U>
 where
     D: DataSourceHandler,
 {

@@ -8,8 +8,6 @@ use crate::reexports::protocols::wp::primary_selection::zv1::client::{
     zwp_primary_selection_offer_v1::ZwpPrimarySelectionOfferV1,
 };
 
-use crate::dispatch2::Dispatch2;
-
 use super::offer::{PrimarySelectionOffer, PrimarySelectionOfferData};
 
 pub trait PrimarySelectionDeviceHandler: Sized {
@@ -53,7 +51,7 @@ impl Drop for PrimarySelectionDevice {
     }
 }
 
-impl<State> Dispatch2<ZwpPrimarySelectionDeviceV1, State> for PrimarySelectionDeviceData
+impl<State> Dispatch<ZwpPrimarySelectionDeviceV1, State> for PrimarySelectionDeviceData
 where
     State: PrimarySelectionDeviceHandler + 'static,
 {

@@ -6,7 +6,6 @@ use crate::shell::xdg::window::inner::{
 };
 use crate::shell::xdg::window::WindowConfigure;
 use crate::shell::xdg::window::ToplevelDecorationData;
-use crate::shell::xdg::Dispatch2;
 use crate::shell::xdg::WindowDecorations;
 use crate::shell::xdg::WindowHandler;
 use crate::shell::WaylandSurface;
@@ -213,7 +212,7 @@ impl Drop for DialogInner {
     }
 }
 
-impl<D: DialogHandler> Dispatch2<xdg_surface::XdgSurface, D> for DialogData {
+impl<D: DialogHandler> Dispatch<xdg_surface::XdgSurface, D> for DialogData {
     fn event(
         &self,
         data: &mut D,
@@ -236,7 +235,7 @@ impl<D: DialogHandler> Dispatch2<xdg_surface::XdgSurface, D> for DialogData {
     }
 }
 
-impl<D> Dispatch2<XdgDialogV1, D> for DialogData {
+impl<D> Dispatch<XdgDialogV1, D> for DialogData {
     fn event(
         &self,
         _state: &mut D,
@@ -248,7 +247,7 @@ impl<D> Dispatch2<XdgDialogV1, D> for DialogData {
     }
 }
 
-impl<D: DialogHandler> Dispatch2<xdg_toplevel::XdgToplevel, D> for DialogData {
+impl<D: DialogHandler> Dispatch<xdg_toplevel::XdgToplevel, D> for DialogData {
     fn event(
         &self,
         data: &mut D,
@@ -295,7 +294,7 @@ impl<D: DialogHandler> Dispatch2<xdg_toplevel::XdgToplevel, D> for DialogData {
     }
 }
 
-impl<D> Dispatch2<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for DialogData
+impl<D> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for DialogData
 where
     D: DialogHandler,
 {

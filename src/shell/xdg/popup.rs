@@ -1,6 +1,5 @@
 use crate::{
     compositor::{CompositorHandler, Surface, SurfaceData},
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::ProvidesBoundGlobal,
     output::OutputHandler,
@@ -202,7 +201,7 @@ pub trait PopupHandler: Sized {
     fn done(&mut self, conn: &Connection, qh: &QueueHandle<Self>, popup: &Popup);
 }
 
-impl<D> Dispatch2<xdg_surface::XdgSurface, D> for PopupData
+impl<D> Dispatch<xdg_surface::XdgSurface, D> for PopupData
 where
     D: PopupHandler,
 {
@@ -245,7 +244,7 @@ where
     }
 }
 
-impl<D> Dispatch2<xdg_popup::XdgPopup, D> for PopupData
+impl<D> Dispatch<xdg_popup::XdgPopup, D> for PopupData
 where
     D: PopupHandler,
 {

@@ -5,7 +5,7 @@ use wayland_protocols::wp::relative_pointer::zv1::client::{
     zwp_relative_pointer_manager_v1, zwp_relative_pointer_v1,
 };
 
-use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct RelativePointerState {
@@ -64,7 +64,7 @@ pub struct RelativePointerData {
     wl_pointer: wl_pointer::WlPointer,
 }
 
-impl<D> Dispatch2<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, D> for GlobalData
+impl<D> Dispatch<zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1, D> for GlobalData
 where
     D: RelativePointerHandler,
 {
@@ -80,7 +80,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_relative_pointer_v1::ZwpRelativePointerV1, D> for RelativePointerData
+impl<D> Dispatch<zwp_relative_pointer_v1::ZwpRelativePointerV1, D> for RelativePointerData
 where
     D: RelativePointerHandler,
 {

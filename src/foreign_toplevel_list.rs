@@ -1,4 +1,4 @@
-use crate::{dispatch2::Dispatch2, globals::GlobalData, registry::GlobalProxy};
+use crate::{globals::GlobalData, registry::GlobalProxy};
 use std::sync::{Arc, Mutex};
 use wayland_client::{globals::GlobalList, Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::ext::foreign_toplevel_list::v1::client::{
@@ -97,7 +97,7 @@ pub trait ForeignToplevelListHandler: Sized {
     fn finished(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>) {}
 }
 
-impl<D> Dispatch2<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, D> for GlobalData
+impl<D> Dispatch<ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1, D> for GlobalData
 where
     D: ForeignToplevelListHandler + 'static,
 {
@@ -124,7 +124,7 @@ where
     ]);
 }
 
-impl<D> Dispatch2<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, D>
+impl<D> Dispatch<ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1, D>
     for ForeignToplevelData
 where
     D: ForeignToplevelListHandler,

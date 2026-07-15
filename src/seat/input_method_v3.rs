@@ -29,8 +29,6 @@ use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 
 use crate::reexports::protocols_experimental::input_method::v1::client as protocol;
 
-use crate::dispatch2::Dispatch2;
-
 pub use protocol::xx_input_method_v1::XxInputMethodV1;
 pub use protocol::xx_input_popup_positioner_v1::XxInputPopupPositionerV1;
 pub use protocol::xx_input_popup_surface_v2::XxInputPopupSurfaceV2;
@@ -107,7 +105,7 @@ impl InputMethodManager {
     }
 }
 
-impl<D> Dispatch2<xx_input_method_manager_v2::XxInputMethodManagerV2, D> for GlobalData
+impl<D> Dispatch<xx_input_method_manager_v2::XxInputMethodManagerV2, D> for GlobalData
 where
     D: InputMethodHandler,
 {
@@ -144,7 +142,7 @@ impl Drop for PopupPositioner {
     }
 }
 
-impl<D> Dispatch2<XxInputPopupPositionerV1, D> for PositionerData
+impl<D> Dispatch<XxInputPopupPositionerV1, D> for PositionerData
 where
     D: InputMethodHandler,
 {
@@ -505,7 +503,7 @@ impl Popup {
     }
 }
 
-impl<D> Dispatch2<XxInputPopupSurfaceV2, D> for PopupData
+impl<D> Dispatch<XxInputPopupSurfaceV2, D> for PopupData
 where
     D: InputMethodHandler,
 {
@@ -630,7 +628,7 @@ pub trait InputMethodHandler: Sized {
     fn handle_unavailable(&mut self, qh: &QueueHandle<Self>, input_method: &XxInputMethodV1);
 }
 
-impl<D, U> Dispatch2<XxInputMethodV1, D> for InputMethodData<U>
+impl<D, U> Dispatch<XxInputMethodV1, D> for InputMethodData<U>
 where
     D: InputMethodHandler,
 {

@@ -15,7 +15,7 @@ use crate::reexports::client::{
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
 use crate::{
-    compositor::SurfaceData, dispatch2::Dispatch2, globals::GlobalData, registry::RegistryHandler,
+    compositor::SurfaceData, globals::GlobalData, registry::RegistryHandler,
 };
 
 pub mod input_method;
@@ -415,7 +415,7 @@ struct SeatInner {
     data: SeatData,
 }
 
-impl<D> Dispatch2<wl_seat::WlSeat, D> for SeatData
+impl<D> Dispatch<wl_seat::WlSeat, D> for SeatData
 where
     D: SeatHandler,
 {

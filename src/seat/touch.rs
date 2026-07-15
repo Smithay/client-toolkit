@@ -6,8 +6,6 @@ use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_touch::{Event as TouchEvent, WlTouch};
 use wayland_client::{Connection, Dispatch, QueueHandle};
 
-use crate::dispatch2::Dispatch2;
-
 #[derive(Debug)]
 pub struct TouchData<U> {
     seat: WlSeat,
@@ -134,7 +132,7 @@ pub trait TouchHandler: Sized {
     fn cancel(&mut self, conn: &Connection, qh: &QueueHandle<Self>, touch: &WlTouch);
 }
 
-impl<D, U> Dispatch2<WlTouch, D> for TouchData<U>
+impl<D, U> Dispatch<WlTouch, D> for TouchData<U>
 where
     D: TouchHandler,
 {

@@ -11,7 +11,6 @@ use wayland_protocols_experimental::keyboard_filter::v3::client::{
     self as protocol, xx_keyboard_filter_manager_v1, xx_keyboard_filter_v1,
 };
 
-use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 
 #[derive(Debug)]
@@ -55,7 +54,7 @@ impl KeyboardFilterManager {
     }
 }
 
-impl<D> Dispatch2<XxKeyboardFilterManagerV1, D> for GlobalData {
+impl<D> Dispatch<XxKeyboardFilterManagerV1, D> for GlobalData {
     fn event(
         &self,
         _data: &mut D,
@@ -86,7 +85,7 @@ impl KeyboardFilter {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyboardVersion(pub u32);
 
-impl<D> Dispatch2<XxKeyboardFilterV1, D> for GlobalData {
+impl<D> Dispatch<XxKeyboardFilterV1, D> for GlobalData {
     fn event(
         &self,
         _data: &mut D,

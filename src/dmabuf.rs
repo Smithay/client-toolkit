@@ -1,4 +1,4 @@
-use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 use memmap2::{Mmap, MmapOptions};
 use rustix::fs::Dev as dev_t;
 use std::{fmt, mem, os::unix::io::BorrowedFd, slice, sync::Mutex};
@@ -264,7 +264,7 @@ impl DmabufParams {
     }
 }
 
-impl<D> Dispatch2<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, D> for GlobalData
+impl<D> Dispatch<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, D> for GlobalData
 where
     D: DmabufHandler,
 {
@@ -296,7 +296,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, D> for DmabufFeedbackData
+impl<D> Dispatch<zwp_linux_dmabuf_feedback_v1::ZwpLinuxDmabufFeedbackV1, D> for DmabufFeedbackData
 where
     D: DmabufHandler,
 {
@@ -350,7 +350,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, D> for GlobalData
+impl<D> Dispatch<zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, D> for GlobalData
 where
     D: DmabufHandler + 'static,
 {
@@ -378,7 +378,7 @@ where
     ]);
 }
 
-impl<D> Dispatch2<wl_buffer::WlBuffer, D> for DmaBufferData
+impl<D> Dispatch<wl_buffer::WlBuffer, D> for DmaBufferData
 where
     D: DmabufHandler,
 {

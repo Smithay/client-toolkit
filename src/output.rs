@@ -16,7 +16,6 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     globals::GlobalData,
     registry::{GlobalProxy, RegistryHandler},
 };
@@ -378,7 +377,7 @@ pub struct OutputInfo {
     pub description: Option<String>,
 }
 
-impl<D> Dispatch2<wl_output::WlOutput, D> for OutputData
+impl<D> Dispatch<wl_output::WlOutput, D> for OutputData
 where
     D: OutputHandler + 'static,
 {
@@ -517,7 +516,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zxdg_output_manager_v1::ZxdgOutputManagerV1, D> for GlobalData
+impl<D> Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, D> for GlobalData
 where
     D: OutputHandler,
 {
@@ -533,7 +532,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zxdg_output_v1::ZxdgOutputV1, D> for OutputData
+impl<D> Dispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputData
 where
     D: OutputHandler,
 {

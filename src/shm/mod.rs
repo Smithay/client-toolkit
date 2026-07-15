@@ -11,7 +11,6 @@ use wayland_client::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
 };
@@ -70,7 +69,7 @@ pub enum CreatePoolError {
     Create(#[from] io::Error),
 }
 
-impl<D> Dispatch2<wl_shm::WlShm, D> for GlobalData
+impl<D> Dispatch<wl_shm::WlShm, D> for GlobalData
 where
     D: ShmHandler,
 {

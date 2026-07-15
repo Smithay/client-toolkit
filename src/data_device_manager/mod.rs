@@ -1,4 +1,3 @@
-use crate::dispatch2::Dispatch2;
 use crate::error::GlobalError;
 use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::reexports::client::{
@@ -109,7 +108,7 @@ impl ProvidesBoundGlobal<WlDataDeviceManager, 3> for DataDeviceManagerState {
     }
 }
 
-impl<D> Dispatch2<wl_data_device_manager::WlDataDeviceManager, D> for GlobalData {
+impl<D> Dispatch<wl_data_device_manager::WlDataDeviceManager, D> for GlobalData {
     fn event(
         &self,
         _state: &mut D,

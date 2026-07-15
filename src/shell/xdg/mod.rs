@@ -20,7 +20,6 @@ use crate::reexports::protocols::xdg::shell::client::{
 };
 
 use crate::compositor::Surface;
-use crate::dispatch2::Dispatch2;
 use crate::error::GlobalError;
 use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::registry::GlobalProxy;
@@ -347,7 +346,7 @@ impl ProvidesBoundGlobal<xdg_wm_dialog_v1::XdgWmDialogV1, 1> for XdgShell {
 }
 
 /// Dialog
-impl<D> Dispatch2<xdg_wm_dialog_v1::XdgWmDialogV1, D> for GlobalData {
+impl<D> Dispatch<xdg_wm_dialog_v1::XdgWmDialogV1, D> for GlobalData {
     fn event(
         &self,
         _: &mut D,
@@ -361,7 +360,7 @@ impl<D> Dispatch2<xdg_wm_dialog_v1::XdgWmDialogV1, D> for GlobalData {
 }
 
 /// Dialog
-impl<D> Dispatch2<xdg_wm_base::XdgWmBase, D> for GlobalData {
+impl<D> Dispatch<xdg_wm_base::XdgWmBase, D> for GlobalData {
     fn event(
         &self,
         _state: &mut D,

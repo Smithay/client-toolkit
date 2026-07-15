@@ -16,7 +16,6 @@ use wayland_client::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
@@ -269,7 +268,7 @@ impl Drop for Surface {
     }
 }
 
-impl<D, U> Dispatch2<wl_surface::WlSurface, D> for SurfaceData<U>
+impl<D, U> Dispatch<wl_surface::WlSurface, D> for SurfaceData<U>
 where
     D: CompositorHandler + OutputHandler + 'static,
     U: Send + Sync + 'static,
@@ -452,7 +451,7 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
 }
 
-impl<D> Dispatch2<wl_compositor::WlCompositor, D> for GlobalData
+impl<D> Dispatch<wl_compositor::WlCompositor, D> for GlobalData
 where
     D: CompositorHandler,
 {
@@ -479,7 +478,7 @@ impl ProvidesBoundGlobal<wl_compositor::WlCompositor, { CompositorState::API_VER
 #[derive(Debug)]
 pub struct FrameCallbackData(pub wl_surface::WlSurface);
 
-impl<D> Dispatch2<wl_callback::WlCallback, D> for FrameCallbackData
+impl<D> Dispatch<wl_callback::WlCallback, D> for FrameCallbackData
 where
     D: CompositorHandler,
 {

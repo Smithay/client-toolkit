@@ -12,12 +12,12 @@ use wayland_client::{
         wl_shm::WlShm,
         wl_surface::WlSurface,
     },
-    Connection, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_cursor::{Cursor, CursorTheme};
 use wayland_protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 
-use crate::{compositor::SurfaceData, dispatch2::Dispatch2, error::GlobalError};
+use crate::{compositor::SurfaceData, error::GlobalError};
 
 #[doc(inline)]
 pub use cursor_icon::{CursorIcon, ParseError as CursorIconParseError};
@@ -206,7 +206,7 @@ pub(crate) struct PointerDataInner {
     pub(crate) latest_btn: Option<u32>,
 }
 
-impl<D, U> Dispatch2<WlPointer, D> for PointerData<U>
+impl<D, U> Dispatch<WlPointer, D> for PointerData<U>
 where
     D: PointerHandler,
     U: Send + Sync + 'static,

@@ -6,7 +6,8 @@ use std::{
 
 use log::warn;
 
-use crate::dispatch2::Dispatch2;
+use wayland_client::Dispatch;
+
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
@@ -360,7 +361,7 @@ impl Default for DataDeviceOffer {
     }
 }
 
-impl<D> Dispatch2<wl_data_offer::WlDataOffer, D> for DataOfferData
+impl<D> Dispatch<wl_data_offer::WlDataOffer, D> for DataOfferData
 where
     D: DataOfferHandler,
 {

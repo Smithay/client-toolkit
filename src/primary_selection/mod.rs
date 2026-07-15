@@ -1,4 +1,3 @@
-use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 use crate::reexports::client::{
     globals::{BindError, GlobalList},
@@ -83,7 +82,7 @@ impl Drop for PrimarySelectionManagerState {
     }
 }
 
-impl<D> Dispatch2<ZwpPrimarySelectionDeviceManagerV1, D> for GlobalData {
+impl<D> Dispatch<ZwpPrimarySelectionDeviceManagerV1, D> for GlobalData {
     fn event(
         &self,
         _: &mut D,

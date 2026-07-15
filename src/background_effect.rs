@@ -5,7 +5,7 @@ use wayland_protocols::ext::background_effect::v1::client::{
     ext_background_effect_manager_v1, ext_background_effect_surface_v1,
 };
 
-use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct BackgroundEffectState {
@@ -60,7 +60,7 @@ pub trait BackgroundEffectHandler {
     fn update_capabilities(&mut self);
 }
 
-impl<D> Dispatch2<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, D> for GlobalData
+impl<D> Dispatch<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1, D> for GlobalData
 where
     D: BackgroundEffectHandler,
 {
@@ -82,7 +82,7 @@ where
     }
 }
 
-impl<D> Dispatch2<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, D>
+impl<D> Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, D>
     for GlobalData
 {
     fn event(

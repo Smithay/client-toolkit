@@ -8,7 +8,6 @@ use wayland_protocols::wp::pointer_constraints::zv1::client::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     registry::GlobalProxy,
@@ -135,7 +134,7 @@ pub struct PointerConstraintData {
     pointer: wl_pointer::WlPointer,
 }
 
-impl<D> Dispatch2<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, D> for GlobalData
+impl<D> Dispatch<zwp_pointer_constraints_v1::ZwpPointerConstraintsV1, D> for GlobalData
 where
     D: PointerConstraintsHandler,
 {
@@ -151,7 +150,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_confined_pointer_v1::ZwpConfinedPointerV1, D> for PointerConstraintData
+impl<D> Dispatch<zwp_confined_pointer_v1::ZwpConfinedPointerV1, D> for PointerConstraintData
 where
     D: PointerConstraintsHandler,
 {
@@ -175,7 +174,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zwp_locked_pointer_v1::ZwpLockedPointerV1, D> for PointerConstraintData
+impl<D> Dispatch<zwp_locked_pointer_v1::ZwpLockedPointerV1, D> for PointerConstraintData
 where
     D: PointerConstraintsHandler,
 {

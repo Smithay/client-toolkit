@@ -6,7 +6,7 @@ use wayland_client::{
 };
 use wayland_protocols::wp::presentation_time::client::{wp_presentation, wp_presentation_feedback};
 
-use crate::{dispatch2::Dispatch2, error::GlobalError, globals::GlobalData, registry::GlobalProxy};
+use crate::{error::GlobalError, globals::GlobalData, registry::GlobalProxy};
 
 #[derive(Debug)]
 pub struct PresentTime {
@@ -83,7 +83,7 @@ pub struct PresentationTimeData {
     sync_outputs: Mutex<Vec<wl_output::WlOutput>>,
 }
 
-impl<D> Dispatch2<wp_presentation::WpPresentation, D> for GlobalData
+impl<D> Dispatch<wp_presentation::WpPresentation, D> for GlobalData
 where
     D: PresentationTimeHandler,
 {
@@ -104,7 +104,7 @@ where
     }
 }
 
-impl<D> Dispatch2<wp_presentation_feedback::WpPresentationFeedback, D> for PresentationTimeData
+impl<D> Dispatch<wp_presentation_feedback::WpPresentationFeedback, D> for PresentationTimeData
 where
     D: PresentationTimeHandler,
 {

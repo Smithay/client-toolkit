@@ -6,7 +6,6 @@ use crate::reexports::client::protocol::wl_surface::WlSurface;
 use crate::reexports::client::{Connection, Dispatch, Proxy, QueueHandle};
 
 use crate::compositor::{CompositorHandler, SurfaceData};
-use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 use crate::output::OutputHandler;
 
@@ -61,7 +60,7 @@ impl SubcompositorState {
     }
 }
 
-impl<D> Dispatch2<WlSubsurface, D> for SubsurfaceData {
+impl<D> Dispatch<WlSubsurface, D> for SubsurfaceData {
     fn event(
         &self,
         _: &mut D,
@@ -74,7 +73,7 @@ impl<D> Dispatch2<WlSubsurface, D> for SubsurfaceData {
     }
 }
 
-impl<D> Dispatch2<WlSubcompositor, D> for GlobalData {
+impl<D> Dispatch<WlSubcompositor, D> for GlobalData {
     fn event(
         &self,
         _: &mut D,

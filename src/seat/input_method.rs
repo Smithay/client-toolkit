@@ -25,8 +25,6 @@ use wayland_protocols_misc::zwp_input_method_v2::client::{
     zwp_input_method_v2,
 };
 
-use crate::dispatch2::Dispatch2;
-
 #[derive(Debug)]
 pub struct InputMethodManager {
     manager: ZwpInputMethodManagerV2,
@@ -71,7 +69,7 @@ impl InputMethodManager {
     }
 }
 
-impl<D> Dispatch2<zwp_input_method_manager_v2::ZwpInputMethodManagerV2, D> for GlobalData
+impl<D> Dispatch<zwp_input_method_manager_v2::ZwpInputMethodManagerV2, D> for GlobalData
 where
     D: InputMethodHandler,
 {
@@ -277,7 +275,7 @@ pub trait InputMethodHandler: Sized {
     );
 }
 
-impl<D, U> Dispatch2<ZwpInputMethodV2, D> for InputMethodData<U>
+impl<D, U> Dispatch<ZwpInputMethodV2, D> for InputMethodData<U>
 where
     D: InputMethodHandler,
 {

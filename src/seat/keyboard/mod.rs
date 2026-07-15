@@ -26,8 +26,6 @@ use xkbcommon::xkb;
 #[cfg(feature = "calloop")]
 use repeat::{RepeatData, RepeatedKey};
 
-use crate::dispatch2::Dispatch2;
-
 use super::{Capability, SeatError, SeatHandler, SeatState};
 
 #[cfg(feature = "calloop")]
@@ -485,7 +483,7 @@ impl<T, U> KeyboardData<T, U> {
     }
 }
 
-impl<D, U> Dispatch2<wl_keyboard::WlKeyboard, D> for KeyboardData<D, U>
+impl<D, U> Dispatch<wl_keyboard::WlKeyboard, D> for KeyboardData<D, U>
 where
     D: KeyboardHandler + 'static,
 {
