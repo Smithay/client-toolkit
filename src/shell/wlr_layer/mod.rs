@@ -9,7 +9,7 @@ use bitflags::bitflags;
 use wayland_client::{
     globals::{BindError, GlobalList},
     protocol::{wl_output, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::shell::client::xdg_popup::XdgPopup;
 use wayland_protocols_wlr::layer_shell::v1::client::{zwlr_layer_shell_v1, zwlr_layer_surface_v1};

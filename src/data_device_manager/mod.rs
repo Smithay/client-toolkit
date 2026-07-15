@@ -3,7 +3,6 @@ use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::reexports::client::{
     globals::{BindError, GlobalList},
     protocol::{
-        wl_data_device,
         wl_data_device_manager::{self, DndAction, WlDataDeviceManager},
         wl_data_source::WlDataSource,
         wl_seat::WlSeat,

@@ -6,7 +6,7 @@ use wayland_client::{
         wl_keyboard::{self, WlKeyboard},
         wl_seat, wl_surface,
     },
-    Dispatch, QueueHandle,
+    QueueHandle,
 };
 
 use super::{

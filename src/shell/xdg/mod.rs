@@ -14,7 +14,6 @@ use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_toplevel_dec
 use crate::reexports::protocols::xdg::decoration::zv1::client::{
     zxdg_decoration_manager_v1, zxdg_toplevel_decoration_v1,
 };
-use crate::reexports::protocols::xdg::dialog::v1::client::xdg_dialog_v1;
 use crate::reexports::protocols::xdg::shell::client::{
     xdg_positioner, xdg_surface, xdg_toplevel, xdg_wm_base,
 };
@@ -23,7 +22,7 @@ use crate::compositor::Surface;
 use crate::error::GlobalError;
 use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::registry::GlobalProxy;
-use crate::shell::xdg::dialog::{Dialog, DialogData, DialogHandler};
+use crate::shell::xdg::dialog::{Dialog, DialogHandler};
 use crate::shell::xdg::window::ToplevelDecorationData;
 
 use self::window::inner::WindowInner;

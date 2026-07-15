@@ -322,4 +322,5 @@ impl PartialEq for Window {
 #[derive(Debug, Clone)]
 pub struct WindowData(pub(crate) Weak<WindowInner>);
 
+#[derive(Debug)]
 pub struct ToplevelDecorationData<U>(pub U);

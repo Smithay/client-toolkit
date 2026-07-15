@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{CompositorHandler, Surface, SurfaceData},
+    compositor::{CompositorHandler, Surface},
     error::GlobalError,
     globals::ProvidesBoundGlobal,
     output::OutputHandler,

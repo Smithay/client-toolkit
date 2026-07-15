@@ -104,7 +104,7 @@ where
         qh: &QueueHandle<D>,
         global: &Global,
     ) {
-        let _ = (data, conn, qh, global);
+        let _ = (data, global_list, conn, qh, global);
     }
 
     /// Called when a global has been destroyed by the compositor.
@@ -117,7 +117,7 @@ where
         qh: &QueueHandle<D>,
         global: &Global,
     ) {
-        let _ = (data, conn, qh, global);
+        let _ = (data, global_list, conn, qh, global);
     }
 }
 

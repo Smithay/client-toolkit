@@ -2,8 +2,7 @@
 
 use std::io;
 use std::{
-    any::Any,
-    os::unix::io::{AsFd, OwnedFd},
+    os::unix::io::OwnedFd,
     sync::{
         atomic::{AtomicU8, AtomicUsize, Ordering},
         Arc, Mutex, Weak,

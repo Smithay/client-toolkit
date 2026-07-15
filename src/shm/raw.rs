@@ -25,7 +25,7 @@ use wayland_client::{
 
 use crate::globals::ProvidesBoundGlobal;
 
-use super::{CreatePoolError, ShmHandler};
+use super::CreatePoolError;
 
 /// A raw handler for file backed shared memory pools.
 ///

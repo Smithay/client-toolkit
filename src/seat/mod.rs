@@ -1,6 +1,5 @@
 use std::{
     fmt::{self, Display, Formatter},
-    slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -12,9 +11,8 @@ use crate::reexports::client::{
     protocol::{wl_pointer, wl_registry::WlRegistry, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
-use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
-use crate::{compositor::SurfaceData, globals::GlobalData, registry::RegistryHandler};
+use crate::registry::RegistryHandler;
 
 pub mod input_method;
 pub mod input_method_v3;

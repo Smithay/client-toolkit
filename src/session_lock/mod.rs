@@ -6,7 +6,7 @@ use std::sync::{
 use wayland_client::{
     globals::GlobalList,
     protocol::{wl_output, wl_surface},
-    Connection, Dispatch, Proxy, QueueHandle,
+    Connection, Proxy, QueueHandle,
 };
 use wayland_protocols::ext::session_lock::v1::client::{
     ext_session_lock_manager_v1, ext_session_lock_surface_v1, ext_session_lock_v1,

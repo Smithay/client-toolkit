@@ -6,8 +6,6 @@ use crate::reexports::client::{
 };
 use crate::reexports::protocols::wp::primary_selection::zv1::client::{
     zwp_primary_selection_device_manager_v1::ZwpPrimarySelectionDeviceManagerV1,
-    zwp_primary_selection_device_v1::ZwpPrimarySelectionDeviceV1,
-    zwp_primary_selection_source_v1::ZwpPrimarySelectionSourceV1,
 };
 
 pub mod device;

@@ -11,7 +11,7 @@ use crate::{
         event_created_child,
         protocol::{
             wl_data_device::{self, WlDataDevice},
-            wl_data_offer::{self, WlDataOffer},
+            wl_data_offer::WlDataOffer,
             wl_seat::WlSeat,
         },
         Connection, Dispatch, Proxy, QueueHandle,
