@@ -25,6 +25,7 @@ use crate::error::GlobalError;
 use crate::globals::{GlobalData, ProvidesBoundGlobal};
 use crate::registry::GlobalProxy;
 use crate::shell::xdg::dialog::{Dialog, DialogData, DialogHandler};
+use crate::shell::xdg::window::ToplevelDecorationData;
 
 use self::window::inner::WindowInner;
 use self::window::{Window, WindowData, WindowDecorations, WindowHandler};
@@ -78,7 +79,7 @@ impl XdgShell {
     ) -> Option<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1>
     where
         D: Send + Sync + 'static,
-        State: Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> + 'static,
+        State: WindowHandler + 'static,
     {
         // If server side decorations are available, create the toplevel decoration.
         decoration_manager.and_then(|decoration_manager| {
@@ -89,7 +90,7 @@ impl XdgShell {
                 _ => {
                     // Create the toplevel decoration.
                     let toplevel_decoration =
-                        decoration_manager.get_toplevel_decoration(xdg_toplevel, qh, data);
+                        decoration_manager.get_toplevel_decoration(xdg_toplevel, qh, ToplevelDecorationData(data));
 
                     // Tell the compositor we would like a specific mode.
                     let mode = match decorations {
@@ -178,11 +179,7 @@ impl XdgShell {
         parent: &xdg_toplevel::XdgToplevel,
     ) -> Result<Dialog, GlobalError>
     where
-        State: Dispatch<xdg_surface::XdgSurface, DialogData>
-            + Dispatch<xdg_toplevel::XdgToplevel, DialogData>
-            + Dispatch<xdg_dialog_v1::XdgDialogV1, DialogData>
-            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, DialogData>
-            + DialogHandler
+        State: WindowHandler + DialogHandler
             + 'static,
     {
         let decoration_manager = self.xdg_decoration_manager.get().ok();

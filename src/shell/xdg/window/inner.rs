@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::{
-    DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, WindowManagerCapabilities,
+    DecorationMode, ToplevelDecorationData, Window, WindowConfigure, WindowData, WindowHandler, WindowManagerCapabilities,
     WindowState,
 };
 
@@ -205,7 +205,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for WindowData
+impl<D, U> Dispatch2<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for ToplevelDecorationData<U>
 where
     D: WindowHandler,
 {
