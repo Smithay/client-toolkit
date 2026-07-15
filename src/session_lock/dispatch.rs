@@ -50,8 +50,7 @@ where
     }
 }
 
-impl<D> Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, D>
-    for SessionLockSurfaceData
+impl<D> Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, D> for SessionLockSurfaceData
 where
     D: SessionLockHandler,
 {

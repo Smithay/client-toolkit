@@ -14,9 +14,7 @@ use crate::reexports::client::{
 };
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
-use crate::{
-    compositor::SurfaceData, globals::GlobalData, registry::RegistryHandler,
-};
+use crate::{compositor::SurfaceData, globals::GlobalData, registry::RegistryHandler};
 
 pub mod input_method;
 pub mod input_method_v3;

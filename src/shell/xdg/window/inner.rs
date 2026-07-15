@@ -23,8 +23,8 @@ use crate::{
 };
 
 use super::{
-    DecorationMode, ToplevelDecorationData, Window, WindowConfigure, WindowData, WindowHandler, WindowManagerCapabilities,
-    WindowState,
+    DecorationMode, ToplevelDecorationData, Window, WindowConfigure, WindowData, WindowHandler,
+    WindowManagerCapabilities, WindowState,
 };
 
 impl Drop for WindowInner {
@@ -204,7 +204,8 @@ where
     }
 }
 
-impl<D, U> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for ToplevelDecorationData<U>
+impl<D, U> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D>
+    for ToplevelDecorationData<U>
 where
     D: WindowHandler,
 {

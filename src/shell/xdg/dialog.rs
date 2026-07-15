@@ -4,8 +4,8 @@ use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_m
 use crate::shell::xdg::window::inner::{
     determine_decoration_mode, determine_window_state, determine_wm_capabilities, WindowInner,
 };
-use crate::shell::xdg::window::WindowConfigure;
 use crate::shell::xdg::window::ToplevelDecorationData;
+use crate::shell::xdg::window::WindowConfigure;
 use crate::shell::xdg::WindowDecorations;
 use crate::shell::xdg::WindowHandler;
 use crate::shell::WaylandSurface;
@@ -308,14 +308,15 @@ where
     ) {
         if let Some(dialog) = Dialog::from_toplevel_decoration(decoration) {
             match event {
-                zxdg_toplevel_decoration_v1::Event::Configure { mode } =>
+                zxdg_toplevel_decoration_v1::Event::Configure { mode } => {
                     if mode.available_since().is_some_and(|v| v <= decoration.version()) {
                         let mode = determine_decoration_mode(mode);
                         dialog.inner.window.pending_configure.lock().unwrap().decoration_mode =
                             mode;
                     } else {
                         log::error!(target: "sctk", "unknown decoration mode 0x{:?}", mode);
-                    },
+                    }
+                }
                 _ => unreachable!(),
             }
         }

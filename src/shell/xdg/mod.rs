@@ -65,7 +65,8 @@ impl XdgShell {
     {
         let xdg_wm_base = globals.bind_singleton(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
         let xdg_wm_dialog_v1 = globals.bind_singleton(qh, 1..=1, GlobalData).ok();
-        let xdg_decoration_manager = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
+        let xdg_decoration_manager =
+            GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
         Ok(Self { xdg_wm_base, xdg_wm_dialog_v1, xdg_decoration_manager })
     }
 
@@ -88,8 +89,11 @@ impl XdgShell {
 
                 _ => {
                     // Create the toplevel decoration.
-                    let toplevel_decoration =
-                        decoration_manager.get_toplevel_decoration(xdg_toplevel, qh, ToplevelDecorationData(data));
+                    let toplevel_decoration = decoration_manager.get_toplevel_decoration(
+                        xdg_toplevel,
+                        qh,
+                        ToplevelDecorationData(data),
+                    );
 
                     // Tell the compositor we would like a specific mode.
                     let mode = match decorations {
@@ -178,8 +182,7 @@ impl XdgShell {
         parent: &xdg_toplevel::XdgToplevel,
     ) -> Result<Dialog, GlobalError>
     where
-        State: WindowHandler + DialogHandler
-            + 'static,
+        State: WindowHandler + DialogHandler + 'static,
     {
         let decoration_manager = self.xdg_decoration_manager.get().ok();
         Dialog::from_surface(surface, parent, qh, self, decoration_manager, decorations)

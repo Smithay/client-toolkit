@@ -82,9 +82,7 @@ where
     }
 }
 
-impl<D> Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, D>
-    for GlobalData
-{
+impl<D> Dispatch<ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1, D> for GlobalData {
     fn event(
         &self,
         _data: &mut D,
