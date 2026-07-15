@@ -648,7 +648,7 @@ where
 
     fn remove_global(
         data: &mut D,
-        global_list: &GlobalList,
+        _global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
         global: &Global,
