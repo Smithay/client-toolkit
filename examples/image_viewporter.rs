@@ -37,7 +37,7 @@ fn main() {
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.
     let compositor =
-        CompositorState::bind_singleton(&globals, &qh).expect("wl_compositor not available");
+        CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     // For desktop platforms, the XDG shell is the standard protocol for creating desktop windows.
     let xdg_shell = XdgShell::bind(&globals, &qh).expect("xdg shell is not available");
     // Since we are not using the GPU in this example, we use wl_shm to allow software rendering to a buffer
@@ -46,7 +46,7 @@ fn main() {
     // In this example, we use the viewporter to allow the compositor to scale and crop presented images.
     //
     // Since the wp_viewporter protocol has no events, we can use SimpleGlobal.
-    let wp_viewporter = SimpleGlobal::<wp_viewporter::WpViewporter, 1>::bind(&globals, &qh)
+    let wp_viewporter = SimpleGlobal::<wp_viewporter::WpViewporter, 1>::bind_singleton(&globals, &qh)
         .expect("wp_viewporter not available");
 
     let mut windows = Vec::new();
