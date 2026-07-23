@@ -7,12 +7,11 @@ use wayland_client::protocol::wl_surface::WlSurface;
 
 use crate::{
     data_device_manager::data_offer::DataDeviceOffer,
-    dispatch2::Dispatch2,
     reexports::client::{
         event_created_child,
         protocol::{
             wl_data_device::{self, WlDataDevice},
-            wl_data_offer::{self, WlDataOffer},
+            wl_data_offer::WlDataOffer,
             wl_seat::WlSeat,
         },
         Connection, Dispatch, Proxy, QueueHandle,
@@ -103,15 +102,12 @@ impl Drop for DataDevice {
     }
 }
 
-impl<D> Dispatch2<wl_data_device::WlDataDevice, D> for DataDeviceData
+impl<D> Dispatch<wl_data_device::WlDataDevice, D> for DataDeviceData
 where
-    D: Dispatch<wl_data_offer::WlDataOffer, DataOfferData>
-        + DataDeviceHandler
-        + DataOfferHandler
-        + 'static,
+    D: DataDeviceHandler + DataOfferHandler + 'static,
 {
     event_created_child!(D, WlDataDevice, [
-        0 => (WlDataOffer, Default::default())
+        0 => (WlDataOffer, DataOfferData::default())
     ]);
 
     fn event(

@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use wayland_client::{Connection, QueueHandle};
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::{
     xdg::decoration::zv1::client::{
         zxdg_decoration_manager_v1,
@@ -17,15 +17,14 @@ use wayland_protocols::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     shell::xdg::{XdgShell, XdgShellSurface},
 };
 
 use super::{
-    DecorationMode, Window, WindowConfigure, WindowData, WindowHandler, WindowManagerCapabilities,
-    WindowState,
+    DecorationMode, ToplevelDecorationData, Window, WindowConfigure, WindowData, WindowHandler,
+    WindowManagerCapabilities, WindowState,
 };
 
 impl Drop for WindowInner {
@@ -58,7 +57,7 @@ impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1>
     }
 }
 
-impl<D> Dispatch2<xdg_surface::XdgSurface, D> for WindowData
+impl<D> Dispatch<xdg_surface::XdgSurface, D> for WindowData
 where
     D: WindowHandler,
 {
@@ -138,7 +137,7 @@ pub(crate) fn determine_decoration_mode(mode: Mode) -> DecorationMode {
     }
 }
 
-impl<D> Dispatch2<xdg_toplevel::XdgToplevel, D> for WindowData
+impl<D> Dispatch<xdg_toplevel::XdgToplevel, D> for WindowData
 where
     D: WindowHandler,
 {
@@ -189,7 +188,7 @@ where
 
 // XDG decoration
 
-impl<D> Dispatch2<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, D> for GlobalData
+impl<D> Dispatch<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, D> for GlobalData
 where
     D: WindowHandler,
 {
@@ -205,7 +204,8 @@ where
     }
 }
 
-impl<D> Dispatch2<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for WindowData
+impl<D, U> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D>
+    for ToplevelDecorationData<U>
 where
     D: WindowHandler,
 {
@@ -219,16 +219,14 @@ where
     ) {
         if let Some(window) = Window::from_toplevel_decoration(decoration) {
             match event {
-                zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
-                    wayland_client::WEnum::Value(mode) => {
+                zxdg_toplevel_decoration_v1::Event::Configure { mode } => {
+                    if mode.available_since().is_some_and(|v| v <= decoration.version()) {
                         let mode = determine_decoration_mode(mode);
                         window.0.pending_configure.lock().unwrap().decoration_mode = mode;
+                    } else {
+                        log::error!(target: "sctk", "unknown decoration mode {:?}", mode);
                     }
-
-                    wayland_client::WEnum::Unknown(unknown) => {
-                        log::error!(target: "sctk", "unknown decoration mode 0x{:x}", unknown);
-                    }
-                },
+                }
 
                 _ => unreachable!(),
             }

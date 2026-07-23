@@ -25,12 +25,9 @@ use crate::reexports::protocols_experimental::text_input::v3::client::xx_text_in
 use wayland_client::globals::{BindError, GlobalList};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_surface;
-use wayland_client::WEnum;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 
 use crate::reexports::protocols_experimental::input_method::v1::client as protocol;
-
-use crate::dispatch2::Dispatch2;
 
 pub use protocol::xx_input_method_v1::XxInputMethodV1;
 pub use protocol::xx_input_popup_positioner_v1::XxInputPopupPositionerV1;
@@ -66,9 +63,9 @@ impl InputMethodManager {
     /// Bind the input_method global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Result<Self, BindError>
     where
-        D: Dispatch<XxInputMethodManagerV2, GlobalData> + 'static,
+        D: InputMethodHandler + 'static,
     {
-        let manager = globals.bind(qh, 2..=3, GlobalData)?;
+        let manager = globals.bind_singleton(qh, 2..=3, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -76,7 +73,7 @@ impl InputMethodManager {
     /// seat.
     pub fn get_input_method<State>(&self, qh: &QueueHandle<State>, seat: &WlSeat) -> InputMethod
     where
-        State: Dispatch<XxInputMethodV1, InputMethodData<()>, State> + 'static,
+        State: InputMethodHandler + 'static,
     {
         self.get_input_method_with_data(qh, seat, ())
     }
@@ -88,7 +85,7 @@ impl InputMethodManager {
         udata: U,
     ) -> InputMethod
     where
-        State: Dispatch<XxInputMethodV1, InputMethodData<U>, State> + 'static,
+        State: InputMethodHandler + 'static,
         U: Send + Sync + 'static,
     {
         InputMethod {
@@ -102,13 +99,13 @@ impl InputMethodManager {
 
     pub fn get_positioner<State>(&self, qh: &QueueHandle<State>) -> PopupPositioner
     where
-        State: Dispatch<XxInputPopupPositionerV1, PositionerData, State> + 'static,
+        State: InputMethodHandler + 'static,
     {
         PopupPositioner(self.manager.get_positioner(qh, PositionerData))
     }
 }
 
-impl<D> Dispatch2<xx_input_method_manager_v2::XxInputMethodManagerV2, D> for GlobalData
+impl<D> Dispatch<xx_input_method_manager_v2::XxInputMethodManagerV2, D> for GlobalData
 where
     D: InputMethodHandler,
 {
@@ -145,7 +142,7 @@ impl Drop for PopupPositioner {
     }
 }
 
-impl<D> Dispatch2<XxInputPopupPositionerV1, D> for PositionerData
+impl<D> Dispatch<XxInputPopupPositionerV1, D> for PositionerData
 where
     D: InputMethodHandler,
 {
@@ -255,7 +252,7 @@ impl InputMethod {
         positioner: &PopupPositioner,
     ) -> Popup
     where
-        D: Dispatch<XxInputPopupSurfaceV2, PopupData> + 'static,
+        D: InputMethodHandler + 'static,
         U: Send + Sync + 'static,
     {
         let data = self.input_method.data::<InputMethodData<U>>().unwrap();
@@ -506,7 +503,7 @@ impl Popup {
     }
 }
 
-impl<D> Dispatch2<XxInputPopupSurfaceV2, D> for PopupData
+impl<D> Dispatch<XxInputPopupSurfaceV2, D> for PopupData
 where
     D: InputMethodHandler,
 {
@@ -631,7 +628,7 @@ pub trait InputMethodHandler: Sized {
     fn handle_unavailable(&mut self, qh: &QueueHandle<Self>, input_method: &XxInputMethodV1);
 }
 
-impl<D, U> Dispatch2<XxInputMethodV1, D> for InputMethodData<U>
+impl<D, U> Dispatch<XxInputMethodV1, D> for InputMethodData<U>
 where
     D: InputMethodHandler,
 {
@@ -666,15 +663,14 @@ where
             }
             Event::TextChangeCause { cause } => {
                 imdata.pending_state = InputMethodEventState {
-                    text_change_cause: match cause {
-                        WEnum::Value(cause) => cause,
-                        WEnum::Unknown(value) => {
+                    text_change_cause: if cause.available_since().is_some_and(|v| v <= input_method.version()) {
+                        cause
+                    } else {
                             warn!(
-                                "Unknown `text_change_cause`: {}. Assuming not input method.",
-                                value
+                                "Unknown `text_change_cause`: {:?}. Assuming not input method.",
+                                cause
                             );
                             ChangeCause::Other
-                        }
                     },
                     ..imdata.pending_state.clone()
                 }
@@ -682,23 +678,21 @@ where
             Event::ContentType { hint, purpose } => {
                 imdata.pending_state = InputMethodEventState {
                     active: imdata.pending_state.active.clone().with_content_type(),
-                    content_hint: match hint {
-                        WEnum::Value(hint) => hint,
-                        WEnum::Unknown(value) => {
+                    content_hint: if hint.available_since().is_some_and(|v| v <= input_method.version()) {
+                        hint
+                        } else {
+                            let unknown_bits = ContentHint::from_iter(hint.iter().filter(|h| h.available_since().is_none_or(|v|v  > input_method.version())));
                             warn!(
-                                "Unknown content hints: 0b{:b}, ignoring.",
-                                ContentHint::from_bits_retain(value)
-                                    - ContentHint::from_bits_truncate(value)
+                                "Unknown content hints: {:?}, ignoring.",
+                                unknown_bits
                             );
-                            ContentHint::from_bits_truncate(value)
-                        }
+                            hint - unknown_bits
                     },
-                    content_purpose: match purpose {
-                        WEnum::Value(v) => v,
-                        WEnum::Unknown(value) => {
-                            warn!("Unknown `content_purpose`: {}. Assuming `normal`.", value);
-                            ContentPurpose::Normal
-                        }
+                    content_purpose: if purpose.available_since().is_some_and(|v| v <= input_method.version()) {
+                        purpose
+                    } else {
+                        warn!("Unknown `content_purpose`: {:?}. Assuming `normal`.", purpose);
+                        ContentPurpose::Normal
                     },
                     ..imdata.pending_state.clone()
                 }
@@ -718,12 +712,11 @@ where
             Event::AnnounceSupportedFeatures { features } => {
                 imdata.pending_state = InputMethodEventState {
                     active: imdata.pending_state.active.clone().with_extra_features(
-                        match features {
-                            WEnum::Value(v) => v,
-                            WEnum::Unknown(value) => {
-                                warn!("Unknown `features`: {value}. Assuming no extra features supported.");
-                                SupportedFeatures::empty()
-                            }
+                        if features.available_since().is_some_and(|v| v <= input_method.version()) {
+                            features
+                        } else {
+                            warn!("Unknown `features`: {features:?}. Assuming no extra features supported.");
+                            SupportedFeatures::empty()
                         }
                     ),
                     ..imdata.pending_state.clone()

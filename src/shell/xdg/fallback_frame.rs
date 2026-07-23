@@ -7,18 +7,19 @@ use std::{error::Error, num::NonZeroU32};
 
 use crate::reexports::client::{
     protocol::{wl_shm, wl_subsurface::WlSubsurface, wl_surface::WlSurface},
-    Dispatch, Proxy, QueueHandle,
+    Proxy, QueueHandle,
 };
 use crate::reexports::csd_frame::{
     DecorationsFrame, FrameAction, FrameClick, ResizeEdge, WindowManagerCapabilities, WindowState,
 };
 
 use crate::{
-    compositor::SurfaceData,
+    compositor::CompositorHandler,
+    output::OutputHandler,
     seat::pointer::CursorIcon,
     shell::WaylandSurface,
     shm::{slot::SlotPool, Shm},
-    subcompositor::{SubcompositorState, SubsurfaceData},
+    subcompositor::SubcompositorState,
 };
 
 use wayland_client::backend::ObjectId;
@@ -91,7 +92,7 @@ pub struct FallbackFrame<State> {
 
 impl<State> FallbackFrame<State>
 where
-    State: Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    State: CompositorHandler + OutputHandler + 'static,
 {
     pub fn new(
         parent: &impl WaylandSurface,
@@ -327,7 +328,7 @@ where
 
 impl<State> DecorationsFrame for FallbackFrame<State>
 where
-    State: Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+    State: CompositorHandler + OutputHandler + 'static,
 {
     fn set_scaling_factor(&mut self, scale_factor: f64) {
         self.scale_factor = scale_factor;
@@ -621,8 +622,7 @@ impl FrameRenderData {
         queue_handle: &QueueHandle<State>,
     ) -> Self
     where
-        State:
-            Dispatch<WlSurface, SurfaceData<()>> + Dispatch<WlSubsurface, SubsurfaceData> + 'static,
+        State: CompositorHandler + OutputHandler + 'static,
     {
         let parts = [
             // Header.

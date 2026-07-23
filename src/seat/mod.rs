@@ -1,6 +1,5 @@
 use std::{
     fmt::{self, Display, Formatter},
-    slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -8,18 +7,12 @@ use std::{
 };
 
 use crate::reexports::client::{
-    globals::{Global, GlobalList},
+    globals::{Global, GlobalList, GlobalListHandler},
     protocol::{wl_pointer, wl_registry::WlRegistry, wl_seat, wl_shm, wl_surface, wl_touch},
     Connection, Dispatch, Proxy, QueueHandle,
 };
-use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_device_v1::WpCursorShapeDeviceV1;
 use crate::reexports::protocols::wp::cursor_shape::v1::client::wp_cursor_shape_manager_v1::WpCursorShapeManagerV1;
-use crate::{
-    compositor::SurfaceData,
-    dispatch2::Dispatch2,
-    globals::GlobalData,
-    registry::{ProvidesRegistryState, RegistryHandler},
-};
+use crate::registry::RegistryHandler;
 
 pub mod input_method;
 pub mod input_method_v3;
@@ -81,7 +74,7 @@ enum CursorShapeManagerState {
 }
 
 impl SeatState {
-    pub fn new<D: Dispatch<wl_seat::WlSeat, SeatData> + 'static>(
+    pub fn new<D: SeatHandler + 'static>(
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> SeatState {
@@ -153,7 +146,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<()>> + PointerHandler + 'static,
+        D: PointerHandler + 'static,
     {
         self.get_pointer_with_data(qh, seat, ())
     }
@@ -174,12 +167,7 @@ impl SeatState {
         theme: ThemeSpec,
     ) -> Result<ThemedPointer<()>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<()>>
-            + Dispatch<wl_surface::WlSurface, SurfaceData<S>>
-            + Dispatch<WpCursorShapeManagerV1, GlobalData>
-            + Dispatch<WpCursorShapeDeviceV1, GlobalData>
-            + PointerHandler
-            + 'static,
+        D: PointerHandler + 'static,
     {
         self.get_pointer_with_theme_and_data(qh, seat, shm, surface, theme, ())
     }
@@ -196,7 +184,7 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<wl_pointer::WlPointer, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<U>> + PointerHandler + 'static,
+        D: PointerHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =
@@ -225,11 +213,7 @@ impl SeatState {
         pointer_data: U,
     ) -> Result<ThemedPointer<U>, SeatError>
     where
-        D: Dispatch<wl_pointer::WlPointer, PointerData<U>>
-            + Dispatch<WpCursorShapeManagerV1, GlobalData>
-            + Dispatch<WpCursorShapeDeviceV1, GlobalData>
-            + PointerHandler
-            + 'static,
+        D: PointerHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =
@@ -245,6 +229,7 @@ impl SeatState {
         if let CursorShapeManagerState::Pending { registry, global } =
             &self.cursor_shape_manager_state
         {
+            /* XXX XXX TODO
             self.cursor_shape_manager_state = match crate::registry::bind_one(
                 registry,
                 slice::from_ref(global),
@@ -257,6 +242,7 @@ impl SeatState {
                 }
                 Err(_) => CursorShapeManagerState::NotPresent,
             }
+            */
         }
 
         let shape_device =
@@ -288,7 +274,7 @@ impl SeatState {
         seat: &wl_seat::WlSeat,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, TouchData<()>> + TouchHandler + 'static,
+        D: TouchHandler + 'static,
     {
         self.get_touch_with_data(qh, seat, ())
     }
@@ -305,7 +291,7 @@ impl SeatState {
         udata: U,
     ) -> Result<wl_touch::WlTouch, SeatError>
     where
-        D: Dispatch<wl_touch::WlTouch, TouchData<U>> + TouchHandler + 'static,
+        D: TouchHandler + 'static,
         U: Send + Sync + 'static,
     {
         let inner =
@@ -425,7 +411,7 @@ struct SeatInner {
     data: SeatData,
 }
 
-impl<D> Dispatch2<wl_seat::WlSeat, D> for SeatData
+impl<D> Dispatch<wl_seat::WlSeat, D> for SeatData
 where
     D: SeatHandler,
 {
@@ -492,29 +478,27 @@ where
 
 impl<D> RegistryHandler<D> for SeatState
 where
-    D: Dispatch<wl_seat::WlSeat, SeatData> + SeatHandler + ProvidesRegistryState + 'static,
+    D: SeatHandler + GlobalListHandler + 'static,
 {
     fn new_global(
         state: &mut D,
+        global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _: u32,
+        global: &Global,
     ) {
-        if interface == wl_seat::WlSeat::interface().name {
-            let seat = state
-                .registry()
+        if global.interface == wl_seat::WlSeat::interface().name {
+            let seat = global_list
                 .bind_specific(
                     qh,
-                    name,
+                    global.name,
                     1..=7,
                     SeatData {
                         has_keyboard: Arc::new(AtomicBool::new(false)),
                         has_pointer: Arc::new(AtomicBool::new(false)),
                         has_touch: Arc::new(AtomicBool::new(false)),
                         name: Arc::new(Mutex::new(None)),
-                        id: name,
+                        id: global.name,
                     },
                 )
                 .expect("failed to bind global");
@@ -528,18 +512,19 @@ where
 
     fn remove_global(
         state: &mut D,
+        _global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        if interface == wl_seat::WlSeat::interface().name {
-            if let Some(seat) = state.seat_state().seats.iter().find(|inner| inner.data.id == name)
+        if global.interface == wl_seat::WlSeat::interface().name {
+            if let Some(seat) =
+                state.seat_state().seats.iter().find(|inner| inner.data.id == global.name)
             {
                 let seat = seat.seat.clone();
 
                 state.remove_seat(conn, qh, seat);
-                state.seat_state().seats.retain(|inner| inner.data.id != name);
+                state.seat_state().seats.retain(|inner| inner.data.id != global.name);
             }
         }
     }

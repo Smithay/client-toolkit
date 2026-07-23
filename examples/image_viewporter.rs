@@ -2,9 +2,8 @@ use std::{env, path::Path};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState, SimpleGlobal},
+    registry::SimpleGlobal,
     registry_handlers,
     shell::{
         xdg::{
@@ -16,7 +15,7 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{wl_output, wl_shm, wl_surface},
     Connection, Dispatch, QueueHandle,
 };
@@ -37,7 +36,8 @@ fn main() {
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.
-    let compositor = CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
+    let compositor =
+        CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
     // For desktop platforms, the XDG shell is the standard protocol for creating desktop windows.
     let xdg_shell = XdgShell::bind(&globals, &qh).expect("xdg shell is not available");
     // Since we are not using the GPU in this example, we use wl_shm to allow software rendering to a buffer
@@ -46,7 +46,7 @@ fn main() {
     // In this example, we use the viewporter to allow the compositor to scale and crop presented images.
     //
     // Since the wp_viewporter protocol has no events, we can use SimpleGlobal.
-    let wp_viewporter = SimpleGlobal::<wp_viewporter::WpViewporter, 1>::bind(&globals, &qh)
+    let wp_viewporter = SimpleGlobal::<wp_viewporter::WpViewporter, 1>::bind_singleton(&globals, &qh)
         .expect("wp_viewporter not available");
 
     let mut windows = Vec::new();
@@ -112,14 +112,8 @@ fn main() {
 
     let pool = SlotPool::new(pool_size as usize, &shm).expect("Failed to create pool");
 
-    let mut state = State {
-        registry_state: RegistryState::new(&globals),
-        output_state: OutputState::new(&globals, &qh),
-        shm,
-        wp_viewporter,
-        pool,
-        windows,
-    };
+    let mut state =
+        State { output_state: OutputState::new(&globals, &qh), shm, wp_viewporter, pool, windows };
 
     // We don't draw immediately, the configure will notify us when to first draw.
 
@@ -134,7 +128,6 @@ fn main() {
 }
 
 struct State {
-    registry_state: RegistryState,
     output_state: OutputState,
     shm: Shm,
     wp_viewporter: SimpleGlobal<WpViewporter, 1>,
@@ -317,15 +310,7 @@ impl State {
     }
 }
 
-wayland_client::delegate_noop!(State: WpViewporter);
-
-delegate_registry!(State);
-
-impl ProvidesRegistryState for State {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
+impl GlobalListHandler for State {
     registry_handlers!(OutputState);
 }
 
@@ -335,12 +320,12 @@ impl AsMut<SimpleGlobal<WpViewporter, 1>> for State {
     }
 }
 
-impl Dispatch<WpViewport, ()> for State {
+impl Dispatch<WpViewport, State> for () {
     fn event(
+        &self,
         _: &mut State,
         _: &WpViewport,
         _: wp_viewport::Event,
-        _: &(),
         _: &Connection,
         _: &QueueHandle<State>,
     ) {
@@ -353,5 +338,3 @@ impl Drop for ImageViewer {
         self.viewport.destroy()
     }
 }
-
-smithay_client_toolkit::delegate_dispatch2!(State);
