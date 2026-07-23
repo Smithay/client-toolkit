@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.21.1 - 2026-07-23
+- Fix trait bound for `WlTouch` dispatch implementation
+
 ## 0.21.0 - 2026-07-14
 
 #### Breaking Changes
