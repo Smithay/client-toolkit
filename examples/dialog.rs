@@ -1,7 +1,3 @@
-use std::collections::hash_map::RandomState;
-use std::env;
-use std::hash::{BuildHasher, Hasher};
-
 use smithay_client_toolkit::reexports::calloop::{EventLoop, LoopHandle};
 use smithay_client_toolkit::seat::keyboard::KeyboardHandler;
 use smithay_client_toolkit::seat::{Capability, SeatHandler, SeatState};
@@ -348,7 +344,7 @@ impl DialogHandler for State {
         qh: &QueueHandle<Self>,
         window: &smithay_client_toolkit::shell::xdg::dialog::Dialog,
         configure: WindowConfigure,
-        serial: u32,
+        _serial: u32,
     ) {
         for viewer in &mut self.windows {
             if viewer.window != *window {
@@ -368,8 +364,8 @@ impl DialogHandler for State {
 
     fn request_close(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
         window: &smithay_client_toolkit::shell::xdg::dialog::Dialog,
     ) {
         println!("Closing a Popup");
@@ -430,33 +426,33 @@ impl SeatHandler for State {
 impl KeyboardHandler for State {
     fn enter(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
-        surface: &wl_surface::WlSurface,
-        serial: u32,
-        raw: &[u32],
-        keysyms: &[xkeysym::Keysym],
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _surface: &wl_surface::WlSurface,
+        _serial: u32,
+        _raw: &[u32],
+        _keysyms: &[xkeysym::Keysym],
     ) {
     }
 
     fn leave(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
-        surface: &wl_surface::WlSurface,
-        serial: u32,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _surface: &wl_surface::WlSurface,
+        _serial: u32,
     ) {
     }
 
     fn press_key(
         &mut self,
-        conn: &Connection,
+        _conn: &Connection,
         qh: &QueueHandle<Self>,
-        keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
-        serial: u32,
-        event: smithay_client_toolkit::seat::keyboard::KeyEvent,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: smithay_client_toolkit::seat::keyboard::KeyEvent,
     ) {
         if self.have_dialog {
             // Close the dialog
@@ -489,21 +485,21 @@ impl KeyboardHandler for State {
 
     fn release_key(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
-        serial: u32,
-        event: smithay_client_toolkit::seat::keyboard::KeyEvent,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: smithay_client_toolkit::seat::keyboard::KeyEvent,
     ) {
     }
 
     fn repeat_key(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
-        serial: u32,
-        event: smithay_client_toolkit::seat::keyboard::KeyEvent,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: smithay_client_toolkit::seat::keyboard::KeyEvent,
     ) {
     }
 
@@ -518,13 +514,13 @@ impl KeyboardHandler for State {
 
     fn update_modifiers(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
-        serial: u32,
-        modifiers: smithay_client_toolkit::seat::keyboard::Modifiers,
-        raw_modifiers: smithay_client_toolkit::seat::keyboard::RawModifiers,
-        layout: u32,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _modifiers: smithay_client_toolkit::seat::keyboard::Modifiers,
+        _raw_modifiers: smithay_client_toolkit::seat::keyboard::RawModifiers,
+        _layout: u32,
     ) {
     }
 
