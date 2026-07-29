@@ -40,7 +40,7 @@
 //! [`Window`]: self::xdg::window::Window
 //! [`Popup`]: self::xdg::popup::Popup
 //!
-//! [`Layer`]: self::layer::LayerSurface
+//! [`Layer`]: self::wlr_layer::LayerSurface
 
 use wayland_client::{
     protocol::{wl_buffer, wl_output, wl_region, wl_surface},

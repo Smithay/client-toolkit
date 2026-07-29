@@ -11,9 +11,9 @@ use crate::{
     globals::{GlobalData, ProvidesBoundGlobal},
 };
 
-/// Minimal implementation of [`RequestDataExt`].
+/// User data for activation request object.
 ///
-/// Use a custom type implementing [`RequestDataExt`] to store more data with a token request
+/// Use a custom type in the `udata` field to store more data with a token request
 /// e.g. to identify which request produced which token.
 #[derive(Debug, Clone)]
 pub struct RequestData<U> {
@@ -68,8 +68,8 @@ impl ActivationState {
 
     /// Request a token for surface activation.
     ///
-    /// To attach custom data to the request implement [`RequestDataExt`] on a custom type
-    /// and use [`Self::request_token_with_data`] instead.
+    /// To attach custom data to the request provide a custom time as the `udata` field of
+    /// [`RequestData`].
     pub fn request_token<D, U>(&self, qh: &QueueHandle<D>, request_data: RequestData<U>)
     where
         D: ActivationHandler<RequestUdata = U>,
