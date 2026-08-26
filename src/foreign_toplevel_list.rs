@@ -39,7 +39,7 @@ impl ForeignToplevelList {
         D: ForeignToplevelListHandler + 'static,
     {
         let foreign_toplevel_list =
-            GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
+            GlobalProxy::from(globals.bind_singleton(1..=1, qh, GlobalData));
         Self { foreign_toplevel_list, toplevels: Vec::new() }
     }
 

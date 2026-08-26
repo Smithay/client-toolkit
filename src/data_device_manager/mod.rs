@@ -33,7 +33,7 @@ impl DataDeviceManagerState {
     where
         State: 'static,
     {
-        let manager = globals.bind_singleton(qh, 1..=3, GlobalData)?;
+        let manager = globals.bind_singleton(1..=3, qh, GlobalData)?;
         Ok(Self { manager })
     }
 
