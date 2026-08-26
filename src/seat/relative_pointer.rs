@@ -20,7 +20,7 @@ impl RelativePointerState {
         D: RelativePointerHandler + 'static,
     {
         let relative_pointer_manager =
-            GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
+            GlobalProxy::from(globals.bind_singleton(1..=1, qh, GlobalData));
         Self { relative_pointer_manager }
     }
 

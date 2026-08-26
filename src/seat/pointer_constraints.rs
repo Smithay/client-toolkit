@@ -24,7 +24,7 @@ impl PointerConstraintsState {
     where
         D: PointerConstraintsHandler + 'static,
     {
-        let pointer_constraints = GlobalProxy::from(globals.bind_singleton(qh, 1..=1, GlobalData));
+        let pointer_constraints = GlobalProxy::from(globals.bind_singleton(1..=1, qh, GlobalData));
         Self { pointer_constraints }
     }
 

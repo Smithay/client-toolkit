@@ -24,7 +24,7 @@ impl SubcompositorState {
     where
         State: 'static,
     {
-        let subcompositor = globals.bind_singleton(queue_handle, 1..=1, GlobalData)?;
+        let subcompositor = globals.bind_singleton(1..=1, queue_handle, GlobalData)?;
         Ok(SubcompositorState { compositor, subcompositor })
     }
 

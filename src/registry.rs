@@ -176,7 +176,7 @@ impl<I: Proxy + 'static, const MAX_VERSION: u32> SimpleGlobal<I, MAX_VERSION> {
         State: 'static,
         U: Dispatch<I, State> + Send + Sync + 'static,
     {
-        let proxy = globals.bind_singleton(qh, 0..=MAX_VERSION, udata)?;
+        let proxy = globals.bind_singleton(0..=MAX_VERSION, qh, udata)?;
         Ok(Self { proxy: GlobalProxy::Bound(proxy) })
     }
 

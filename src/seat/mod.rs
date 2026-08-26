@@ -218,7 +218,7 @@ impl SeatState {
         let wl_ptr = seat.get_pointer(qh, pointer_data);
 
         if let CursorShapeManagerState::Pending = &self.cursor_shape_manager_state {
-            self.cursor_shape_manager_state = match globals.bind_singleton(qh, 1..=2, GlobalData) {
+            self.cursor_shape_manager_state = match globals.bind_singleton(1..=2, qh, GlobalData) {
                 Ok(bound) => {
                     CursorShapeManagerState::Bound(CursorShapeManager::from_existing(bound))
                 }
@@ -471,9 +471,9 @@ where
         if global.interface == wl_seat::WlSeat::interface().name {
             let seat = global_list
                 .bind_specific(
-                    qh,
                     global.name,
                     1..=7,
+                    qh,
                     SeatData {
                         has_keyboard: Arc::new(AtomicBool::new(false)),
                         has_pointer: Arc::new(AtomicBool::new(false)),

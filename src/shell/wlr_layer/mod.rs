@@ -36,7 +36,7 @@ impl LayerShell {
     where
         State: LayerShellHandler + 'static,
     {
-        let wlr_layer_shell = globals.bind_singleton(qh, 1..=4, GlobalData)?;
+        let wlr_layer_shell = globals.bind_singleton(1..=4, qh, GlobalData)?;
         Ok(LayerShell { wlr_layer_shell })
     }
 

@@ -116,7 +116,7 @@ impl DmabufState {
         D: DmabufHandler + 'static,
     {
         // Mesa (at least the latest version) also requires version 3 or 4
-        let zwp_linux_dmabuf = GlobalProxy::from(globals.bind_singleton(qh, 3..=5, GlobalData));
+        let zwp_linux_dmabuf = GlobalProxy::from(globals.bind_singleton(3..=5, qh, GlobalData));
         Self { zwp_linux_dmabuf, modifiers: Vec::new() }
     }
 

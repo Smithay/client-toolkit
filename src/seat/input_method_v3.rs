@@ -65,7 +65,7 @@ impl InputMethodManager {
     where
         D: InputMethodHandler + 'static,
     {
-        let manager = globals.bind_singleton(qh, 2..=3, GlobalData)?;
+        let manager = globals.bind_singleton(2..=3, qh, GlobalData)?;
         Ok(Self { manager })
     }
 
