@@ -8,7 +8,6 @@ use smithay_client_toolkit::{
         },
         calloop_wayland_source::WaylandSource,
     },
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     session_lock::{
         SessionLock, SessionLockHandler, SessionLockState, SessionLockSurface,
@@ -18,9 +17,9 @@ use smithay_client_toolkit::{
 };
 use std::time::Duration;
 use wayland_client::{
-    globals::registry_queue_init,
-    protocol::{wl_buffer, wl_output, wl_shm, wl_surface},
-    Connection, QueueHandle,
+    globals::{registry_queue_init, GlobalListHandler},
+    protocol::{wl_output, wl_shm, wl_surface},
+    Connection, NoopIgnore, QueueHandle,
 };
 
 struct AppData {
@@ -28,7 +27,6 @@ struct AppData {
     conn: Connection,
     compositor_state: CompositorState,
     output_state: OutputState,
-    registry_state: RegistryState,
     shm: Shm,
     session_lock_state: SessionLockState,
     session_lock: Option<SessionLock>,
@@ -51,7 +49,6 @@ fn main() {
         conn: conn.clone(),
         compositor_state: CompositorState::bind(&globals, &qh).unwrap(),
         output_state: OutputState::new(&globals, &qh),
-        registry_state: RegistryState::new(&globals),
         shm: Shm::bind(&globals, &qh).unwrap(),
         session_lock_state: SessionLockState::new(&globals, &qh),
         session_lock: None,
@@ -146,7 +143,7 @@ impl SessionLockHandler for AppData {
             height as i32,
             width as i32 * 4,
             wl_shm::Format::Argb8888,
-            (),
+            NoopIgnore,
             qh,
         );
 
@@ -236,10 +233,7 @@ impl OutputHandler for AppData {
     }
 }
 
-impl ProvidesRegistryState for AppData {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for AppData {
     registry_handlers![OutputState,];
 }
 
@@ -248,7 +242,3 @@ impl ShmHandler for AppData {
         &mut self.shm
     }
 }
-
-smithay_client_toolkit::delegate_registry!(AppData);
-wayland_client::delegate_noop!(AppData: ignore wl_buffer::WlBuffer);
-smithay_client_toolkit::delegate_dispatch2!(AppData);

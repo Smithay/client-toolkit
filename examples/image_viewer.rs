@@ -2,9 +2,7 @@ use std::env;
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     shell::{
         xdg::{
@@ -19,7 +17,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{wl_output, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -33,7 +31,6 @@ fn main() {
     let qh = event_queue.handle();
 
     let mut state = State {
-        registry_state: RegistryState::new(&globals),
         output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
@@ -108,7 +105,6 @@ fn main() {
 }
 
 struct State {
-    registry_state: RegistryState,
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: Shm,
@@ -317,14 +313,6 @@ impl State {
     }
 }
 
-delegate_registry!(State);
-
-impl ProvidesRegistryState for State {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
+impl GlobalListHandler for State {
     registry_handlers!(OutputState);
 }
-
-smithay_client_toolkit::delegate_dispatch2!(State);

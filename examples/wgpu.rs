@@ -3,9 +3,7 @@ use raw_window_handle::{
 };
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
     shell::{
@@ -18,7 +16,7 @@ use smithay_client_toolkit::{
 };
 use std::ptr::NonNull;
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{wl_output, wl_seat, wl_surface},
     Connection, Proxy, QueueHandle,
 };
@@ -55,7 +53,7 @@ fn main() {
         NonNull::new(conn.backend().display_ptr() as *mut _).unwrap(),
     ));
     let raw_window_handle = RawWindowHandle::Wayland(WaylandWindowHandle::new(
-        NonNull::new(window.wl_surface().id().as_ptr() as *mut _).unwrap(),
+        window.wl_surface().id().as_ptr().unwrap(),
     ));
 
     let surface = unsafe {
@@ -78,7 +76,6 @@ fn main() {
         .expect("Failed to request device");
 
     let mut wgpu = Wgpu {
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
 
@@ -108,7 +105,6 @@ fn main() {
 }
 
 struct Wgpu {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
 
@@ -299,13 +295,6 @@ impl SeatHandler for Wgpu {
     fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
-delegate_registry!(Wgpu);
-
-impl ProvidesRegistryState for Wgpu {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for Wgpu {
     registry_handlers![OutputState];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(Wgpu);

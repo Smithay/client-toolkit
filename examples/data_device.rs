@@ -18,7 +18,6 @@ use smithay_client_toolkit::{
         data_source::{CopyPasteSource, DataSourceHandler, DragSource},
         DataDeviceManagerState, WritePipe,
     },
-    delegate_registry,
     output::{OutputHandler, OutputState},
     primary_selection::{
         device::{PrimarySelectionDevice, PrimarySelectionDeviceHandler},
@@ -26,7 +25,6 @@ use smithay_client_toolkit::{
         selection::{PrimarySelectionSource, PrimarySelectionSourceHandler},
         PrimarySelectionManagerState,
     },
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
@@ -46,7 +44,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{registry_queue_init, GlobalListHandler},
     protocol::{
         wl_data_device::WlDataDevice,
         wl_data_device_manager::DndAction,
@@ -117,7 +115,6 @@ fn main() {
 
     let mut simple_window = DataDeviceWindow {
         compositor,
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         shm_state: shm,
@@ -163,7 +160,6 @@ fn main() {
 
 struct DataDeviceWindow {
     compositor: CompositorState,
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     shm_state: Shm,
@@ -1064,10 +1060,7 @@ impl PrimarySelectionSourceHandler for DataDeviceWindow {
     }
 }
 
-impl ProvidesRegistryState for DataDeviceWindow {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for DataDeviceWindow {
     registry_handlers![OutputState, SeatState];
 }
 
@@ -1078,8 +1071,6 @@ struct SeatObject {
     data_device: DataDevice,
     primary_device: Option<PrimarySelectionDevice>,
 }
-
-delegate_registry!(DataDeviceWindow);
 
 const SUPPORTED_MIME_TYPES: &[&str; 6] = &[
     "text/plain;charset=utf-8",
@@ -1098,5 +1089,3 @@ fn pick_mime(mime_types: &[String]) -> Option<String> {
 
     None
 }
-
-smithay_client_toolkit::delegate_dispatch2!(DataDeviceWindow);

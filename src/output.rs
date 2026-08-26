@@ -6,9 +6,9 @@ use std::{
 
 use log::warn;
 use wayland_client::{
-    globals::GlobalList,
+    globals::{Global, GlobalList, GlobalListHandler},
     protocol::wl_output::{self, Subpixel, Transform},
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::{self, ZxdgOutputManagerV1},
@@ -16,9 +16,8 @@ use wayland_protocols::xdg::xdg_output::zv1::client::{
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     globals::GlobalData,
-    registry::{GlobalProxy, ProvidesRegistryState, RegistryHandler},
+    registry::{GlobalProxy, RegistryHandler},
 };
 
 /// Simplified event handler for [`wl_output::WlOutput`].
@@ -58,7 +57,7 @@ type ScaleWatcherFn =
 
 /// A handler for delegating [`wl_output::WlOutput`].
 ///
-/// When implementing [`ProvidesRegistryState`],
+/// When implementing [`GlobalListHandler`],
 /// [`registry_handlers!`](crate::registry_handlers) may be used to delegate all
 /// output events to an instance of this type. It will internally store the internal state of all
 /// outputs and allow querying them via the `OutputState::outputs` and `OutputState::info` methods.
@@ -67,13 +66,10 @@ type ScaleWatcherFn =
 ///
 /// ```
 /// use smithay_client_toolkit::output::{OutputHandler,OutputState};
-/// use smithay_client_toolkit::registry::{ProvidesRegistryState,RegistryHandler};
-/// # use smithay_client_toolkit::registry::RegistryState;
-/// use smithay_client_toolkit::{registry_handlers, delegate_registry};
-/// use wayland_client::{Connection,QueueHandle,protocol::wl_output};
+/// use smithay_client_toolkit::registry_handlers;
+/// use wayland_client::{globals::GlobalListHandler,Connection,QueueHandle,protocol::wl_output};
 ///
 /// struct ExampleState {
-/// #    registry_state: RegistryState,
 ///     // The state is usually kept as an attribute of the application state.
 ///     output_state: OutputState,
 /// }
@@ -95,16 +91,7 @@ type ScaleWatcherFn =
 /// #    }
 /// }
 ///
-/// // Delegating to the registry is required to use `OutputState`.
-/// delegate_registry!(ExampleState);
-/// smithay_client_toolkit::delegate_dispatch2!(ExampleState);
-///
-/// impl ProvidesRegistryState for ExampleState {
-/// #    fn registry(&mut self) -> &mut RegistryState {
-/// #        &mut self.registry_state
-/// #    }
-///     // ...
-///
+/// impl GlobalListHandler for ExampleState {
 ///     registry_handlers!(OutputState);
 /// }
 /// ```
@@ -133,29 +120,15 @@ impl fmt::Debug for ScaleWatcherHandle {
 }
 
 impl OutputState {
-    pub fn new<
-        D: Dispatch<wl_output::WlOutput, OutputData>
-            + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-            + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
-            + 'static,
-    >(
+    pub fn new<D: OutputHandler + 'static>(
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> OutputState {
-        let (outputs, xdg) = global_list.contents().with_list(|globals| {
-            let outputs: Vec<wl_output::WlOutput> = crate::registry::bind_all(
-                global_list.registry(),
-                globals,
-                qh,
-                1..=4,
-                OutputData::new,
-            )
-            .expect("Failed to bind global");
-            let xdg =
-                crate::registry::bind_one(global_list.registry(), globals, qh, 1..=3, GlobalData)
-                    .into();
-            (outputs, xdg)
+        let outputs = global_list.contents().with_list(|globals| {
+            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=4, OutputData::new)
+                .expect("Failed to bind global")
         });
+        let xdg = global_list.bind_singleton(1..=3, qh, GlobalData).into();
 
         let mut output_state = OutputState { xdg, outputs: vec![], callbacks: vec![] };
         for wl_output in outputs {
@@ -198,7 +171,7 @@ impl OutputState {
 
     fn setup<D>(&mut self, wl_output: wl_output::WlOutput, qh: &QueueHandle<D>)
     where
-        D: Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData> + 'static,
+        D: OutputHandler + 'static,
     {
         let data = wl_output.data::<OutputData>().unwrap().clone();
 
@@ -392,7 +365,7 @@ pub struct OutputInfo {
     pub description: Option<String>,
 }
 
-impl<D> Dispatch2<wl_output::WlOutput, D> for OutputData
+impl<D> Dispatch<wl_output::WlOutput, D> for OutputData
 where
     D: OutputHandler + 'static,
 {
@@ -430,15 +403,17 @@ where
             } => {
                 inner.pending_info.location = (x, y);
                 inner.pending_info.physical_size = (physical_width, physical_height);
-                inner.pending_info.subpixel = match subpixel {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid subpixel value"),
+                inner.pending_info.subpixel = if subpixel.available_since().is_some() {
+                    subpixel
+                } else {
+                    todo!("Warn about invalid subpixel value")
                 };
                 inner.pending_info.make = make;
                 inner.pending_info.model = model;
-                inner.pending_info.transform = match transform {
-                    WEnum::Value(subpixel) => subpixel,
-                    WEnum::Unknown(_) => todo!("Warn about invalid transform value"),
+                inner.pending_info.transform = if transform.available_since().is_some() {
+                    transform
+                } else {
+                    todo!("Warn about invalid transform value")
                 };
                 inner.pending_wl = true;
             }
@@ -449,10 +424,8 @@ where
                     mode.dimensions != (width, height) || mode.refresh_rate != refresh
                 });
 
-                let flags = match flags {
-                    WEnum::Value(flags) => flags,
-                    WEnum::Unknown(_) => panic!("Invalid flags"),
-                };
+                let flags =
+                    if flags.available_since().is_some() { flags } else { panic!("Invalid flags") };
 
                 let current = flags.contains(wl_output::Mode::Current);
                 let preferred = flags.contains(wl_output::Mode::Preferred);
@@ -531,7 +504,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zxdg_output_manager_v1::ZxdgOutputManagerV1, D> for GlobalData
+impl<D> Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, D> for GlobalData
 where
     D: OutputHandler,
 {
@@ -547,7 +520,7 @@ where
     }
 }
 
-impl<D> Dispatch2<zxdg_output_v1::ZxdgOutputV1, D> for OutputData
+impl<D> Dispatch<zxdg_output_v1::ZxdgOutputV1, D> for OutputData
 where
     D: OutputHandler,
 {
@@ -644,25 +617,18 @@ where
 
 impl<D> RegistryHandler<D> for OutputState
 where
-    D: Dispatch<wl_output::WlOutput, OutputData>
-        + Dispatch<zxdg_output_v1::ZxdgOutputV1, OutputData>
-        + Dispatch<zxdg_output_manager_v1::ZxdgOutputManagerV1, GlobalData>
-        + OutputHandler
-        + ProvidesRegistryState
-        + 'static,
+    D: OutputHandler + GlobalListHandler + 'static,
 {
     fn new_global(
         data: &mut D,
+        global_list: &GlobalList,
         _: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
-        _version: u32,
+        global: &Global,
     ) {
-        if interface == "wl_output" {
-            let output = data
-                .registry()
-                .bind_specific(qh, name, 1..=4, OutputData::new(name))
+        if global.interface == "wl_output" {
+            let output = global_list
+                .bind_specific(global.name, 1..=4, qh, OutputData::new(global.name))
                 .expect("Failed to bind global");
             data.output_state().setup(output, qh);
         }
@@ -670,17 +636,17 @@ where
 
     fn remove_global(
         data: &mut D,
+        _global_list: &GlobalList,
         conn: &Connection,
         qh: &QueueHandle<D>,
-        name: u32,
-        interface: &str,
+        global: &Global,
     ) {
-        if interface == "wl_output" {
+        if global.interface == "wl_output" {
             let output = data
                 .output_state()
                 .outputs
                 .iter()
-                .position(|o| o.name == name)
+                .position(|o| o.name == global.name)
                 .expect("Removed non-existing output");
 
             let wl_output = data.output_state().outputs[output].wl_output.clone();
