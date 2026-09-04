@@ -4,7 +4,7 @@ use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_m
 use crate::shell::xdg::window::inner::{
     determine_decoration_mode, determine_window_state, determine_wm_capabilities, WindowInner,
 };
-use crate::shell::xdg::window::WindowConfigure;
+use crate::shell::xdg::window::{DecorationMode, WindowConfigure};
 use crate::shell::xdg::Dispatch2;
 use crate::shell::xdg::WindowDecorations;
 use crate::shell::WaylandSurface;
@@ -188,6 +188,22 @@ impl Dialog {
         } else {
             self.inner.xdg_dialog.unset_modal();
         }
+    }
+
+    /// Requests the dialog should use the specified decoration mode.
+    ///
+    /// A mode of [`None`] indicates that the dialog does not care what type of decorations are
+    /// used.
+    ///
+    /// The compositor will respond with a [`configure`](DialogHandler::configure). The configure
+    /// will indicate whether the dialog's decoration mode has changed.
+    ///
+    /// # Configure loops
+    ///
+    /// You should avoid sending multiple decoration mode requests to ensure you do not enter a
+    /// configure loop.
+    pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
+        self.inner.window.request_decoration_mode(mode)
     }
 }
 

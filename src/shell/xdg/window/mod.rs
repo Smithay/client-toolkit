@@ -11,7 +11,7 @@ use crate::reexports::client::{
 };
 use crate::reexports::csd_frame::{WindowManagerCapabilities, WindowState};
 use crate::reexports::protocols::{
-    xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1::{self, Mode},
+    xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1,
     xdg::shell::client::{xdg_surface, xdg_toplevel},
 };
 
@@ -261,13 +261,7 @@ impl Window {
     ///
     /// You should avoid sending multiple decoration mode requests to ensure you do not enter a configure loop.
     pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
-        if let Some(toplevel_decoration) = &self.0.toplevel_decoration {
-            match mode {
-                Some(DecorationMode::Client) => toplevel_decoration.set_mode(Mode::ClientSide),
-                Some(DecorationMode::Server) => toplevel_decoration.set_mode(Mode::ServerSide),
-                None => toplevel_decoration.unset_mode(),
-            }
-        }
+        self.0.request_decoration_mode(mode)
     }
 
     pub fn move_(&self, seat: &wl_seat::WlSeat, serial: u32) {

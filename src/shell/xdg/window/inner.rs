@@ -50,6 +50,30 @@ pub struct WindowInner {
     pub pending_configure: Mutex<WindowConfigure>,
 }
 
+impl WindowInner {
+    /// Requests the surface should use the specified decoration mode.
+    ///
+    /// A mode of [`None`] indicates that the surface does not care what type of decorations are
+    /// used.
+    ///
+    /// The compositor will respond with a configure indicating whether the decoration mode has
+    /// changed.
+    ///
+    /// # Configure loops
+    ///
+    /// You should avoid sending multiple decoration mode requests to ensure you do not enter a
+    /// configure loop.
+    pub fn request_decoration_mode(&self, mode: Option<DecorationMode>) {
+        if let Some(toplevel_decoration) = &self.toplevel_decoration {
+            match mode {
+                Some(DecorationMode::Client) => toplevel_decoration.set_mode(Mode::ClientSide),
+                Some(DecorationMode::Server) => toplevel_decoration.set_mode(Mode::ServerSide),
+                None => toplevel_decoration.unset_mode(),
+            }
+        }
+    }
+}
+
 impl ProvidesBoundGlobal<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1, 1> for XdgShell {
     fn bound_global(
         &self,
