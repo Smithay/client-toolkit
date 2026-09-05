@@ -40,3 +40,4 @@ pub mod session_lock;
 pub mod shell;
 pub mod shm;
 pub mod subcompositor;
+pub mod workspace_manager;
