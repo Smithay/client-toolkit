@@ -1,4 +1,4 @@
-//! Utilities for binding globals with [`wl_registry`] in delegates.
+//! Utilities for binding globals with [`wl_registry`][wayland_client::protocol::wl_registry] in delegates.
 //!
 //! This module is based around the [`RegistryHandler`] trait and [`RegistryState`].
 //!
@@ -6,7 +6,7 @@
 //! instantiation or caching bound globals to prevent duplicate object instances from being created. Binding
 //! a global regularly is accomplished through [`RegistryState::bind_one`].
 //!
-//! The [`delegate_registry`](crate::delegate_registry) macro is used to implement handling for [`wl_registry`].
+//! The [`delegate_registry`](crate::delegate_registry) macro is used to implement handling for [`wl_registry`][wayland_client::protocol::wl_registry].
 //!
 //! ## Sample implementation of [`RegistryHandler`]
 //!
@@ -68,7 +68,6 @@
 use crate::{error::GlobalError, globals::ProvidesBoundGlobal};
 use wayland_client::{
     globals::{BindError, Global, GlobalList, GlobalListHandler},
-    protocol::wl_registry,
     Connection, Dispatch, Proxy, QueueHandle,
 };
 
@@ -202,48 +201,6 @@ impl<I: Proxy + Clone, const MAX_VERSION: u32> ProvidesBoundGlobal<I, MAX_VERSIO
     fn bound_global(&self) -> Result<I, GlobalError> {
         self.proxy.get().cloned()
     }
-}
-
-/// Binds all globals with a given interface.
-pub(crate) fn bind_all<I, D, U, F>(
-    registry: &wl_registry::WlRegistry,
-    globals: &[Global],
-    qh: &QueueHandle<D>,
-    version: std::ops::RangeInclusive<u32>,
-    mut make_udata: F,
-) -> Result<Vec<I>, BindError>
-where
-    D: 'static,
-    I: Proxy + 'static,
-    F: FnMut(u32) -> U,
-    U: Dispatch<I, D> + Send + Sync + 'static,
-{
-    let iface = I::interface();
-    if *version.end() > iface.version {
-        // This is a panic because it's a compile-time programmer error, not a runtime error.
-        panic!("Maximum version ({}) was higher than the proxy's maximum version ({}); outdated wayland XML files?",
-            version.end(), iface.version);
-    }
-    let mut rv = Vec::new();
-    for global in globals {
-        if global.interface != iface.name {
-            continue;
-        }
-        if global.version < *version.start() {
-            return Err(BindError::UnsupportedVersion {
-                interface: iface.name,
-                requested: *version.start(),
-                available: global.version,
-            });
-        }
-        let version = global.version.min(*version.end());
-        let udata = make_udata(global.name);
-        let proxy = registry.bind(global.name, version, qh, udata);
-        log::debug!(target: "sctk", "Bound new global [{}] {} v{}", global.name, iface.name, version);
-
-        rv.push(proxy);
-    }
-    Ok(rv)
 }
 
 /// A helper macro for implementing [`GlobalListHandler`].

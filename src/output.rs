@@ -124,10 +124,8 @@ impl OutputState {
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> OutputState {
-        let outputs = global_list.contents().with_list(|globals| {
-            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=4, OutputData::new)
-                .expect("Failed to bind global")
-        });
+        let outputs =
+            global_list.bind_all(1..=4, qh, OutputData::new).expect("Failed to bind global");
         let xdg = global_list.bind_singleton(1..=3, qh, GlobalData).into();
 
         let mut output_state = OutputState { xdg, outputs: vec![], callbacks: vec![] };
@@ -211,8 +209,8 @@ impl OutputState {
 pub struct OutputData(Arc<Mutex<OutputInfo>>);
 
 impl OutputData {
-    pub fn new(name: u32) -> OutputData {
-        OutputData(Arc::new(Mutex::new(OutputInfo::new(name))))
+    pub fn new(global: &Global) -> OutputData {
+        OutputData(Arc::new(Mutex::new(OutputInfo::new(global.name))))
     }
 
     /// Get the output scale factor.
@@ -628,7 +626,7 @@ where
     ) {
         if global.interface == "wl_output" {
             let output = global_list
-                .bind_specific(global.name, 1..=4, qh, OutputData::new(global.name))
+                .bind_specific(global.name, 1..=4, qh, OutputData::new(global))
                 .expect("Failed to bind global");
             data.output_state().setup(output, qh);
         }

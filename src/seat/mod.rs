@@ -78,16 +78,15 @@ impl SeatState {
         global_list: &GlobalList,
         qh: &QueueHandle<D>,
     ) -> SeatState {
-        let seats = global_list.contents().with_list(|globals| {
-            crate::registry::bind_all(global_list.registry(), globals, qh, 1..=10, |id| SeatData {
+        let seats = global_list
+            .bind_all(1..=10, qh, |global| SeatData {
                 has_keyboard: Arc::new(AtomicBool::new(false)),
                 has_pointer: Arc::new(AtomicBool::new(false)),
                 has_touch: Arc::new(AtomicBool::new(false)),
                 name: Arc::new(Mutex::new(None)),
-                id,
+                id: global.name,
             })
-            .expect("failed to bind global")
-        });
+            .expect("failed to bind global");
 
         let mut state = SeatState {
             seats: vec![],
