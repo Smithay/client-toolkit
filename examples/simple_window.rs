@@ -26,7 +26,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -35,11 +35,12 @@ fn main() {
     env_logger::init();
 
     // All Wayland apps start by connecting the compositor (server).
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
     // Enumerate the list of globals to get the protocols the server implements.
-    let (globals, event_queue) = registry_queue_init(&conn).unwrap();
+    let event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
     let mut event_loop: EventLoop<SimpleWindow> =
         EventLoop::try_new().expect("Failed to initialize the event loop!");
     let loop_handle = event_loop.handle();

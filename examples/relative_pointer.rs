@@ -21,7 +21,7 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, Noop, QueueHandle,
 };
@@ -48,10 +48,11 @@ enum Constraint {
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     let font = font_kit::source::SystemSource::new()
         .select_best_match(

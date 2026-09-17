@@ -17,7 +17,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_output, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -25,10 +25,11 @@ use wayland_client::{
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     let mut state = State {
         output_state: OutputState::new(&globals, &qh),

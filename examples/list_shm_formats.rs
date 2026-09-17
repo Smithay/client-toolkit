@@ -1,7 +1,7 @@
 /// Example app showing how to use delegate types from Smithay's client toolkit and initializing state.
 use smithay_client_toolkit::shm::{Shm, ShmHandler};
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     Connection,
 };
 
@@ -14,11 +14,12 @@ fn main() {
     env_logger::init();
 
     // Connect to the compositor.
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
     // Create an event queue and get the initial global list.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     // Create the state to dispatch.
     let mut list_formats = ListShmFormats {

@@ -1,7 +1,7 @@
 use drm_fourcc::{DrmFourcc, DrmModifier};
 use smithay_client_toolkit::dmabuf::{DmabufFeedback, DmabufFormat, DmabufHandler, DmabufState};
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     protocol::wl_buffer,
     Connection, QueueHandle,
 };
@@ -60,10 +60,11 @@ impl GlobalListHandler for AppData {}
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     let mut app_data = AppData { dmabuf_state: DmabufState::new(&globals, &qh), feedback: None };
 

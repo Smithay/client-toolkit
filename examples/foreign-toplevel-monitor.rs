@@ -4,7 +4,7 @@ use smithay_client_toolkit::foreign_toplevel_list::{
     ForeignToplevelList, ForeignToplevelListHandler,
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     Connection, QueueHandle,
 };
 use wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1;
@@ -14,9 +14,10 @@ struct State {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let conn = Connection::connect_to_env()?;
-    let (globals, mut event_queue) = registry_queue_init(&conn)?;
+    let conn = unsafe { Connection::connect_to_env()? };
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
     let foreign_toplevel_list = ForeignToplevelList::new(&globals, &qh);
 
     let mut state = State { foreign_toplevel_list };

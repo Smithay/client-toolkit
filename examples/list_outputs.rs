@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     registry_handlers,
 };
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListHandler},
+    globals::{GlobalList, GlobalListHandler},
     protocol::wl_output,
     Connection, QueueHandle,
 };
@@ -18,13 +18,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
     // Try to connect to the Wayland server.
-    let conn = Connection::connect_to_env()?;
+    let conn = unsafe { Connection::connect_to_env()? };
 
     // Now create an event queue and a handle to the queue so we can create objects.
     // Initialize the registry handling so other parts of Smithay's client toolkit may bind
     // globals.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     // Initialize the delegate we will use for outputs.
     let output_delegate = OutputState::new(&globals, &qh);
@@ -35,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // application is running.
     let mut list_outputs = ListOutputs { output_state: output_delegate };
 
-    // `OutputState::new()` binds the output globals found in `registry_queue_init()`.
+    // `OutputState::new()` binds the output globals found in `GlobalList::init()`.
     //
     // After the globals are bound, we need to dispatch again so that events may be sent to the newly
     // created objects.
