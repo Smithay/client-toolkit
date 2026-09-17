@@ -53,7 +53,7 @@
 //!    ) {
 //!         if global.interface == "wl_output" {
 //!             // Bind `wl_output` with newest version from 1 to 4 the compositor supports
-//!             let output = globals.bind_specific(qh, global.name, 1..=4, ()).unwrap();
+//!             let output = globals.bind_specific(global.name, 1..=4, qh, ()).unwrap();
 //!             data.as_mut().outputs.push(output);
 //!         }
 //!
