@@ -4,9 +4,7 @@ use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
@@ -23,7 +21,7 @@ use smithay_client_toolkit::{
     shm::{slot::SlotPool, Shm, ShmHandler},
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -32,11 +30,12 @@ fn main() {
     env_logger::init();
 
     // All Wayland apps start by connecting the compositor (server).
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
     // Enumerate the list of globals to get the protocols the server implements.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.
@@ -73,7 +72,6 @@ fn main() {
     let mut simple_layer = SimpleLayer {
         // Seats and outputs may be hotplugged at runtime, therefore we need to setup a registry state to
         // listen for seats and outputs.
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         shm,
@@ -102,7 +100,6 @@ fn main() {
 }
 
 struct SimpleLayer {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     shm: Shm,
@@ -448,13 +445,6 @@ impl SimpleLayer {
     }
 }
 
-delegate_registry!(SimpleLayer);
-
-impl ProvidesRegistryState for SimpleLayer {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for SimpleLayer {
     registry_handlers![OutputState, SeatState];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(SimpleLayer);

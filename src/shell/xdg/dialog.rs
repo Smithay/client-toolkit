@@ -4,22 +4,23 @@ use crate::reexports::protocols::xdg::decoration::zv1::client::zxdg_decoration_m
 use crate::shell::xdg::window::inner::{
     determine_decoration_mode, determine_window_state, determine_wm_capabilities, WindowInner,
 };
-use crate::shell::xdg::window::{DecorationMode, WindowConfigure};
-use crate::shell::xdg::Dispatch2;
+use crate::shell::xdg::window::{DecorationMode, ToplevelDecorationData, WindowConfigure};
 use crate::shell::xdg::WindowDecorations;
+use crate::shell::xdg::WindowHandler;
 use crate::shell::WaylandSurface;
 use crate::{
-    compositor::{Surface, SurfaceData},
+    compositor::{CompositorHandler, Surface},
     globals::ProvidesBoundGlobal,
+    output::OutputHandler,
 };
 use crate::{error::GlobalError, shell::xdg::XdgShellSurface};
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex, Weak};
+use wayland_protocols::xdg::shell::client::xdg_surface;
 use wayland_protocols::xdg::{
     decoration::zv1::client::zxdg_toplevel_decoration_v1,
     dialog::v1::client::xdg_dialog_v1::XdgDialogV1, shell::client::xdg_wm_base,
 };
-use wayland_protocols::xdg::{dialog::v1::client::xdg_dialog_v1, shell::client::xdg_surface};
 use wayland_protocols::xdg::{dialog::v1::client::xdg_wm_dialog_v1, shell::client::xdg_toplevel};
 
 /// Handler for toplevel operations on a [`Dialog`]
@@ -77,12 +78,7 @@ impl Dialog {
         decorations: WindowDecorations,
     ) -> Result<Self, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>>
-            + Dispatch<xdg_surface::XdgSurface, DialogData>
-            + Dispatch<xdg_dialog_v1::XdgDialogV1, DialogData>
-            + Dispatch<xdg_toplevel::XdgToplevel, DialogData>
-            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, DialogData>
-            + 'static,
+        D: CompositorHandler + DialogHandler + OutputHandler + WindowHandler + 'static,
         GLOBAL: ProvidesBoundGlobal<xdg_wm_dialog_v1::XdgWmDialogV1, 1>
             + ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     {
@@ -101,11 +97,7 @@ impl Dialog {
         decorations: WindowDecorations,
     ) -> Result<Self, GlobalError>
     where
-        D: Dispatch<xdg_surface::XdgSurface, DialogData>
-            + Dispatch<xdg_dialog_v1::XdgDialogV1, DialogData>
-            + Dispatch<xdg_toplevel::XdgToplevel, DialogData>
-            + Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, DialogData>
-            + 'static,
+        D: DialogHandler + WindowHandler + 'static,
         GLOBAL: ProvidesBoundGlobal<xdg_wm_dialog_v1::XdgWmDialogV1, 1>
             + ProvidesBoundGlobal<xdg_wm_base::XdgWmBase, 5>,
     {
@@ -159,7 +151,7 @@ impl Dialog {
     pub fn from_toplevel_decoration(
         decoration: &zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1,
     ) -> Option<Dialog> {
-        decoration.data::<DialogData>().and_then(|data| data.dialog())
+        decoration.data::<ToplevelDecorationData<DialogData>>().and_then(|data| data.0.dialog())
     }
 
     pub fn xdg_dialog(&self) -> &XdgDialogV1 {
@@ -235,7 +227,7 @@ impl Drop for DialogInner {
     }
 }
 
-impl<D: DialogHandler> Dispatch2<xdg_surface::XdgSurface, D> for DialogData {
+impl<D: DialogHandler> Dispatch<xdg_surface::XdgSurface, D> for DialogData {
     fn event(
         &self,
         data: &mut D,
@@ -258,7 +250,7 @@ impl<D: DialogHandler> Dispatch2<xdg_surface::XdgSurface, D> for DialogData {
     }
 }
 
-impl<D> Dispatch2<XdgDialogV1, D> for DialogData {
+impl<D> Dispatch<XdgDialogV1, D> for DialogData {
     fn event(
         &self,
         _state: &mut D,
@@ -270,7 +262,7 @@ impl<D> Dispatch2<XdgDialogV1, D> for DialogData {
     }
 }
 
-impl<D: DialogHandler> Dispatch2<xdg_toplevel::XdgToplevel, D> for DialogData {
+impl<D: DialogHandler> Dispatch<xdg_toplevel::XdgToplevel, D> for DialogData {
     fn event(
         &self,
         data: &mut D,
@@ -317,7 +309,7 @@ impl<D: DialogHandler> Dispatch2<xdg_toplevel::XdgToplevel, D> for DialogData {
     }
 }
 
-impl<D> Dispatch2<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for DialogData
+impl<D> Dispatch<zxdg_toplevel_decoration_v1::ZxdgToplevelDecorationV1, D> for DialogData
 where
     D: DialogHandler,
 {
@@ -331,18 +323,15 @@ where
     ) {
         if let Some(dialog) = Dialog::from_toplevel_decoration(decoration) {
             match event {
-                zxdg_toplevel_decoration_v1::Event::Configure { mode } => match mode {
-                    wayland_client::WEnum::Value(mode) => {
+                zxdg_toplevel_decoration_v1::Event::Configure { mode } => {
+                    if mode.available_since().is_some_and(|v| v <= decoration.version()) {
                         let mode = determine_decoration_mode(mode);
                         dialog.inner.window.pending_configure.lock().unwrap().decoration_mode =
                             mode;
+                    } else {
+                        log::error!(target: "sctk", "unknown decoration mode 0x{:?}", mode);
                     }
-
-                    wayland_client::WEnum::Unknown(unknown) => {
-                        log::error!(target: "sctk", "unknown decoration mode 0x{:x}", unknown);
-                    }
-                },
-
+                }
                 _ => unreachable!(),
             }
         }

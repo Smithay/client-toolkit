@@ -1,16 +1,15 @@
 use drm_fourcc::{DrmFourcc, DrmModifier};
-use smithay_client_toolkit::{
-    dmabuf::{DmabufFeedback, DmabufFormat, DmabufHandler, DmabufState},
-    registry::{ProvidesRegistryState, RegistryState},
-    registry_handlers,
+use smithay_client_toolkit::dmabuf::{DmabufFeedback, DmabufFormat, DmabufHandler, DmabufState};
+use wayland_client::{
+    globals::{GlobalList, GlobalListHandler},
+    protocol::wl_buffer,
+    Connection, QueueHandle,
 };
-use wayland_client::{globals::registry_queue_init, protocol::wl_buffer, Connection, QueueHandle};
 use wayland_protocols::wp::linux_dmabuf::zv1::client::{
     zwp_linux_buffer_params_v1, zwp_linux_dmabuf_feedback_v1,
 };
 
 struct AppData {
-    registry_state: RegistryState,
     dmabuf_state: DmabufState,
     feedback: Option<DmabufFeedback>,
 }
@@ -56,26 +55,18 @@ impl DmabufHandler for AppData {
     }
 }
 
-impl ProvidesRegistryState for AppData {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-    registry_handlers![,];
-}
+impl GlobalListHandler for AppData {}
 
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
-    let mut app_data = AppData {
-        registry_state: RegistryState::new(&globals),
-        dmabuf_state: DmabufState::new(&globals, &qh),
-        feedback: None,
-    };
+    let mut app_data = AppData { dmabuf_state: DmabufState::new(&globals, &qh), feedback: None };
 
     match app_data.dmabuf_state.version() {
         None => println!("`zwp_linux_dmabuf_v1` version `>3` not supported by compositor."),
@@ -126,6 +117,3 @@ fn print_format(format: &DmabufFormat) {
     }
     println!(", Modifier: {:?}", DrmModifier::from(format.modifier));
 }
-
-smithay_client_toolkit::delegate_registry!(AppData);
-smithay_client_toolkit::delegate_dispatch2!(AppData);

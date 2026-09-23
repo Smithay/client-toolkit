@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::{convert::TryInto, num::NonZeroU32};
 
 use smithay_client_toolkit::reexports::client::{
-    globals::registry_queue_init,
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, Proxy, QueueHandle,
 };
@@ -13,9 +13,7 @@ use smithay_client_toolkit::reexports::csd_frame::{
 use smithay_client_toolkit::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge;
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
@@ -81,11 +79,11 @@ const CURSORS: &[CursorIcon] = &[
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
-    let registry_state = RegistryState::new(&globals);
+    let globals = GlobalList::init(&conn, &qh).unwrap();
     let seat_state = SeatState::new(&globals, &qh);
     let output_state = OutputState::new(&globals, &qh);
     let compositor_state =
@@ -120,13 +118,13 @@ fn main() {
     println!("Press `n` to cycle through cursor icons.");
 
     let mut simple_window = SimpleWindow {
-        registry_state,
         seat_state,
         output_state,
         compositor_state,
         subcompositor_state: Arc::new(subcompositor_state),
         shm_state,
         _xdg_shell_state: xdg_shell_state,
+        globals,
 
         exit: false,
         first_configure: true,
@@ -157,13 +155,13 @@ fn main() {
 }
 
 struct SimpleWindow {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     compositor_state: CompositorState,
     subcompositor_state: Arc<SubcompositorState>,
     shm_state: Shm,
     _xdg_shell_state: XdgShell,
+    globals: GlobalList,
 
     exit: bool,
     first_configure: bool,
@@ -390,6 +388,7 @@ impl SeatHandler for SimpleWindow {
                     qh,
                     &seat,
                     self.shm_state.wl_shm(),
+                    &self.globals,
                     surface,
                     ThemeSpec::default(),
                 )
@@ -513,7 +512,7 @@ impl PointerHandler for SimpleWindow {
                 Enter { .. } => {
                     self.set_cursor = true;
                     self.decorations_cursor = self.window_frame.as_mut().and_then(|frame| {
-                        frame.click_point_moved(Duration::ZERO, &event.surface.id(), x, y)
+                        frame.click_point_moved(Duration::ZERO, event.surface.id(), x, y)
                     });
                 }
                 Leave { .. } => {
@@ -527,7 +526,7 @@ impl PointerHandler for SimpleWindow {
                     if let Some(new_cursor) = self.window_frame.as_mut().and_then(|frame| {
                         frame.click_point_moved(
                             Duration::from_millis(time as u64),
-                            &event.surface.id(),
+                            event.surface.id(),
                             x,
                             y,
                         )
@@ -672,13 +671,6 @@ impl SimpleWindow {
     }
 }
 
-delegate_registry!(SimpleWindow);
-
-impl ProvidesRegistryState for SimpleWindow {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for SimpleWindow {
     registry_handlers![OutputState, SeatState,];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(SimpleWindow);

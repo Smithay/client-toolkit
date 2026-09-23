@@ -1,15 +1,13 @@
 //! A pool implementation based on buffer slots
 
 use std::io;
-use std::{
-    os::unix::io::{AsRawFd, OwnedFd},
-    sync::{
-        atomic::{AtomicU8, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
-    },
+use std::sync::{
+    atomic::{AtomicU8, AtomicUsize, Ordering},
+    Arc, Mutex, Weak,
 };
 
 use wayland_client::{
+    backend::protocol::Message,
     protocol::{wl_buffer, wl_shm, wl_surface},
     Proxy,
 };
@@ -415,7 +413,7 @@ impl Buffer {
     }
 
     fn data(&self) -> Option<&BufferData> {
-        self.buffer.object_data()?.downcast_ref()
+        self.buffer.object_data()?.data_as_any().downcast_ref()
     }
 
     /// Get the bytes corresponding to this buffer if drawing is permitted.
@@ -505,7 +503,7 @@ impl wayland_client::backend::ObjectData for BufferData {
     fn event(
         self: Arc<Self>,
         handle: &wayland_client::backend::Backend,
-        msg: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
+        msg: wayland_client::backend::protocol::OwnedMessage<wayland_client::backend::ObjectId>,
     ) -> Option<Arc<dyn wayland_client::backend::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),
@@ -527,7 +525,11 @@ impl wayland_client::backend::ObjectData for BufferData {
 
                 // The Destroy message is identical to Release message (no args, same ID), so just reply
                 handle
-                    .send_request(msg.map_fd(|x| x.as_raw_fd()), None, None)
+                    .send_request(
+                        Message { sender_id: &msg.sender_id, opcode: 0, args: Default::default() },
+                        None,
+                        None,
+                    )
                     .expect("Unexpected invalid ID");
             }
             BufferData::DEAD => {
@@ -539,7 +541,7 @@ impl wayland_client::backend::ObjectData for BufferData {
         None
     }
 
-    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
+    fn destroyed(&self, _: &wayland_client::backend::ObjectId) {}
 }
 
 impl Drop for BufferData {

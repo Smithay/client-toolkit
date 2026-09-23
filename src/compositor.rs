@@ -1,5 +1,4 @@
 use std::mem;
-use std::os::unix::io::OwnedFd;
 use std::sync::MutexGuard;
 use std::sync::{
     atomic::{AtomicI32, Ordering},
@@ -12,11 +11,10 @@ use wayland_client::{
         wl_callback, wl_compositor, wl_output, wl_region,
         wl_surface::{self, WlSurface},
     },
-    Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     output::{OutputData, OutputHandler, OutputState, ScaleWatcherHandle},
@@ -95,9 +93,9 @@ impl CompositorState {
         qh: &QueueHandle<State>,
     ) -> Result<CompositorState, BindError>
     where
-        State: Dispatch<wl_compositor::WlCompositor, GlobalData, State> + 'static,
+        State: CompositorHandler + 'static,
     {
-        let wl_compositor = globals.bind(qh, 1..=Self::API_VERSION_MAX, GlobalData)?;
+        let wl_compositor = globals.bind_singleton(1..=Self::API_VERSION_MAX, qh, GlobalData)?;
         Ok(CompositorState { wl_compositor })
     }
 
@@ -107,7 +105,7 @@ impl CompositorState {
 
     pub fn create_surface<D>(&self, qh: &QueueHandle<D>) -> wl_surface::WlSurface
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>> + 'static,
+        D: CompositorHandler + OutputHandler + 'static,
     {
         self.create_surface_with_data(qh, None, 1, ())
     }
@@ -120,7 +118,7 @@ impl CompositorState {
         data: U,
     ) -> wl_surface::WlSurface
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData<U>> + 'static,
+        D: CompositorHandler + OutputHandler + 'static,
         U: Send + Sync + 'static,
     {
         let data = SurfaceData::new(parent_surface, scale_factor, data);
@@ -229,7 +227,7 @@ impl Surface {
         qh: &QueueHandle<D>,
     ) -> Result<Self, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData<()>> + 'static,
+        D: CompositorHandler + OutputHandler + 'static,
     {
         Self::with_data(compositor, qh, None, 1, ())
     }
@@ -245,7 +243,7 @@ impl Surface {
         data: U,
     ) -> Result<Self, GlobalError>
     where
-        D: Dispatch<wl_surface::WlSurface, SurfaceData<U>> + 'static,
+        D: CompositorHandler + OutputHandler + 'static,
         U: Send + Sync + 'static,
     {
         let data = SurfaceData::new(parent_surface, scale_factor, data);
@@ -269,7 +267,7 @@ impl Drop for Surface {
     }
 }
 
-impl<D, U> Dispatch2<wl_surface::WlSurface, D> for SurfaceData<U>
+impl<D, U> Dispatch<wl_surface::WlSurface, D> for SurfaceData<U>
 where
     D: CompositorHandler + OutputHandler + 'static,
     U: Send + Sync + 'static,
@@ -306,7 +304,7 @@ where
             }
             wl_surface::Event::PreferredBufferTransform { transform } => {
                 // Only handle known values.
-                if let WEnum::Value(transform) = transform {
+                if transform.available_since().is_some_and(|v| v <= surface.version()) {
                     let old_transform = std::mem::replace(&mut inner.transform, transform);
                     drop(inner);
                     if old_transform != transform {
@@ -334,7 +332,7 @@ where
         inner.watcher.get_or_insert_with(|| {
             // Avoid storing the WlSurface inside the closure as that would create a reference
             // cycle.  Instead, store the ID and re-create the proxy.
-            let id = surface.id();
+            let id = surface.id().clone();
             OutputState::add_scale_watcher(state, move |state, conn, qh, _| {
                 let id = id.clone();
                 if let Ok(surface) = wl_surface::WlSurface::from_id(conn, id) {
@@ -445,14 +443,14 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn event(
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
-        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
+        _: wayland_client::backend::protocol::OwnedMessage<wayland_client::backend::ObjectId>,
     ) -> Option<Arc<dyn wayland_client::backend::ObjectData + 'static>> {
         unreachable!("wl_region has no events");
     }
-    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
+    fn destroyed(&self, _: &wayland_client::backend::ObjectId) {}
 }
 
-impl<D> Dispatch2<wl_compositor::WlCompositor, D> for GlobalData
+impl<D> Dispatch<wl_compositor::WlCompositor, D> for GlobalData
 where
     D: CompositorHandler,
 {
@@ -479,7 +477,7 @@ impl ProvidesBoundGlobal<wl_compositor::WlCompositor, { CompositorState::API_VER
 #[derive(Debug)]
 pub struct FrameCallbackData(pub wl_surface::WlSurface);
 
-impl<D> Dispatch2<wl_callback::WlCallback, D> for FrameCallbackData
+impl<D> Dispatch<wl_callback::WlCallback, D> for FrameCallbackData
 where
     D: CompositorHandler,
 {

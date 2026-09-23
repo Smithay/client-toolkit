@@ -18,7 +18,6 @@ use smithay_client_toolkit::{
         data_source::{CopyPasteSource, DataSourceHandler, DragSource},
         DataDeviceManagerState, WritePipe,
     },
-    delegate_registry,
     output::{OutputHandler, OutputState},
     primary_selection::{
         device::{PrimarySelectionDevice, PrimarySelectionDeviceHandler},
@@ -26,7 +25,6 @@ use smithay_client_toolkit::{
         selection::{PrimarySelectionSource, PrimarySelectionSourceHandler},
         PrimarySelectionManagerState,
     },
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
@@ -46,7 +44,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{GlobalList, GlobalListHandler},
     protocol::{
         wl_data_device::WlDataDevice,
         wl_data_device_manager::DndAction,
@@ -72,11 +70,12 @@ fn main() {
     env_logger::init();
 
     // All Wayland apps start by connecting the compositor (server).
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
     // Enumerate the list of globals to get the protocols the server implements.
-    let (globals, event_queue) = registry_queue_init(&conn).unwrap();
+    let event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
     let mut event_loop: EventLoop<DataDeviceWindow> =
         EventLoop::try_new().expect("Failed to initialize the event loop!");
     let loop_handle = event_loop.handle();
@@ -117,7 +116,6 @@ fn main() {
 
     let mut simple_window = DataDeviceWindow {
         compositor,
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         shm_state: shm,
@@ -163,7 +161,6 @@ fn main() {
 
 struct DataDeviceWindow {
     compositor: CompositorState,
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     shm_state: Shm,
@@ -1064,10 +1061,7 @@ impl PrimarySelectionSourceHandler for DataDeviceWindow {
     }
 }
 
-impl ProvidesRegistryState for DataDeviceWindow {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for DataDeviceWindow {
     registry_handlers![OutputState, SeatState];
 }
 
@@ -1078,8 +1072,6 @@ struct SeatObject {
     data_device: DataDevice,
     primary_device: Option<PrimarySelectionDevice>,
 }
-
-delegate_registry!(DataDeviceWindow);
 
 const SUPPORTED_MIME_TYPES: &[&str; 6] = &[
     "text/plain;charset=utf-8",
@@ -1098,5 +1090,3 @@ fn pick_mime(mime_types: &[String]) -> Option<String> {
 
     None
 }
-
-smithay_client_toolkit::delegate_dispatch2!(DataDeviceWindow);

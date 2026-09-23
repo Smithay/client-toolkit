@@ -1,9 +1,8 @@
 /// Example app showing how to use delegate types from Smithay's client toolkit and initializing state.
 use smithay_client_toolkit::shm::{Shm, ShmHandler};
 use wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
-    protocol::wl_registry,
-    Connection, Dispatch, QueueHandle,
+    globals::{GlobalList, GlobalListHandler},
+    Connection,
 };
 
 struct ListShmFormats {
@@ -15,11 +14,12 @@ fn main() {
     env_logger::init();
 
     // Connect to the compositor.
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
     // Create an event queue and get the initial global list.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     // Create the state to dispatch.
     let mut list_formats = ListShmFormats {
@@ -42,17 +42,4 @@ impl ShmHandler for ListShmFormats {
     }
 }
 
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for ListShmFormats {
-    fn event(
-        _state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
-        _event: wl_registry::Event,
-        _data: &GlobalListContents,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-        // We don't need any other globals.
-    }
-}
-
-smithay_client_toolkit::delegate_dispatch2!(ListShmFormats);
+impl GlobalListHandler for ListShmFormats {}
