@@ -512,7 +512,7 @@ impl PointerHandler for SimpleWindow {
                 Enter { .. } => {
                     self.set_cursor = true;
                     self.decorations_cursor = self.window_frame.as_mut().and_then(|frame| {
-                        frame.click_point_moved(Duration::ZERO, &event.surface.id(), x, y)
+                        frame.click_point_moved(Duration::ZERO, event.surface.id(), x, y)
                     });
                 }
                 Leave { .. } => {
@@ -526,7 +526,7 @@ impl PointerHandler for SimpleWindow {
                     if let Some(new_cursor) = self.window_frame.as_mut().and_then(|frame| {
                         frame.click_point_moved(
                             Duration::from_millis(time as u64),
-                            &event.surface.id(),
+                            event.surface.id(),
                             x,
                             y,
                         )

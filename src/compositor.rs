@@ -1,5 +1,4 @@
 use std::mem;
-use std::os::unix::io::OwnedFd;
 use std::sync::MutexGuard;
 use std::sync::{
     atomic::{AtomicI32, Ordering},
@@ -335,7 +334,7 @@ where
         inner.watcher.get_or_insert_with(|| {
             // Avoid storing the WlSurface inside the closure as that would create a reference
             // cycle.  Instead, store the ID and re-create the proxy.
-            let id = surface.id();
+            let id = surface.id().clone();
             OutputState::add_scale_watcher(state, move |state, conn, qh, _| {
                 let id = id.clone();
                 if let Ok(surface) = wl_surface::WlSurface::from_id(conn, id) {
@@ -443,11 +442,11 @@ impl wayland_client::backend::ObjectData for RegionData {
     fn event(
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
-        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
+        _: wayland_client::backend::protocol::OwnedMessage<wayland_client::backend::ObjectId>,
     ) -> Option<Arc<dyn wayland_client::backend::ObjectData + 'static>> {
         unreachable!("wl_region has no events");
     }
-    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
+    fn destroyed(&self, _: &wayland_client::backend::ObjectId) {}
 }
 
 impl<D> Dispatch<wl_compositor::WlCompositor, D> for GlobalData

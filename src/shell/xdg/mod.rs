@@ -1,7 +1,6 @@
 //! ## Cross desktop group (XDG) shell
 // TODO: Examples
 
-use std::os::unix::io::OwnedFd;
 use std::sync::{Arc, Mutex};
 
 use wayland_protocols::xdg::dialog::v1::client::xdg_wm_dialog_v1;
@@ -237,11 +236,11 @@ impl wayland_client::backend::ObjectData for PositionerData {
     fn event(
         self: Arc<Self>,
         _: &wayland_client::backend::Backend,
-        _: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
+        _: wayland_client::backend::protocol::OwnedMessage<wayland_client::backend::ObjectId>,
     ) -> Option<Arc<dyn wayland_client::backend::ObjectData + 'static>> {
         unreachable!("xdg_positioner has no events");
     }
-    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
+    fn destroyed(&self, _: &wayland_client::backend::ObjectId) {}
 }
 
 /// A surface role for functionality common in desktop-like surfaces.

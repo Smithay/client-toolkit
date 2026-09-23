@@ -185,7 +185,7 @@ where
 
     #[inline]
     fn part_index_for_surface(&mut self, surface_id: &ObjectId) -> Option<usize> {
-        self.render_data.as_ref()?.parts.iter().position(|part| &part.surface.id() == surface_id)
+        self.render_data.as_ref()?.parts.iter().position(|part| part.surface.id() == surface_id)
     }
 
     fn draw_buttons(

@@ -1,12 +1,9 @@
 //! A pool implementation based on buffer slots
 
 use std::io;
-use std::{
-    os::unix::io::OwnedFd,
-    sync::{
-        atomic::{AtomicU8, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
-    },
+use std::sync::{
+    atomic::{AtomicU8, AtomicUsize, Ordering},
+    Arc, Mutex, Weak,
 };
 
 use wayland_client::{
@@ -506,7 +503,7 @@ impl wayland_client::backend::ObjectData for BufferData {
     fn event(
         self: Arc<Self>,
         handle: &wayland_client::backend::Backend,
-        msg: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, OwnedFd>,
+        msg: wayland_client::backend::protocol::OwnedMessage<wayland_client::backend::ObjectId>,
     ) -> Option<Arc<dyn wayland_client::backend::ObjectData>> {
         debug_assert!(wayland_client::backend::protocol::same_interface(
             msg.sender_id.interface(),
@@ -529,7 +526,7 @@ impl wayland_client::backend::ObjectData for BufferData {
                 // The Destroy message is identical to Release message (no args, same ID), so just reply
                 handle
                     .send_request(
-                        Message { sender_id: msg.sender_id, opcode: 0, args: Default::default() },
+                        Message { sender_id: &msg.sender_id, opcode: 0, args: Default::default() },
                         None,
                         None,
                     )
@@ -544,7 +541,7 @@ impl wayland_client::backend::ObjectData for BufferData {
         None
     }
 
-    fn destroyed(&self, _: wayland_client::backend::ObjectId) {}
+    fn destroyed(&self, _: &wayland_client::backend::ObjectId) {}
 }
 
 impl Drop for BufferData {
