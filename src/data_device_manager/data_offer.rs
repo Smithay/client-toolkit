@@ -8,12 +8,12 @@ use log::warn;
 
 use crate::dispatch2::Dispatch2;
 use crate::reexports::client::{
+    Connection, Proxy, QueueHandle,
     protocol::{
         wl_data_device_manager::DndAction,
         wl_data_offer::{self, WlDataOffer},
         wl_surface::WlSurface,
     },
-    Connection, Proxy, QueueHandle,
 };
 
 use super::ReadPipe;
@@ -437,9 +437,10 @@ impl PartialEq for UndeterminedOffer {
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
 pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPipe> {
-    use rustix::pipe::{pipe_with, PipeFlags};
-    // create a pipe
-    let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
+    #[cfg(not(target_os = "haiku"))]
+    let (readfd, writefd) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)?;
+    #[cfg(target_os = "haiku")]
+    let (readfd, writefd) = crate::haiku::pipe_cloexec()?;
 
     receive_to_fd(offer, mime_type, writefd);
 
