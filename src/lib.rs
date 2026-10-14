@@ -40,3 +40,6 @@ pub mod session_lock;
 pub mod shell;
 pub mod shm;
 pub mod subcompositor;
+
+#[cfg(target_os = "haiku")]
+mod haiku;
