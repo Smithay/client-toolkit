@@ -34,7 +34,7 @@ impl DataDeviceManagerState {
     where
         State: Dispatch<WlDataDeviceManager, GlobalData, State> + 'static,
     {
-        let manager = globals.bind(qh, 1..=3, GlobalData)?;
+        let manager = globals.bind(qh, 1..=4, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -99,6 +99,14 @@ impl DataDeviceManagerState {
     {
         let data = DataDeviceData::new(seat.clone());
         DataDevice { device: self.manager.get_data_device(seat, qh, data) }
+    }
+}
+
+impl Drop for DataDeviceManagerState {
+    fn drop(&mut self) {
+        if self.manager.version() >= wl_data_device_manager::REQ_RELEASE_SINCE {
+            self.manager.release();
+        }
     }
 }
 
