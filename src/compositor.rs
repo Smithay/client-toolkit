@@ -88,7 +88,7 @@ impl CompositorState {
     // Note: if bumping this version number, check if the changes to the wayland XML cause an API
     // break in the rust interfaces.  If it does, be sure to remove other ProvidesBoundGlobal
     // impls; if it does not, consider adding one for the previous (compatible) version.
-    pub const API_VERSION_MAX: u32 = 6;
+    pub const API_VERSION_MAX: u32 = 7;
 
     pub fn bind<State>(
         globals: &GlobalList,
@@ -125,6 +125,14 @@ impl CompositorState {
     {
         let data = SurfaceData::new(parent_surface, scale_factor, data);
         self.wl_compositor.create_surface(qh, data)
+    }
+}
+
+impl Drop for CompositorState {
+    fn drop(&mut self) {
+        if self.wl_compositor.version() > wl_compositor::REQ_RELEASE_SINCE {
+            self.wl_compositor.release();
+        }
     }
 }
 
@@ -222,10 +230,7 @@ pub struct Surface(wl_surface::WlSurface);
 
 impl Surface {
     pub fn new<D>(
-        compositor: &impl ProvidesBoundGlobal<
-            wl_compositor::WlCompositor,
-            { CompositorState::API_VERSION_MAX },
-        >,
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
         qh: &QueueHandle<D>,
     ) -> Result<Self, GlobalError>
     where
@@ -235,10 +240,7 @@ impl Surface {
     }
 
     pub fn with_data<D, U>(
-        compositor: &impl ProvidesBoundGlobal<
-            wl_compositor::WlCompositor,
-            { CompositorState::API_VERSION_MAX },
-        >,
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
         qh: &QueueHandle<D>,
         parent_surface: Option<WlSurface>,
         scale_factor: i32,
@@ -406,10 +408,7 @@ pub struct Region(wl_region::WlRegion);
 
 impl Region {
     pub fn new(
-        compositor: &impl ProvidesBoundGlobal<
-            wl_compositor::WlCompositor,
-            { CompositorState::API_VERSION_MAX },
-        >,
+        compositor: &impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6>,
     ) -> Result<Region, GlobalError> {
         compositor
             .bound_global()
@@ -465,6 +464,12 @@ where
         _: &QueueHandle<D>,
     ) {
         unreachable!("wl_compositor has no events")
+    }
+}
+
+impl ProvidesBoundGlobal<wl_compositor::WlCompositor, 6> for CompositorState {
+    fn bound_global(&self) -> Result<wl_compositor::WlCompositor, GlobalError> {
+        Ok(self.wl_compositor.clone())
     }
 }
 
