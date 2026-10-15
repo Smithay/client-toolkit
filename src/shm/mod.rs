@@ -7,7 +7,7 @@ use std::io;
 use wayland_client::{
     globals::{BindError, GlobalList},
     protocol::wl_shm,
-    Connection, Dispatch, QueueHandle, WEnum,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 
 use crate::{
@@ -37,7 +37,7 @@ impl Shm {
     where
         State: Dispatch<wl_shm::WlShm, GlobalData, State> + ShmHandler + 'static,
     {
-        let wl_shm = globals.bind(qh, 1..=1, GlobalData)?;
+        let wl_shm = globals.bind(qh, 1..=3, GlobalData)?;
         // Compositors must advertise Argb8888 and Xrgb8888, so let's reserve space for those formats.
         Ok(Shm { wl_shm, formats: Vec::with_capacity(2) })
     }
@@ -49,6 +49,14 @@ impl Shm {
     /// Returns the formats supported in memory pools.
     pub fn formats(&self) -> &[wl_shm::Format] {
         &self.formats[..]
+    }
+}
+
+impl Drop for Shm {
+    fn drop(&mut self) {
+        if self.wl_shm.version() > wl_shm::REQ_RELEASE_SINCE {
+            self.wl_shm.release();
+        }
     }
 }
 
