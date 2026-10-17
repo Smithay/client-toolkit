@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+#### Breaking Changes
+- `KeyEvent::utf8` is now `Option<SmolStr>`, so a key press no longer allocates a `String`.
+  `SmolStr` is re-exported from `seat::keyboard`.
+
 ## 0.21.1 - 2026-07-23
 - Fix trait bound for `WlTouch` dispatch implementation
 

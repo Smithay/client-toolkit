@@ -1,6 +1,7 @@
 use std::{
     convert::TryInto,
     env,
+    ffi::{c_char, c_int},
     fmt::Debug,
     marker::PhantomData,
     num::NonZeroU32,
@@ -11,6 +12,7 @@ use std::{
     time::Duration,
 };
 
+pub use smol_str::SmolStr;
 #[doc(inline)]
 pub use xkeysym::{KeyCode, Keysym};
 
@@ -285,7 +287,43 @@ pub struct KeyEvent {
     /// UTF-8 interpretation of the entered text.
     ///
     /// This will always be [`None`] on release events.
-    pub utf8: Option<String>,
+    pub utf8: Option<SmolStr>,
+}
+
+/// Size of the stack buffer libxkbcommon writes text into: `XKB_COMPOSE_MAX_STRING_SIZE`, the
+/// longest text a compose sequence can produce.
+const TEXT_BUFFER_SIZE: usize = 256;
+
+/// Builds a [`SmolStr`] from a libxkbcommon `*_get_utf8` function, through a stack buffer so that
+/// short text never touches the heap.
+fn utf8_from(mut write: impl FnMut(*mut c_char, usize) -> c_int) -> Option<SmolStr> {
+    let mut buf = [0u8; TEXT_BUFFER_SIZE];
+    let len = usize::try_from(write(buf.as_mut_ptr().cast(), buf.len())).ok()?;
+    if len < buf.len() {
+        return std::str::from_utf8(&buf[..len]).ok().map(SmolStr::new);
+    }
+    // Truncated: `SmolStr` would hold text this long on the heap anyway.
+    let mut buf = vec![0u8; len + 1];
+    let len = usize::try_from(write(buf.as_mut_ptr().cast(), buf.len())).ok()?;
+    std::str::from_utf8(buf.get(..len)?).ok().map(SmolStr::new)
+}
+
+/// Text for a key in the current state, possibly empty.
+fn key_utf8(state: &xkb::State, keycode: KeyCode) -> Option<SmolStr> {
+    // SAFETY: `state` is a valid xkb_state, and `utf8_from` passes a buffer of `size` bytes.
+    utf8_from(|buf, size| unsafe {
+        xkb::ffi::xkb_state_key_get_utf8(state.get_raw_ptr(), keycode.into(), buf, size)
+    })
+}
+
+/// Text for a finished compose sequence, or `None` if it produces none.
+fn compose_utf8(compose: &xkb::compose::State) -> Option<SmolStr> {
+    // SAFETY: `compose` is a valid xkb_compose_state, and `utf8_from` passes a buffer of `size`
+    // bytes.
+    utf8_from(|buf, size| unsafe {
+        xkb::ffi::compose::xkb_compose_state_get_utf8(compose.get_raw_ptr(), buf, size)
+    })
+    .filter(|text| !text.is_empty())
 }
 
 /// State of keyboard modifiers, in raw form sent by compositor.
@@ -646,14 +684,14 @@ where
                                 Some(compose) => match compose.feed(keysym) {
                                     xkb::FeedResult::Ignored => None,
                                     xkb::FeedResult::Accepted => match compose.status() {
-                                        xkb::Status::Composed => compose.utf8(),
-                                        xkb::Status::Nothing => Some(guard.key_get_utf8(keycode)),
+                                        xkb::Status::Composed => compose_utf8(compose),
+                                        xkb::Status::Nothing => key_utf8(guard, keycode),
                                         _ => None,
                                     },
                                 },
 
                                 // No compose
-                                None => Some(guard.key_get_utf8(keycode)),
+                                None => key_utf8(guard, keycode),
                             }
                         } else {
                             None
@@ -826,19 +864,16 @@ where
                                 Some(compose) => match compose.feed(event.key.keysym) {
                                     xkb::FeedResult::Ignored => None,
                                     xkb::FeedResult::Accepted => match compose.status() {
-                                        xkb::Status::Composed => compose.utf8(),
-                                        xkb::Status::Nothing => Some(
-                                            state
-                                                .key_get_utf8(KeyCode::new(event.key.raw_code + 8)),
-                                        ),
+                                        xkb::Status::Composed => compose_utf8(compose),
+                                        xkb::Status::Nothing => {
+                                            key_utf8(state, KeyCode::new(event.key.raw_code + 8))
+                                        }
                                         _ => None,
                                     },
                                 },
 
                                 // No compose.
-                                None => {
-                                    Some(state.key_get_utf8(KeyCode::new(event.key.raw_code + 8)))
-                                }
+                                None => key_utf8(state, KeyCode::new(event.key.raw_code + 8)),
                             }
                         };
 
@@ -882,5 +917,52 @@ where
 
             _ => unreachable!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Mimics libxkbcommon's `*_get_utf8` functions.
+    fn writes(text: &str) -> impl FnMut(*mut c_char, usize) -> c_int + '_ {
+        move |buf, size| {
+            let n = text.len().min(size.saturating_sub(1));
+            // SAFETY: `utf8_from` passes a buffer of `size` bytes, and `n < size`.
+            unsafe {
+                std::ptr::copy_nonoverlapping(text.as_ptr(), buf.cast(), n);
+                *buf.add(n) = 0;
+            }
+            text.len() as c_int
+        }
+    }
+
+    #[test]
+    fn test_utf8_round_trip() {
+        let text = utf8_from(writes("é")).unwrap();
+        assert_eq!(text, "é");
+        assert!(!text.is_heap_allocated());
+    }
+
+    #[test]
+    fn test_utf8_empty() {
+        assert_eq!(utf8_from(writes("")).unwrap(), "");
+    }
+
+    #[test]
+    fn test_utf8_longest_compose_output() {
+        let longest = "é".repeat((TEXT_BUFFER_SIZE - 1) / 2);
+        assert_eq!(utf8_from(writes(&longest)).unwrap(), longest);
+    }
+
+    #[test]
+    fn test_utf8_longer_than_buffer() {
+        let long = "x".repeat(TEXT_BUFFER_SIZE * 2);
+        assert_eq!(utf8_from(writes(&long)).unwrap(), long);
+    }
+
+    #[test]
+    fn test_utf8_error() {
+        assert!(utf8_from(|_, _| -1).is_none());
     }
 }
