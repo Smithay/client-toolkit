@@ -60,7 +60,7 @@ impl fmt::Debug for DmabufFormat {
 #[derive(Default)]
 pub struct DmabufFeedback {
     format_table: Option<(Mmap, usize)>,
-    main_device: dev_t,
+    main_device: Option<dev_t>,
     tranches: Vec<DmabufFeedbackTranche>,
 }
 
@@ -83,7 +83,7 @@ impl DmabufFeedback {
     }
 
     /// `dev_t` value for main device. Buffers must be importable from main device.
-    pub fn main_device(&self) -> dev_t {
+    pub fn main_device(&self) -> Option<dev_t> {
         self.main_device
     }
 
@@ -120,7 +120,7 @@ impl DmabufState {
         D: Dispatch<zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1, GlobalData> + 'static,
     {
         // Mesa (at least the latest version) also requires version 3 or 4
-        let zwp_linux_dmabuf = GlobalProxy::from(globals.bind(qh, 3..=5, GlobalData));
+        let zwp_linux_dmabuf = GlobalProxy::from(globals.bind(qh, 3..=6, GlobalData));
         Self { zwp_linux_dmabuf, modifiers: Vec::new() }
     }
 
@@ -235,6 +235,15 @@ impl DmabufParams {
         self.params.add(fd, plane_idx, offset, stride, modifier_hi, modifier_lo);
     }
 
+    /// Set the sampling device for the buffer.
+    ///
+    /// This will be silently ignored on version 5 or lower of the protocol.
+    pub fn set_sampling_device(&self, dev: dev_t) {
+        if self.params.version() >= 6 {
+            self.params.set_sampling_device(dev.to_ne_bytes().to_vec());
+        }
+    }
+
     /// Create buffer.
     ///
     /// [`DmabufHandler::created`] or [`DmabufHandler::failed`] will be invoked when the
@@ -332,7 +341,7 @@ where
             }
             zwp_linux_dmabuf_feedback_v1::Event::MainDevice { device } => {
                 let device = dev_t::from_ne_bytes(device.try_into().unwrap());
-                self.pending.lock().unwrap().main_device = device;
+                self.pending.lock().unwrap().main_device = Some(device);
             }
             zwp_linux_dmabuf_feedback_v1::Event::TrancheDone => {
                 let tranche = mem::take(&mut *self.pending_tranche.lock().unwrap());

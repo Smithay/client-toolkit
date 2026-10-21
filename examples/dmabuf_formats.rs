@@ -102,7 +102,9 @@ fn main() {
                 }
             };
 
-            println!("Main device: 0x{:x}", feedback.main_device());
+            if let Some(main_device) = feedback.main_device() {
+                println!("Main device: 0x{:x}", main_device);
+            }
             println!("Tranches:");
             let format_table = feedback.format_table();
             for tranche in feedback.tranches() {
