@@ -132,9 +132,11 @@ where
                 data.init_undetermined_offer(&id);
             }
             Event::Enter { serial, surface, x, y, id } => {
-                // XXX the spec isn't clear here.
                 if let Some(offer) = inner.drag_offer.take() {
-                    offer.destroy();
+                    // A dropped offer belongs to the application until it finishes reading.
+                    // Match Leave: a new Enter must not destroy an in-flight transfer.
+                    let data = offer.data::<DataOfferData>().unwrap();
+                    data.leave();
                 }
 
                 if let Some(offer) = id {
