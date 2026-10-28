@@ -3,17 +3,20 @@
 //! This is intended as a safe building block for higher level shared memory pool abstractions and is not
 //! encouraged for most library users.
 
-use rustix::{
-    io::Errno,
-    shm::{Mode, OFlags},
-};
+use rustix::io::Errno;
 use std::{
     fs::File,
     io,
     ops::Deref,
     os::unix::prelude::{AsFd, BorrowedFd, OwnedFd},
     sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
+};
+
+// `shm_open` is only used as a fallback and doesn't exist in Bionic (Android).
+#[cfg(not(target_os = "android"))]
+use {
+    rustix::shm::{Mode, OFlags},
+    std::time::{SystemTime, UNIX_EPOCH},
 };
 
 use memmap2::MmapMut;
@@ -182,7 +185,7 @@ impl io::Seek for RawPool {
 
 impl RawPool {
     fn create_shm_fd() -> io::Result<OwnedFd> {
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
         {
             match RawPool::create_memfd() {
                 Ok(fd) => return Ok(fd),
@@ -194,46 +197,52 @@ impl RawPool {
             };
         }
 
-        let time = SystemTime::now();
-        let mut mem_file_handle = format!(
-            "/smithay-client-toolkit-{}",
-            time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
-        );
+        #[cfg(target_os = "android")]
+        return Err(Errno::NOSYS.into());
 
-        loop {
-            let flags = OFlags::CREATE | OFlags::EXCL | OFlags::RDWR;
+        #[cfg(not(target_os = "android"))]
+        {
+            let time = SystemTime::now();
+            let mut mem_file_handle = format!(
+                "/smithay-client-toolkit-{}",
+                time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
+            );
 
-            let mode = Mode::RUSR | Mode::WUSR;
+            loop {
+                let flags = OFlags::CREATE | OFlags::EXCL | OFlags::RDWR;
 
-            match rustix::shm::open(mem_file_handle.as_str(), flags, mode) {
-                Ok(fd) => match rustix::shm::unlink(mem_file_handle.as_str()) {
-                    Ok(_) => return Ok(fd),
+                let mode = Mode::RUSR | Mode::WUSR;
 
-                    Err(errno) => {
-                        return Err(errno.into());
+                match rustix::shm::open(mem_file_handle.as_str(), flags, mode) {
+                    Ok(fd) => match rustix::shm::unlink(mem_file_handle.as_str()) {
+                        Ok(_) => return Ok(fd),
+
+                        Err(errno) => {
+                            return Err(errno.into());
+                        }
+                    },
+
+                    Err(Errno::EXIST) => {
+                        // Change the handle if we happen to be duplicate.
+                        let time = SystemTime::now();
+
+                        mem_file_handle = format!(
+                            "/smithay-client-toolkit-{}",
+                            time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
+                        );
+
+                        continue;
                     }
-                },
 
-                Err(Errno::EXIST) => {
-                    // Change the handle if we happen to be duplicate.
-                    let time = SystemTime::now();
+                    Err(Errno::INTR) => continue,
 
-                    mem_file_handle = format!(
-                        "/smithay-client-toolkit-{}",
-                        time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
-                    );
-
-                    continue;
+                    Err(err) => return Err(err.into()),
                 }
-
-                Err(Errno::INTR) => continue,
-
-                Err(err) => return Err(err.into()),
             }
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
     fn create_memfd() -> rustix::io::Result<OwnedFd> {
         use rustix::fs::{MemfdFlags, SealFlags};
 
