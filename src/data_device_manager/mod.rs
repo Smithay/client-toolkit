@@ -79,7 +79,7 @@ impl DataDeviceManagerState {
         let source = self.manager.create_data_source(qh, DataSourceData::new(()));
 
         for mime in mime_types {
-            source.offer(mime.to_string());
+            source.offer(&mime.to_string());
         }
 
         if self.manager.version() >= 3 {

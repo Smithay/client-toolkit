@@ -113,7 +113,7 @@ impl DragOffer {
     /// Receive data with the given mime type.
     /// This request may happen multiple times for different mime types, both before and after wl_data_device.drop.
     /// Drag-and-drop destination clients may preemptively fetch data or examine it more closely to determine acceptance.
-    pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
+    pub fn receive(&self, mime_type: &str) -> std::io::Result<ReadPipe> {
         // When the data device has left, we can't receive unless it was previously dropped.
         if !self.left || self.dropped {
             receive(&self.data_offer, mime_type)
@@ -125,7 +125,7 @@ impl DragOffer {
     /// Accept the given mime type, or None to reject the offer.
     /// In version 2, this request is used for feedback, but doesn't affect the final result of the drag-and-drop operation.
     /// In version 3, this request determines the final result of the drag-and-drop operation.
-    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<String>) {
+    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<&str>) {
         if !self.left {
             self.data_offer.accept(serial, mime_type);
         }
@@ -162,7 +162,7 @@ impl SelectionOffer {
         callback(mime_types)
     }
 
-    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, DataOfferError> {
+    pub fn receive(&self, mime_type: &str) -> Result<ReadPipe, DataOfferError> {
         receive(&self.data_offer, mime_type).map_err(DataOfferError::Io)
     }
 
@@ -431,7 +431,7 @@ impl PartialEq for UndeterminedOffer {
 ///
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
-pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPipe> {
+pub fn receive(offer: &WlDataOffer, mime_type: &str) -> std::io::Result<ReadPipe> {
     use rustix::pipe::{pipe_with, PipeFlags};
     // create a pipe
     let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
@@ -454,6 +454,6 @@ pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPi
 ///
 /// The provided file destructor must be a valid FD for writing, and will be closed
 /// once the contents are written.
-pub fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: OwnedFd) {
+pub fn receive_to_fd(offer: &WlDataOffer, mime_type: &str, writefd: OwnedFd) {
     offer.receive(mime_type, writefd.as_fd());
 }

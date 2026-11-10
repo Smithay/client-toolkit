@@ -46,7 +46,7 @@ impl LayerShell {
         qh: &QueueHandle<State>,
         surface: impl Into<Surface>,
         layer: Layer,
-        namespace: Option<impl Into<String>>,
+        namespace: Option<&str>,
         output: Option<&wl_output::WlOutput>,
     ) -> LayerSurface
     where
@@ -62,7 +62,7 @@ impl LayerShell {
                 surface.wl_surface(),
                 output,
                 layer.into(),
-                namespace.map(Into::into).unwrap_or_default(),
+                namespace.map(AsRef::as_ref).unwrap_or_default(),
                 qh,
                 LayerSurfaceData { inner: weak.clone() },
             );

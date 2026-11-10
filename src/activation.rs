@@ -61,7 +61,7 @@ impl ActivationState {
     }
 
     /// Activate a surface with the provided token.
-    pub fn activate<D>(&self, surface: &wl_surface::WlSurface, token: String) {
+    pub fn activate<D>(&self, surface: &wl_surface::WlSurface, token: &str) {
         self.xdg_activation.activate(token, surface)
     }
 
@@ -78,7 +78,7 @@ impl ActivationState {
         let token = self.xdg_activation.get_activation_token(qh, request_data);
         let data = token.data::<RequestData<U>>().unwrap();
         if let Some(app_id) = &data.app_id {
-            token.set_app_id(String::from(app_id));
+            token.set_app_id(app_id);
         }
         if let Some((seat, serial)) = &data.seat_and_serial {
             token.set_serial(*serial, seat);

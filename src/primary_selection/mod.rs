@@ -49,7 +49,7 @@ impl PrimarySelectionManagerState {
         let source = self.manager.create_source(qh, GlobalData);
 
         for mime_type in mime_types {
-            source.offer(mime_type.to_string());
+            source.offer(&mime_type.to_string());
         }
 
         PrimarySelectionSource::new(source)

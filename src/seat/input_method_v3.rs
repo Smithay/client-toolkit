@@ -184,7 +184,7 @@ impl InputMethod {
 
     pub fn set_preedit_string(
         &self,
-        text: String,
+        text: &str,
         cursor: CursorPosition,
     ) -> Result<(), InvalidIndex> {
         let (start, end) = match cursor {
@@ -214,7 +214,7 @@ impl InputMethod {
         Ok(())
     }
 
-    pub fn commit_string(&self, text: String) {
+    pub fn commit_string(&self, text: &str) {
         self.input_method.commit_string(text)
     }
 

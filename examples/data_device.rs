@@ -650,7 +650,7 @@ impl DataDeviceHandler for DataDeviceWindow {
 
             None
         }) {
-            drag_offer.accept_mime_type(0, Some(mime));
+            drag_offer.accept_mime_type(0, Some(&mime));
         }
 
         // Accept the action now just in case
@@ -700,7 +700,7 @@ impl DataDeviceHandler for DataDeviceWindow {
                 None => return,
             };
 
-            let read_pipe = match offer.receive(mime_type) {
+            let read_pipe = match offer.receive(&mime_type) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Failed to receive the offer: {:?}", e);
@@ -771,7 +771,7 @@ impl DataDeviceHandler for DataDeviceWindow {
                 Some(mime) => mime,
                 None => return,
             };
-            let read_pipe = match cur_offer.0.receive(mime_type.clone()) {
+            let read_pipe = match cur_offer.0.receive(&mime_type) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Failed to receive the offer: {:?}", e);
@@ -780,7 +780,7 @@ impl DataDeviceHandler for DataDeviceWindow {
             };
 
             self.accept_counter += 1;
-            cur_offer.0.accept_mime_type(self.accept_counter, Some(mime_type));
+            cur_offer.0.accept_mime_type(self.accept_counter, Some(&mime_type));
             cur_offer.0.set_actions(DndAction::Copy, DndAction::Copy);
             let cur_offer_ = cur_offer.0.clone();
             match self.loop_handle.insert_source(read_pipe, move |_, f, state| {
@@ -976,7 +976,7 @@ impl PrimarySelectionDeviceHandler for DataDeviceWindow {
                 None => return,
             };
 
-            let read_pipe = match offer.receive(mime_type) {
+            let read_pipe = match offer.receive(&mime_type) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Failed to receive the offer: {:?}", e);

@@ -261,7 +261,7 @@ impl ActivationHandler for SimpleWindow {
         self.xdg_activation
             .as_ref()
             .unwrap()
-            .activate::<SimpleWindow>(self.window.wl_surface(), token);
+            .activate::<SimpleWindow>(self.window.wl_surface(), &token);
     }
 }
 

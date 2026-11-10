@@ -35,7 +35,7 @@ impl PrimarySelectionOffer {
     ///
     /// Fails if too many file descriptors were already open and a pipe
     /// could not be created.
-    pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
+    pub fn receive(&self, mime_type: &str) -> std::io::Result<ReadPipe> {
         use rustix::pipe::{pipe_with, PipeFlags};
         // create a pipe
         let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
@@ -49,7 +49,7 @@ impl PrimarySelectionOffer {
     ///
     /// The provided file destructor must be a valid FD for writing, and will be closed
     /// once the contents are written.
-    pub fn receive_to_fd(&self, mime_type: String, writefd: OwnedFd) {
+    pub fn receive_to_fd(&self, mime_type: &str, writefd: OwnedFd) {
         self.offer.receive(mime_type, writefd.as_fd());
     }
 }

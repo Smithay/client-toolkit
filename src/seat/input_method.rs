@@ -91,7 +91,7 @@ pub struct InputMethod {
 }
 
 impl InputMethod {
-    pub fn set_preedit_string(&self, text: String, cursor: CursorPosition) {
+    pub fn set_preedit_string(&self, text: &str, cursor: CursorPosition) {
         // TODO: should this enforce indices on codepoint boundaries?
         let (start, end) = match cursor {
             CursorPosition::Hidden => (-1, -1),
@@ -106,7 +106,7 @@ impl InputMethod {
         self.input_method.set_preedit_string(text, start, end)
     }
 
-    pub fn commit_string(&self, text: String) {
+    pub fn commit_string(&self, text: &str) {
         self.input_method.commit_string(text)
     }
 

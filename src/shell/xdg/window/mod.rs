@@ -218,12 +218,12 @@ impl Window {
         self.xdg_toplevel().show_window_menu(seat, serial, position.0, position.1);
     }
 
-    pub fn set_title(&self, title: impl Into<String>) {
-        self.xdg_toplevel().set_title(title.into());
+    pub fn set_title(&self, title: &str) {
+        self.xdg_toplevel().set_title(title);
     }
 
-    pub fn set_app_id(&self, app_id: impl Into<String>) {
-        self.xdg_toplevel().set_app_id(app_id.into());
+    pub fn set_app_id(&self, app_id: &str) {
+        self.xdg_toplevel().set_app_id(app_id);
     }
 
     pub fn set_parent(&self, parent: Option<&Window>) {
