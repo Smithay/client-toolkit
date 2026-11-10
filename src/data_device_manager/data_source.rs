@@ -1,11 +1,12 @@
-use crate::dispatch2::Dispatch2;
+use wayland_client::Dispatch;
+
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
         wl_data_source::{self, WlDataSource},
         wl_surface::WlSurface,
     },
-    Connection, Proxy, QueueHandle, WEnum,
+    Connection, Proxy, QueueHandle,
 };
 
 use super::{data_device::DataDevice, WritePipe};
@@ -75,7 +76,7 @@ pub trait DataSourceHandler: Sized {
     );
 }
 
-impl<D, U> Dispatch2<wl_data_source::WlDataSource, D> for DataSourceData<U>
+impl<D, U> Dispatch<wl_data_source::WlDataSource, D> for DataSourceData<U>
 where
     D: DataSourceHandler,
 {
@@ -103,12 +104,11 @@ where
             wl_data_source::Event::DndFinished => {
                 state.dnd_finished(conn, qh, source);
             }
-            wl_data_source::Event::Action { dnd_action } => match dnd_action {
-                WEnum::Value(dnd_action) => {
+            wl_data_source::Event::Action { dnd_action } => {
+                if dnd_action.available_since().is_some_and(|v| v <= source.version()) {
                     state.action(conn, qh, source, dnd_action);
                 }
-                WEnum::Unknown(_) => {}
-            },
+            }
             _ => unimplemented!(),
         };
     }

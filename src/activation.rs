@@ -6,7 +6,6 @@ use wayland_client::{
 use wayland_protocols::xdg::activation::v1::client::{xdg_activation_token_v1, xdg_activation_v1};
 
 use crate::{
-    dispatch2::Dispatch2,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
 };
@@ -55,14 +54,14 @@ impl ActivationState {
         qh: &QueueHandle<State>,
     ) -> Result<ActivationState, BindError>
     where
-        State: Dispatch<xdg_activation_v1::XdgActivationV1, GlobalData, State> + 'static,
+        State: ActivationHandler + 'static,
     {
-        let xdg_activation = globals.bind(qh, 1..=1, GlobalData)?;
+        let xdg_activation = globals.bind_singleton(1..=1, qh, GlobalData)?;
         Ok(ActivationState { xdg_activation })
     }
 
     /// Activate a surface with the provided token.
-    pub fn activate<D>(&self, surface: &wl_surface::WlSurface, token: String) {
+    pub fn activate<D>(&self, surface: &wl_surface::WlSurface, token: &str) {
         self.xdg_activation.activate(token, surface)
     }
 
@@ -73,13 +72,13 @@ impl ActivationState {
     pub fn request_token<D, U>(&self, qh: &QueueHandle<D>, request_data: RequestData<U>)
     where
         D: ActivationHandler<RequestUdata = U>,
-        D: Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, RequestData<U>> + 'static,
+        D: 'static,
         U: Send + Sync + 'static,
     {
         let token = self.xdg_activation.get_activation_token(qh, request_data);
         let data = token.data::<RequestData<U>>().unwrap();
         if let Some(app_id) = &data.app_id {
-            token.set_app_id(String::from(app_id));
+            token.set_app_id(app_id);
         }
         if let Some((seat, serial)) = &data.seat_and_serial {
             token.set_serial(*serial, seat);
@@ -91,7 +90,7 @@ impl ActivationState {
     }
 }
 
-impl<D> Dispatch2<xdg_activation_v1::XdgActivationV1, D> for GlobalData
+impl<D> Dispatch<xdg_activation_v1::XdgActivationV1, D> for GlobalData
 where
     D: ActivationHandler,
 {
@@ -113,7 +112,7 @@ impl ProvidesBoundGlobal<xdg_activation_v1::XdgActivationV1, 1> for ActivationSt
     }
 }
 
-impl<D, U> Dispatch2<xdg_activation_token_v1::XdgActivationTokenV1, D> for RequestData<U>
+impl<D, U> Dispatch<xdg_activation_token_v1::XdgActivationTokenV1, D> for RequestData<U>
 where
     D: ActivationHandler<RequestUdata = U>,
 {

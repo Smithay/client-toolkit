@@ -11,7 +11,6 @@ use wayland_protocols_experimental::keyboard_filter::v3::client::{
     self as protocol, xx_keyboard_filter_manager_v1, xx_keyboard_filter_v1,
 };
 
-use crate::dispatch2::Dispatch2;
 use crate::globals::GlobalData;
 
 #[derive(Debug)]
@@ -23,9 +22,9 @@ impl KeyboardFilterManager {
     /// Bind the input_method global, if it exists
     pub fn bind<D>(globals: &GlobalList, qh: &QueueHandle<D>) -> Result<Self, BindError>
     where
-        D: Dispatch<XxKeyboardFilterManagerV1, GlobalData> + 'static,
+        D: 'static,
     {
-        let manager = globals.bind(qh, 1..=1, GlobalData)?;
+        let manager = globals.bind_singleton(1..=1, qh, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -43,7 +42,7 @@ impl KeyboardFilterManager {
         surface: &WlSurface,
     ) -> KeyboardFilter
     where
-        D: Dispatch<XxKeyboardFilterV1, GlobalData> + 'static,
+        D: 'static,
     {
         KeyboardFilter(self.manager.bind_to_input_method(
             keyboard,
@@ -55,7 +54,7 @@ impl KeyboardFilterManager {
     }
 }
 
-impl<D> Dispatch2<XxKeyboardFilterManagerV1, D> for GlobalData {
+impl<D> Dispatch<XxKeyboardFilterManagerV1, D> for GlobalData {
     fn event(
         &self,
         _data: &mut D,
@@ -86,7 +85,7 @@ impl KeyboardFilter {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyboardVersion(pub u32);
 
-impl<D> Dispatch2<XxKeyboardFilterV1, D> for GlobalData {
+impl<D> Dispatch<XxKeyboardFilterV1, D> for GlobalData {
     fn event(
         &self,
         _data: &mut D,
@@ -105,23 +104,19 @@ mod test {
 
     struct Handler {}
 
-    crate::delegate_dispatch2!(Handler);
-
     fn assert_is_manager_delegate<T>()
     where
-        T: wayland_client::Dispatch<
+        crate::globals::GlobalData: wayland_client::Dispatch<
             protocol::xx_keyboard_filter_manager_v1::XxKeyboardFilterManagerV1,
-            crate::globals::GlobalData,
+            T,
         >,
     {
     }
 
     fn assert_is_delegate<T>()
     where
-        T: wayland_client::Dispatch<
-            protocol::xx_keyboard_filter_v1::XxKeyboardFilterV1,
-            crate::globals::GlobalData,
-        >,
+        crate::globals::GlobalData:
+            wayland_client::Dispatch<protocol::xx_keyboard_filter_v1::XxKeyboardFilterV1, T>,
     {
     }
 

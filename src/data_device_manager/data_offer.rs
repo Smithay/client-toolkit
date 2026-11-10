@@ -6,7 +6,8 @@ use std::{
 
 use log::warn;
 
-use crate::dispatch2::Dispatch2;
+use wayland_client::Dispatch;
+
 use crate::reexports::client::{
     protocol::{
         wl_data_device_manager::DndAction,
@@ -112,7 +113,7 @@ impl DragOffer {
     /// Receive data with the given mime type.
     /// This request may happen multiple times for different mime types, both before and after wl_data_device.drop.
     /// Drag-and-drop destination clients may preemptively fetch data or examine it more closely to determine acceptance.
-    pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
+    pub fn receive(&self, mime_type: &str) -> std::io::Result<ReadPipe> {
         // When the data device has left, we can't receive unless it was previously dropped.
         if !self.left || self.dropped {
             receive(&self.data_offer, mime_type)
@@ -124,7 +125,7 @@ impl DragOffer {
     /// Accept the given mime type, or None to reject the offer.
     /// In version 2, this request is used for feedback, but doesn't affect the final result of the drag-and-drop operation.
     /// In version 3, this request determines the final result of the drag-and-drop operation.
-    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<String>) {
+    pub fn accept_mime_type(&self, serial: u32, mime_type: Option<&str>) {
         if !self.left {
             self.data_offer.accept(serial, mime_type);
         }
@@ -161,7 +162,7 @@ impl SelectionOffer {
         callback(mime_types)
     }
 
-    pub fn receive(&self, mime_type: String) -> Result<ReadPipe, DataOfferError> {
+    pub fn receive(&self, mime_type: &str) -> Result<ReadPipe, DataOfferError> {
         receive(&self.data_offer, mime_type).map_err(DataOfferError::Io)
     }
 
@@ -360,14 +361,14 @@ impl Default for DataDeviceOffer {
     }
 }
 
-impl<D> Dispatch2<wl_data_offer::WlDataOffer, D> for DataOfferData
+impl<D> Dispatch<wl_data_offer::WlDataOffer, D> for DataOfferData
 where
     D: DataOfferHandler,
 {
     fn event(
         &self,
         state: &mut D,
-        _offer: &wl_data_offer::WlDataOffer,
+        offer: &wl_data_offer::WlDataOffer,
         event: <wl_data_offer::WlDataOffer as wayland_client::Proxy>::Event,
         conn: &wayland_client::Connection,
         qh: &wayland_client::QueueHandle<D>,
@@ -377,33 +378,27 @@ where
                 self.push_mime_type(mime_type);
             }
             wl_data_offer::Event::SourceActions { source_actions } => {
-                match source_actions {
-                    wayland_client::WEnum::Value(a) => {
-                        self.set_source_action(a);
-                        match &mut self.inner.lock().unwrap().offer {
-                            DataDeviceOffer::Drag(o) => {
-                                state.source_actions(conn, qh, o, a);
-                            }
-                            DataDeviceOffer::Selection(_) => {}
-                            DataDeviceOffer::Undetermined(_) => {}
+                if source_actions.available_since().is_some_and(|v| v <= offer.version()) {
+                    self.set_source_action(source_actions);
+                    match &mut self.inner.lock().unwrap().offer {
+                        DataDeviceOffer::Drag(o) => {
+                            state.source_actions(conn, qh, o, source_actions);
                         }
+                        DataDeviceOffer::Selection(_) => {}
+                        DataDeviceOffer::Undetermined(_) => {}
                     }
-                    wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
             }
             wl_data_offer::Event::Action { dnd_action } => {
-                match dnd_action {
-                    wayland_client::WEnum::Value(a) => {
-                        self.set_selected_action(a);
-                        match &mut self.inner.lock().unwrap().offer {
-                            DataDeviceOffer::Drag(o) => {
-                                state.selected_action(conn, qh, o, a);
-                            }
-                            DataDeviceOffer::Selection(_) => {}
-                            DataDeviceOffer::Undetermined(_) => {}
+                if dnd_action.available_since().is_some_and(|v| v <= offer.version()) {
+                    self.set_selected_action(dnd_action);
+                    match &mut self.inner.lock().unwrap().offer {
+                        DataDeviceOffer::Drag(o) => {
+                            state.selected_action(conn, qh, o, dnd_action);
                         }
+                        DataDeviceOffer::Selection(_) => {}
+                        DataDeviceOffer::Undetermined(_) => {}
                     }
-                    wayland_client::WEnum::Unknown(_) => {} // Ignore
                 }
             }
             _ => unimplemented!(),
@@ -436,7 +431,7 @@ impl PartialEq for UndeterminedOffer {
 ///
 /// Fails if too many file descriptors were already open and a pipe
 /// could not be created.
-pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPipe> {
+pub fn receive(offer: &WlDataOffer, mime_type: &str) -> std::io::Result<ReadPipe> {
     use rustix::pipe::{pipe_with, PipeFlags};
     // create a pipe
     let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
@@ -459,6 +454,6 @@ pub fn receive(offer: &WlDataOffer, mime_type: String) -> std::io::Result<ReadPi
 ///
 /// The provided file destructor must be a valid FD for writing, and will be closed
 /// once the contents are written.
-pub fn receive_to_fd(offer: &WlDataOffer, mime_type: String, writefd: OwnedFd) {
+pub fn receive_to_fd(offer: &WlDataOffer, mime_type: &str, writefd: OwnedFd) {
     offer.receive(mime_type, writefd.as_fd());
 }

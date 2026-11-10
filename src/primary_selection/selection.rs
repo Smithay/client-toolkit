@@ -1,4 +1,5 @@
-use crate::dispatch2::Dispatch2;
+use wayland_client::Dispatch;
+
 use crate::reexports::client::{Connection, QueueHandle};
 use crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_source_v1::ZwpPrimarySelectionSourceV1;
 use crate::{data_device_manager::WritePipe, globals::GlobalData};
@@ -58,7 +59,7 @@ impl Drop for PrimarySelectionSource {
     }
 }
 
-impl<State> Dispatch2<ZwpPrimarySelectionSourceV1, State> for GlobalData
+impl<State> Dispatch<ZwpPrimarySelectionSourceV1, State> for GlobalData
 where
     State: PrimarySelectionSourceHandler,
 {

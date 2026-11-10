@@ -3,9 +3,7 @@ use raw_window_handle::{
 };
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
     shell::{
@@ -18,7 +16,7 @@ use smithay_client_toolkit::{
 };
 use std::ptr::NonNull;
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_output, wl_seat, wl_surface},
     Connection, Proxy, QueueHandle,
 };
@@ -26,9 +24,10 @@ use wayland_client::{
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     // Initialize xdg_shell handlers so we can select the correct adapter
     let compositor_state =
@@ -55,7 +54,7 @@ fn main() {
         NonNull::new(conn.backend().display_ptr() as *mut _).unwrap(),
     ));
     let raw_window_handle = RawWindowHandle::Wayland(WaylandWindowHandle::new(
-        NonNull::new(window.wl_surface().id().as_ptr() as *mut _).unwrap(),
+        window.wl_surface().id().as_ptr().unwrap(),
     ));
 
     let surface = unsafe {
@@ -78,7 +77,6 @@ fn main() {
         .expect("Failed to request device");
 
     let mut wgpu = Wgpu {
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
 
@@ -108,7 +106,6 @@ fn main() {
 }
 
 struct Wgpu {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
 
@@ -299,13 +296,6 @@ impl SeatHandler for Wgpu {
     fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
-delegate_registry!(Wgpu);
-
-impl ProvidesRegistryState for Wgpu {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for Wgpu {
     registry_handlers![OutputState];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(Wgpu);

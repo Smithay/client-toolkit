@@ -2,9 +2,7 @@ use std::convert::TryInto;
 
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         keyboard::{KeyEvent, KeyboardHandler, Modifiers, RawModifiers},
@@ -24,7 +22,7 @@ use smithay_client_toolkit::{
     },
 };
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_keyboard, wl_output, wl_pointer, wl_seat, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -34,11 +32,12 @@ fn main() {
     env_logger::init();
 
     // All Wayland apps start by connecting the compositor (server).
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
     // Enumerate the list of globals to get the protocols the server implements.
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     // The compositor (not to be confused with the server which is commonly called the compositor) allows
     // configuring surfaces to be presented.
@@ -72,7 +71,6 @@ fn main() {
     let pool = SlotPool::new(256 * 256 * 4, &shm).expect("Failed to create pool");
 
     let mut simple_window = SimpleWindow {
-        registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
         shm,
@@ -113,7 +111,6 @@ pub struct MyTest {}
 impl Test for MyTest {}
 
 struct SimpleWindow<T: Test + 'static> {
-    registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
     shm: Shm,
@@ -475,13 +472,6 @@ impl<T: Test + 'static> SimpleWindow<T> {
     }
 }
 
-delegate_registry!(@<T: Test + 'static> SimpleWindow<T>);
-
-impl<T: Test + 'static> ProvidesRegistryState for SimpleWindow<T> {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl<T: Test + 'static> GlobalListHandler for SimpleWindow<T> {
     registry_handlers![OutputState, SeatState,];
 }
-
-smithay_client_toolkit::delegate_dispatch2!(@<T: Test + 'static> SimpleWindow<T>);

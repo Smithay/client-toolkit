@@ -4,9 +4,7 @@ use smithay_client_toolkit::seat::{Capability, SeatHandler, SeatState};
 use smithay_client_toolkit::shell::xdg::dialog::{Dialog, DialogHandler};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, FrameCallbackData},
-    delegate_registry,
     output::{OutputHandler, OutputState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     shell::{
         xdg::{
@@ -23,7 +21,7 @@ use smithay_client_toolkit::{
 use wayland_client::protocol::wl_keyboard;
 use wayland_client::protocol::wl_seat;
 use wayland_client::{
-    globals::registry_queue_init,
+    globals::{GlobalList, GlobalListHandler},
     protocol::{wl_output, wl_shm, wl_surface},
     Connection, QueueHandle,
 };
@@ -53,7 +51,6 @@ struct Viewer {
 }
 
 struct State {
-    registry_state: RegistryState,
     output_state: OutputState,
     compositor_state: CompositorState,
     shm_state: Shm,
@@ -75,16 +72,16 @@ struct State {
 fn main() {
     env_logger::init();
 
-    let conn = Connection::connect_to_env().unwrap();
+    let conn = unsafe { Connection::connect_to_env().unwrap() };
 
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let mut event_queue = conn.new_event_queue();
     let qh: QueueHandle<State> = event_queue.handle();
+    let globals = GlobalList::init(&conn, &qh).unwrap();
 
     let event_loop: EventLoop<State> =
         EventLoop::try_new().expect("Failed to initialize the event loop!");
 
     let mut state = State {
-        registry_state: RegistryState::new(&globals),
         output_state: OutputState::new(&globals, &qh),
         compositor_state: CompositorState::bind(&globals, &qh)
             .expect("wl_compositor not available"),
@@ -540,14 +537,6 @@ impl ShmHandler for State {
     }
 }
 
-delegate_registry!(State);
-
-impl ProvidesRegistryState for State {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-
+impl GlobalListHandler for State {
     registry_handlers!(OutputState);
 }
-
-smithay_client_toolkit::delegate_dispatch2!(State);

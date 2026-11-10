@@ -3,11 +3,12 @@ use std::{
     sync::Mutex,
 };
 
+use wayland_client::Dispatch;
+
 use crate::reexports::client::{Connection, QueueHandle, Proxy};
 use crate::reexports::protocols::wp::primary_selection::zv1::client::zwp_primary_selection_offer_v1::ZwpPrimarySelectionOfferV1;
 
 use crate::data_device_manager::ReadPipe;
-use crate::dispatch2::Dispatch2;
 
 /// Wrapper around the [`ZwpPrimarySelectionOfferV1`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +35,7 @@ impl PrimarySelectionOffer {
     ///
     /// Fails if too many file descriptors were already open and a pipe
     /// could not be created.
-    pub fn receive(&self, mime_type: String) -> std::io::Result<ReadPipe> {
+    pub fn receive(&self, mime_type: &str) -> std::io::Result<ReadPipe> {
         use rustix::pipe::{pipe_with, PipeFlags};
         // create a pipe
         let (readfd, writefd) = pipe_with(PipeFlags::CLOEXEC)?;
@@ -48,12 +49,12 @@ impl PrimarySelectionOffer {
     ///
     /// The provided file destructor must be a valid FD for writing, and will be closed
     /// once the contents are written.
-    pub fn receive_to_fd(&self, mime_type: String, writefd: OwnedFd) {
+    pub fn receive_to_fd(&self, mime_type: &str, writefd: OwnedFd) {
         self.offer.receive(mime_type, writefd.as_fd());
     }
 }
 
-impl<State> Dispatch2<ZwpPrimarySelectionOfferV1, State> for PrimarySelectionOfferData {
+impl<State> Dispatch<ZwpPrimarySelectionOfferV1, State> for PrimarySelectionOfferData {
     fn event(
         &self,
         _: &mut State,

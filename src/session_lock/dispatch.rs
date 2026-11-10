@@ -1,6 +1,6 @@
-use crate::{dispatch2::Dispatch2, globals::GlobalData};
+use crate::globals::GlobalData;
 use std::sync::atomic::Ordering;
-use wayland_client::{Connection, QueueHandle};
+use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols::ext::session_lock::v1::client::{
     ext_session_lock_manager_v1, ext_session_lock_surface_v1, ext_session_lock_v1,
 };
@@ -10,7 +10,7 @@ use super::{
     SessionLockSurfaceConfigure, SessionLockSurfaceData,
 };
 
-impl<D> Dispatch2<ext_session_lock_manager_v1::ExtSessionLockManagerV1, D> for GlobalData {
+impl<D> Dispatch<ext_session_lock_manager_v1::ExtSessionLockManagerV1, D> for GlobalData {
     fn event(
         &self,
         _state: &mut D,
@@ -23,7 +23,7 @@ impl<D> Dispatch2<ext_session_lock_manager_v1::ExtSessionLockManagerV1, D> for G
     }
 }
 
-impl<D> Dispatch2<ext_session_lock_v1::ExtSessionLockV1, D> for SessionLockData
+impl<D> Dispatch<ext_session_lock_v1::ExtSessionLockV1, D> for SessionLockData
 where
     D: SessionLockHandler,
 {
@@ -50,8 +50,7 @@ where
     }
 }
 
-impl<D> Dispatch2<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, D>
-    for SessionLockSurfaceData
+impl<D> Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, D> for SessionLockSurfaceData
 where
     D: SessionLockHandler,
 {
